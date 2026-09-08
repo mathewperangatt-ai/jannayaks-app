@@ -140,10 +140,34 @@ class DatabaseSchemaIntegrityTest extends TestCase
 
     public function test_geography_reference_tables_are_empty_foundation(): void
     {
-        $this->assertSame(0, GeoState::query()->count(), 'geo_states must stay empty in foundation (seed later)');
-        $this->assertSame(0, GeoDistrict::query()->count(), 'geo_districts must stay empty in foundation');
-        $this->assertSame(0, GeoLocalBody::query()->count(), 'geo_local_bodies must stay empty in foundation');
-        $this->assertSame(0, GeoWard::query()->count(), 'geo_wards must stay empty in foundation');
+        $this->assertSame(1, GeoState::query()->count(), 'geo_states must contain exactly 1 Kerala state row after Phase 2 seed');
+        $this->assertSame(14, GeoDistrict::query()->count(), 'geo_districts must contain 14 Kerala districts after Phase 2 seed');
+        $this->assertSame(1200, GeoLocalBody::query()->count(), 'geo_local_bodies must contain 1,200 Kerala local bodies after Phase 2 seed');
+        $this->assertSame(23611, GeoWard::query()->count(), 'geo_wards must contain 23,611 Kerala wards after Phase 2 seed');
+
+        $typeCounts = GeoLocalBody::query()
+            ->selectRaw('type, count(*) as c')
+            ->groupBy('type')
+            ->pluck('c', 'type')
+            ->all();
+        $this->assertSame(941, (int)($typeCounts['grama_panchayat'] ?? 0), 'local bodies: grama_panchayat count must be 941');
+        $this->assertSame(152, (int)($typeCounts['block_panchayat'] ?? 0), 'local bodies: block_panchayat count must be 152');
+        $this->assertSame(87, (int)($typeCounts['municipality'] ?? 0), 'local bodies: municipality count must be 87');
+        $this->assertSame(14, (int)($typeCounts['district_panchayat'] ?? 0), 'local bodies: district_panchayat count must be 14');
+        $this->assertSame(6, (int)($typeCounts['municipal_corporation'] ?? 0), 'local bodies: municipal_corporation count must be 6');
+
+        $placeholders = [
+            'B05049005' => 'A',
+            'B05049009' => 'B',
+            'B05049010' => 'C',
+            'B05049011' => 'D',
+            'B05049013' => 'E',
+        ];
+        foreach ($placeholders as $wardCode => $expectedName) {
+            $ward = GeoWard::query()->where('ward_code', $wardCode)->first();
+            $this->assertNotNull($ward, "Temporary placeholder ward {$wardCode} must exist after Phase 2 seed");
+            $this->assertSame($expectedName, $ward->name, "Temporary placeholder ward {$wardCode} must have name '{$expectedName}'");
+        }
     }
 
     public function test_profile_geographies_postal_code_is_varchar_not_integer(): void
