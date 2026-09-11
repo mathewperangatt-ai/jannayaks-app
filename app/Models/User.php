@@ -70,4 +70,22 @@ class User extends Authenticatable
     {
         return $this->hasMany(MediaItem::class, 'uploaded_by_id');
     }
+
+    /** @return HasMany<Application> */
+    public function applications(): HasMany
+    {
+        return $this->hasMany(Application::class, 'user_id');
+    }
+
+    /** @return HasMany<Application> */
+    public function waivedApplications(): HasMany
+    {
+        return $this->hasMany(Application::class, 'waived_by_user_id');
+    }
+
+    /** @return HasMany<Membership> */
+    public function memberships(): HasMany
+    {
+        return $this->hasMany(Membership::class, 'user_id');
+    }
 }

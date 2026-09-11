@@ -20,6 +20,10 @@ class InMemoriamProfile extends Model
         'commissioner_display_consent',
         'deceased_full_name',
         'deceased_display_name',
+        'slug',
+        'slug_generated_at',
+        'slug_changed_at',
+        'previous_slug',
         'deceased_gender',
         'deceased_date_of_birth',
         'deceased_place_of_birth',
@@ -62,6 +66,8 @@ class InMemoriamProfile extends Model
             'renewal_due_on'                  => 'date',
             'is_sealed'                       => 'bool',
             'last_admin_corrected_at'         => 'datetime',
+            'slug_generated_at'               => 'datetime',
+            'slug_changed_at'                 => 'datetime',
         ];
     }
 
@@ -108,5 +114,11 @@ class InMemoriamProfile extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'in_memoriam_profile_id');
+    }
+
+    /** @return MorphMany<SlugRedirect> */
+    public function slugRedirects(): MorphMany
+    {
+        return $this->morphMany(SlugRedirect::class, 'redirectable');
     }
 }

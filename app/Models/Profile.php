@@ -21,6 +21,10 @@ class Profile extends Model
         'gender',
         'place_of_birth',
         'bio_headline',
+        'slug',
+        'slug_generated_at',
+        'slug_changed_at',
+        'previous_slug',
         'profession',
         'display_phone_consent',
         'display_email_consent',
@@ -37,17 +41,19 @@ class Profile extends Model
     protected function casts(): array
     {
         return [
-            'display_phone_consent' => 'bool',
-            'display_email_consent' => 'bool',
-            'date_of_birth'         => 'date',
-            'submitted_at'          => 'datetime',
-            'approved_at'           => 'datetime',
-            'published_at'          => 'datetime',
-            'rejected_at'           => 'datetime',
-            'suspended_at'          => 'datetime',
-            'unpublished_at'        => 'datetime',
-            'erasure_requested_at'  => 'datetime',
-            'erasure_completed_at'  => 'datetime',
+            'display_phone_consent'   => 'boolean',
+            'display_email_consent'   => 'boolean',
+            'date_of_birth'           => 'date',
+            'submitted_at'            => 'datetime',
+            'approved_at'             => 'datetime',
+            'published_at'            => 'datetime',
+            'rejected_at'             => 'datetime',
+            'suspended_at'            => 'datetime',
+            'unpublished_at'          => 'datetime',
+            'erasure_requested_at'    => 'datetime',
+            'erasure_completed_at'    => 'datetime',
+            'slug_generated_at'       => 'datetime',
+            'slug_changed_at'         => 'datetime',
         ];
     }
 
@@ -97,6 +103,18 @@ class Profile extends Model
     public function payments(): HasMany
     {
         return $this->hasMany(Payment::class, 'profile_id');
+    }
+
+    /** @return HasOne<Application> */
+    public function application(): HasOne
+    {
+        return $this->hasOne(Application::class, 'profile_id');
+    }
+
+    /** @return MorphMany<SlugRedirect> */
+    public function slugRedirects(): MorphMany
+    {
+        return $this->morphMany(SlugRedirect::class, 'redirectable');
     }
 
     /** @return MorphMany<MediaItem> */
