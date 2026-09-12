@@ -63,4 +63,24 @@ class Application extends Model
     {
         return $this->morphMany(Payment::class, 'payable');
     }
+
+    public function interviewAnswers(): HasMany
+    {
+        return $this->hasMany(InterviewAnswer::class);
+    }
+
+    public function sourceMaterials(): HasMany
+    {
+        return $this->hasMany(SourceMaterial::class);
+    }
+
+    public function isInterviewSubmitted(): bool
+    {
+        return $this->online_interview_completed_at !== null;
+    }
+
+    public function isDirectSubmitted(): bool
+    {
+        return $this->direct_submission_received_at !== null;
+    }
 }

@@ -1,0 +1,284 @@
+<?php
+
+namespace App\Http\Controllers;
+
+use App\Models\Application;
+use Illuminate\Contracts\Validation\Validator as ValidatorContract;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\DB;
+use Illuminate\Support\Facades\Validator;
+
+class ApplicationController extends Controller
+{
+    private const LIVING_TIERS = ['emerging', 'accomplished', 'distinguished'];
+
+    public function create(Request $request): \Illuminate\View\View
+    {
+        if (! Auth::check()) {
+            return view('application.intro', [
+                'login_required' => true,
+            ]);
+        }
+
+        return view('application.tier-select', [
+            'tiers' => self::LIVING_TIERS,
+            'source_methods' => ['online_interview', 'direct_submission'],
+            'tier_labels' => [
+                'emerging'      => 'Emerging Leader',
+                'accomplished'  => 'Accomplished Leader',
+                'distinguished' => 'Distinguished Leader',
+            ],
+        ]);
+    }
+
+    public function store(Request $request): JsonResponse|RedirectResponse
+    {
+        if (! Auth::check()) {
+            return $this->unauthorizedResponse($request, 'You must log in before creating an application.');
+        }
+
+        $validator = Validator::make($request->all(), [
+            'package_tier'     => ['required', 'string', 'in:emerging,accomplished,distinguished'],
+            'source_method'    => ['required', 'string', 'in:online_interview,direct_submission'],
+            'full_name'        => ['required', 'string', 'min:2', 'max:255'],
+            'preferred_slug'   => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/'],
+            'contact_email'    => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
+            'contact_mobile'   => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
+            'distinguished_interview_addon' => ['nullable', 'boolean'],
+            'direct_submission_note' => ['nullable', 'string', 'max:500'],
+            'honey_bot'        => ['nullable', 'string', 'max:0'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($request, $validator);
+        }
+
+        if ((string) $request->input('honey_bot', '') !== '') {
+            return $this->noContentResponse($request);
+        }
+
+        $validated = $validator->safe()->all();
+
+        return DB::transaction(function () use ($request, $validated) {
+            $user = Auth::user();
+
+            $application = Application::query()->create([
+                'user_id'                        => $user->id,
+                'source_method'                  => (string) $validated['source_method'],
+                'package_tier'                   => (string) $validated['package_tier'],
+                'full_name'                      => (string) $validated['full_name'],
+                'preferred_display_name'         => (string) $validated['full_name'],
+                'preferred_slug'                 => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
+                'distinguished_interview_addon'  => (bool) ($validated['distinguished_interview_addon'] ?? false),
+                'preferred_contact_email'        => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
+                'preferred_contact_mobile'       => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
+                'direct_submission_note'         => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
+                'intake_started_at'              => now(),
+                'direct_submission_received_at'  => (string) $validated['source_method'] === 'direct_submission' ? now() : null,
+            ]);
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok'              => true,
+                    'application_id'  => $application->id,
+                    'package_tier'    => $application->package_tier,
+                    'source_method'   => $application->source_method,
+                    'redirect_to'     => $this->redirectUrlFor($application),
+                ], 201);
+            }
+
+            return redirect($this->redirectUrlFor($application))
+                ->with('application_created', 'Application started. Continue the Online Interview or prepare a direct submission.');
+        });
+    }
+
+    private function redirectUrlFor(Application $application): string
+    {
+        if ($application->source_method === 'direct_submission') {
+            return route('applications.upload.show', ['application' => $application->id]);
+        }
+
+        return route('online-interview.show', ['application' => $application->id]);
+    }
+
+    public function showOwn(Request $request, Application $application): JsonResponse|RedirectResponse|\Illuminate\View\View
+    {
+        if (! Auth::check()) {
+            return $this->unauthorizedResponse($request, 'Login required.');
+        }
+        if ((int) $application->user_id !== (int) Auth::id()) {
+            return $this->forbiddenResponse($request, 'This application is not yours.');
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'application' => [
+                    'id'                            => $application->id,
+                    'package_tier'                  => $application->package_tier,
+                    'source_method'                 => $application->source_method,
+                    'full_name'                     => $application->full_name,
+                    'preferred_display_name'        => $application->preferred_display_name,
+                    'intake_started_at'             => $application->intake_started_at?->toIso8601String(),
+                    'online_interview_completed_at' => $application->online_interview_completed_at?->toIso8601String(),
+                    'direct_submission_received_at' => $application->direct_submission_received_at?->toIso8601String(),
+                    'has_profile'                   => $application->profile_id !== null,
+                ],
+            ]);
+        }
+
+        return view('application.show', ['application' => $application]);
+    }
+
+    public function uploadsShow(Request $request, Application $application): JsonResponse|RedirectResponse|\Illuminate\View\View
+    {
+        if (! Auth::check()) {
+            return $this->unauthorizedResponse($request, 'Login required.');
+        }
+        if ((int) $application->user_id !== (int) Auth::id()) {
+            return $this->forbiddenResponse($request, 'This application is not yours.');
+        }
+
+        if ($request->expectsJson()) {
+            $materialTypes = (array) config('online_interview.source_material_types', []);
+            return response()->json([
+                'ok' => true,
+                'application_id' => $application->id,
+                'source_method'  => $application->source_method,
+                'material_types' => array_keys($materialTypes),
+                'materials_count' => $application->sourceMaterials()->count(),
+            ]);
+        }
+
+        return view('application.upload', ['application' => $application]);
+    }
+
+    public function uploadMaterial(Request $request, Application $application): JsonResponse|RedirectResponse
+    {
+        if (! Auth::check()) {
+            return $this->unauthorizedResponse($request, 'Login required.');
+        }
+        if ((int) $application->user_id !== (int) Auth::id()) {
+            return $this->forbiddenResponse($request, 'This application is not yours.');
+        }
+        if ($application->isInterviewSubmitted()) {
+            return $this->forbiddenResponse($request, 'This application has already been submitted and cannot accept new materials.');
+        }
+
+        $maxKb = (int) config('online_interview.uploads.max_upload_kb', 10240);
+        $allowedMimes = (array) config('online_interview.uploads.allowed_mime_types', []);
+        $materialTypes = array_keys((array) config('online_interview.source_material_types', []));
+        $materialTypesStr = implode(',', $materialTypes);
+
+        $validator = Validator::make($request->all(), [
+            'material'       => ['required', 'file', 'max:'.$maxKb, 'mimetypes:'.implode(',', $allowedMimes)],
+            'material_type'  => ['required', 'string', 'in:'.$materialTypesStr],
+            'honey_bot'      => ['nullable', 'string', 'max:0'],
+        ]);
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($request, $validator);
+        }
+        if ((string) $request->input('honey_bot', '') !== '') {
+            return $this->noContentResponse($request);
+        }
+
+        $uploaded = $request->file('material');
+        if (! $uploaded || ! $uploaded->isValid()) {
+            return $this->validationErrorResponse($request, Validator::make([], [])->after(function ($v) {
+                $v->errors()->add('material', 'Uploaded file is not valid.');
+            }));
+        }
+
+        $forbiddenExt = array_map('strtolower', (array) config('online_interview.uploads.forbidden_extensions', []));
+        $clientExt = strtolower((string) $uploaded->getClientOriginalExtension());
+        if (in_array($clientExt, $forbiddenExt, true)) {
+            return $this->forbiddenResponse($request, 'This file type is not allowed.');
+        }
+
+        $diskName = (string) config('online_interview.uploads.disk', 'private_uploads');
+        $prefix   = (string) config('online_interview.uploads.storage_prefix', 'source-materials/applications');
+        $storedPath = $uploaded->store($prefix.'/'.$application->id, $diskName);
+        if ($storedPath === false) {
+            return $this->serverErrorResponse($request, 'Failed to store the uploaded file.');
+        }
+
+        $sanitizeOrig = (bool) config('online_interview.uploads.sanitize_original_name', true);
+        $originalName = $sanitizeOrig
+            ? preg_replace('/[^A-Za-z0-9._-]/', '_', (string) $uploaded->getClientOriginalName())
+            : (string) $uploaded->getClientOriginalName();
+
+        $material = \App\Models\SourceMaterial::query()->create([
+            'application_id'     => $application->id,
+            'user_id'            => (int) Auth::id(),
+            'material_type'      => (string) $request->input('material_type'),
+            'storage_disk'       => $diskName,
+            'storage_path'       => $storedPath,
+            'original_filename'  => $originalName,
+            'mime_type'          => (string) $uploaded->getMimeType(),
+            'file_bytes'         => (int) $uploaded->getSize(),
+            'client_hash_sha256' => hash_file('sha256', $uploaded->getRealPath()) ?: null,
+            'uploaded_at'        => now(),
+        ]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok'             => true,
+                'material_id'    => $material->id,
+                'application_id' => $application->id,
+                'material_type'  => $material->material_type,
+                'bytes'          => $material->file_bytes,
+            ], 201);
+        }
+
+        return redirect()
+            ->route('applications.upload.show', ['application' => $application->id])
+            ->with('material_uploaded', 'Source material received.');
+    }
+
+    private function unauthorizedResponse(Request $request, string $message): JsonResponse|RedirectResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => false, 'error' => $message], 401);
+        }
+        return redirect()->route('login')->withErrors(['auth' => $message]);
+    }
+
+    private function forbiddenResponse(Request $request, string $message): JsonResponse|RedirectResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => false, 'error' => $message], 403);
+        }
+        return redirect()->route('home')->withErrors(['application' => $message]);
+    }
+
+    private function serverErrorResponse(Request $request, string $message): JsonResponse|RedirectResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => false, 'error' => $message], 500);
+        }
+        return back()->withErrors(['application' => $message]);
+    }
+
+    private function validationErrorResponse(Request $request, ValidatorContract $validator): JsonResponse|RedirectResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok'     => false,
+                'error'  => 'Validation failed.',
+                'errors' => $validator->errors()->toArray(),
+            ], 422);
+        }
+        return back()->withErrors($validator)->withInput();
+    }
+
+    private function noContentResponse(Request $request): JsonResponse|RedirectResponse
+    {
+        if ($request->expectsJson()) {
+            return response()->json(['ok' => true], 204);
+        }
+        return redirect()->route('home')->with('ok', 'Saved.');
+    }
+}
