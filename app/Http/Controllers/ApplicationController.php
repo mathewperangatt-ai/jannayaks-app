@@ -289,6 +289,142 @@ class ApplicationController extends Controller
             ->with('material_uploaded', 'Source material received.');
     }
 
+    public function showPayment(Request $request, Application $application): JsonResponse|RedirectResponse|\Illuminate\View\View
+    {
+        if (! Auth::check()) {
+            return $this->unauthorizedResponse($request, 'Login required.');
+        }
+        if ((int) $application->user_id !== (int) Auth::id()) {
+            return $this->forbiddenResponse($request, 'This application is not yours.');
+        }
+
+        $payments = \App\Models\Payment::query()
+            ->where('application_id', $application->id)
+            ->orderByDesc('created_at')
+            ->orderByDesc('id')
+            ->limit(10)
+            ->get();
+
+        $activePayment = $payments->first(fn ($p) => $p->isActiveAttempt());
+        $settledPayment = $payments->first(fn ($p) => $p->isPaidOrBetter());
+
+        $package = null;
+        try {
+            if (in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
+                $package = \App\Support\PricingAmounts::forTier($application->package_tier);
+            }
+        } catch (\Throwable $e) {
+            $package = null;
+        }
+
+        if ($request->expectsJson()) {
+            $summary = [
+                'application_id'    => $application->id,
+                'package_tier'      => $application->package_tier,
+                'payment_settled'   => $application->isPaymentSettled(),
+                'payment_status'    => $application->payment_status,
+                'package'           => $package,
+                'active_payment'    => $activePayment ? [
+                    'id'                => $activePayment->id,
+                    'status'            => $activePayment->status,
+                    'amount'            => (string) $activePayment->amount,
+                    'currency'          => (string) $activePayment->currency,
+                    'razorpay_link_url' => null,
+                    'created_at'        => $activePayment->created_at?->toIso8601String(),
+                ] : null,
+                'settled_payment'   => $settledPayment ? [
+                    'id'                => $settledPayment->id,
+                    'status'            => $settledPayment->status,
+                    'amount'            => (string) $settledPayment->amount,
+                    'receipt_reference' => $settledPayment->invoice_number,
+                    'paid_at'           => $settledPayment->paid_at?->toIso8601String(),
+                ] : null,
+                'payments_count'    => $payments->count(),
+            ];
+            if ($activePayment && $request->user() && (int) $activePayment->application?->user_id === (int) Auth::id()) {
+                $summary['active_payment']['razorpay_link_url'] = $activePayment->razorpay_link_url;
+            }
+
+            return response()->json(['ok' => true, 'payment' => $summary]);
+        }
+
+        return view('application.payment', [
+            'application'    => $application,
+            'package'        => $package,
+            'payments'       => $payments,
+            'activePayment'  => $activePayment,
+            'settledPayment' => $settledPayment,
+            'isSettled'      => $settledPayment !== null,
+        ]);
+    }
+
+    public function initiatePayment(Request $request, Application $application): JsonResponse|RedirectResponse
+    {
+        if (! Auth::check()) {
+            return $this->unauthorizedResponse($request, 'Login required.');
+        }
+        if ((int) $application->user_id !== (int) Auth::id()) {
+            return $this->forbiddenResponse($request, 'This application is not yours.');
+        }
+        if (! in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
+            return $this->validationErrorResponse($request, Validator::make([], [])->after(function ($v) {
+                $v->errors()->add('package_tier', 'Invalid package tier for payment.');
+            }));
+        }
+        if ($application->isPaymentSettled()) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok'                 => true,
+                    'already_settled'    => true,
+                    'message'            => 'Payment for this application has already been settled.',
+                    'redirect_to'        => route('applications.payment', ['application' => $application->id]),
+                ], 409);
+            }
+
+            return redirect()
+                ->route('applications.payment', ['application' => $application->id])
+                ->withErrors(['payment' => 'Payment for this application has already been settled.']);
+        }
+
+        try {
+            /** @var \App\Services\RazorpayPaymentService $svc */
+            $svc = app(\App\Services\RazorpayPaymentService::class);
+            $payment = $svc->createApplicationPaymentLink($application);
+        } catch (\Throwable $e) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok'    => false,
+                    'error' => 'Payment initiation failed: '.($e->getMessage() ?: 'Unknown error.'),
+                ], 502);
+            }
+
+            return back()->withErrors(['payment' => 'Payment initiation failed. Please try again in a moment.']);
+        }
+
+        $redirectTo = $payment->razorpay_link_url
+            ? $payment->razorpay_link_url
+            : route('applications.payment', ['application' => $application->id]);
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok'                 => true,
+                'payment_id'         => $payment->id,
+                'status'             => $payment->status,
+                'razorpay_link_url'  => $payment->razorpay_link_url,
+                'razorpay_link_id'   => $payment->razorpay_link_id,
+                'redirect_to'        => $redirectTo,
+            ], 201);
+        }
+
+        if ($payment->razorpay_link_url !== null && $payment->razorpay_link_url !== '') {
+            return redirect()->away($payment->razorpay_link_url);
+        }
+
+        return redirect()
+            ->route('applications.payment', ['application' => $application->id])
+            ->with('payment_initiated', 'Payment has been initiated. Please complete the transaction.');
+    }
+
     private function unauthorizedResponse(Request $request, string $message): JsonResponse|RedirectResponse
     {
         if ($request->expectsJson()) {

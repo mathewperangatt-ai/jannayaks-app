@@ -43,6 +43,11 @@ return [
             'base_amount' => 2000,
             'cycle_years' => 1,
         ],
+        'revision' => [
+            'label' => 'Profile Revision / Update',
+            'base_amount' => 2000,
+            'description' => 'Interim profile revision or content update.',
+        ],
     ],
 
     'refund' => [

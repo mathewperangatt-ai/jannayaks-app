@@ -2,18 +2,6 @@
 
 return [
 
-    /*
-    |--------------------------------------------------------------------------
-    | Third Party Services
-    |--------------------------------------------------------------------------
-    |
-    | This file is for storing the credentials for third party services such
-    | as Resend, Postmark, AWS, and more. This file provides the de facto
-    | location for this type of information, allowing packages to have
-    | a conventional file to locate the various service credentials.
-    |
-    */
-
     'postmark' => [
         'key' => env('POSTMARK_API_KEY'),
     ],
@@ -33,6 +21,16 @@ return [
             'bot_user_oauth_token' => env('SLACK_BOT_USER_OAUTH_TOKEN'),
             'channel' => env('SLACK_BOT_USER_DEFAULT_CHANNEL'),
         ],
+    ],
+
+    'razorpay' => [
+        'enabled'             => env('RAZORPAY_ENABLED', false),
+        'mode'                => env('RAZORPAY_MODE', 'test'),
+        'key_id'              => env('RAZORPAY_KEY_ID', ''),
+        'key_secret'          => env('RAZORPAY_KEY_SECRET', ''),
+        'webhook_secret'      => env('RAZORPAY_WEBHOOK_SECRET', ''),
+        'timeout_seconds'     => (int) env('RAZORPAY_TIMEOUT_SECONDS', 15),
+        'require_test_prefix' => env('RAZORPAY_MODE', 'test') === 'test',
     ],
 
 ];
