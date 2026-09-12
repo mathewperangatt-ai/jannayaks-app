@@ -29,7 +29,10 @@ class VerifiedOrMobileVerified
                     'error' => 'Please verify your email address or mobile number before continuing.',
                 ], 403);
             }
-            return redirect()->route('verification.notice')
+            $loginRoute = app()->routesAreCached()
+                ? 'filament.admin.auth.login'
+                : (app('router')->has('filament.admin.auth.login') ? 'filament.admin.auth.login' : 'home');
+            return redirect()->route($loginRoute)
                 ->withErrors(['verify' => 'Please verify your email or mobile number before continuing.']);
         }
 

@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Support\OnlineInterviewCatalog;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -15,22 +16,45 @@ class ApplicationController extends Controller
 {
     private const LIVING_TIERS = ['emerging', 'accomplished', 'distinguished'];
 
-    public function create(Request $request): \Illuminate\View\View
+    public function create(Request $request): \Illuminate\View\View|JsonResponse
     {
-        if (! Auth::check()) {
+        $tiers = self::LIVING_TIERS;
+        $sourceMethods = ['online_interview', 'direct_submission'];
+        $tierLabels = [
+            'emerging'      => 'Emerging Leader',
+            'accomplished'  => 'Accomplished Leader',
+            'distinguished' => 'Distinguished Leader',
+        ];
+
+        $auth = Auth::check();
+        if (! $auth) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok'             => true,
+                    'login_required' => true,
+                    'intro'          => true,
+                ]);
+            }
+
             return view('application.intro', [
                 'login_required' => true,
             ]);
         }
 
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok'             => true,
+                'login_required' => false,
+                'tiers'          => $tiers,
+                'source_methods' => $sourceMethods,
+                'tier_labels'    => $tierLabels,
+            ]);
+        }
+
         return view('application.tier-select', [
-            'tiers' => self::LIVING_TIERS,
-            'source_methods' => ['online_interview', 'direct_submission'],
-            'tier_labels' => [
-                'emerging'      => 'Emerging Leader',
-                'accomplished'  => 'Accomplished Leader',
-                'distinguished' => 'Distinguished Leader',
-            ],
+            'tiers'          => $tiers,
+            'source_methods' => $sourceMethods,
+            'tier_labels'    => $tierLabels,
         ]);
     }
 
@@ -130,7 +154,23 @@ class ApplicationController extends Controller
             ]);
         }
 
-        return view('application.show', ['application' => $application]);
+        $materials = $application->sourceMaterials()->orderByDesc('uploaded_at')->get();
+        $answersMap = $application->source_method === 'online_interview'
+            ? (new \App\Services\OnlineInterviewService())->loadAnswersMap($application)
+            : [];
+        $progress = $application->source_method === 'online_interview'
+            ? OnlineInterviewCatalog::progress($application->package_tier, $answersMap)
+            : ['answered'=>0,'total'=>0,'required_total'=>0,'required_answered'=>0,'missing_required'=>[]];
+
+        $typeMap = (array) config('online_interview.source_material_types', []);
+
+        return view('application.show', [
+            'application'   => $application,
+            'materials'     => $materials,
+            'materialsCount'=> $materials->count(),
+            'progress'      => $progress,
+            'typeMap'       => $typeMap,
+        ]);
     }
 
     public function uploadsShow(Request $request, Application $application): JsonResponse|RedirectResponse|\Illuminate\View\View
@@ -153,7 +193,18 @@ class ApplicationController extends Controller
             ]);
         }
 
-        return view('application.upload', ['application' => $application]);
+        $materialTypes = (array) config('online_interview.source_material_types', []);
+        $maxKb = (int) config('online_interview.uploads.max_upload_kb', 10240);
+        $materials = $application->sourceMaterials()->orderByDesc('uploaded_at')->get();
+        $typeMap = $materialTypes;
+
+        return view('application.upload', [
+            'application'   => $application,
+            'materialTypes' => $materialTypes,
+            'maxKb'         => $maxKb,
+            'materials'     => $materials,
+            'typeMap'       => $typeMap,
+        ]);
     }
 
     public function uploadMaterial(Request $request, Application $application): JsonResponse|RedirectResponse
@@ -243,7 +294,8 @@ class ApplicationController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => false, 'error' => $message], 401);
         }
-        return redirect()->route('login')->withErrors(['auth' => $message]);
+        $loginRoute = app('router')->has('filament.admin.auth.login') ? 'filament.admin.auth.login' : 'home';
+        return redirect()->route($loginRoute)->withErrors(['auth' => $message]);
     }
 
     private function forbiddenResponse(Request $request, string $message): JsonResponse|RedirectResponse

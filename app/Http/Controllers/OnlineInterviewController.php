@@ -60,11 +60,14 @@ class OnlineInterviewController extends Controller
         }
 
         return view('interview.show', [
-            'application' => $application,
-            'sections'    => $sections,
-            'answers'     => $answers,
-            'progress'    => $progress,
-            'readOnly'    => $readOnly,
+            'application'  => $application,
+            'sections'     => $sections,
+            'answers'      => $answers,
+            'progress'     => $progress,
+            'readOnly'     => $readOnly,
+            'submittedAt'  => $application->online_interview_completed_at,
+            'package_tier' => $application->package_tier,
+            'allowed_qids' => OnlineInterviewCatalog::idsForTier($application->package_tier),
         ]);
     }
 
@@ -201,7 +204,8 @@ class OnlineInterviewController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => false, 'error' => $message], 401);
         }
-        return redirect()->route('login')->withErrors(['auth' => $message]);
+        $loginRoute = app('router')->has('filament.admin.auth.login') ? 'filament.admin.auth.login' : 'home';
+        return redirect()->route($loginRoute)->withErrors(['auth' => $message]);
     }
 
     private function forbid(Request $request, string $message): JsonResponse|RedirectResponse

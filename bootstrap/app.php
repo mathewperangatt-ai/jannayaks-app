@@ -15,6 +15,11 @@ return Application::configure(basePath: dirname(__DIR__))
         $middleware->alias([
             'verified.or.mobile' => \App\Http\Middleware\VerifiedOrMobileVerified::class,
         ]);
+        $middleware->redirectGuestsTo(function () {
+            return Route::has('filament.admin.auth.login')
+                ? route('filament.admin.auth.login')
+                : '/admin/login';
+        });
     })
     ->withExceptions(function (Exceptions $exceptions): void {
         $exceptions->shouldRenderJsonWhen(
