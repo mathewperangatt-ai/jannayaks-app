@@ -32,6 +32,8 @@ class DatabaseSchemaIntegrityTest extends TestCase
         'editorial_contents',
         'ai_editorial_runs',
         'editorial_claim_traces',
+        'editorial_revision_requests',
+        'editorial_customer_approvals',
         'media_items',
         'memberships',
         'payments',
@@ -478,6 +480,39 @@ class DatabaseSchemaIntegrityTest extends TestCase
         $this->assertNotEmpty(
             $runningUnique,
             'ai_editorial_runs must enforce at most one running generation per application'
+        );
+    }
+
+    public function test_customer_editorial_preview_and_revision_tables_exist(): void
+    {
+        $this->assertTrue(Schema::hasTable('editorial_revision_requests'));
+        $this->assertTrue(Schema::hasTable('editorial_customer_approvals'));
+
+        foreach ([
+            'included_revision_rounds_used',
+            'customer_preview_released_at',
+            'preview_english_editorial_content_id',
+            'preview_malayalam_editorial_content_id',
+            'customer_approved_at',
+            'customer_approved_english_editorial_content_id',
+            'customer_approved_by_user_id',
+        ] as $column) {
+            $this->assertTrue(
+                Schema::hasColumn('applications', $column),
+                "applications missing column {$column}"
+            );
+        }
+
+        $activeApprovalUnique = DB::selectOne(
+            "SELECT 1 AS present
+             FROM pg_indexes
+             WHERE schemaname = 'public'
+               AND tablename = 'editorial_customer_approvals'
+               AND indexname = 'editorial_customer_approvals_one_active_per_application'"
+        );
+        $this->assertNotEmpty(
+            $activeApprovalUnique,
+            'editorial_customer_approvals must enforce one active approval per application'
         );
     }
 }

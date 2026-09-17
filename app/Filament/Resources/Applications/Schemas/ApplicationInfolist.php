@@ -35,6 +35,13 @@ class ApplicationInfolist
                         ->formatStateUsing(fn (?string $state): string => Application::workflowStatusLabels()[$state] ?? (string) $state),
                     TextEntry::make('package_tier'),
                     TextEntry::make('source_method'),
+                    TextEntry::make('included_revision_rounds_used')
+                        ->label('Included revision rounds used')
+                        ->formatStateUsing(fn (?int $state): string => ((int) $state).' / 2'),
+                    TextEntry::make('customer_preview_released_at')->dateTime()->placeholder('—'),
+                    TextEntry::make('preview_english_editorial_content_id')->label('Preview EN version')->placeholder('—'),
+                    TextEntry::make('customer_approved_at')->dateTime()->placeholder('—'),
+                    TextEntry::make('customer_approved_english_editorial_content_id')->label('Approved EN version')->placeholder('—'),
                     TextEntry::make('payment_status')
                         ->visible(fn (): bool => self::actor()?->canManageFinance() ?? false),
                     TextEntry::make('payment_settled_at')->dateTime(),

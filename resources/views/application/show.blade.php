@@ -54,11 +54,28 @@
         </div>
     @endif
 
+    <h2 style="margin-top:10px;font-size:16px">Profile status</h2>
+    @php
+        $editorialWorkflow = app(\App\Services\CustomerEditorialWorkflowService::class);
+        $memberStatus = $editorialWorkflow->memberFacingStatusLabel($application);
+        $canPreview = $editorialWorkflow->canMemberViewPreview($application);
+    @endphp
+    <p class="lead" style="margin:0">{{ $memberStatus }}</p>
+    @if($canPreview)
+        <div class="row">
+            <a class="btn primary" href="{{ route('applications.preview', $application) }}">Review your profile →</a>
+        </div>
+    @endif
+
     <h2 style="margin-top:10px;font-size:16px">Next action</h2>
     @if ($application->source_method === 'online_interview')
         @if($application->isInterviewSubmitted())
             <p class="lead" style="margin:0">
-                Your Online Interview has been submitted. The editorial team will prepare a draft and contact you for review and approval before publication.
+                @if($canPreview)
+                    Your Online Interview is complete. Review your finished profile when ready, request included revisions if needed, then approve for publication.
+                @else
+                    Your Online Interview has been submitted. The editorial team is preparing your profile. You will review and approve it here before publication.
+                @endif
             </p>
         @elseif(!empty($progress['missing_required']))
             <p class="lead" style="margin:0">
@@ -72,7 +89,7 @@
     @else
         @if($application->isDirectSubmitted())
             <p class="lead" style="margin:0">
-                Your direct submission is received. The editorial team will review the source materials and contact you for the next step.
+                Your direct submission is received. The editorial team will prepare your profile for review and approval.
             </p>
         @else
             <p class="lead" style="margin:0">

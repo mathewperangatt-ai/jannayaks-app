@@ -56,6 +56,9 @@ class Phase10AiEditorialTest extends TestCase
         $this->assertStringContainsString('Ignore previous instructions', $userMessage);
         $this->assertStringContainsString('DATA only', $systemMessage);
         $this->assertStringContainsString('ELEVATED, BUT TRUE', $systemMessage);
+        $this->assertStringContainsString('Do NOT aim at a target word count', $systemMessage);
+        $this->assertStringContainsString('Length must be earned by substance', $systemMessage);
+        $this->assertStringContainsString('Emerging: approximately 500–800 words', $systemMessage);
     }
 
     public function test_prompt_injection_does_not_prevent_source_grounded_draft(): void

@@ -4,6 +4,7 @@ use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MobileOtpController;
+use App\Http\Controllers\CustomerProfilePreviewController;
 use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\PaymentDocumentController;
 use App\Http\Controllers\RazorpayCallbackController;
@@ -50,6 +51,14 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
 
     Route::get('/applications/{application}/payment', [ApplicationController::class, 'showPayment'])->name('applications.payment');
     Route::post('/applications/{application}/payment/initiate', [ApplicationController::class, 'initiatePayment'])->name('applications.payment.initiate');
+
+    Route::get('/applications/{application}/preview', [CustomerProfilePreviewController::class, 'show'])->name('applications.preview');
+    Route::post('/applications/{application}/preview/revision', [CustomerProfilePreviewController::class, 'requestRevision'])
+        ->middleware('throttle:10,1')
+        ->name('applications.preview.revision');
+    Route::post('/applications/{application}/preview/approve', [CustomerProfilePreviewController::class, 'approve'])
+        ->middleware('throttle:10,1')
+        ->name('applications.preview.approve');
 
     Route::get('/payments/{payment}/receipt', [PaymentDocumentController::class, 'receipt'])->name('payments.receipt');
     Route::get('/payments/{payment}/tax-invoice', [PaymentDocumentController::class, 'taxInvoice'])->name('payments.tax-invoice');

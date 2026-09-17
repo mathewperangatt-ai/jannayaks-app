@@ -6,12 +6,14 @@ use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
 use App\Models\User;
 use App\Services\ApplicationWorkflowService;
+use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use InvalidArgumentException;
 
 class EditApplication extends EditRecord
 {
@@ -50,6 +52,25 @@ class EditApplication extends EditRecord
                         ->title('AI editorial drafts created')
                         ->success()
                         ->send();
+                }),
+            Action::make('releaseCustomerPreview')
+                ->label('Release for customer preview')
+                ->requiresConfirmation()
+                ->visible(fn (): bool => auth()->user()?->canManageEditorial() ?? false)
+                ->action(function (): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User) {
+                        abort(403);
+                    }
+
+                    try {
+                        /** @var Application $application */
+                        $application = $this->getRecord();
+                        app(CustomerEditorialWorkflowService::class)->releaseForCustomerPreview($application, $actor);
+                        Notification::make()->title('Customer preview released')->success()->send();
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot release preview')->body($e->getMessage())->danger()->send();
+                    }
                 }),
             ViewAction::make(),
         ];

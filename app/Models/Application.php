@@ -137,6 +137,9 @@ class Application extends Model
             'direct_submission_received_at' => 'datetime',
             'converted_to_profile_at' => 'datetime',
             'payment_settled_at' => 'datetime',
+            'included_revision_rounds_used' => 'integer',
+            'customer_preview_released_at' => 'datetime',
+            'customer_approved_at' => 'datetime',
         ];
     }
 
@@ -175,6 +178,31 @@ class Application extends Model
         return $this->hasMany(SourceMaterial::class);
     }
 
+    public function editorialRevisionRequests(): HasMany
+    {
+        return $this->hasMany(EditorialRevisionRequest::class);
+    }
+
+    public function editorialCustomerApprovals(): HasMany
+    {
+        return $this->hasMany(EditorialCustomerApproval::class);
+    }
+
+    public function previewEnglishContent(): BelongsTo
+    {
+        return $this->belongsTo(EditorialContent::class, 'preview_english_editorial_content_id');
+    }
+
+    public function previewMalayalamContent(): BelongsTo
+    {
+        return $this->belongsTo(EditorialContent::class, 'preview_malayalam_editorial_content_id');
+    }
+
+    public function customerApprovedEnglishContent(): BelongsTo
+    {
+        return $this->belongsTo(EditorialContent::class, 'customer_approved_english_editorial_content_id');
+    }
+
     public function isInterviewSubmitted(): bool
     {
         return $this->online_interview_completed_at !== null;
@@ -190,8 +218,17 @@ class Application extends Model
         return app(ApplicationPaymentStateService::class)->isPaymentSettled($this);
     }
 
+    /**
+     * Historical helper: application has been linked to a profile record.
+     * Prefer status === STATUS_PUBLISHED for publication-terminal checks.
+     */
     public function isPublished(): bool
     {
         return $this->profile_id !== null || $this->converted_to_profile_at !== null;
+    }
+
+    public function isWorkflowPublished(): bool
+    {
+        return $this->status === self::STATUS_PUBLISHED;
     }
 }
