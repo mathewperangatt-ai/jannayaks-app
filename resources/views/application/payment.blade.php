@@ -60,23 +60,33 @@
         <div class="row" style="justify-content:space-between">
             <div>
                 <div class="bilingual">
-                    <span style="font-weight:600">{{ $package['label'] ?? 'Package' }} / പാക്കേജ്</span>
+                    <span style="font-weight:600">{{ ($package['package']['label'] ?? $package['label']) ?? 'Package' }} / പാക്കേജ്</span>
                 </div>
                 <span class="note-safe">{{ $package['description'] ?? '' }}</span>
             </div>
-            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ $package['base_formatted'] ?? '' }}</div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ ($package['package']['amount_incl_formatted'] ?? null) ?: ($package['amount_incl_formatted'] ?? '') }}</div>
         </div>
+
+        @if (!empty($package['addon']))
+        <div class="row" style="justify-content:space-between">
+            <div>
+                <div style="font-weight:600">{{ $package['addon']['label'] }}</div>
+                <span class="note-safe">Optional add-on (not part of base Distinguished package)</span>
+            </div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ $package['addon']['amount_incl_formatted'] }}</div>
+        </div>
+        @endif
 
         @if (is_string($package['cgst_formatted'] ?? null))
         <div class="row" style="justify-content:space-between">
-            <div class="note-safe">CGST ({{ $package['gst_rate_percent'] / 2 }}%)</div>
+            <div class="note-safe">CGST (included)</div>
             <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['cgst_formatted'] }}</div>
         </div>
         @endif
 
         @if (is_string($package['sgst_formatted'] ?? null))
         <div class="row" style="justify-content:space-between">
-            <div class="note-safe">SGST ({{ $package['gst_rate_percent'] / 2 }}%)</div>
+            <div class="note-safe">SGST (included)</div>
             <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['sgst_formatted'] }}</div>
         </div>
         @endif
@@ -91,6 +101,22 @@
             <div style="font-size:22px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums">{{ $package['amount_incl_formatted'] ?? '' }}</div>
         </div>
     </div>
+
+    @if ($application->package_tier === 'distinguished' && ! $isSettled)
+        @php
+            $addonCfg = config('jannayaks.tier_pricing.addons.distinguished_in_person_interview', []);
+            $addonAmt = number_format((int) ($addonCfg['base_amount'] ?? 10000));
+        @endphp
+        <div class="divider"></div>
+        <label class="row" style="gap:10px;align-items:flex-start;cursor:pointer">
+            <input form="pay-initiate-form" type="hidden" name="distinguished_interview_addon" value="0">
+            <input form="pay-initiate-form" type="checkbox" name="distinguished_interview_addon" value="1" @checked($application->distinguished_interview_addon) style="margin-top:4px">
+            <span>
+                <span style="font-weight:700">Include optional in-person interview (+₹{{ $addonAmt }})</span>
+                <span class="note-safe" style="display:block;margin-top:4px">Applied when you click Pay Now. Changing this replaces any pending payment link.</span>
+            </span>
+        </label>
+    @endif
 </div>
 @endif
 
@@ -128,7 +154,12 @@
             <div style="color:#0d4721;font-size:13px;margin-top:4px">പേയ്‌മെൻ്റ് വിജയകരമായി സ്വീകരിച്ചു. അടുത്ത ഘട്ടം: എഡിറ്റോറിയൽ അവലോകനം.</div>
             @if ($settledPayment->invoice_number)
                 <div style="margin-top:8px;color:#0d4721;font-size:13px">
-                    Receipt Reference / റിസീറ്റ് റഫറൻസ്: <b style="font-variant-numeric:tabular-nums">{{ $settledPayment->invoice_number }}</b>
+                    Receipt / റിസീറ്റ്: <b style="font-variant-numeric:tabular-nums">{{ $settledPayment->invoice_number }}</b>
+                </div>
+            @endif
+            @if ($settledPayment->tax_invoice_number)
+                <div style="margin-top:2px;color:#0d4721;font-size:13px">
+                    GST Tax Invoice / ജിഎസ്ടി ടാക്സ് ഇൻവോയ്സ്: <b style="font-variant-numeric:tabular-nums">{{ $settledPayment->tax_invoice_number }}</b>
                 </div>
             @endif
             @if ($settledPayment->paid_at)
@@ -138,6 +169,11 @@
             @endif
         </div>
         <div class="actions">
+            <a class="btn" href="{{ route('payments.receipt', $settledPayment) }}">Payment Receipt</a>
+            <a class="btn" href="{{ route('payments.tax-invoice', $settledPayment) }}">GST Tax Invoice</a>
+            @if ($settledPayment->isRefunded() && $settledPayment->credit_note_number)
+                <a class="btn" href="{{ route('payments.credit-note', $settledPayment) }}">Credit Note</a>
+            @endif
             <a class="btn block" href="{{ route('applications.show', ['application' => $application->id]) }}">
                 Back to Dashboard / ഡാഷ്‌ബോർഡിലേക്ക് തിരികെ പോകുക
             </a>
@@ -151,7 +187,7 @@
             <a class="btn primary block" target="_blank" rel="noopener" href="{{ $activePayment->razorpay_link_url }}">
                 Continue Payment / പേയ്‌മെൻ്റ് തുടരുക
             </a>
-            <form method="POST" action="{{ route('applications.payment.initiate', ['application' => $application->id]) }}" style="flex:1 1 260px;margin:0">
+            <form id="pay-initiate-form" method="POST" action="{{ route('applications.payment.initiate', ['application' => $application->id]) }}" style="flex:1 1 260px;margin:0">
                 @csrf
                 <button class="btn block" type="submit">Retry / New Link / വീണ്ടും ശ്രമിക്കുക / പുതിയ ലിങ്ക്</button>
             </form>
@@ -167,7 +203,7 @@
             <div class="note-safe" style="margin-top:4px">എഡിറ്റോറിയൽ അവലോകനത്തിന് പോയാൻ പേയ്‌മെൻ്റ് പൂർത്തിയാക്കുക.</div>
         @endif
         <div class="actions" style="margin-top:16px">
-            <form method="POST" action="{{ route('applications.payment.initiate', ['application' => $application->id]) }}" style="flex:1 1 100%;margin:0">
+            <form id="pay-initiate-form" method="POST" action="{{ route('applications.payment.initiate', ['application' => $application->id]) }}" style="flex:1 1 100%;margin:0">
                 @csrf
                 <button class="btn primary block" type="submit">
                     @if ($activePayment)

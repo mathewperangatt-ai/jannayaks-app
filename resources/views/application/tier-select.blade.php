@@ -99,6 +99,20 @@
             </div>
         </div>
 
+        @php
+            $addonCfg = config('jannayaks.tier_pricing.addons.distinguished_in_person_interview', []);
+            $addonAmt = number_format((int) ($addonCfg['base_amount'] ?? 10000));
+        @endphp
+        <div class="card" id="distinguishedAddonBox" style="display:none;margin-top:14px;padding:14px 16px">
+            <label class="row" style="gap:10px;align-items:flex-start;cursor:pointer">
+                <input type="checkbox" name="distinguished_interview_addon" value="1" @checked(old('distinguished_interview_addon')) style="margin-top:4px">
+                <span>
+                    <span style="font-weight:700">Optional: In-person Distinguished journalist interview (+₹{{ $addonAmt }})</span>
+                    <span class="note-safe" style="display:block;margin-top:4px">Not included in the base Distinguished package. You can also choose this later on the payment page before paying.</span>
+                </span>
+            </label>
+        </div>
+
         <div class="missbox" role="note" id="contactNote" style="margin-top:14px">
             Provide at least one reliable contact method (email or mobile). Jannayaks will contact you for editorial review and to confirm the finished profile.
         </div>
@@ -117,7 +131,8 @@
     var email = document.getElementById('contact_email');
     var mobile = document.getElementById('contact_mobile');
     var note = document.getElementById('contactNote');
-    function sync(){
+    var addonBox = document.getElementById('distinguishedAddonBox');
+    function syncContact(){
         var ok = (email && email.value.trim() !== '') || (mobile && mobile.value.trim() !== '');
         if (!note) return;
         note.style.borderLeftColor = ok ? '#2e8b57' : '#c0392b';
@@ -127,9 +142,23 @@
             ? 'Contact information captured. You can add more or update it later in the application dashboard.'
             : 'Provide at least one reliable contact method (email or mobile). Jannayaks will contact you for editorial review and to confirm the finished profile.';
     }
-    if (email) email.addEventListener('input', sync);
-    if (mobile) mobile.addEventListener('input', sync);
-    sync();
+    function syncAddon(){
+        if (!addonBox) return;
+        var selected = document.querySelector('input[name="package_tier"]:checked');
+        var show = selected && selected.value === 'distinguished';
+        addonBox.style.display = show ? 'block' : 'none';
+        if (!show) {
+            var cb = addonBox.querySelector('input[type=checkbox]');
+            if (cb) cb.checked = false;
+        }
+    }
+    if (email) email.addEventListener('input', syncContact);
+    if (mobile) mobile.addEventListener('input', syncContact);
+    document.querySelectorAll('input[name="package_tier"]').forEach(function(el){
+        el.addEventListener('change', syncAddon);
+    });
+    syncContact();
+    syncAddon();
 })();
 </script>
 @endpush

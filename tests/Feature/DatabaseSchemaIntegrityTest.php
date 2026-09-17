@@ -102,7 +102,7 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
         $this->assertNotEmpty(
             $exists,
-            "CHECK constraint profiles_status_check missing on profiles.status"
+            'CHECK constraint profiles_status_check missing on profiles.status'
         );
     }
 
@@ -119,7 +119,7 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
         $this->assertNotEmpty(
             $exists,
-            "CHECK constraint geo_local_bodies_type_check missing"
+            'CHECK constraint geo_local_bodies_type_check missing'
         );
     }
 
@@ -134,7 +134,7 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
         $this->assertNotEmpty(
             $idx,
-            "Unique index profiles_user_id_unique required for 1:1 user->profile"
+            'Unique index profiles_user_id_unique required for 1:1 user->profile'
         );
     }
 
@@ -150,11 +150,11 @@ class DatabaseSchemaIntegrityTest extends TestCase
             ->groupBy('type')
             ->pluck('c', 'type')
             ->all();
-        $this->assertSame(941, (int)($typeCounts['grama_panchayat'] ?? 0), 'local bodies: grama_panchayat count must be 941');
-        $this->assertSame(152, (int)($typeCounts['block_panchayat'] ?? 0), 'local bodies: block_panchayat count must be 152');
-        $this->assertSame(87, (int)($typeCounts['municipality'] ?? 0), 'local bodies: municipality count must be 87');
-        $this->assertSame(14, (int)($typeCounts['district_panchayat'] ?? 0), 'local bodies: district_panchayat count must be 14');
-        $this->assertSame(6, (int)($typeCounts['municipal_corporation'] ?? 0), 'local bodies: municipal_corporation count must be 6');
+        $this->assertSame(941, (int) ($typeCounts['grama_panchayat'] ?? 0), 'local bodies: grama_panchayat count must be 941');
+        $this->assertSame(152, (int) ($typeCounts['block_panchayat'] ?? 0), 'local bodies: block_panchayat count must be 152');
+        $this->assertSame(87, (int) ($typeCounts['municipality'] ?? 0), 'local bodies: municipality count must be 87');
+        $this->assertSame(14, (int) ($typeCounts['district_panchayat'] ?? 0), 'local bodies: district_panchayat count must be 14');
+        $this->assertSame(6, (int) ($typeCounts['municipal_corporation'] ?? 0), 'local bodies: municipal_corporation count must be 6');
 
         $placeholders = [
             'B05049005' => 'A',
@@ -201,7 +201,7 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
         $this->assertEmpty(
             $bytea,
-            "media_items must not store binaries. Found bytea columns: " .
+            'media_items must not store binaries. Found bytea columns: '.
             implode(',', array_column($bytea, 'column_name'))
         );
     }
@@ -212,9 +212,9 @@ class DatabaseSchemaIntegrityTest extends TestCase
         $this->assertNotContains(
             'raw_gateway_payload',
             $columns,
-            "payments must NOT contain unsanitised raw_gateway_payload JSONB (may contain PII)"
+            'payments must NOT contain unsanitised raw_gateway_payload JSONB (may contain PII)'
         );
-        foreach (['gateway_event_id','gateway_payment_id','payment_method_type','card_last4','error_code','error_message','item_type','in_memoriam_profile_id'] as $required) {
+        foreach (['gateway_event_id', 'gateway_payment_id', 'payment_method_type', 'card_last4', 'error_code', 'error_message', 'item_type', 'in_memoriam_profile_id', 'invoice_number', 'tax_invoice_number', 'credit_note_number'] as $required) {
             $this->assertContains(
                 $required,
                 $columns,
@@ -234,15 +234,15 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
         $this->assertEmpty(
             $uniqueIdx,
-            "consent_records UNIQUE(user_id,consent_key) must NOT exist — required to log consent → revoke → consent history"
+            'consent_records UNIQUE(user_id,consent_key) must NOT exist — required to log consent → revoke → consent history'
         );
         $columns = Schema::getColumnListing('consent_records');
         $this->assertNotContains(
             'revoked_at',
             $columns,
-            "consent_records should not have revoked_at; instead consented=false + action_at timestamp per event"
+            'consent_records should not have revoked_at; instead consented=false + action_at timestamp per event'
         );
-        $this->assertContains('action_at', $columns, "consent_records action_at column (event timestamp) missing");
+        $this->assertContains('action_at', $columns, 'consent_records action_at column (event timestamp) missing');
     }
 
     public function test_financial_fk_set_null_does_not_block_profile_erasure(): void
@@ -343,7 +343,7 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
         $this->assertNotEmpty(
             $idx,
-            "in_memoriam_editorial_contents must have UNIQUE(profile,language,version_number) for version history"
+            'in_memoriam_editorial_contents must have UNIQUE(profile,language,version_number) for version history'
         );
     }
 
@@ -358,7 +358,7 @@ class DatabaseSchemaIntegrityTest extends TestCase
                AND cls.relname='in_memoriam_profiles'
                AND c.conname='in_memoriam_profiles_status_check'"
         );
-        $this->assertNotEmpty($chk, "Missing in_memoriam_profiles_status_check constraint");
+        $this->assertNotEmpty($chk, 'Missing in_memoriam_profiles_status_check constraint');
 
         $idx = DB::selectOne(
             "SELECT 1 AS present FROM pg_indexes
@@ -368,7 +368,7 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
         $this->assertNotEmpty(
             $idx,
-            "Missing partial display name index on in_memoriam_profiles.deceased_display_name"
+            'Missing partial display name index on in_memoriam_profiles.deceased_display_name'
         );
     }
 
@@ -382,7 +382,7 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
         $this->assertNotEmpty(
             $profilesIdx,
-            "B-Tree index on profiles.bio_headline missing for §20 search preparation"
+            'B-Tree index on profiles.bio_headline missing for §20 search preparation'
         );
 
         $imIdx = DB::selectOne(
@@ -393,7 +393,7 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
         $this->assertNotEmpty(
             $imIdx,
-            "B-Tree index on in_memoriam_profiles.bio_headline missing for §20 search preparation"
+            'B-Tree index on in_memoriam_profiles.bio_headline missing for §20 search preparation'
         );
     }
 }

@@ -9,6 +9,8 @@ use InvalidArgumentException;
 
 class RefundService
 {
+    public function __construct(private readonly InvoiceService $invoices) {}
+
     public function refundBasisConfigPercent(): int
     {
         $cfg = config('jannayaks.refund.before_publication_percent', 60);
@@ -72,6 +74,10 @@ class RefundService
         return $refundPaise;
     }
 
+    /**
+     * Record a refund locally and issue a credit note.
+     * Does NOT call Razorpay (or any gateway) refund APIs.
+     */
     public function initiateRefund(
         Payment $payment,
         string $note,
@@ -79,7 +85,11 @@ class RefundService
         ?string $refundGatewayId = null,
     ): ?Payment {
         if ($payment->isRefunded()) {
-            return $payment;
+            if ($payment->credit_note_number === null || $payment->credit_note_number === '') {
+                $this->invoices->assignCreditNoteNumber($payment);
+            }
+
+            return $payment->fresh() ?? $payment;
         }
 
         $refundPaise = $this->calculateRefundAmountPaise($payment, $overridePercent);
@@ -90,7 +100,7 @@ class RefundService
         $refundDecimal = PricingAmounts::paiseToDecimalString($refundPaise);
         $sanitizedNote = trim($note);
         if ($sanitizedNote === '') {
-            $sanitizedNote = 'Refund processed.';
+            $sanitizedNote = 'Refund recorded (local foundation; gateway refund not executed in P8).';
         }
 
         $payment->markRefunded(
@@ -99,7 +109,16 @@ class RefundService
             refundNote: $sanitizedNote,
         );
 
-        return $payment;
+        $this->invoices->assignCreditNoteNumber($payment);
+
+        $application = $payment->application;
+        if ($application instanceof Application) {
+            $application->forceFill([
+                'payment_status' => Application::PAYMENT_STATUS_REFUNDED,
+            ])->save();
+        }
+
+        return $payment->fresh() ?? $payment;
     }
 
     public function refundSummary(Payment $payment): array
@@ -110,16 +129,18 @@ class RefundService
         $totalPaise = $payment->totalPaise();
 
         return [
-            'eligible'                  => $eligible,
-            'basis_percent'             => $percent,
-            'total_paid_paise'          => $totalPaise,
-            'total_paid_formatted'      => PricingAmounts::formatMoneyInr($totalPaise),
-            'refund_amount_paise'       => $refundPaise,
-            'refund_amount_formatted'   => $refundPaise !== null ? PricingAmounts::formatMoneyInr($refundPaise) : null,
-            'already_refunded'          => $payment->isRefunded(),
-            'refunded_at'               => $payment->refunded_at,
-            'refund_gateway_id'         => $payment->refund_gateway_id,
-            'refund_note'               => $payment->refund_note,
+            'eligible' => $eligible,
+            'basis_percent' => $percent,
+            'total_paid_paise' => $totalPaise,
+            'total_paid_formatted' => PricingAmounts::formatMoneyInr($totalPaise),
+            'refund_amount_paise' => $refundPaise,
+            'refund_amount_formatted' => $refundPaise !== null ? PricingAmounts::formatMoneyInr($refundPaise) : null,
+            'already_refunded' => $payment->isRefunded(),
+            'refunded_at' => $payment->refunded_at,
+            'refund_gateway_id' => $payment->refund_gateway_id,
+            'refund_note' => $payment->refund_note,
+            'credit_note_number' => $payment->credit_note_number,
+            'gateway_refund_executed' => false,
         ];
     }
 }

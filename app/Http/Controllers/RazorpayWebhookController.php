@@ -2,28 +2,28 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\Application;
 use App\Models\Payment;
 use App\Services\ApplicationPaymentStateService;
 use App\Services\InvoiceService;
 use App\Services\RazorpayPaymentService;
 use App\Services\RazorpayWebhookVerifier;
 use App\Support\PricingAmounts;
+use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Carbon;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
 
 class RazorpayWebhookController extends Controller
 {
     public function __construct(
-        private readonly RazorpayWebhookVerifier       $verifier,
-        private readonly RazorpayPaymentService        $razorpay,
+        private readonly RazorpayWebhookVerifier $verifier,
+        private readonly RazorpayPaymentService $razorpay,
         private readonly ApplicationPaymentStateService $stateService,
-        private readonly InvoiceService                $invoices,
-    ) {
-    }
+        private readonly InvoiceService $invoices,
+    ) {}
 
-    public function handle(Request $request): \Illuminate\Http\JsonResponse
+    public function handle(Request $request): JsonResponse
     {
         $rawPayload = $request->getContent();
         if (! is_string($rawPayload) || $rawPayload === '') {
@@ -40,7 +40,7 @@ class RazorpayWebhookController extends Controller
         if (! $signatureOk) {
             Log::warning('Razorpay webhook: invalid or missing signature.', [
                 'has_signature_header' => $signature !== '',
-                'has_webhook_secret'   => $webhookSecret !== '',
+                'has_webhook_secret' => $webhookSecret !== '',
             ]);
 
             return response()->json(['ok' => false, 'error' => 'Invalid signature.'], 403);
@@ -116,21 +116,21 @@ class RazorpayWebhookController extends Controller
 
         if (! $payment instanceof Payment) {
             Log::warning('Razorpay webhook: could not resolve payment for event.', [
-                'event'              => $event,
-                'event_id'           => $eventId,
+                'event' => $event,
+                'event_id' => $eventId,
                 'gateway_payment_id' => $gatewayPaymentId,
-                'gateway_link_id'    => $gatewayLinkId,
-                'application_id'     => $applicationId,
+                'gateway_link_id' => $gatewayLinkId,
+                'application_id' => $applicationId,
             ]);
 
             return response()->json([
-                'ok'      => true,
+                'ok' => true,
                 'handled' => false,
-                'reason'  => 'payment_not_resolved',
+                'reason' => 'payment_not_resolved',
             ], 202);
         }
 
-        $eventTimestamp = $createdAt !== null ? \Illuminate\Support\Carbon::createFromTimestamp($createdAt) : null;
+        $eventTimestamp = $createdAt !== null ? Carbon::createFromTimestamp($createdAt) : null;
 
         $result = DB::transaction(function () use (
             $event,
@@ -269,7 +269,7 @@ class RazorpayWebhookController extends Controller
     private function applyEvent(
         string $event,
         string $eventId,
-        ?\Illuminate\Support\Carbon $eventTimestamp,
+        ?Carbon $eventTimestamp,
         Payment $payment,
         ?string $gatewayPaymentId,
         ?string $gatewayLinkId,
@@ -290,6 +290,16 @@ class RazorpayWebhookController extends Controller
         $lower = strtolower($event);
 
         if (in_array($lower, $successEvents, true)) {
+            if (! $payment->isActiveAttempt()) {
+                return ['status' => 409, 'body' => [
+                    'ok' => false,
+                    'error' => 'Payment attempt is not active and cannot be settled.',
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                    'ignored_superseded' => true,
+                ]];
+            }
+
             $target = $lower === 'payment.captured' ? Payment::STATUS_CAPTURED : Payment::STATUS_PAID;
             if ($payment->status === Payment::STATUS_SUCCESS) {
                 $target = Payment::STATUS_SUCCESS;
@@ -303,6 +313,16 @@ class RazorpayWebhookController extends Controller
                 paidAt: $eventTimestamp,
                 capturedAt: $eventTimestamp,
             );
+
+            if (! $payment->isPaidOrBetter()) {
+                return ['status' => 409, 'body' => [
+                    'ok' => false,
+                    'error' => 'Payment attempt could not transition to settled.',
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                    'ignored_superseded' => true,
+                ]];
+            }
             if ($gatewayLinkId !== null && $gatewayLinkId !== '' && $payment->razorpay_link_id === null) {
                 $payment->razorpay_link_id = $gatewayLinkId;
                 $payment->save();
@@ -319,25 +339,26 @@ class RazorpayWebhookController extends Controller
             } catch (\Throwable $e) {
                 Log::error('Razorpay webhook: afterSettled application update failed.', [
                     'payment_id' => $payment->id,
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
 
             try {
-                $this->invoices->assignReceiptReference($payment);
+                $this->invoices->assignSettlementDocuments($payment);
             } catch (\Throwable $e) {
-                Log::warning('Razorpay webhook: receipt reference assignment failed.', [
+                Log::warning('Razorpay webhook: settlement document assignment failed.', [
                     'payment_id' => $payment->id,
-                    'error'      => $e->getMessage(),
+                    'error' => $e->getMessage(),
                 ]);
             }
 
             return ['status' => 200, 'body' => [
-                'ok'             => true,
-                'paid'           => true,
-                'payment_id'     => $payment->id,
-                'status'         => $payment->status,
-                'receipt_ref'    => $payment->invoice_number,
+                'ok' => true,
+                'paid' => true,
+                'payment_id' => $payment->id,
+                'status' => $payment->status,
+                'receipt_ref' => $payment->invoice_number,
+                'tax_invoice_ref' => $payment->tax_invoice_number,
             ]];
         }
 
@@ -350,10 +371,10 @@ class RazorpayWebhookController extends Controller
             );
 
             return ['status' => 200, 'body' => [
-                'ok'             => true,
-                'failed'         => true,
-                'payment_id'     => $payment->id,
-                'status'         => $payment->status,
+                'ok' => true,
+                'failed' => true,
+                'payment_id' => $payment->id,
+                'status' => $payment->status,
             ]];
         }
 
@@ -365,10 +386,10 @@ class RazorpayWebhookController extends Controller
             );
 
             return ['status' => 200, 'body' => [
-                'ok'             => true,
-                'cancelled'      => true,
-                'payment_id'     => $payment->id,
-                'status'         => $payment->status,
+                'ok' => true,
+                'cancelled' => true,
+                'payment_id' => $payment->id,
+                'status' => $payment->status,
             ]];
         }
 
@@ -385,10 +406,10 @@ class RazorpayWebhookController extends Controller
         }
 
         return ['status' => 202, 'body' => [
-            'ok'              => true,
-            'event_ignored'   => true,
-            'event'           => $event,
-            'payment_id'      => $payment->id,
+            'ok' => true,
+            'event_ignored' => true,
+            'event' => $event,
+            'payment_id' => $payment->id,
         ]];
     }
 }

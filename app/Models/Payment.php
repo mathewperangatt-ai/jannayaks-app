@@ -72,16 +72,16 @@ class Payment extends Model
     public const GATEWAY_WAIVER = 'waiver';
 
     private const STATE_RANK = [
-        self::STATUS_PENDING            => 1,
-        self::STATUS_INITIATED          => 2,
-        self::STATUS_FAILED             => 3,
-        self::STATUS_CANCELLED          => 3,
-        self::STATUS_EXPIRED            => 3,
-        self::STATUS_PAID               => 10,
-        self::STATUS_CAPTURED           => 11,
-        self::STATUS_SUCCESS            => 12,
+        self::STATUS_PENDING => 1,
+        self::STATUS_INITIATED => 2,
+        self::STATUS_FAILED => 3,
+        self::STATUS_CANCELLED => 3,
+        self::STATUS_EXPIRED => 3,
+        self::STATUS_PAID => 10,
+        self::STATUS_CAPTURED => 11,
+        self::STATUS_SUCCESS => 12,
         self::STATUS_PARTIALLY_REFUNDED => 20,
-        self::STATUS_REFUNDED           => 21,
+        self::STATUS_REFUNDED => 21,
     ];
 
     protected $fillable = [
@@ -125,24 +125,30 @@ class Payment extends Model
         'refund_note',
         'invoice_number',
         'invoice_issued_at',
+        'tax_invoice_number',
+        'tax_invoice_issued_at',
+        'credit_note_number',
+        'credit_note_issued_at',
     ];
 
     protected function casts(): array
     {
         return [
-            'amount'             => 'decimal:2',
-            'base_amount'        => 'decimal:2',
-            'taxable_amount'     => 'decimal:2',
-            'gst_rate_percent'   => 'decimal:2',
-            'cgst_amount'        => 'decimal:2',
-            'sgst_amount'        => 'decimal:2',
-            'igst_amount'        => 'decimal:2',
-            'refund_amount'      => 'decimal:2',
-            'paid_at'            => 'datetime',
-            'captured_at'        => 'datetime',
-            'waived_at'          => 'datetime',
-            'refunded_at'        => 'datetime',
-            'invoice_issued_at'  => 'datetime',
+            'amount' => 'decimal:2',
+            'base_amount' => 'decimal:2',
+            'taxable_amount' => 'decimal:2',
+            'gst_rate_percent' => 'decimal:2',
+            'cgst_amount' => 'decimal:2',
+            'sgst_amount' => 'decimal:2',
+            'igst_amount' => 'decimal:2',
+            'refund_amount' => 'decimal:2',
+            'paid_at' => 'datetime',
+            'captured_at' => 'datetime',
+            'waived_at' => 'datetime',
+            'refunded_at' => 'datetime',
+            'invoice_issued_at' => 'datetime',
+            'tax_invoice_issued_at' => 'datetime',
+            'credit_note_issued_at' => 'datetime',
         ];
     }
 
@@ -201,6 +207,15 @@ class Payment extends Model
         }
 
         if ($newStatus === self::STATUS_PENDING && $currentRank > 2) {
+            return false;
+        }
+
+        // Superseded / terminal failure attempts must never resurrect to paid.
+        if ($newRank >= 10 && in_array($this->status, [
+            self::STATUS_FAILED,
+            self::STATUS_CANCELLED,
+            self::STATUS_EXPIRED,
+        ], true)) {
             return false;
         }
 

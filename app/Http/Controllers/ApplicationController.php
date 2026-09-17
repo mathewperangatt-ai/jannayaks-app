@@ -3,7 +3,13 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Models\Payment;
+use App\Models\SourceMaterial;
+use App\Services\ApplicationPaymentStateService;
+use App\Services\OnlineInterviewService;
+use App\Services\RazorpayPaymentService;
 use App\Support\OnlineInterviewCatalog;
+use App\Support\PricingAmounts;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -11,18 +17,19 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\View\View;
 
 class ApplicationController extends Controller
 {
     private const LIVING_TIERS = ['emerging', 'accomplished', 'distinguished'];
 
-    public function create(Request $request): \Illuminate\View\View|JsonResponse
+    public function create(Request $request): View|JsonResponse
     {
         $tiers = self::LIVING_TIERS;
         $sourceMethods = ['online_interview', 'direct_submission'];
         $tierLabels = [
-            'emerging'      => 'Emerging Leader',
-            'accomplished'  => 'Accomplished Leader',
+            'emerging' => 'Emerging Leader',
+            'accomplished' => 'Accomplished Leader',
             'distinguished' => 'Distinguished Leader',
         ];
 
@@ -32,10 +39,10 @@ class ApplicationController extends Controller
         if (! $auth && ! $showTiers) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'ok'             => true,
+                    'ok' => true,
                     'login_required' => true,
-                    'intro'          => true,
-                    'next'           => route('apply', ['step' => 'tiers']),
+                    'intro' => true,
+                    'next' => route('apply', ['step' => 'tiers']),
                 ]);
             }
 
@@ -46,19 +53,19 @@ class ApplicationController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'ok'             => true,
+                'ok' => true,
                 'login_required' => ! $auth,
-                'tiers'          => $tiers,
+                'tiers' => $tiers,
                 'source_methods' => $sourceMethods,
-                'tier_labels'    => $tierLabels,
+                'tier_labels' => $tierLabels,
             ]);
         }
 
         return view('application.tier-select', [
-            'tiers'          => $tiers,
+            'tiers' => $tiers,
             'source_methods' => $sourceMethods,
-            'tier_labels'    => $tierLabels,
-            'guest'          => ! $auth,
+            'tier_labels' => $tierLabels,
+            'guest' => ! $auth,
         ]);
     }
 
@@ -68,15 +75,15 @@ class ApplicationController extends Controller
     public function storeIntent(Request $request): JsonResponse|RedirectResponse
     {
         $validator = Validator::make($request->all(), [
-            'package_tier'     => ['required', 'string', 'in:emerging,accomplished,distinguished'],
-            'source_method'    => ['required', 'string', 'in:online_interview,direct_submission'],
-            'full_name'        => ['required', 'string', 'min:2', 'max:255'],
-            'preferred_slug'   => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/'],
-            'contact_email'    => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
-            'contact_mobile'   => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
+            'package_tier' => ['required', 'string', 'in:emerging,accomplished,distinguished'],
+            'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
+            'full_name' => ['required', 'string', 'min:2', 'max:255'],
+            'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/'],
+            'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
+            'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
             'distinguished_interview_addon' => ['nullable', 'boolean'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
-            'honey_bot'        => ['nullable', 'string', 'max:0'],
+            'honey_bot' => ['nullable', 'string', 'max:0'],
         ]);
 
         if ($validator->fails()) {
@@ -94,7 +101,8 @@ class ApplicationController extends Controller
             'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
             'contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
             'contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
-            'distinguished_interview_addon' => (bool) ($validated['distinguished_interview_addon'] ?? false),
+            'distinguished_interview_addon' => (string) $validated['package_tier'] === 'distinguished'
+                && (bool) ($validated['distinguished_interview_addon'] ?? false),
             'direct_submission_note' => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
         ];
 
@@ -152,15 +160,15 @@ class ApplicationController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'package_tier'     => ['required', 'string', 'in:emerging,accomplished,distinguished'],
-            'source_method'    => ['required', 'string', 'in:online_interview,direct_submission'],
-            'full_name'        => ['required', 'string', 'min:2', 'max:255'],
-            'preferred_slug'   => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/'],
-            'contact_email'    => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
-            'contact_mobile'   => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
+            'package_tier' => ['required', 'string', 'in:emerging,accomplished,distinguished'],
+            'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
+            'full_name' => ['required', 'string', 'min:2', 'max:255'],
+            'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/'],
+            'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
+            'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
             'distinguished_interview_addon' => ['nullable', 'boolean'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
-            'honey_bot'        => ['nullable', 'string', 'max:0'],
+            'honey_bot' => ['nullable', 'string', 'max:0'],
         ]);
 
         if ($validator->fails()) {
@@ -178,29 +186,30 @@ class ApplicationController extends Controller
 
             $application = new Application;
             $application->forceFill([
-                'user_id'                        => $user->id,
-                'source_method'                  => (string) $validated['source_method'],
-                'package_tier'                   => (string) $validated['package_tier'],
-                'full_name'                      => (string) $validated['full_name'],
-                'preferred_display_name'         => (string) $validated['full_name'],
-                'preferred_slug'                 => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
-                'distinguished_interview_addon'  => (bool) ($validated['distinguished_interview_addon'] ?? false),
-                'preferred_contact_email'        => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
-                'preferred_contact_mobile'       => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
-                'direct_submission_note'         => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
-                'intake_started_at'              => now(),
-                'direct_submission_received_at'  => (string) $validated['source_method'] === 'direct_submission' ? now() : null,
-                'payment_status'                 => Application::PAYMENT_STATUS_PENDING,
-                'status'                         => Application::STATUS_PAYMENT_PENDING,
+                'user_id' => $user->id,
+                'source_method' => (string) $validated['source_method'],
+                'package_tier' => (string) $validated['package_tier'],
+                'full_name' => (string) $validated['full_name'],
+                'preferred_display_name' => (string) $validated['full_name'],
+                'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
+                'distinguished_interview_addon' => (string) $validated['package_tier'] === 'distinguished'
+                    && (bool) ($validated['distinguished_interview_addon'] ?? false),
+                'preferred_contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
+                'preferred_contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
+                'direct_submission_note' => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
+                'intake_started_at' => now(),
+                'direct_submission_received_at' => (string) $validated['source_method'] === 'direct_submission' ? now() : null,
+                'payment_status' => Application::PAYMENT_STATUS_PENDING,
+                'status' => Application::STATUS_PAYMENT_PENDING,
             ])->save();
 
             if ($request->expectsJson()) {
                 return response()->json([
-                    'ok'              => true,
-                    'application_id'  => $application->id,
-                    'package_tier'    => $application->package_tier,
-                    'source_method'   => $application->source_method,
-                    'redirect_to'     => $this->redirectUrlFor($application),
+                    'ok' => true,
+                    'application_id' => $application->id,
+                    'package_tier' => $application->package_tier,
+                    'source_method' => $application->source_method,
+                    'redirect_to' => $this->redirectUrlFor($application),
                 ], 201);
             }
 
@@ -231,7 +240,7 @@ class ApplicationController extends Controller
             ->withErrors(['payment' => $message]);
     }
 
-    public function showOwn(Request $request, Application $application): JsonResponse|RedirectResponse|\Illuminate\View\View
+    public function showOwn(Request $request, Application $application): JsonResponse|RedirectResponse|View
     {
         if (! Auth::check()) {
             return $this->unauthorizedResponse($request, 'Login required.');
@@ -244,39 +253,39 @@ class ApplicationController extends Controller
             return response()->json([
                 'ok' => true,
                 'application' => [
-                    'id'                            => $application->id,
-                    'package_tier'                  => $application->package_tier,
-                    'source_method'                 => $application->source_method,
-                    'full_name'                     => $application->full_name,
-                    'preferred_display_name'        => $application->preferred_display_name,
-                    'intake_started_at'             => $application->intake_started_at?->toIso8601String(),
+                    'id' => $application->id,
+                    'package_tier' => $application->package_tier,
+                    'source_method' => $application->source_method,
+                    'full_name' => $application->full_name,
+                    'preferred_display_name' => $application->preferred_display_name,
+                    'intake_started_at' => $application->intake_started_at?->toIso8601String(),
                     'online_interview_completed_at' => $application->online_interview_completed_at?->toIso8601String(),
                     'direct_submission_received_at' => $application->direct_submission_received_at?->toIso8601String(),
-                    'has_profile'                   => $application->profile_id !== null,
+                    'has_profile' => $application->profile_id !== null,
                 ],
             ]);
         }
 
         $materials = $application->sourceMaterials()->orderByDesc('uploaded_at')->get();
         $answersMap = $application->source_method === 'online_interview'
-            ? (new \App\Services\OnlineInterviewService())->loadAnswersMap($application)
+            ? (new OnlineInterviewService)->loadAnswersMap($application)
             : [];
         $progress = $application->source_method === 'online_interview'
             ? OnlineInterviewCatalog::progress($application->package_tier, $answersMap)
-            : ['answered'=>0,'total'=>0,'required_total'=>0,'required_answered'=>0,'missing_required'=>[]];
+            : ['answered' => 0, 'total' => 0, 'required_total' => 0, 'required_answered' => 0, 'missing_required' => []];
 
         $typeMap = (array) config('online_interview.source_material_types', []);
 
         return view('application.show', [
-            'application'   => $application,
-            'materials'     => $materials,
-            'materialsCount'=> $materials->count(),
-            'progress'      => $progress,
-            'typeMap'       => $typeMap,
+            'application' => $application,
+            'materials' => $materials,
+            'materialsCount' => $materials->count(),
+            'progress' => $progress,
+            'typeMap' => $typeMap,
         ]);
     }
 
-    public function uploadsShow(Request $request, Application $application): JsonResponse|RedirectResponse|\Illuminate\View\View
+    public function uploadsShow(Request $request, Application $application): JsonResponse|RedirectResponse|View
     {
         if (! Auth::check()) {
             return $this->unauthorizedResponse($request, 'Login required.');
@@ -284,16 +293,17 @@ class ApplicationController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
-        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
             return $this->paymentGateResponse($request, $application);
         }
 
         if ($request->expectsJson()) {
             $materialTypes = (array) config('online_interview.source_material_types', []);
+
             return response()->json([
                 'ok' => true,
                 'application_id' => $application->id,
-                'source_method'  => $application->source_method,
+                'source_method' => $application->source_method,
                 'material_types' => array_keys($materialTypes),
                 'materials_count' => $application->sourceMaterials()->count(),
             ]);
@@ -305,11 +315,11 @@ class ApplicationController extends Controller
         $typeMap = $materialTypes;
 
         return view('application.upload', [
-            'application'   => $application,
+            'application' => $application,
             'materialTypes' => $materialTypes,
-            'maxKb'         => $maxKb,
-            'materials'     => $materials,
-            'typeMap'       => $typeMap,
+            'maxKb' => $maxKb,
+            'materials' => $materials,
+            'typeMap' => $typeMap,
         ]);
     }
 
@@ -321,7 +331,7 @@ class ApplicationController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
-        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
             return $this->paymentGateResponse($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
@@ -334,9 +344,9 @@ class ApplicationController extends Controller
         $materialTypesStr = implode(',', $materialTypes);
 
         $validator = Validator::make($request->all(), [
-            'material'       => ['required', 'file', 'max:'.$maxKb, 'mimetypes:'.implode(',', $allowedMimes)],
-            'material_type'  => ['required', 'string', 'in:'.$materialTypesStr],
-            'honey_bot'      => ['nullable', 'string', 'max:0'],
+            'material' => ['required', 'file', 'max:'.$maxKb, 'mimetypes:'.implode(',', $allowedMimes)],
+            'material_type' => ['required', 'string', 'in:'.$materialTypesStr],
+            'honey_bot' => ['nullable', 'string', 'max:0'],
         ]);
         if ($validator->fails()) {
             return $this->validationErrorResponse($request, $validator);
@@ -359,7 +369,7 @@ class ApplicationController extends Controller
         }
 
         $diskName = (string) config('online_interview.uploads.disk', 'private_uploads');
-        $prefix   = (string) config('online_interview.uploads.storage_prefix', 'source-materials/applications');
+        $prefix = (string) config('online_interview.uploads.storage_prefix', 'source-materials/applications');
         $storedPath = $uploaded->store($prefix.'/'.$application->id, $diskName);
         if ($storedPath === false) {
             return $this->serverErrorResponse($request, 'Failed to store the uploaded file.');
@@ -370,26 +380,26 @@ class ApplicationController extends Controller
             ? preg_replace('/[^A-Za-z0-9._-]/', '_', (string) $uploaded->getClientOriginalName())
             : (string) $uploaded->getClientOriginalName();
 
-        $material = \App\Models\SourceMaterial::query()->create([
-            'application_id'     => $application->id,
-            'user_id'            => (int) Auth::id(),
-            'material_type'      => (string) $request->input('material_type'),
-            'storage_disk'       => $diskName,
-            'storage_path'       => $storedPath,
-            'original_filename'  => $originalName,
-            'mime_type'          => (string) $uploaded->getMimeType(),
-            'file_bytes'         => (int) $uploaded->getSize(),
+        $material = SourceMaterial::query()->create([
+            'application_id' => $application->id,
+            'user_id' => (int) Auth::id(),
+            'material_type' => (string) $request->input('material_type'),
+            'storage_disk' => $diskName,
+            'storage_path' => $storedPath,
+            'original_filename' => $originalName,
+            'mime_type' => (string) $uploaded->getMimeType(),
+            'file_bytes' => (int) $uploaded->getSize(),
             'client_hash_sha256' => hash_file('sha256', $uploaded->getRealPath()) ?: null,
-            'uploaded_at'        => now(),
+            'uploaded_at' => now(),
         ]);
 
         if ($request->expectsJson()) {
             return response()->json([
-                'ok'             => true,
-                'material_id'    => $material->id,
+                'ok' => true,
+                'material_id' => $material->id,
                 'application_id' => $application->id,
-                'material_type'  => $material->material_type,
-                'bytes'          => $material->file_bytes,
+                'material_type' => $material->material_type,
+                'bytes' => $material->file_bytes,
             ], 201);
         }
 
@@ -398,7 +408,7 @@ class ApplicationController extends Controller
             ->with('material_uploaded', 'Source material received.');
     }
 
-    public function showPayment(Request $request, Application $application): JsonResponse|RedirectResponse|\Illuminate\View\View
+    public function showPayment(Request $request, Application $application): JsonResponse|RedirectResponse|View
     {
         if (! Auth::check()) {
             return $this->unauthorizedResponse($request, 'Login required.');
@@ -407,7 +417,7 @@ class ApplicationController extends Controller
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
 
-        $payments = \App\Models\Payment::query()
+        $payments = Payment::query()
             ->where('application_id', $application->id)
             ->orderByDesc('created_at')
             ->orderByDesc('id')
@@ -420,7 +430,10 @@ class ApplicationController extends Controller
         $package = null;
         try {
             if (in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
-                $package = \App\Support\PricingAmounts::forTier($application->package_tier);
+                $package = PricingAmounts::forApplicationPackage(
+                    $application->package_tier,
+                    (bool) $application->distinguished_interview_addon && $application->package_tier === 'distinguished',
+                );
             }
         } catch (\Throwable $e) {
             $package = null;
@@ -428,27 +441,30 @@ class ApplicationController extends Controller
 
         if ($request->expectsJson()) {
             $summary = [
-                'application_id'    => $application->id,
-                'package_tier'      => $application->package_tier,
-                'payment_settled'   => $application->isPaymentSettled(),
-                'payment_status'    => $application->payment_status,
-                'package'           => $package,
-                'active_payment'    => $activePayment ? [
-                    'id'                => $activePayment->id,
-                    'status'            => $activePayment->status,
-                    'amount'            => (string) $activePayment->amount,
-                    'currency'          => (string) $activePayment->currency,
+                'application_id' => $application->id,
+                'package_tier' => $application->package_tier,
+                'distinguished_interview_addon' => (bool) $application->distinguished_interview_addon,
+                'payment_settled' => $application->isPaymentSettled(),
+                'payment_status' => $application->payment_status,
+                'package' => $package,
+                'active_payment' => $activePayment ? [
+                    'id' => $activePayment->id,
+                    'status' => $activePayment->status,
+                    'amount' => (string) $activePayment->amount,
+                    'currency' => (string) $activePayment->currency,
                     'razorpay_link_url' => null,
-                    'created_at'        => $activePayment->created_at?->toIso8601String(),
+                    'created_at' => $activePayment->created_at?->toIso8601String(),
                 ] : null,
-                'settled_payment'   => $settledPayment ? [
-                    'id'                => $settledPayment->id,
-                    'status'            => $settledPayment->status,
-                    'amount'            => (string) $settledPayment->amount,
+                'settled_payment' => $settledPayment ? [
+                    'id' => $settledPayment->id,
+                    'status' => $settledPayment->status,
+                    'amount' => (string) $settledPayment->amount,
                     'receipt_reference' => $settledPayment->invoice_number,
-                    'paid_at'           => $settledPayment->paid_at?->toIso8601String(),
+                    'tax_invoice_number' => $settledPayment->tax_invoice_number,
+                    'credit_note_number' => $settledPayment->credit_note_number,
+                    'paid_at' => $settledPayment->paid_at?->toIso8601String(),
                 ] : null,
-                'payments_count'    => $payments->count(),
+                'payments_count' => $payments->count(),
             ];
             if ($activePayment && $request->user() && (int) $activePayment->application?->user_id === (int) Auth::id()) {
                 $summary['active_payment']['razorpay_link_url'] = $activePayment->razorpay_link_url;
@@ -458,12 +474,12 @@ class ApplicationController extends Controller
         }
 
         return view('application.payment', [
-            'application'    => $application,
-            'package'        => $package,
-            'payments'       => $payments,
-            'activePayment'  => $activePayment,
+            'application' => $application,
+            'package' => $package,
+            'payments' => $payments,
+            'activePayment' => $activePayment,
             'settledPayment' => $settledPayment,
-            'isSettled'      => $settledPayment !== null,
+            'isSettled' => $settledPayment !== null,
         ]);
     }
 
@@ -483,10 +499,10 @@ class ApplicationController extends Controller
         if ($application->isPaymentSettled()) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'ok'                 => true,
-                    'already_settled'    => true,
-                    'message'            => 'Payment for this application has already been settled.',
-                    'redirect_to'        => route('applications.payment', ['application' => $application->id]),
+                    'ok' => true,
+                    'already_settled' => true,
+                    'message' => 'Payment for this application has already been settled.',
+                    'redirect_to' => route('applications.payment', ['application' => $application->id]),
                 ], 409);
             }
 
@@ -495,14 +511,24 @@ class ApplicationController extends Controller
                 ->withErrors(['payment' => 'Payment for this application has already been settled.']);
         }
 
+        if ($application->package_tier === 'distinguished' && $request->exists('distinguished_interview_addon')) {
+            $application->forceFill([
+                'distinguished_interview_addon' => $request->boolean('distinguished_interview_addon'),
+            ])->save();
+        } elseif ($application->package_tier !== 'distinguished' && $application->distinguished_interview_addon) {
+            $application->forceFill([
+                'distinguished_interview_addon' => false,
+            ])->save();
+        }
+
         try {
-            /** @var \App\Services\RazorpayPaymentService $svc */
-            $svc = app(\App\Services\RazorpayPaymentService::class);
+            /** @var RazorpayPaymentService $svc */
+            $svc = app(RazorpayPaymentService::class);
             $payment = $svc->createApplicationPaymentLink($application);
         } catch (\Throwable $e) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'ok'    => false,
+                    'ok' => false,
                     'error' => 'Payment initiation failed: '.($e->getMessage() ?: 'Unknown error.'),
                 ], 502);
             }
@@ -516,12 +542,12 @@ class ApplicationController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'ok'                 => true,
-                'payment_id'         => $payment->id,
-                'status'             => $payment->status,
-                'razorpay_link_url'  => $payment->razorpay_link_url,
-                'razorpay_link_id'   => $payment->razorpay_link_id,
-                'redirect_to'        => $redirectTo,
+                'ok' => true,
+                'payment_id' => $payment->id,
+                'status' => $payment->status,
+                'razorpay_link_url' => $payment->razorpay_link_url,
+                'razorpay_link_id' => $payment->razorpay_link_id,
+                'redirect_to' => $redirectTo,
             ], 201);
         }
 
@@ -540,6 +566,7 @@ class ApplicationController extends Controller
             return response()->json(['ok' => false, 'error' => $message], 401);
         }
         $loginRoute = app('router')->has('filament.admin.auth.login') ? 'filament.admin.auth.login' : 'home';
+
         return redirect()->route($loginRoute)->withErrors(['auth' => $message]);
     }
 
@@ -548,6 +575,7 @@ class ApplicationController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => false, 'error' => $message], 403);
         }
+
         return redirect()->route('home')->withErrors(['application' => $message]);
     }
 
@@ -556,6 +584,7 @@ class ApplicationController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => false, 'error' => $message], 500);
         }
+
         return back()->withErrors(['application' => $message]);
     }
 
@@ -563,11 +592,12 @@ class ApplicationController extends Controller
     {
         if ($request->expectsJson()) {
             return response()->json([
-                'ok'     => false,
-                'error'  => 'Validation failed.',
+                'ok' => false,
+                'error' => 'Validation failed.',
                 'errors' => $validator->errors()->toArray(),
             ], 422);
         }
+
         return back()->withErrors($validator)->withInput();
     }
 
@@ -576,6 +606,7 @@ class ApplicationController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => true], 204);
         }
+
         return redirect()->route('home')->with('ok', 'Saved.');
     }
 }

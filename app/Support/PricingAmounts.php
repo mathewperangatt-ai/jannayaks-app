@@ -33,25 +33,144 @@ class PricingAmounts
         }
 
         return [
-            'currency'              => self::CURRENCY,
-            'tier_key'              => $tierKey,
-            'label'                 => (string) $pkg['label'],
-            'description'           => (string) ($pkg['description'] ?? 'Profile package'),
-            'gst_inclusive'         => true,
-            'gst_rate_percent'      => $gstRate,
-            'amount_incl_paise'     => $inclusivePaise,
-            'amount_incl_rupees'    => $inclusiveRupees,
-            'base_paise'            => $split['base_paise'],
-            'gst_paise'             => $split['gst_paise'],
-            'cgst_paise'            => $cgst,
-            'sgst_paise'            => $sgst,
-            'igst_paise'            => $igst,
+            'currency' => self::CURRENCY,
+            'tier_key' => $tierKey,
+            'label' => (string) $pkg['label'],
+            'description' => (string) ($pkg['description'] ?? 'Profile package'),
+            'gst_inclusive' => true,
+            'gst_rate_percent' => $gstRate,
+            'amount_incl_paise' => $inclusivePaise,
+            'amount_incl_rupees' => $inclusiveRupees,
+            'base_paise' => $split['base_paise'],
+            'gst_paise' => $split['gst_paise'],
+            'cgst_paise' => $cgst,
+            'sgst_paise' => $sgst,
+            'igst_paise' => $igst,
             'amount_incl_formatted' => self::formatMoneyInr($inclusivePaise),
-            'base_formatted'        => self::formatMoneyInr($split['base_paise']),
-            'gst_formatted'         => self::formatMoneyInr($split['gst_paise']),
-            'cgst_formatted'        => $cgst !== null ? self::formatMoneyInr($cgst) : null,
-            'sgst_formatted'        => $sgst !== null ? self::formatMoneyInr($sgst) : null,
-            'igst_formatted'        => $igst !== null ? self::formatMoneyInr($igst) : null,
+            'base_formatted' => self::formatMoneyInr($split['base_paise']),
+            'gst_formatted' => self::formatMoneyInr($split['gst_paise']),
+            'cgst_formatted' => $cgst !== null ? self::formatMoneyInr($cgst) : null,
+            'sgst_formatted' => $sgst !== null ? self::formatMoneyInr($sgst) : null,
+            'igst_formatted' => $igst !== null ? self::formatMoneyInr($igst) : null,
+            'includes_addon' => false,
+            'addon' => null,
+        ];
+    }
+
+    /**
+     * Distinguished optional in-person interview add-on.
+     * Amount is the configured sticker price; GST-inclusive treatment is provisional.
+     *
+     * @return array<string, mixed>
+     */
+    public static function forDistinguishedInterviewAddon(): array
+    {
+        $cfg = (array) config('jannayaks.tier_pricing.addons.distinguished_in_person_interview', []);
+        $inclusiveRupees = (int) ($cfg['base_amount'] ?? 0);
+        if ($inclusiveRupees <= 0) {
+            throw new InvalidArgumentException('Invalid distinguished interview add-on amount.');
+        }
+
+        $gstInclusive = (bool) ($cfg['gst_inclusive'] ?? true);
+        $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
+
+        if ($gstInclusive) {
+            $inclusivePaise = self::rupeesToPaise($inclusiveRupees);
+            $split = self::splitInclusiveTotal($inclusivePaise, $gstRate);
+            $cgst = null;
+            $sgst = null;
+            $igst = null;
+            if ($split['gst_paise'] > 0) {
+                $cgst = intdiv($split['gst_paise'], 2);
+                $sgst = $split['gst_paise'] - $cgst;
+            }
+
+            return [
+                'currency' => self::CURRENCY,
+                'tier_key' => 'distinguished_in_person_interview',
+                'label' => (string) ($cfg['label'] ?? 'Distinguished In-Person Journalist Interview'),
+                'description' => 'Optional add-on; not included in the base Distinguished package.',
+                'gst_inclusive' => true,
+                'gst_rate_percent' => $gstRate,
+                'amount_incl_paise' => $inclusivePaise,
+                'amount_incl_rupees' => $inclusiveRupees,
+                'base_paise' => $split['base_paise'],
+                'gst_paise' => $split['gst_paise'],
+                'cgst_paise' => $cgst,
+                'sgst_paise' => $sgst,
+                'igst_paise' => $igst,
+                'amount_incl_formatted' => self::formatMoneyInr($inclusivePaise),
+                'base_formatted' => self::formatMoneyInr($split['base_paise']),
+                'gst_formatted' => self::formatMoneyInr($split['gst_paise']),
+                'cgst_formatted' => $cgst !== null ? self::formatMoneyInr($cgst) : null,
+                'sgst_formatted' => $sgst !== null ? self::formatMoneyInr($sgst) : null,
+                'igst_formatted' => $igst !== null ? self::formatMoneyInr($igst) : null,
+            ];
+        }
+
+        return self::buildPlusGst(
+            baseRupees: $inclusiveRupees,
+            gstRate: $gstRate,
+            label: (string) ($cfg['label'] ?? 'Distinguished In-Person Journalist Interview'),
+            description: 'Optional add-on; not included in the base Distinguished package.',
+            itemKey: 'distinguished_in_person_interview',
+        );
+    }
+
+    /**
+     * Combined application package (+ optional Distinguished interview add-on).
+     *
+     * @return array<string, mixed>
+     */
+    public static function forApplicationPackage(string $tierKey, bool $includeDistinguishedAddon = false): array
+    {
+        $package = self::forTier($tierKey);
+        $addon = null;
+
+        if ($includeDistinguishedAddon) {
+            if ($tierKey !== 'distinguished') {
+                throw new InvalidArgumentException('In-person interview add-on is only available for Distinguished.');
+            }
+            $addon = self::forDistinguishedInterviewAddon();
+        }
+
+        if ($addon === null) {
+            return $package;
+        }
+
+        $totalPaise = (int) $package['amount_incl_paise'] + (int) $addon['amount_incl_paise'];
+        $basePaise = (int) $package['base_paise'] + (int) $addon['base_paise'];
+        $gstPaise = (int) $package['gst_paise'] + (int) $addon['gst_paise'];
+        $cgst = ((int) ($package['cgst_paise'] ?? 0)) + ((int) ($addon['cgst_paise'] ?? 0));
+        $sgst = ((int) ($package['sgst_paise'] ?? 0)) + ((int) ($addon['sgst_paise'] ?? 0));
+        $igstPaise = null;
+        if ($package['igst_paise'] !== null || $addon['igst_paise'] !== null) {
+            $igstPaise = ((int) ($package['igst_paise'] ?? 0)) + ((int) ($addon['igst_paise'] ?? 0));
+        }
+
+        return [
+            'currency' => self::CURRENCY,
+            'tier_key' => $tierKey,
+            'label' => $package['label'].' + '.$addon['label'],
+            'description' => 'Package plus optional Distinguished in-person interview add-on.',
+            'gst_inclusive' => true,
+            'gst_rate_percent' => $package['gst_rate_percent'],
+            'amount_incl_paise' => $totalPaise,
+            'amount_incl_rupees' => (int) round($totalPaise / self::PAISE_PER_RUPEE),
+            'base_paise' => $basePaise,
+            'gst_paise' => $gstPaise,
+            'cgst_paise' => $cgst > 0 ? $cgst : null,
+            'sgst_paise' => $sgst > 0 ? $sgst : null,
+            'igst_paise' => $igstPaise,
+            'amount_incl_formatted' => self::formatMoneyInr($totalPaise),
+            'base_formatted' => self::formatMoneyInr($basePaise),
+            'gst_formatted' => self::formatMoneyInr($gstPaise),
+            'cgst_formatted' => $cgst > 0 ? self::formatMoneyInr($cgst) : null,
+            'sgst_formatted' => $sgst > 0 ? self::formatMoneyInr($sgst) : null,
+            'igst_formatted' => $igstPaise !== null ? self::formatMoneyInr($igstPaise) : null,
+            'includes_addon' => true,
+            'addon' => $addon,
+            'package' => $package,
         ];
     }
 
@@ -66,14 +185,15 @@ class PricingAmounts
 
     public static function forRevisionUpdate(): array
     {
-        $baseAmount = 2000;
+        $cfg = (array) config('jannayaks.tier_pricing.revision', []);
+        $baseAmount = (int) ($cfg['base_amount'] ?? 2000);
         $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
 
         return self::buildPlusGst(
             baseRupees: $baseAmount,
             gstRate: $gstRate,
-            label: 'Profile Revision / Update',
-            description: 'Interim profile revision or content update.',
+            label: (string) ($cfg['label'] ?? 'Profile Revision / Update'),
+            description: (string) ($cfg['description'] ?? 'Interim profile revision or content update.'),
             itemKey: 'revision',
         );
     }
@@ -85,6 +205,23 @@ class PricingAmounts
             (float) config('jannayaks.tier_pricing.gst_percent', 18),
             'In Memoriam (5 years hosting)',
         );
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function sellerBillingDetails(): array
+    {
+        $billing = (array) config('jannayaks.tier_pricing.billing', []);
+
+        return [
+            'legal_name' => trim((string) ($billing['legal_name'] ?? '')),
+            'gstin' => trim((string) ($billing['gstin'] ?? '')),
+            'address' => trim((string) ($billing['address'] ?? '')),
+            'state' => trim((string) ($billing['state'] ?? '')),
+            'place_of_supply' => trim((string) ($billing['place_of_supply'] ?? '')),
+            'support_email' => trim((string) ($billing['support_email'] ?? '')),
+        ];
     }
 
     private static function forPlusGstItem(array $cfg, float $gstRate, string $fallbackLabel, string $itemKey = 'item'): array
@@ -126,25 +263,25 @@ class PricingAmounts
         }
 
         return [
-            'currency'              => self::CURRENCY,
-            'tier_key'              => $itemKey,
-            'label'                 => $label,
-            'description'           => $description,
-            'gst_inclusive'         => false,
-            'gst_rate_percent'      => $gstRate,
-            'amount_incl_paise'     => $totalPaise,
-            'amount_incl_rupees'    => (int) round($totalPaise / self::PAISE_PER_RUPEE),
-            'base_paise'            => $basePaise,
-            'gst_paise'             => $gstPaise,
-            'cgst_paise'            => $cgst,
-            'sgst_paise'            => $sgst,
-            'igst_paise'            => $igst,
+            'currency' => self::CURRENCY,
+            'tier_key' => $itemKey,
+            'label' => $label,
+            'description' => $description,
+            'gst_inclusive' => false,
+            'gst_rate_percent' => $gstRate,
+            'amount_incl_paise' => $totalPaise,
+            'amount_incl_rupees' => (int) round($totalPaise / self::PAISE_PER_RUPEE),
+            'base_paise' => $basePaise,
+            'gst_paise' => $gstPaise,
+            'cgst_paise' => $cgst,
+            'sgst_paise' => $sgst,
+            'igst_paise' => $igst,
             'amount_incl_formatted' => self::formatMoneyInr($totalPaise),
-            'base_formatted'        => self::formatMoneyInr($basePaise),
-            'gst_formatted'         => self::formatMoneyInr($gstPaise),
-            'cgst_formatted'        => $cgst !== null ? self::formatMoneyInr($cgst) : null,
-            'sgst_formatted'        => $sgst !== null ? self::formatMoneyInr($sgst) : null,
-            'igst_formatted'        => $igst !== null ? self::formatMoneyInr($igst) : null,
+            'base_formatted' => self::formatMoneyInr($basePaise),
+            'gst_formatted' => self::formatMoneyInr($gstPaise),
+            'cgst_formatted' => $cgst !== null ? self::formatMoneyInr($cgst) : null,
+            'sgst_formatted' => $sgst !== null ? self::formatMoneyInr($sgst) : null,
+            'igst_formatted' => $igst !== null ? self::formatMoneyInr($igst) : null,
         ];
     }
 
@@ -170,10 +307,10 @@ class PricingAmounts
         }
 
         return [
-            'base_paise'       => $basePaise,
-            'gst_paise'        => $gstPaise,
-            'rate_percent'     => $rate,
-            'inclusive_paise'  => $inclusivePaise,
+            'base_paise' => $basePaise,
+            'gst_paise' => $gstPaise,
+            'rate_percent' => $rate,
+            'inclusive_paise' => $inclusivePaise,
         ];
     }
 

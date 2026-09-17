@@ -30,8 +30,21 @@ return [
         'addons' => [
             'distinguished_in_person_interview' => [
                 'label' => 'Distinguished In-Person Journalist Interview',
+                // Sticker amount charged as stated (+₹10,000). Treated as GST-inclusive
+                // provisionally until commercial/legal GST treatment is confirmed.
                 'base_amount' => 10000,
+                'gst_inclusive' => true,
             ],
+        ],
+        // Seller/legal fields for GST tax invoices. Leave blank until registration is confirmed.
+        // Do not invent GSTIN or legal entity details.
+        'billing' => [
+            'legal_name' => env('JANNAYAKS_BILLING_LEGAL_NAME', ''),
+            'gstin' => env('JANNAYAKS_BILLING_GSTIN', ''),
+            'address' => env('JANNAYAKS_BILLING_ADDRESS', ''),
+            'state' => env('JANNAYAKS_BILLING_STATE', ''),
+            'place_of_supply' => env('JANNAYAKS_BILLING_PLACE_OF_SUPPLY', ''),
+            'support_email' => env('JANNAYAKS_BILLING_SUPPORT_EMAIL', ''),
         ],
         'in_memoriam' => [
             'label' => 'In Memoriam (5 years hosting)',
@@ -51,7 +64,8 @@ return [
     ],
 
     'refund' => [
-        'before_publication_percent' => 60,
+        // Working assumption only — reconfirm before production. Not an immutable business rule.
+        'before_publication_percent' => (int) env('JANNAYAKS_REFUND_BEFORE_PUBLICATION_PERCENT', 60),
         'refundable_statuses' => ['pending', 'success'],
     ],
 

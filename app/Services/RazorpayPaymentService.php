@@ -24,18 +24,10 @@ class RazorpayPaymentService
             throw new InvalidArgumentException('Invalid application package tier.');
         }
 
-        $existing = Payment::query()
-            ->where('application_id', $application->id)
-            ->whereIn('status', [Payment::STATUS_PENDING, Payment::STATUS_INITIATED])
-            ->first();
+        $includeAddon = (bool) $application->distinguished_interview_addon
+            && $application->package_tier === 'distinguished';
 
-        if ($existing instanceof Payment) {
-            if ($existing->razorpay_link_id !== null && $existing->razorpay_link_url !== null) {
-                return $existing;
-            }
-        }
-
-        $amounts = PricingAmounts::forTier($application->package_tier);
+        $amounts = PricingAmounts::forApplicationPackage($application->package_tier, $includeAddon);
         PricingAmounts::assertInr($amounts['currency']);
 
         $totalPaise = (int) $amounts['amount_incl_paise'];
@@ -43,26 +35,62 @@ class RazorpayPaymentService
             throw new RuntimeException('Payment amount must be positive.');
         }
 
-        return DB::transaction(function () use ($application, $amounts, $totalPaise, $existing) {
-            if ($existing instanceof Payment) {
-                $payment = $existing;
+        return DB::transaction(function () use ($application, $amounts, $totalPaise, $includeAddon) {
+            $actives = Payment::query()
+                ->where('application_id', $application->id)
+                ->whereIn('status', [Payment::STATUS_PENDING, Payment::STATUS_INITIATED])
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $reusable = null;
+            foreach ($actives as $active) {
+                if ($active->totalPaise() === $totalPaise && $reusable === null) {
+                    $reusable = $active;
+
+                    continue;
+                }
+
+                $this->supersedeAttempt($active, 'Superseded by a newer payment attempt with a different amount or configuration.');
+            }
+
+            if ($reusable instanceof Payment
+                && $reusable->razorpay_link_id !== null
+                && $reusable->razorpay_link_url !== null
+                && $reusable->totalPaise() === $totalPaise) {
+                return $reusable;
+            }
+
+            if ($reusable instanceof Payment) {
+                $payment = $reusable;
+                $payment->forceFill([
+                    'amount' => PricingAmounts::paiseToDecimalString($totalPaise),
+                    'currency' => PricingAmounts::CURRENCY,
+                    'base_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
+                    'taxable_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
+                    'gst_rate_percent' => $amounts['gst_rate_percent'],
+                    'cgst_amount' => $amounts['cgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['cgst_paise']) : null,
+                    'sgst_amount' => $amounts['sgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['sgst_paise']) : null,
+                    'igst_amount' => $amounts['igst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['igst_paise']) : null,
+                    'event_type' => $includeAddon ? 'distinguished_interview_addon' : 'application_package',
+                ])->save();
             } else {
                 $txnRef = 'JNK-PAY-'.$application->id.'-'.Str::upper(Str::random(10));
                 $payment = Payment::query()->create([
-                    'application_id'   => $application->id,
+                    'application_id' => $application->id,
                     'transaction_reference' => $txnRef,
-                    'gateway'          => Payment::GATEWAY_RAZORPAY,
-                    'item_type'        => Payment::ITEM_APPLICATION_PAYMENT,
-                    'amount'           => PricingAmounts::paiseToDecimalString($totalPaise),
-                    'currency'         => PricingAmounts::CURRENCY,
-                    'status'           => Payment::STATUS_PENDING,
-                    'event_type'       => 'application_package',
-                    'base_amount'      => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
-                    'taxable_amount'   => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
+                    'gateway' => Payment::GATEWAY_RAZORPAY,
+                    'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
+                    'amount' => PricingAmounts::paiseToDecimalString($totalPaise),
+                    'currency' => PricingAmounts::CURRENCY,
+                    'status' => Payment::STATUS_PENDING,
+                    'event_type' => $includeAddon ? 'distinguished_interview_addon' : 'application_package',
+                    'base_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
+                    'taxable_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
                     'gst_rate_percent' => $amounts['gst_rate_percent'],
-                    'cgst_amount'      => $amounts['cgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['cgst_paise']) : null,
-                    'sgst_amount'      => $amounts['sgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['sgst_paise']) : null,
-                    'igst_amount'      => $amounts['igst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['igst_paise']) : null,
+                    'cgst_amount' => $amounts['cgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['cgst_paise']) : null,
+                    'sgst_amount' => $amounts['sgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['sgst_paise']) : null,
+                    'igst_amount' => $amounts['igst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['igst_paise']) : null,
                 ]);
             }
 
@@ -70,10 +98,10 @@ class RazorpayPaymentService
             if (! $config['enabled']) {
                 $payment->markInitiated(Payment::GATEWAY_RAZORPAY);
 
-                return $payment;
+                return $payment->fresh() ?? $payment;
             }
 
-            $payload = $this->buildLinkPayload($application, $payment, $amounts, $totalPaise);
+            $payload = $this->buildLinkPayload($application, $payment, $amounts, $totalPaise, $includeAddon);
             $response = $this->http()->post(self::RAZORPAY_LINKS_ENDPOINT, $payload);
 
             if (! $response->successful()) {
@@ -111,37 +139,57 @@ class RazorpayPaymentService
         });
     }
 
-    public function cancelLink(Payment $payment): void
+    /**
+     * Mark a payment attempt superseded/cancelled in the database.
+     * Gateway link cancellation is best-effort and must not gate DB supersession.
+     */
+    public function supersedeAttempt(Payment $payment, string $reason = 'Superseded by a newer payment attempt.'): void
     {
-        if ($payment->razorpay_link_id === null || $payment->razorpay_link_id === '') {
+        if ($payment->isSettled()) {
             return;
         }
-        if ($payment->isSettled()) {
+
+        if ($payment->status === Payment::STATUS_CANCELLED) {
+            return;
+        }
+
+        $this->cancelGatewayLinkBestEffort($payment);
+
+        $payment->markFailedExpiredOrCancelled(
+            Payment::STATUS_CANCELLED,
+            'SUPERSEDED',
+            mb_substr($reason, 0, 255),
+        );
+
+        // Keep razorpay_link_id for audit / late-webhook association; drop the usable URL.
+        if ($payment->razorpay_link_url !== null) {
+            $payment->razorpay_link_url = null;
+            $payment->save();
+        }
+    }
+
+    public function cancelLink(Payment $payment): void
+    {
+        $this->supersedeAttempt($payment, 'Payment attempt cancelled.');
+    }
+
+    private function cancelGatewayLinkBestEffort(Payment $payment): void
+    {
+        if ($payment->razorpay_link_id === null || $payment->razorpay_link_id === '') {
             return;
         }
 
         $config = $this->config();
         if (! $config['enabled']) {
-            $payment->markFailedExpiredOrCancelled(Payment::STATUS_CANCELLED, null, 'Cancelled locally.');
-
             return;
         }
 
-        $url = self::RAZORPAY_LINKS_ENDPOINT.'/'.urlencode($payment->razorpay_link_id).'/cancel';
-        $response = $this->http()->post($url);
-        if ($response->status() === 400) {
-            $body = $response->json();
-            $desc = is_array($body) && isset($body['error']['description']) ? (string) $body['error']['description'] : '';
-            if (stripos($desc, 'expired') !== false || stripos($desc, 'cancelled') !== false) {
-                $payment->markFailedExpiredOrCancelled(Payment::STATUS_CANCELLED);
-
-                return;
-            }
+        try {
+            $url = self::RAZORPAY_LINKS_ENDPOINT.'/'.urlencode($payment->razorpay_link_id).'/cancel';
+            $this->http()->post($url);
+        } catch (\Throwable) {
+            // Database supersession remains authoritative even if gateway cancel fails.
         }
-        if (! $response->successful() && $response->status() !== 400) {
-            throw new RuntimeException('Failed to cancel Razorpay payment link (HTTP '.$response->status().').');
-        }
-        $payment->markFailedExpiredOrCancelled(Payment::STATUS_CANCELLED);
     }
 
     public function http(): PendingRequest
@@ -160,11 +208,11 @@ class RazorpayPaymentService
         $raw = (array) config('services.razorpay', []);
 
         return [
-            'enabled'         => (bool) ($raw['enabled'] ?? false),
-            'mode'            => (string) ($raw['mode'] ?? 'test'),
-            'key_id'          => (string) ($raw['key_id'] ?? ''),
-            'key_secret'      => (string) ($raw['key_secret'] ?? ''),
-            'webhook_secret'  => (string) ($raw['webhook_secret'] ?? ''),
+            'enabled' => (bool) ($raw['enabled'] ?? false),
+            'mode' => (string) ($raw['mode'] ?? 'test'),
+            'key_id' => (string) ($raw['key_id'] ?? ''),
+            'key_secret' => (string) ($raw['key_secret'] ?? ''),
+            'webhook_secret' => (string) ($raw['webhook_secret'] ?? ''),
             'timeout_seconds' => (int) ($raw['timeout_seconds'] ?? 15),
             'require_test_prefix' => (bool) ($raw['require_test_prefix'] ?? true),
         ];
@@ -185,7 +233,7 @@ class RazorpayPaymentService
         }
     }
 
-    private function buildLinkPayload(Application $application, Payment $payment, array $amounts, int $totalPaise): array
+    private function buildLinkPayload(Application $application, Payment $payment, array $amounts, int $totalPaise, bool $includeAddon = false): array
     {
         $callbackUrl = route('payments.razorpay.callback', ['payment_id' => $payment->id], true);
         $cancelUrl = route('applications.payment', ['application' => $application->id], true);
@@ -205,27 +253,28 @@ class RazorpayPaymentService
         }
 
         $payload = [
-            'amount'           => $totalPaise,
-            'currency'         => PricingAmounts::CURRENCY,
-            'accept_partial'   => false,
-            'reference_id'     => (string) $payment->transaction_reference,
-            'description'      => mb_substr('Jannayaks '.$amounts['label'].' — '.$name, 0, 255),
-            'notify'           => [
-                'sms'    => isset($customer['contact']),
-                'email'  => isset($customer['email']),
+            'amount' => $totalPaise,
+            'currency' => PricingAmounts::CURRENCY,
+            'accept_partial' => false,
+            'reference_id' => (string) $payment->transaction_reference,
+            'description' => mb_substr('Jannayaks '.$amounts['label'].' — '.$name, 0, 255),
+            'notify' => [
+                'sms' => isset($customer['contact']),
+                'email' => isset($customer['email']),
             ],
-            'reminder_enable'  => true,
-            'notes'            => [
-                'payment_id'    => (string) $payment->id,
-                'application_id'=> (string) $application->id,
-                'package_tier'  => (string) $application->package_tier,
-                'event_type'    => 'application_package',
-                'item_type'     => Payment::ITEM_APPLICATION_PAYMENT,
+            'reminder_enable' => true,
+            'notes' => [
+                'payment_id' => (string) $payment->id,
+                'application_id' => (string) $application->id,
+                'package_tier' => (string) $application->package_tier,
+                'event_type' => $includeAddon ? 'distinguished_interview_addon' : 'application_package',
+                'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
+                'distinguished_interview_addon' => $includeAddon ? '1' : '0',
             ],
-            'callback_url'     => $callbackUrl,
-            'callback_method'  => 'get',
-            'cancel_url'       => $cancelUrl,
-            'cancel_method'    => 'get',
+            'callback_url' => $callbackUrl,
+            'callback_method' => 'get',
+            'cancel_url' => $cancelUrl,
+            'cancel_method' => 'get',
         ];
 
         if ($customer !== []) {
