@@ -49,6 +49,81 @@ class ApplicationInfolist
                     TextEntry::make('direct_submission_received_at')->dateTime(),
                 ])
                 ->columns(2),
+            Section::make('Profile URL (read-only)')
+                ->description('Inspect canonical URL, history, tier, and QR availability. Support and Editors cannot reassign URLs.')
+                ->schema([
+                    TextEntry::make('profile.slug')
+                        ->label('Canonical slug')
+                        ->placeholder('—'),
+                    TextEntry::make('profile_canonical_url')
+                        ->label('Canonical public URL')
+                        ->state(function (?Application $record): string {
+                            if (! $record?->profile?->slug) {
+                                return '—';
+                            }
+
+                            return url('/p/'.$record->profile->slug);
+                        }),
+                    TextEntry::make('package_tier')
+                        ->label('URL tier rules')
+                        ->formatStateUsing(function (?string $state): string {
+                            $tier = strtolower((string) $state);
+                            if (in_array($tier, ['accomplished', 'distinguished'], true)) {
+                                return $tier.' — personal URL allowed';
+                            }
+                            if ($tier === 'emerging') {
+                                return 'emerging — system 6-character URL only';
+                            }
+
+                            return $tier !== '' ? $tier : '—';
+                        }),
+                    TextEntry::make('profile_url_status')
+                        ->label('URL / publication status')
+                        ->state(function (?Application $record): string {
+                            $profile = $record?->profile;
+                            if (! $profile) {
+                                return 'No linked profile';
+                            }
+                            if (! filled($profile->slug)) {
+                                return 'No slug assigned';
+                            }
+                            if ($profile->status === 'published' && $profile->published_at && ! $profile->unpublished_at) {
+                                return 'Published — public URL active';
+                            }
+
+                            return 'Slug reserved — not publicly exposed (status: '.$profile->status.')';
+                        }),
+                    TextEntry::make('profile_qr_availability')
+                        ->label('QR availability')
+                        ->state(function (?Application $record): string {
+                            $profile = $record?->profile;
+                            if (! $profile || ! filled($profile->slug)) {
+                                return 'Unavailable';
+                            }
+                            if ($profile->status === 'published' && $profile->published_at && ! $profile->unpublished_at) {
+                                return 'Available (encodes current /p/{slug})';
+                            }
+
+                            return 'Unavailable until published';
+                        }),
+                    TextEntry::make('profile_slug_history')
+                        ->label('Historical URLs')
+                        ->state(function (?Application $record): string {
+                            $profile = $record?->profile;
+                            if (! $profile) {
+                                return '—';
+                            }
+                            $rows = $profile->slugRedirects()->orderByDesc('id')->limit(10)->get();
+                            if ($rows->isEmpty()) {
+                                return 'None';
+                            }
+
+                            return $rows->map(fn ($r) => $r->old_slug.' → '.$r->new_slug)->implode('; ');
+                        })
+                        ->columnSpanFull(),
+                ])
+                ->columns(2)
+                ->collapsed(),
         ]);
     }
 

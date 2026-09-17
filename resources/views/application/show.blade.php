@@ -67,6 +67,17 @@
         </div>
     @endif
 
+    @php
+        $linkedProfile = $application->profile;
+        $showProfileUrl = $linkedProfile && filled($linkedProfile->slug);
+    @endphp
+    @if($showProfileUrl || $application->status === \App\Models\Application::STATUS_PUBLISHED)
+        <h2 style="margin-top:10px;font-size:16px">Profile URL &amp; QR</h2>
+        <div class="row">
+            <a class="btn" href="{{ route('applications.profile-url', $application) }}">Manage your profile URL →</a>
+        </div>
+    @endif
+
     <h2 style="margin-top:10px;font-size:16px">Next action</h2>
     @if ($application->source_method === 'online_interview')
         @if($application->isInterviewSubmitted())

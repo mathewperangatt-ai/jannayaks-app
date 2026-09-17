@@ -2,7 +2,6 @@
 
 namespace App\Models;
 
-use Illuminate\Database\Eloquent\Attributes\Cast;
 use Illuminate\Database\Eloquent\Model;
 use Illuminate\Database\Eloquent\Relations\BelongsTo;
 use Illuminate\Database\Eloquent\Relations\HasMany;
@@ -41,19 +40,19 @@ class Profile extends Model
     protected function casts(): array
     {
         return [
-            'display_phone_consent'   => 'boolean',
-            'display_email_consent'   => 'boolean',
-            'date_of_birth'           => 'date',
-            'submitted_at'            => 'datetime',
-            'approved_at'             => 'datetime',
-            'published_at'            => 'datetime',
-            'rejected_at'             => 'datetime',
-            'suspended_at'            => 'datetime',
-            'unpublished_at'          => 'datetime',
-            'erasure_requested_at'    => 'datetime',
-            'erasure_completed_at'    => 'datetime',
-            'slug_generated_at'       => 'datetime',
-            'slug_changed_at'         => 'datetime',
+            'display_phone_consent' => 'boolean',
+            'display_email_consent' => 'boolean',
+            'date_of_birth' => 'date',
+            'submitted_at' => 'datetime',
+            'approved_at' => 'datetime',
+            'published_at' => 'datetime',
+            'rejected_at' => 'datetime',
+            'suspended_at' => 'datetime',
+            'unpublished_at' => 'datetime',
+            'erasure_requested_at' => 'datetime',
+            'erasure_completed_at' => 'datetime',
+            'slug_generated_at' => 'datetime',
+            'slug_changed_at' => 'datetime',
         ];
     }
 
@@ -121,5 +120,14 @@ class Profile extends Model
     public function media(): MorphMany
     {
         return $this->morphMany(MediaItem::class, 'mediable')->orderBy('display_order');
+    }
+
+    public function isPubliclyListed(): bool
+    {
+        return $this->status === 'published'
+            && $this->published_at !== null
+            && $this->unpublished_at === null
+            && $this->suspended_at === null
+            && $this->erasure_completed_at === null;
     }
 }

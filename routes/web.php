@@ -7,6 +7,8 @@ use App\Http\Controllers\Auth\MobileOtpController;
 use App\Http\Controllers\CustomerProfilePreviewController;
 use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\PaymentDocumentController;
+use App\Http\Controllers\ProfileUrlController;
+use App\Http\Controllers\PublicProfileUrlController;
 use App\Http\Controllers\RazorpayCallbackController;
 use App\Http\Controllers\RazorpayWebhookController;
 use App\Http\Controllers\Staff\SourceMaterialDownloadController;
@@ -15,6 +17,10 @@ use Illuminate\Support\Facades\Route;
 Route::get('/', function () {
     return view('welcome');
 })->name('home');
+
+Route::get('/p/{slug}', [PublicProfileUrlController::class, 'show'])
+    ->where('slug', '[A-Za-z0-9][A-Za-z0-9\-]*')
+    ->name('profiles.public');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');
@@ -59,6 +65,18 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::post('/applications/{application}/preview/approve', [CustomerProfilePreviewController::class, 'approve'])
         ->middleware('throttle:10,1')
         ->name('applications.preview.approve');
+
+    Route::get('/applications/{application}/profile-url', [ProfileUrlController::class, 'show'])
+        ->name('applications.profile-url');
+    Route::post('/applications/{application}/profile-url', [ProfileUrlController::class, 'update'])
+        ->middleware('throttle:20,1')
+        ->name('applications.profile-url.update');
+    Route::get('/applications/{application}/profile-url/availability', [ProfileUrlController::class, 'availability'])
+        ->middleware('throttle:30,1')
+        ->name('applications.profile-url.availability');
+    Route::get('/applications/{application}/profile-qr', [ProfileUrlController::class, 'qr'])
+        ->middleware('throttle:30,1')
+        ->name('applications.profile-qr');
 
     Route::get('/payments/{payment}/receipt', [PaymentDocumentController::class, 'receipt'])->name('payments.receipt');
     Route::get('/payments/{payment}/tax-invoice', [PaymentDocumentController::class, 'taxInvoice'])->name('payments.tax-invoice');

@@ -133,6 +133,12 @@ class ApplicationWorkflowService
                 'updated_at' => now(),
             ]);
 
+            $profile = Profile::query()->findOrFail($locked->profile_id);
+            app(ProfileUrlService::class)->assignInitialCanonicalSlug(
+                $profile,
+                (string) $locked->package_tier,
+            );
+
             $this->auditLogger->log(
                 action: 'application.published',
                 subject: $locked,
