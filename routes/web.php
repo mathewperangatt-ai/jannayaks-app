@@ -8,6 +8,7 @@ use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\PaymentDocumentController;
 use App\Http\Controllers\RazorpayCallbackController;
 use App\Http\Controllers\RazorpayWebhookController;
+use App\Http\Controllers\Staff\SourceMaterialDownloadController;
 use Illuminate\Support\Facades\Route;
 
 Route::get('/', function () {
@@ -26,6 +27,11 @@ Route::middleware('guest')->group(function () {
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');
+
+Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () {
+    Route::get('/source-materials/{sourceMaterial}/download', SourceMaterialDownloadController::class)
+        ->name('source-materials.download');
+});
 
 Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
 Route::post('/apply/intent', [ApplicationController::class, 'storeIntent'])->middleware('throttle:20,1')->name('apply.intent');

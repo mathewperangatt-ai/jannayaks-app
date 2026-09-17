@@ -3,15 +3,16 @@
 namespace App\Http\Controllers;
 
 use App\Models\Application;
+use App\Services\ApplicationPaymentStateService;
+use App\Services\ApplicationWorkflowService;
 use App\Services\OnlineInterviewService;
 use App\Support\OnlineInterviewCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\RateLimiter;
-use Illuminate\Validation\Validator;
+use Illuminate\View\View;
 
 class OnlineInterviewController extends Controller
 {
@@ -19,7 +20,7 @@ class OnlineInterviewController extends Controller
         private readonly OnlineInterviewService $interview,
     ) {}
 
-    public function show(Request $request, Application $application): JsonResponse|RedirectResponse|\Illuminate\View\View
+    public function show(Request $request, Application $application): JsonResponse|RedirectResponse|View
     {
         if (! Auth::check()) {
             return $this->unauth($request, 'Login required.');
@@ -27,7 +28,7 @@ class OnlineInterviewController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
         }
-        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
             return $this->paymentGate($request, $application);
         }
         if (! in_array((string) $application->source_method, (array) config('online_interview.submission.valid_source_methods_for_interview', ['online_interview']), true)) {
@@ -40,8 +41,8 @@ class OnlineInterviewController extends Controller
         }
 
         $questions = OnlineInterviewCatalog::questionsForTier($application->package_tier);
-        $answers   = $this->interview->loadAnswersMap($application);
-        $progress  = OnlineInterviewCatalog::progress($application->package_tier, $answers);
+        $answers = $this->interview->loadAnswersMap($application);
+        $progress = OnlineInterviewCatalog::progress($application->package_tier, $answers);
 
         $sections = [];
         foreach ($questions as $q) {
@@ -52,23 +53,23 @@ class OnlineInterviewController extends Controller
             return response()->json([
                 'ok' => true,
                 'application_id' => $application->id,
-                'package_tier'   => $application->package_tier,
-                'read_only'      => $readOnly,
-                'submitted_at'   => $application->online_interview_completed_at?->toIso8601String(),
-                'sections'       => $sections,
-                'allowed_qids'   => OnlineInterviewCatalog::idsForTier($application->package_tier),
-                'answers'        => $answers,
-                'progress'       => $progress,
+                'package_tier' => $application->package_tier,
+                'read_only' => $readOnly,
+                'submitted_at' => $application->online_interview_completed_at?->toIso8601String(),
+                'sections' => $sections,
+                'allowed_qids' => OnlineInterviewCatalog::idsForTier($application->package_tier),
+                'answers' => $answers,
+                'progress' => $progress,
             ]);
         }
 
         return view('interview.show', [
-            'application'  => $application,
-            'sections'     => $sections,
-            'answers'      => $answers,
-            'progress'     => $progress,
-            'readOnly'     => $readOnly,
-            'submittedAt'  => $application->online_interview_completed_at,
+            'application' => $application,
+            'sections' => $sections,
+            'answers' => $answers,
+            'progress' => $progress,
+            'readOnly' => $readOnly,
+            'submittedAt' => $application->online_interview_completed_at,
             'package_tier' => $application->package_tier,
             'allowed_qids' => OnlineInterviewCatalog::idsForTier($application->package_tier),
         ]);
@@ -82,7 +83,7 @@ class OnlineInterviewController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
         }
-        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
             return $this->paymentGate($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
@@ -120,12 +121,12 @@ class OnlineInterviewController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'ok'       => true,
-                'saved'    => $summary['saved'] ?? 0,
+                'ok' => true,
+                'saved' => $summary['saved'] ?? 0,
                 'answered' => $summary['answered'] ?? 0,
-                'total'    => $summary['total'] ?? 0,
+                'total' => $summary['total'] ?? 0,
                 'required_answered' => $summary['required_answered'] ?? 0,
-                'required_total'    => $summary['required_total'] ?? 0,
+                'required_total' => $summary['required_total'] ?? 0,
                 'saved_at' => now()->toIso8601String(),
             ]);
         }
@@ -142,17 +143,18 @@ class OnlineInterviewController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
         }
-        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
             return $this->paymentGate($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'ok'               => true,
+                    'ok' => true,
                     'already_submitted' => true,
-                    'submitted_at'     => $application->online_interview_completed_at?->toIso8601String(),
+                    'submitted_at' => $application->online_interview_completed_at?->toIso8601String(),
                 ]);
             }
+
             return redirect()->route('online-interview.show', ['application' => $application->id])
                 ->with('already_submitted', 'Your interview is already submitted.');
         }
@@ -164,11 +166,12 @@ class OnlineInterviewController extends Controller
         if (! RateLimiter::attempt($rateKey, 1, fn () => true, (int) config('online_interview.submission.prevent_duplicate_within_seconds', 30))) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'ok'     => false,
-                    'error'  => 'Please wait before submitting again.',
+                    'ok' => false,
+                    'error' => 'Please wait before submitting again.',
                     'retry_in_seconds' => (int) config('online_interview.submission.prevent_duplicate_within_seconds', 30),
                 ], 429);
             }
+
             return back()->withErrors(['submit' => 'Please wait before submitting again.']);
         }
 
@@ -177,30 +180,30 @@ class OnlineInterviewController extends Controller
         if ($progress['missing_required'] !== []) {
             if ($request->expectsJson()) {
                 return response()->json([
-                    'ok'                => false,
-                    'error'             => 'Please complete all required questions before submitting.',
-                    'missing_required'  => $progress['missing_required'],
+                    'ok' => false,
+                    'error' => 'Please complete all required questions before submitting.',
+                    'missing_required' => $progress['missing_required'],
                     'required_answered' => $progress['required_answered'],
-                    'required_total'    => $progress['required_total'],
+                    'required_total' => $progress['required_total'],
                 ], 422);
             }
+
             return back()
                 ->withErrors([
                     'submit' => 'Please complete all required questions before submitting. Missing: '.count($progress['missing_required']).'.',
                 ]);
         }
 
-        DB::transaction(function () use ($application) {
-            $application->online_interview_completed_at = now();
-            $application->save();
-        });
+        app(ApplicationWorkflowService::class)->markInterviewSubmitted($application);
+        $application->refresh();
 
         if ($request->expectsJson()) {
             return response()->json([
-                'ok'             => true,
-                'submitted_at'   => $application->online_interview_completed_at->toIso8601String(),
+                'ok' => true,
+                'submitted_at' => $application->online_interview_completed_at->toIso8601String(),
                 'application_id' => $application->id,
-                'next_step'      => 'editorial_processing',
+                'next_step' => 'editorial_processing',
+                'status' => $application->status,
             ]);
         }
 
@@ -222,6 +225,7 @@ class OnlineInterviewController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => false, 'error' => $message], 403);
         }
+
         return redirect()->route('home')->withErrors(['interview' => $message]);
     }
 
@@ -250,6 +254,7 @@ class OnlineInterviewController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => false, 'error' => 'Validation failed.', 'errors' => $bag], 422);
         }
+
         return back()->withErrors($bag)->withInput();
     }
 }

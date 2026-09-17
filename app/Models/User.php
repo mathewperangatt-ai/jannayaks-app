@@ -50,8 +50,7 @@ class User extends Authenticatable implements FilamentUser
 
     public function canAccessPanel(Panel $panel): bool
     {
-        return $this->role === self::ROLE_ADMIN
-            && ($this->account_status ?? 'active') === 'active';
+        return $this->isStaff() && $this->isActiveAccount();
     }
 
     public function isAdmin(): bool
@@ -59,9 +58,73 @@ class User extends Authenticatable implements FilamentUser
         return $this->role === self::ROLE_ADMIN;
     }
 
+    public function isEditor(): bool
+    {
+        return $this->role === self::ROLE_EDITOR;
+    }
+
+    public function isSupport(): bool
+    {
+        return $this->role === self::ROLE_SUPPORT;
+    }
+
     public function isStaff(): bool
     {
         return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_EDITOR, self::ROLE_SUPPORT], true);
+    }
+
+    public function isActiveAccount(): bool
+    {
+        return ($this->account_status ?? 'active') === 'active';
+    }
+
+    /** Financial records, invoices, refunds, mark-paid / waive UI. */
+    public function canManageFinance(): bool
+    {
+        return $this->isAdmin() && $this->isActiveAccount();
+    }
+
+    /** Assign staff roles and manage user accounts. */
+    public function canManageStaffUsers(): bool
+    {
+        return $this->isAdmin() && $this->isActiveAccount();
+    }
+
+    /** Editorial workspace + application source material (not finance). */
+    public function canManageEditorial(): bool
+    {
+        return $this->isActiveAccount()
+            && in_array($this->role, [self::ROLE_ADMIN, self::ROLE_EDITOR], true);
+    }
+
+    /** Read application operating queues (includes support). */
+    public function canViewApplicationQueue(): bool
+    {
+        return $this->isStaff() && $this->isActiveAccount();
+    }
+
+    /**
+     * Internal account email (users.email) for operational staff communication.
+     * Distinct from preferred/public contact fields and private mobile.
+     */
+    public function canViewApplicantAccountEmail(): bool
+    {
+        return $this->canViewApplicationQueue();
+    }
+
+    /**
+     * Preferred contact email/mobile and other private contact fields.
+     * Not the same as internal account email.
+     */
+    public function canViewApplicantContactDetails(): bool
+    {
+        return $this->isAdmin() && $this->isActiveAccount();
+    }
+
+    /** Interview answers and private source uploads. */
+    public function canAccessSourceMaterial(): bool
+    {
+        return $this->canManageEditorial();
     }
 
     /** @return HasOne<Profile> */

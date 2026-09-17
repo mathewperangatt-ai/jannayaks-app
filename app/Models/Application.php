@@ -54,6 +54,64 @@ class Application extends Model
 
     public const PAYMENT_STATUS_PARTIALLY_REFUNDED = 'partially_refunded';
 
+    /**
+     * @return array<string, string>
+     */
+    public static function workflowStatusLabels(): array
+    {
+        return [
+            self::STATUS_INTAKE_IN_PROGRESS => 'Intake in progress',
+            self::STATUS_INTERVIEW_IN_PROGRESS => 'Interview in progress',
+            self::STATUS_INTERVIEW_SUBMITTED => 'Interview submitted',
+            self::STATUS_DIRECT_SUBMITTED => 'Direct submitted',
+            self::STATUS_PAYMENT_PENDING => 'Payment pending',
+            self::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW => 'Paid — awaiting interview',
+            self::STATUS_AWAITING_EDITORIAL_REVIEW => 'Awaiting editorial',
+            self::STATUS_IN_EDITORIAL_REVIEW => 'In editorial review',
+            self::STATUS_EDITORIAL_APPROVED => 'Editorial approved',
+            self::STATUS_EDITORIAL_REVISION_REQUESTED => 'Editorial revision requested',
+            self::STATUS_AWAITING_PUBLICATION => 'Awaiting publication',
+            self::STATUS_PUBLISHED => 'Published',
+            self::STATUS_ARCHIVED => 'Archived',
+            self::STATUS_CANCELLED => 'Cancelled',
+            self::STATUS_REFUNDED => 'Refunded',
+        ];
+    }
+
+    /**
+     * Staff-editable editorial handoff statuses for P9 (no publication workflow).
+     *
+     * @return list<string>
+     */
+    public static function editorialHandoffStatuses(): array
+    {
+        return [
+            self::STATUS_AWAITING_EDITORIAL_REVIEW,
+            self::STATUS_IN_EDITORIAL_REVIEW,
+            self::STATUS_EDITORIAL_APPROVED,
+            self::STATUS_EDITORIAL_REVISION_REQUESTED,
+        ];
+    }
+
+    public function isReadyForEditorialQueue(): bool
+    {
+        if (in_array($this->status, [
+            self::STATUS_AWAITING_EDITORIAL_REVIEW,
+            self::STATUS_IN_EDITORIAL_REVIEW,
+            self::STATUS_EDITORIAL_APPROVED,
+            self::STATUS_EDITORIAL_REVISION_REQUESTED,
+        ], true)) {
+            return true;
+        }
+
+        if ($this->status === self::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW
+            && ($this->isInterviewSubmitted() || $this->isDirectSubmitted())) {
+            return true;
+        }
+
+        return false;
+    }
+
     protected $fillable = [
         'user_id',
         'source_method',
@@ -74,11 +132,11 @@ class Application extends Model
     {
         return [
             'distinguished_interview_addon' => 'boolean',
-            'intake_started_at'             => 'datetime',
+            'intake_started_at' => 'datetime',
             'online_interview_completed_at' => 'datetime',
             'direct_submission_received_at' => 'datetime',
-            'converted_to_profile_at'       => 'datetime',
-            'payment_settled_at'            => 'datetime',
+            'converted_to_profile_at' => 'datetime',
+            'payment_settled_at' => 'datetime',
         ];
     }
 

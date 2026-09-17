@@ -396,4 +396,24 @@ class DatabaseSchemaIntegrityTest extends TestCase
             'B-Tree index on in_memoriam_profiles.bio_headline missing for §20 search preparation'
         );
     }
+
+    public function test_staff_action_logs_table_exists(): void
+    {
+        $this->assertTrue(Schema::hasTable('staff_action_logs'));
+
+        foreach ([
+            'actor_user_id',
+            'action',
+            'subject_type',
+            'subject_id',
+            'before',
+            'after',
+            'ip_address',
+        ] as $column) {
+            $this->assertTrue(
+                Schema::hasColumn('staff_action_logs', $column),
+                "staff_action_logs missing column {$column}"
+            );
+        }
+    }
 }
