@@ -3,6 +3,8 @@
 namespace App\Models;
 
 use Database\Factories\UserFactory;
+use Filament\Models\Contracts\FilamentUser;
+use Filament\Panel;
 use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
@@ -14,17 +16,28 @@ use Illuminate\Notifications\Notifiable;
 #[Fillable([
     'name',
     'email',
+    'email_verified_at',
     'password',
+    'google_id',
     'mobile',
     'mobile_verified_at',
     'account_status',
+    'role',
     'remember_token',
 ])]
 #[Hidden(['password', 'remember_token'])]
-class User extends Authenticatable
+class User extends Authenticatable implements FilamentUser
 {
     /** @use HasFactory<UserFactory> */
     use HasFactory, Notifiable;
+
+    public const ROLE_MEMBER = 'member';
+
+    public const ROLE_ADMIN = 'admin';
+
+    public const ROLE_EDITOR = 'editor';
+
+    public const ROLE_SUPPORT = 'support';
 
     protected function casts(): array
     {
@@ -33,6 +46,22 @@ class User extends Authenticatable
             'password' => 'hashed',
             'mobile_verified_at' => 'datetime',
         ];
+    }
+
+    public function canAccessPanel(Panel $panel): bool
+    {
+        return $this->role === self::ROLE_ADMIN
+            && ($this->account_status ?? 'active') === 'active';
+    }
+
+    public function isAdmin(): bool
+    {
+        return $this->role === self::ROLE_ADMIN;
+    }
+
+    public function isStaff(): bool
+    {
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_EDITOR, self::ROLE_SUPPORT], true);
     }
 
     /** @return HasOne<Profile> */

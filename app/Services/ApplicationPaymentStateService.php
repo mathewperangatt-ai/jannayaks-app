@@ -4,7 +4,7 @@ namespace App\Services;
 
 use App\Models\Application;
 use App\Models\Payment;
-use App\Support\PricingAmounts;
+use App\Models\User;
 use Illuminate\Support\Facades\DB;
 
 class ApplicationPaymentStateService
@@ -29,7 +29,7 @@ class ApplicationPaymentStateService
             }
 
             if ($cols !== []) {
-                $application->update($cols);
+                $application->forceFill($cols)->save();
             }
 
             return $application->fresh() ?? $application;
@@ -63,11 +63,28 @@ class ApplicationPaymentStateService
 
     public function isPaymentSettled(Application $application): bool
     {
-        $status = $application->payment_status ?? null;
-        if (is_string($status) && strtolower($status) === 'paid') {
+        return $this->hasSettledPaymentRecord($application);
+    }
+
+    /**
+     * Interview and source-material uploads unlock only after a settled Payment row
+     * or an explicit trusted staff waiver / admin test demo.
+     */
+    public function unlocksInterviewOrUploads(Application $application): bool
+    {
+        if ($application->source_method === 'admin_test_demo') {
             return true;
         }
 
+        if ($this->hasTrustedStaffWaiver($application)) {
+            return true;
+        }
+
+        return $this->hasSettledPaymentRecord($application);
+    }
+
+    private function hasSettledPaymentRecord(Application $application): bool
+    {
         return Payment::query()
             ->where('application_id', $application->id)
             ->whereIn('status', [
@@ -76,5 +93,23 @@ class ApplicationPaymentStateService
                 Payment::STATUS_SUCCESS,
             ])
             ->exists();
+    }
+
+    private function hasTrustedStaffWaiver(Application $application): bool
+    {
+        if ($application->waived_by_user_id === null) {
+            return false;
+        }
+
+        if (strtolower((string) ($application->payment_status ?? '')) !== 'waived') {
+            return false;
+        }
+
+        $waver = User::query()->find($application->waived_by_user_id);
+        if (! $waver instanceof User) {
+            return false;
+        }
+
+        return $waver->isStaff() && ($waver->account_status ?? 'active') === 'active';
     }
 }

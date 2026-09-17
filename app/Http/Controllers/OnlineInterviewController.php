@@ -27,6 +27,9 @@ class OnlineInterviewController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
         }
+        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+            return $this->paymentGate($request, $application);
+        }
         if (! in_array((string) $application->source_method, (array) config('online_interview.submission.valid_source_methods_for_interview', ['online_interview']), true)) {
             return $this->forbid($request, 'This application is not an Online Interview intake.');
         }
@@ -78,6 +81,9 @@ class OnlineInterviewController extends Controller
         }
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
+        }
+        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+            return $this->paymentGate($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
             return $this->forbid($request, 'This interview has already been submitted.');
@@ -135,6 +141,9 @@ class OnlineInterviewController extends Controller
         }
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
+        }
+        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+            return $this->paymentGate($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
             if ($request->expectsJson()) {
@@ -204,8 +213,8 @@ class OnlineInterviewController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => false, 'error' => $message], 401);
         }
-        $loginRoute = app('router')->has('filament.admin.auth.login') ? 'filament.admin.auth.login' : 'home';
-        return redirect()->route($loginRoute)->withErrors(['auth' => $message]);
+
+        return redirect()->route('login')->withErrors(['auth' => $message]);
     }
 
     private function forbid(Request $request, string $message): JsonResponse|RedirectResponse
@@ -214,6 +223,23 @@ class OnlineInterviewController extends Controller
             return response()->json(['ok' => false, 'error' => $message], 403);
         }
         return redirect()->route('home')->withErrors(['interview' => $message]);
+    }
+
+    private function paymentGate(Request $request, Application $application): JsonResponse|RedirectResponse
+    {
+        $message = 'Complete payment for this application before continuing the Online Interview.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => false,
+                'error' => $message,
+                'redirect_to' => route('applications.payment', ['application' => $application->id]),
+            ], 403);
+        }
+
+        return redirect()
+            ->route('applications.payment', ['application' => $application->id])
+            ->withErrors(['payment' => $message]);
     }
 
     /**

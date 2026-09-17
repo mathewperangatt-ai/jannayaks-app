@@ -640,9 +640,16 @@ class Phase6PaymentSecurityTest extends TestCase
         $createRes->assertCreated();
         $appId = (int) $createRes->json('application_id');
         $this->assertGreaterThan(0, $appId);
+        $this->assertStringContainsString('/payment', (string) $createRes->json('redirect_to'));
 
         $showRes = $this->actingAs($user)->get(route('applications.show', ['application' => $appId]));
         $showRes->assertOk();
+
+        $blocked = $this->actingAs($user)->get(route('online-interview.show', ['application' => $appId]));
+        $blocked->assertRedirect(route('applications.payment', ['application' => $appId]));
+
+        $app = \App\Models\Application::query()->findOrFail($appId);
+        $this->unlockApplicationForInterview($app);
 
         $intRes = $this->actingAs($user)->get(route('online-interview.show', ['application' => $appId]));
         $intRes->assertOk();

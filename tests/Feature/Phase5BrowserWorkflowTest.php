@@ -16,12 +16,13 @@ class Phase5BrowserWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    /** @test §21-1 Intro page shows workflow and login prompt when guest */
+    /** @test §21-1 Intro page shows workflow for guests without auth */
     public function test_intro_shows_to_guests_without_auth(): void
     {
         $res = $this->get(route('apply'));
-        $res->assertStatus(302);
-        $res->assertRedirect(route('filament.admin.auth.login'));
+        $res->assertOk();
+        $res->assertSee('Choose a profile tier', false);
+        $res->assertSee(route('login'), false);
     }
 
     /** @test §21-2 Tier select page loads when authenticated */
@@ -33,7 +34,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         $res->assertSee('Emerging Leader', false);
         $res->assertSee('Accomplished Leader', false);
         $res->assertSee('Distinguished Leader', false);
-        $res->assertSee(route('applications.store'), false);
+        $res->assertSee(route('apply.intent'), false);
     }
 
     /** @test §21-3 Each of 3 tiers is selectable and POST creates application via form */
@@ -81,7 +82,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     {
         $u1 = User::factory()->create(['email_verified_at' => now()]);
         $u2 = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($u1)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($u1)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
 
         $ok = $this->actingAs($u1)->get(route('applications.show', $app));
         $ok->assertOk();
@@ -96,11 +97,11 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_interview_page_loads_with_tier_questions(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'distinguished', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'distinguished', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
         $res->assertSee('Your Journey', false);
-        $res->assertSee('q1', false);
+        $res->assertSee('data-qid="q1"', false);
         $res->assertSee('Save and continue', false);
     }
 
@@ -108,38 +109,39 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_emerging_tier_hides_locked_sections(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
-        $res->assertDontSee('q5', false);
-        $res->assertDontSee('q7', false);
-        $res->assertDontSee('q9', false);
-        $res->assertDontSee('q11', false);
-        $res->assertSee('q1', false);
+        // Match question field markers only — bare "q9" etc. can appear inside CSRF tokens.
+        $res->assertDontSee('data-qid="q5"', false);
+        $res->assertDontSee('data-qid="q7"', false);
+        $res->assertDontSee('data-qid="q9"', false);
+        $res->assertDontSee('data-qid="q11"', false);
+        $res->assertSee('data-qid="q1"', false);
     }
 
     /** @test §21-8 Accomplished tier does NOT render Recognition or Person sections */
     public function test_accomplished_tier_hides_recognition_and_person_sections(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'accomplished', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'accomplished', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
-        $res->assertSee('q5', false);
-        $res->assertSee('q7', false);
-        $res->assertDontSee('q9', false);
-        $res->assertDontSee('q11', false);
+        $res->assertSee('data-qid="q5"', false);
+        $res->assertSee('data-qid="q7"', false);
+        $res->assertDontSee('data-qid="q9"', false);
+        $res->assertDontSee('data-qid="q11"', false);
     }
 
     /** @test §21-9 Distinguished tier renders all unlocked sections */
     public function test_distinguished_tier_renders_all_sections(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'distinguished', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'distinguished', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
         foreach (['q1','q3','q6','q7','q10','q12'] as $qid) {
-            $res->assertSee($qid, false);
+            $res->assertSee('data-qid="'.$qid.'"', false);
         }
     }
 
@@ -147,7 +149,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_resume_displays_previously_saved_answers(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         $payload = [
             'answers' => [
                 'q1' => 'Saved emerging intro — resume check.',
@@ -164,7 +166,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_save_and_continue_persists_to_database(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'accomplished', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'accomplished', 'source_method' => 'online_interview']);
         $payload = [
             'answers' => [
                 'q1' => 'A1 save',
@@ -185,7 +187,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_malayalam_and_manglish_survive_roundtrip_unchanged(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         $malayalam = 'ഞാൻ ജീനിയസ് ആയിട്ടുണ്ട്. എനിക്ക് മനസ്സിലായി — ഗ്രാമത്തിനു പകരമെന്താ?';
         $manglish  = "Njan jeevithathil ninnu oru nalla paadam padichu: kaaryangal okke saadhanamaake!";
         $combined  = $malayalam . "\n\n---\n\n" . $manglish;
@@ -207,7 +209,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_progress_updates_on_dashboard_after_save(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         $before = $this->actingAs($user)->get(route('applications.show', $app));
         $before->assertSee('Answered <b>0</b> of', false);
 
@@ -228,7 +230,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_submit_rejected_when_required_incomplete_via_html_form(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->postJson(route('online-interview.submit', $app));
         $res->assertStatus(422);
         $app->refresh();
@@ -239,7 +241,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_submit_succeeds_when_required_complete(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'accomplished', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'accomplished', 'source_method' => 'online_interview']);
         $ids = OnlineInterviewCatalog::idsForTier('accomplished');
         $payload = [];
         foreach ($ids as $qid) {
@@ -257,7 +259,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_readonly_state_after_submit(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         foreach (OnlineInterviewCatalog::idsForTier('emerging') as $qid) {
             $this->actingAs($user)->patchJson(route('online-interview.save', $app), ['answers' => [$qid => 'R']])->assertOk();
         }
@@ -274,7 +276,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     {
         $u1 = User::factory()->create(['email_verified_at' => now()]);
         $u2 = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($u1)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($u1)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
 
         $this->actingAs($u2)->getJson(route('applications.show', $app))->assertForbidden();
         $this->actingAs($u2)->getJson(route('online-interview.show', $app))->assertForbidden();
@@ -284,7 +286,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_upload_ui_rejects_forbidden_mime_or_extension(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
 
         Storage::fake('private_uploads');
         $tmpFile = tempnam(sys_get_temp_dir(), 'jf_').'.php';
@@ -322,7 +324,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_upload_ui_accepts_valid_pdf_and_lists_it(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         Storage::fake('private_uploads');
 
         $file = UploadedFile::fake()->create('curriculum-vitae.pdf', 400, 'application/pdf');
@@ -349,7 +351,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     public function test_existing_foundation_tables_and_config_intact(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create(['package_tier' => 'distinguished', 'source_method' => 'online_interview']);
+        $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'distinguished', 'source_method' => 'online_interview']);
         $this->assertSame('distinguished', (string) $app->package_tier);
 
         $catalog = config('online_interview.source_material_types');

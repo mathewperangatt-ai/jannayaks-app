@@ -97,4 +97,14 @@ return [
     'security' => [
         'test_bypass_role' => 'admin',
     ],
+
+    'otp' => [
+        // P7 delivery is log/test-cache only. No SMS provider is implemented.
+        // Do not set sms_enabled=true until a real provider exists in a later phase.
+        'expiry_minutes' => 10,
+        'channel' => env('JANNAYAKS_OTP_CHANNEL', 'log'), // log | test-cache metadata only
+        'sms_enabled' => false,
+        'expose_test_code' => env('JANNAYAKS_OTP_EXPOSE_TEST_CODE', false),
+        'log_plaintext_in_non_production' => true, // logs length only, never the OTP value
+    ],
 ];

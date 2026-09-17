@@ -13,11 +13,11 @@
     </p>
 
     <div class="warnbox" role="note" aria-label="Pricing note">
-        Payment is handled as a <b>separate workflow</b> after your profile moves into editorial preparation.
-        The prices below are inclusive of GST and will not change.
+        After you choose a tier and sign in, <b>payment comes next</b>. The Online Interview and source-material uploads unlock after payment is settled.
+        The prices below are inclusive of GST.
     </div>
 
-    <form method="POST" action="{{ route('applications.store') }}" novalidate>
+    <form method="POST" action="{{ route('apply.intent') }}" novalidate>
         @csrf
         <input type="hidden" name="honey_bot" value="" maxlength="0" autocomplete="off" tabindex="-1" aria-hidden="true">
 
@@ -105,7 +105,7 @@
 
         <div class="actions">
             <a class="btn ghost" href="{{ route('apply') }}">← Back</a>
-            <button class="btn primary" type="submit">Create application →</button>
+            <button class="btn primary" type="submit">{{ !empty($guest) ? 'Continue to sign in →' : 'Continue to payment →' }}</button>
         </div>
     </form>
 </section>

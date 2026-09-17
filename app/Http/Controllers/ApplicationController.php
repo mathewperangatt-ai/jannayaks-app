@@ -27,12 +27,15 @@ class ApplicationController extends Controller
         ];
 
         $auth = Auth::check();
-        if (! $auth) {
+        $showTiers = $auth || $request->boolean('tiers') || $request->query('step') === 'tiers';
+
+        if (! $auth && ! $showTiers) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'ok'             => true,
                     'login_required' => true,
                     'intro'          => true,
+                    'next'           => route('apply', ['step' => 'tiers']),
                 ]);
             }
 
@@ -44,7 +47,7 @@ class ApplicationController extends Controller
         if ($request->expectsJson()) {
             return response()->json([
                 'ok'             => true,
-                'login_required' => false,
+                'login_required' => ! $auth,
                 'tiers'          => $tiers,
                 'source_methods' => $sourceMethods,
                 'tier_labels'    => $tierLabels,
@@ -55,7 +58,91 @@ class ApplicationController extends Controller
             'tiers'          => $tiers,
             'source_methods' => $sourceMethods,
             'tier_labels'    => $tierLabels,
+            'guest'          => ! $auth,
         ]);
+    }
+
+    /**
+     * Guest (or authenticated) stores tier intent, then registers/logs in before payment.
+     */
+    public function storeIntent(Request $request): JsonResponse|RedirectResponse
+    {
+        $validator = Validator::make($request->all(), [
+            'package_tier'     => ['required', 'string', 'in:emerging,accomplished,distinguished'],
+            'source_method'    => ['required', 'string', 'in:online_interview,direct_submission'],
+            'full_name'        => ['required', 'string', 'min:2', 'max:255'],
+            'preferred_slug'   => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[-_][a-z0-9]+)*$/'],
+            'contact_email'    => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
+            'contact_mobile'   => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
+            'distinguished_interview_addon' => ['nullable', 'boolean'],
+            'direct_submission_note' => ['nullable', 'string', 'max:500'],
+            'honey_bot'        => ['nullable', 'string', 'max:0'],
+        ]);
+
+        if ($validator->fails()) {
+            return $this->validationErrorResponse($request, $validator);
+        }
+        if ((string) $request->input('honey_bot', '') !== '') {
+            return $this->noContentResponse($request);
+        }
+
+        $validated = $validator->safe()->all();
+        $intent = [
+            'package_tier' => (string) $validated['package_tier'],
+            'source_method' => (string) $validated['source_method'],
+            'full_name' => (string) $validated['full_name'],
+            'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
+            'contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
+            'contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
+            'distinguished_interview_addon' => (bool) ($validated['distinguished_interview_addon'] ?? false),
+            'direct_submission_note' => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
+        ];
+
+        $request->session()->put('apply.intent', $intent);
+
+        if (Auth::check()) {
+            return $this->continueFromIntent($request);
+        }
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => true,
+                'login_required' => true,
+                'redirect_to' => route('login', ['return' => route('apply.continue')]),
+            ]);
+        }
+
+        return redirect()->route('login', ['return' => route('apply.continue')])
+            ->with('status', 'Sign in to continue — payment comes next, then the Online Interview.');
+    }
+
+    public function continueFromIntent(Request $request): JsonResponse|RedirectResponse
+    {
+        if (! Auth::check()) {
+            return $this->unauthorizedResponse($request, 'You must sign in before continuing.');
+        }
+
+        $intent = $request->session()->get('apply.intent');
+        if (! is_array($intent)) {
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'error' => 'No application intent found. Choose a tier first.'], 422);
+            }
+
+            return redirect()->route('apply', ['step' => 'tiers'])
+                ->withErrors(['apply' => 'Choose a profile tier to continue.']);
+        }
+
+        $request->session()->forget('apply.intent');
+
+        $merged = array_merge($intent, [
+            'package_tier' => $intent['package_tier'] ?? 'emerging',
+            'source_method' => $intent['source_method'] ?? 'online_interview',
+            'full_name' => $intent['full_name'] ?? (Auth::user()->name ?? 'Member'),
+        ]);
+
+        $request->merge($merged);
+
+        return $this->store($request);
     }
 
     public function store(Request $request): JsonResponse|RedirectResponse
@@ -89,7 +176,8 @@ class ApplicationController extends Controller
         return DB::transaction(function () use ($request, $validated) {
             $user = Auth::user();
 
-            $application = Application::query()->create([
+            $application = new Application;
+            $application->forceFill([
                 'user_id'                        => $user->id,
                 'source_method'                  => (string) $validated['source_method'],
                 'package_tier'                   => (string) $validated['package_tier'],
@@ -102,7 +190,9 @@ class ApplicationController extends Controller
                 'direct_submission_note'         => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
                 'intake_started_at'              => now(),
                 'direct_submission_received_at'  => (string) $validated['source_method'] === 'direct_submission' ? now() : null,
-            ]);
+                'payment_status'                 => Application::PAYMENT_STATUS_PENDING,
+                'status'                         => Application::STATUS_PAYMENT_PENDING,
+            ])->save();
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -115,17 +205,30 @@ class ApplicationController extends Controller
             }
 
             return redirect($this->redirectUrlFor($application))
-                ->with('application_created', 'Application started. Continue the Online Interview or prepare a direct submission.');
+                ->with('application_created', 'Application started. Complete payment to unlock the Online Interview or source-material uploads.');
         });
     }
 
     private function redirectUrlFor(Application $application): string
     {
-        if ($application->source_method === 'direct_submission') {
-            return route('applications.upload.show', ['application' => $application->id]);
+        return route('applications.payment', ['application' => $application->id]);
+    }
+
+    private function paymentGateResponse(Request $request, Application $application): JsonResponse|RedirectResponse
+    {
+        $message = 'Complete payment for this application before continuing to the Online Interview or uploads.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => false,
+                'error' => $message,
+                'redirect_to' => route('applications.payment', ['application' => $application->id]),
+            ], 403);
         }
 
-        return route('online-interview.show', ['application' => $application->id]);
+        return redirect()
+            ->route('applications.payment', ['application' => $application->id])
+            ->withErrors(['payment' => $message]);
     }
 
     public function showOwn(Request $request, Application $application): JsonResponse|RedirectResponse|\Illuminate\View\View
@@ -181,6 +284,9 @@ class ApplicationController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
+        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+            return $this->paymentGateResponse($request, $application);
+        }
 
         if ($request->expectsJson()) {
             $materialTypes = (array) config('online_interview.source_material_types', []);
@@ -214,6 +320,9 @@ class ApplicationController extends Controller
         }
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
+        }
+        if (! app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+            return $this->paymentGateResponse($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
             return $this->forbiddenResponse($request, 'This application has already been submitted and cannot accept new materials.');

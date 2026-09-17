@@ -32,6 +32,7 @@ class Phase4ApplicationIntakeTest extends TestCase
         ]);
 
         $res->assertCreated()->assertJson(['ok' => true, 'package_tier' => 'accomplished']);
+        $this->assertStringContainsString('/payment', (string) $res->json('redirect_to'));
         $this->assertDatabaseHas('applications', [
             'user_id'        => $user->id,
             'package_tier'   => 'accomplished',
@@ -83,7 +84,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
             'full_name'     => 'Bob Original',
-        ])->create();
+        ])->paid()->create();
 
         $original = 'ഇത് ഒരു മലയാളം ഉത്തരമാണ്. Mixed with English and Manglish words like Ayal Njan koode undaayirunnu.';
 
@@ -160,7 +161,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
             'full_name'     => 'Incomplete Saver',
-        ])->create();
+        ])->paid()->create();
 
         $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), [
             'question_id' => 'q1',
@@ -186,7 +187,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
             'full_name'     => 'Completed Submission',
-        ])->create();
+        ])->paid()->create();
 
         // Emerging required: q1, q2, q3, q13, q14 (per OnlineInterviewCatalog questions emerging-only section lock)
         $requiredIds = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
@@ -215,7 +216,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
             'full_name'     => 'Incomplete',
-        ])->create();
+        ])->paid()->create();
 
         $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]));
         $res->assertStatus(422)->assertJson(['ok' => false, 'error' => 'Please complete all required questions before submitting.']);
@@ -234,7 +235,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
             'full_name'     => 'Only Alice',
-        ])->create();
+        ])->paid()->create();
 
         $this->actingAs($bob)->getJson(route('applications.show', ['application' => $app->id]))->assertForbidden();
         $this->actingAs($bob)->getJson(route('online-interview.show', ['application' => $app->id]))->assertForbidden();
@@ -250,7 +251,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
             'full_name'     => 'Alice App',
-        ])->create();
+        ])->paid()->create();
 
         $this->actingAs($bob)->patchJson(route('online-interview.save', ['application' => $app->id]), [
             'question_id' => 'q1',
@@ -272,7 +273,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
             'full_name'     => 'Dup Submit',
-        ])->create();
+        ])->paid()->create();
         $ids = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
         $answers = [];
         foreach ($ids as $id) { $answers[$id] = 'a'; }
@@ -297,7 +298,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'package_tier'  => 'accomplished',
             'source_method' => 'direct_submission',
             'full_name'     => 'Direct Uploader',
-        ])->create();
+        ])->paid()->create();
 
         $file = UploadedFile::fake()->create('biography.pdf', 64, 'application/pdf');
 
@@ -325,7 +326,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
             'full_name'     => 'No Profile Yet',
-        ])->create();
+        ])->paid()->create();
         $ids = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
         $answers = []; foreach ($ids as $id) { $answers[$id] = 'answer'; }
         $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), ['answers' => $answers]);

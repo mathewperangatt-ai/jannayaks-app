@@ -56,7 +56,6 @@ class Application extends Model
 
     protected $fillable = [
         'user_id',
-        'profile_id',
         'source_method',
         'package_tier',
         'full_name',
@@ -66,15 +65,9 @@ class Application extends Model
         'preferred_contact_email',
         'preferred_contact_mobile',
         'direct_submission_note',
-        'admin_demo_audit_note',
-        'waived_by_user_id',
         'intake_started_at',
         'online_interview_completed_at',
         'direct_submission_received_at',
-        'converted_to_profile_at',
-        'payment_status',
-        'payment_settled_at',
-        'status',
     ];
 
     protected function casts(): array

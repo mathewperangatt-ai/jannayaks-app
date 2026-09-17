@@ -1,6 +1,9 @@
 <?php
 
 use App\Http\Controllers\ApplicationController;
+use App\Http\Controllers\Auth\GoogleController;
+use App\Http\Controllers\Auth\LoginController;
+use App\Http\Controllers\Auth\MobileOtpController;
 use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\RazorpayCallbackController;
 use App\Http\Controllers\RazorpayWebhookController;
@@ -10,8 +13,24 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
+Route::middleware('guest')->group(function () {
+    Route::get('/login', [LoginController::class, 'show'])->name('login');
+    Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google');
+    Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
+
+    Route::get('/auth/otp', [MobileOtpController::class, 'showRequestForm'])->name('auth.otp.request.show');
+    Route::post('/auth/otp', [MobileOtpController::class, 'send'])->middleware('throttle:10,1')->name('auth.otp.send');
+    Route::get('/auth/otp/verify', [MobileOtpController::class, 'showVerifyForm'])->name('auth.otp.verify.show');
+    Route::post('/auth/otp/verify', [MobileOtpController::class, 'verify'])->middleware('throttle:20,1')->name('auth.otp.verify');
+});
+
+Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');
+
+Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
+Route::post('/apply/intent', [ApplicationController::class, 'storeIntent'])->middleware('throttle:20,1')->name('apply.intent');
+
 Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
-    Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
+    Route::get('/apply/continue', [ApplicationController::class, 'continueFromIntent'])->name('apply.continue');
     Route::post('/applications', [ApplicationController::class, 'store'])->name('applications.store');
 
     Route::get('/applications/{application}', [ApplicationController::class, 'showOwn'])->name('applications.show');

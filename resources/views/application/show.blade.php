@@ -84,12 +84,20 @@
     <div class="divider"></div>
 
     <h2 style="font-size:16px">Work on this application</h2>
+    @php
+        $unlocked = app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application);
+    @endphp
     <div class="row">
-        @if($application->source_method === 'online_interview')
-            <a class="btn primary" href="{{ route('online-interview.show', $application) }}">{{ $application->isInterviewSubmitted() ? 'View submitted answers' : 'Continue Online Interview →' }}</a>
+        <a class="btn primary" href="{{ route('applications.payment', $application) }}">
+            {{ $application->isPaymentSettled() ? 'View payment / receipt' : 'Pay to unlock interview →' }}
+        </a>
+        @if($unlocked && $application->source_method === 'online_interview')
+            <a class="btn" href="{{ route('online-interview.show', $application) }}">{{ $application->isInterviewSubmitted() ? 'View submitted answers' : 'Continue Online Interview →' }}</a>
         @endif
-        <a class="btn" href="{{ route('applications.upload.show', $application) }}">{{ $materialsCount > 0 ? 'Upload more material ('.$materialsCount.')' : 'Upload source material →' }}</a>
-        @if($application->source_method === 'online_interview' && !$application->isInterviewSubmitted())
+        @if($unlocked)
+            <a class="btn" href="{{ route('applications.upload.show', $application) }}">{{ $materialsCount > 0 ? 'Upload more material ('.$materialsCount.')' : 'Upload source material →' }}</a>
+        @endif
+        @if($unlocked && $application->source_method === 'online_interview' && !$application->isInterviewSubmitted())
             <form method="POST" action="{{ route('online-interview.submit', $application) }}" style="margin:0" onsubmit="return confirm('Submit your answers for editorial processing? You cannot edit them after submission.');">
                 @csrf
                 <button class="btn" type="submit" {{ !empty($progress['missing_required']) ? 'disabled aria-disabled=true' : '' }}>
@@ -98,6 +106,9 @@
             </form>
         @endif
     </div>
+    @unless($unlocked)
+        <div class="warnbox" role="note">Complete payment to unlock the Online Interview and source-material uploads.</div>
+    @endunless
 
     @if(!empty($progress['missing_required']))
         <div class="missbox" role="note" aria-live="polite">

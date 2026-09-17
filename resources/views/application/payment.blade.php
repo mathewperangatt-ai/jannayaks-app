@@ -239,7 +239,17 @@
     </div>
     <div class="actions" style="margin-top:18px">
         <a class="btn ghost" href="{{ route('applications.show', ['application' => $application->id]) }}">Dashboard / ഡാഷ്‌ബോർഡ്</a>
-        <a class="btn" href="{{ route('applications.upload.show', ['application' => $application->id]) }}">Uploads / അപ്‌ലോഡുകൾ</a>
+        @php
+            $uploadsUnlocked = app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application);
+        @endphp
+        @if($uploadsUnlocked)
+            <a class="btn" href="{{ route('applications.upload.show', ['application' => $application->id]) }}">Uploads / അപ്‌ലോഡുകൾ</a>
+            @if($application->source_method === 'online_interview')
+                <a class="btn" href="{{ route('online-interview.show', ['application' => $application->id]) }}">Online Interview / ഓൺലൈൻ അഭിമുഖം</a>
+            @endif
+        @else
+            <span class="btn" aria-disabled="true" style="opacity:.55;cursor:not-allowed">Uploads unlock after payment</span>
+        @endif
     </div>
 </div>
 @endsection
