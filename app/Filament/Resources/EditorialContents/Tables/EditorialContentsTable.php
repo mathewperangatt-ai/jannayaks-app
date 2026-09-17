@@ -21,7 +21,9 @@ class EditorialContentsTable
                 TextColumn::make('status')->badge()->sortable(),
                 TextColumn::make('version_number')->label('Ver')->sortable(),
                 TextColumn::make('title')->searchable()->limit(40),
-                IconColumn::make('ai_generated')->boolean(),
+                IconColumn::make('ai_generated')->boolean()->label('AI'),
+                TextColumn::make('source_editorial_content_id')->label('EN master')->toggleable(),
+                TextColumn::make('generation_run_id')->label('AI run')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('id', 'desc')

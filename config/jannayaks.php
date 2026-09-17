@@ -104,8 +104,19 @@ return [
     ],
 
     'ai' => [
-        'provider' => env('JANNAYAKS_AI_PROVIDER', 'gpt'),
-        'malayalam_pipeline_enabled' => true,
+        'provider' => env('JANNAYAKS_AI_PROVIDER', 'gpt'), // gpt | fake
+        'malayalam_pipeline_enabled' => (bool) env('JANNAYAKS_AI_MALAYALAM_ENABLED', true),
+        'openai' => [
+            'api_key' => env('OPENAI_API_KEY', ''),
+            'model' => env('JANNAYAKS_OPENAI_MODEL', 'gpt-4.1-mini'),
+            'endpoint' => env('JANNAYAKS_OPENAI_ENDPOINT', 'https://api.openai.com/v1/chat/completions'),
+            'timeout_seconds' => (int) env('JANNAYAKS_OPENAI_TIMEOUT', 60),
+        ],
+        'editorial' => [
+            // Two included pre-publication revision rounds are part of initial prep (P11). Not paid.
+            'included_prepublication_revision_rounds' => 2,
+            // Post-publication meaningful revision uses tier_pricing.revision (₹2,000 + GST) — not in P10.
+        ],
     ],
 
     'security' => [

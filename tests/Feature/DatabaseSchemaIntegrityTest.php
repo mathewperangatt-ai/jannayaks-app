@@ -30,6 +30,8 @@ class DatabaseSchemaIntegrityTest extends TestCase
         'geo_wards',
         'profile_geographies',
         'editorial_contents',
+        'ai_editorial_runs',
+        'editorial_claim_traces',
         'media_items',
         'memberships',
         'payments',
@@ -415,5 +417,67 @@ class DatabaseSchemaIntegrityTest extends TestCase
                 "staff_action_logs missing column {$column}"
             );
         }
+    }
+
+    public function test_ai_editorial_generation_tables_and_links_exist(): void
+    {
+        $this->assertTrue(Schema::hasTable('ai_editorial_runs'));
+        $this->assertTrue(Schema::hasTable('editorial_claim_traces'));
+
+        foreach ([
+            'application_id',
+            'profile_id',
+            'provider',
+            'model',
+            'status',
+            'stage',
+            'english_editorial_content_id',
+            'malayalam_editorial_content_id',
+            'input_fingerprint',
+            'error_code',
+            'error_message',
+        ] as $column) {
+            $this->assertTrue(
+                Schema::hasColumn('ai_editorial_runs', $column),
+                "ai_editorial_runs missing column {$column}"
+            );
+        }
+
+        foreach ([
+            'source_editorial_content_id',
+            'generation_run_id',
+        ] as $column) {
+            $this->assertTrue(
+                Schema::hasColumn('editorial_contents', $column),
+                "editorial_contents missing column {$column}"
+            );
+        }
+
+        foreach ([
+            'editorial_content_id',
+            'claim_excerpt',
+            'question_id',
+            'interview_answer_id',
+            'source_material_id',
+            'mapped_to_source',
+            'sort_order',
+        ] as $column) {
+            $this->assertTrue(
+                Schema::hasColumn('editorial_claim_traces', $column),
+                "editorial_claim_traces missing column {$column}"
+            );
+        }
+
+        $runningUnique = DB::selectOne(
+            "SELECT 1 AS present
+             FROM pg_indexes
+             WHERE schemaname = 'public'
+               AND tablename = 'ai_editorial_runs'
+               AND indexname = 'ai_editorial_runs_one_running_per_application'"
+        );
+        $this->assertNotEmpty(
+            $runningUnique,
+            'ai_editorial_runs must enforce at most one running generation per application'
+        );
     }
 }

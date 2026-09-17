@@ -46,7 +46,18 @@ class EditorialContentForm
             Toggle::make('ai_generated')
                 ->disabled()
                 ->dehydrated()
-                ->helperText('AI generation is out of scope for P9; leave false.'),
+                ->helperText('Set by the AI generation pipeline. Human editors review drafts before approval.'),
+            TextInput::make('source_editorial_content_id')
+                ->label('English master ID')
+                ->numeric()
+                ->disabled()
+                ->dehydrated(false)
+                ->helperText('Malayalam adaptations link to the English master row.'),
+            TextInput::make('generation_run_id')
+                ->label('AI run ID')
+                ->numeric()
+                ->disabled()
+                ->dehydrated(false),
             Textarea::make('review_comment')->rows(3),
         ]);
     }
