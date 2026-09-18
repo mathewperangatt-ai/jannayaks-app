@@ -8,7 +8,10 @@ use App\Http\Controllers\CustomerProfilePreviewController;
 use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\PaymentDocumentController;
 use App\Http\Controllers\ProfileUrlController;
+use App\Http\Controllers\PublicGalleryController;
+use App\Http\Controllers\PublicProfileMediaController;
 use App\Http\Controllers\PublicProfileUrlController;
+use App\Http\Controllers\PublicSearchController;
 use App\Http\Controllers\RazorpayCallbackController;
 use App\Http\Controllers\RazorpayWebhookController;
 use App\Http\Controllers\Staff\SourceMaterialDownloadController;
@@ -18,9 +21,17 @@ Route::get('/', function () {
     return view('welcome');
 })->name('home');
 
+Route::get('/gallery', [PublicGalleryController::class, 'index'])->name('gallery.index');
+Route::get('/search', [PublicSearchController::class, 'index'])->name('search.index');
+
 Route::get('/p/{slug}', [PublicProfileUrlController::class, 'show'])
     ->where('slug', '[A-Za-z0-9][A-Za-z0-9\-]*')
     ->name('profiles.public');
+
+Route::get('/p/{profile}/photo/{media}', [PublicProfileMediaController::class, 'show'])
+    ->whereNumber('profile')
+    ->whereNumber('media')
+    ->name('profiles.public.photo');
 
 Route::middleware('guest')->group(function () {
     Route::get('/login', [LoginController::class, 'show'])->name('login');

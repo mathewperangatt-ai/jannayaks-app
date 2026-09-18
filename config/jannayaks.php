@@ -90,6 +90,7 @@ return [
             'contact',
             'dashboard',
             'filament',
+            'gallery',
             'home',
             'in-memoriam',
             'invoice',

@@ -4,19 +4,23 @@ namespace App\Http\Controllers;
 
 use App\Models\Profile;
 use App\Services\ProfileUrlService;
+use App\Services\PublicProfilePresentationService;
 use Illuminate\Http\RedirectResponse;
+use Illuminate\Http\Request;
 use Illuminate\Http\Response;
 use Illuminate\View\View;
 
 class PublicProfileUrlController extends Controller
 {
-    public function __construct(private ProfileUrlService $profileUrls) {}
+    public function __construct(
+        private ProfileUrlService $profileUrls,
+        private PublicProfilePresentationService $presentation,
+    ) {}
 
     /**
-     * Resolve /p/{slug}: redirect historical URLs; expose only published profiles.
-     * Full public profile presentation belongs to a later phase — this is URL infrastructure only.
+     * Resolve /p/{slug}: redirect historical URLs; render published profiles only.
      */
-    public function show(string $slug): View|RedirectResponse|Response
+    public function show(Request $request, string $slug): View|RedirectResponse|Response
     {
         $normalized = strtolower(trim($slug));
         if ($normalized === '' || str_contains($slug, '/') || str_contains($slug, '\\') || str_contains($slug, '..')) {
@@ -28,7 +32,7 @@ class PublicProfileUrlController extends Controller
             ->first();
 
         if ($profile) {
-            return $this->renderOrHide($profile);
+            return $this->renderOrHide($request, $profile);
         }
 
         $redirect = $this->profileUrls->findActiveRedirect($normalized);
@@ -41,7 +45,6 @@ class PublicProfileUrlController extends Controller
             abort(404);
         }
 
-        // Historical URLs must never become an alias for another profile.
         if ((int) $redirect->redirectable_id !== (int) $target->id) {
             abort(404);
         }
@@ -50,25 +53,27 @@ class PublicProfileUrlController extends Controller
             abort(404);
         }
 
-        // Unpublished profiles: do not leak via redirect destination either.
         if (! $this->profileUrls->isPubliclyVisible($target)) {
             abort(404);
         }
 
-        return redirect()->route('profiles.public', ['slug' => $target->slug], 301);
+        return redirect()->route('profiles.public', [
+            'slug' => $target->slug,
+            'lang' => $request->query('lang'),
+        ], 301);
     }
 
-    private function renderOrHide(Profile $profile): View|Response
+    private function renderOrHide(Request $request, Profile $profile): View|Response
     {
         if (! $this->profileUrls->isPubliclyVisible($profile)) {
             abort(404);
         }
 
+        $lang = (string) $request->query('lang', 'en');
+        $data = $this->presentation->present($profile, $lang);
+
         return response()
-            ->view('public.profile-stub', [
-                'profile' => $profile,
-                'canonicalUrl' => $this->profileUrls->canonicalPublicUrl($profile),
-            ])
-            ->header('X-Robots-Tag', 'noindex, nofollow');
+            ->view('public.profile', $data)
+            ->header('Cache-Control', 'public, max-age=60');
     }
 }
