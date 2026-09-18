@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Application;
+use App\Models\InMemoriamProfile;
 use App\Models\Profile;
 use App\Models\SlugRedirect;
 use App\Models\User;
@@ -126,6 +127,10 @@ class ProfileUrlService
         }
 
         if ($profileQuery->exists()) {
+            return true;
+        }
+
+        if (InMemoriamProfile::query()->whereRaw('LOWER(slug) = ?', [$normalized])->exists()) {
             return true;
         }
 

@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MobileOtpController;
 use App\Http\Controllers\CustomerProfilePreviewController;
+use App\Http\Controllers\InMemoriamLandingController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\PaymentDocumentController;
@@ -12,6 +13,8 @@ use App\Http\Controllers\ProfileExternalVideoLinkController;
 use App\Http\Controllers\ProfileMediaController;
 use App\Http\Controllers\ProfileUrlController;
 use App\Http\Controllers\PublicGalleryController;
+use App\Http\Controllers\PublicInMemoriamController;
+use App\Http\Controllers\PublicInMemoriamMediaController;
 use App\Http\Controllers\PublicProfileMediaController;
 use App\Http\Controllers\PublicProfileUrlController;
 use App\Http\Controllers\PublicSearchController;
@@ -27,6 +30,15 @@ Route::get('/', function () {
 
 Route::get('/gallery', [PublicGalleryController::class, 'index'])->name('gallery.index');
 Route::get('/search', [PublicSearchController::class, 'index'])->name('search.index');
+
+Route::get('/in-memoriam', InMemoriamLandingController::class)->name('in-memoriam.index');
+Route::get('/in-memoriam/{slug}', [PublicInMemoriamController::class, 'show'])
+    ->where('slug', '[A-Za-z0-9][A-Za-z0-9\-]*')
+    ->name('in-memoriam.show');
+Route::get('/in-memoriam/{slug}/photo/{media}', [PublicInMemoriamMediaController::class, 'show'])
+    ->where('slug', '[A-Za-z0-9][A-Za-z0-9\-]*')
+    ->whereNumber('media')
+    ->name('in-memoriam.photo');
 
 Route::get('/p/{slug}', [PublicProfileUrlController::class, 'show'])
     ->where('slug', '[A-Za-z0-9][A-Za-z0-9\-]*')

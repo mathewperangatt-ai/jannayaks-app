@@ -67,6 +67,7 @@
             <nav class="nav" aria-label="Public">
                 <a href="{{ route('gallery.index') }}" @if(($nav ?? '') === 'gallery') aria-current="page" @endif>Gallery</a>
                 <a href="{{ route('search.index') }}" @if(($nav ?? '') === 'search') aria-current="page" @endif>Search</a>
+                <a href="{{ route('in-memoriam.index') }}" @if(($nav ?? '') === 'in-memoriam') aria-current="page" @endif>In Memoriam</a>
                 <a href="{{ route('apply') }}">Apply</a>
             </nav>
         </header>

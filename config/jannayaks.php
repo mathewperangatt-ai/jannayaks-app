@@ -50,6 +50,11 @@ return [
             'label' => 'In Memoriam (5 years hosting)',
             'base_amount' => 25000,
             'hosting_years' => 5,
+            'photo_slots' => (int) env('JANNAYAKS_IN_MEMORIAM_PHOTO_SLOTS', 20),
+            'contact_email' => env(
+                'JANNAYAKS_IN_MEMORIAM_CONTACT_EMAIL',
+                env('JANNAYAKS_BILLING_SUPPORT_EMAIL', 'hello@jannayaks.in')
+            ),
         ],
         'membership' => [
             'label' => 'Annual Membership',
