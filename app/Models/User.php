@@ -9,6 +9,7 @@ use Illuminate\Database\Eloquent\Attributes\Fillable;
 use Illuminate\Database\Eloquent\Attributes\Hidden;
 use Illuminate\Database\Eloquent\Factories\HasFactory;
 use Illuminate\Database\Eloquent\Relations\HasMany;
+use Illuminate\Database\Eloquent\Relations\HasManyThrough;
 use Illuminate\Database\Eloquent\Relations\HasOne;
 use Illuminate\Foundation\Auth\User as Authenticatable;
 use Illuminate\Notifications\Notifiable;
@@ -175,9 +176,9 @@ class User extends Authenticatable implements FilamentUser
         return $this->hasMany(Application::class, 'waived_by_user_id');
     }
 
-    /** @return HasMany<Membership> */
-    public function memberships(): HasMany
+    /** @return HasManyThrough<Membership, Profile> */
+    public function memberships(): HasManyThrough
     {
-        return $this->hasMany(Membership::class, 'user_id');
+        return $this->hasManyThrough(Membership::class, Profile::class, 'user_id', 'profile_id');
     }
 }

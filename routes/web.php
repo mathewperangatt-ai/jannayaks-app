@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MobileOtpController;
 use App\Http\Controllers\CustomerProfilePreviewController;
+use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\PaymentDocumentController;
 use App\Http\Controllers\ProfileExternalVideoLinkController;
@@ -115,6 +116,12 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::get('/payments/{payment}/receipt', [PaymentDocumentController::class, 'receipt'])->name('payments.receipt');
     Route::get('/payments/{payment}/tax-invoice', [PaymentDocumentController::class, 'taxInvoice'])->name('payments.tax-invoice');
     Route::get('/payments/{payment}/credit-note', [PaymentDocumentController::class, 'creditNote'])->name('payments.credit-note');
+
+    Route::get('/profiles/{profile}/membership', [MembershipController::class, 'show'])
+        ->name('membership.show');
+    Route::post('/profiles/{profile}/membership/renew', [MembershipController::class, 'renew'])
+        ->middleware('throttle:10,1')
+        ->name('membership.renew');
 });
 
 Route::get('/payments/razorpay/callback', [RazorpayCallbackController::class, 'show'])->name('payments.razorpay.callback');

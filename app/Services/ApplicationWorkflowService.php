@@ -139,6 +139,9 @@ class ApplicationWorkflowService
                 (string) $locked->package_tier,
             );
 
+            // Living-profile annual membership begins at publication (not In Memoriam).
+            app(MembershipLifecycleService::class)->startMembershipForPublishedProfile($profile);
+
             $this->auditLogger->log(
                 action: 'application.published',
                 subject: $locked,

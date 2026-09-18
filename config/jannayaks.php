@@ -70,9 +70,32 @@ return [
     ],
 
     'renewal' => [
+        // Provisional reminder offsets — final schedule/copy undecided (P15).
         'reminder_days_before' => [60, 30, 7],
         'reminder_days_after' => [1, 30, 60],
         'retention_days_after_expiry' => 365,
+    ],
+
+    /*
+    | Membership lifecycle (Phase 15).
+    | Business calendar days use membership_lifecycle.business_timezone (default Asia/Kolkata).
+    | This does NOT change config('app.timezone') / UTC used elsewhere (payments, timestamps).
+    | Grace: profile stays public for N calendar days after ends_on.
+    | Deactivation eligible when today > ends_on + grace_period_days.
+    | Retention: ends_on + retention_years (not the deactivation timestamp). Post-retention undecided.
+    | Reminder day offsets are provisional configuration only.
+    */
+    'membership_lifecycle' => [
+        'business_timezone' => env('MEMBERSHIP_BUSINESS_TIMEZONE', 'Asia/Kolkata'),
+        'grace_period_days' => (int) env('MEMBERSHIP_GRACE_PERIOD_DAYS', 3),
+        'retention_years' => (int) env('MEMBERSHIP_RETENTION_YEARS', 1),
+        // Provisional defaults — override in tests / env as needed; not finalized product schedule.
+        'reminder_days_before_expiry' => [60, 30, 7],
+        'reminder_days_after_expiry' => [1],
+        'scheduler' => [
+            // Application-side schedule. Production still needs external cron for `php artisan schedule:run`.
+            'daily_at' => env('MEMBERSHIP_LIFECYCLE_DAILY_AT', '01:15'),
+        ],
     ],
 
     'slug' => [

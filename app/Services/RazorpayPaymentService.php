@@ -3,7 +3,9 @@
 namespace App\Services;
 
 use App\Models\Application;
+use App\Models\Membership;
 use App\Models\Payment;
+use App\Models\User;
 use App\Support\PricingAmounts;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\DB;
@@ -102,6 +104,148 @@ class RazorpayPaymentService
             }
 
             $payload = $this->buildLinkPayload($application, $payment, $amounts, $totalPaise, $includeAddon);
+            $response = $this->http()->post(self::RAZORPAY_LINKS_ENDPOINT, $payload);
+
+            if (! $response->successful()) {
+                $body = $response->json();
+                $errMsg = is_array($body) && isset($body['error']['description'])
+                    ? (string) $body['error']['description']
+                    : 'Razorpay link creation failed (HTTP '.$response->status().').';
+                $errCode = is_array($body) && isset($body['error']['code']) ? (string) $body['error']['code'] : 'HTTP_'.$response->status();
+                $payment->markFailedExpiredOrCancelled(
+                    Payment::STATUS_FAILED,
+                    $errCode,
+                    $errMsg,
+                );
+                throw new RuntimeException($errMsg);
+            }
+
+            $data = $response->json();
+            if (! is_array($data) || ! isset($data['id']) || ! isset($data['short_url'])) {
+                $payment->markFailedExpiredOrCancelled(
+                    Payment::STATUS_FAILED,
+                    'MALFORMED_RESPONSE',
+                    'Razorpay response missing id or short_url.',
+                );
+                throw new RuntimeException('Malformed Razorpay payment link response.');
+            }
+
+            $payment->razorpay_link_id = (string) $data['id'];
+            $payment->razorpay_link_url = (string) $data['short_url'];
+            if (isset($data['order_id']) && is_string($data['order_id'])) {
+                $payment->razorpay_order_id = (string) $data['order_id'];
+            }
+            $payment->markInitiated(Payment::GATEWAY_RAZORPAY);
+
+            return $payment->fresh() ?? $payment;
+        });
+    }
+
+    /**
+     * Create (or reuse) an annual membership renewal payment link for the profile owner.
+     * Does not activate/renew membership — webhook settlement remains authoritative.
+     */
+    public function createMembershipRenewalPaymentLink(Membership $membership, User $actor): Payment
+    {
+        $membership->loadMissing('profile');
+        $profile = $membership->profile;
+        if ($profile === null) {
+            throw new InvalidArgumentException('Membership has no linked profile.');
+        }
+
+        if ((int) $profile->user_id !== (int) $actor->id && ! $actor->isAdmin()) {
+            throw new InvalidArgumentException('You may only renew your own membership.');
+        }
+
+        $lifecycle = app(MembershipLifecycleService::class);
+        if (! $lifecycle->isWithinRetention($membership) && $lifecycle->isPastGracePeriod($membership)) {
+            throw new InvalidArgumentException('This membership is outside the retention window and cannot be renewed here.');
+        }
+
+        $amounts = PricingAmounts::forAnnualMembership();
+        PricingAmounts::assertInr($amounts['currency']);
+        $totalPaise = (int) $amounts['amount_incl_paise'];
+        if ($totalPaise <= 0) {
+            throw new RuntimeException('Renewal payment amount must be positive.');
+        }
+
+        return DB::transaction(function () use ($membership, $profile, $amounts, $totalPaise) {
+            /** @var Membership $locked */
+            $locked = Membership::query()->whereKey($membership->id)->lockForUpdate()->firstOrFail();
+
+            $actives = Payment::query()
+                ->where('membership_id', $locked->id)
+                ->where('item_type', Payment::ITEM_MEMBERSHIP)
+                ->whereIn('status', [Payment::STATUS_PENDING, Payment::STATUS_INITIATED])
+                ->orderBy('id')
+                ->lockForUpdate()
+                ->get();
+
+            $reusable = null;
+            foreach ($actives as $active) {
+                if ($active->totalPaise() === $totalPaise && $reusable === null) {
+                    $reusable = $active;
+
+                    continue;
+                }
+
+                $this->supersedeAttempt($active, 'Superseded by a newer membership renewal attempt.');
+            }
+
+            if ($reusable instanceof Payment
+                && $reusable->razorpay_link_id !== null
+                && $reusable->razorpay_link_url !== null
+                && $reusable->totalPaise() === $totalPaise) {
+                return $reusable;
+            }
+
+            if ($reusable instanceof Payment) {
+                $payment = $reusable;
+                $payment->forceFill([
+                    'amount' => PricingAmounts::paiseToDecimalString($totalPaise),
+                    'currency' => PricingAmounts::CURRENCY,
+                    'base_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
+                    'taxable_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
+                    'gst_rate_percent' => $amounts['gst_rate_percent'],
+                    'cgst_amount' => $amounts['cgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['cgst_paise']) : null,
+                    'sgst_amount' => $amounts['sgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['sgst_paise']) : null,
+                    'igst_amount' => $amounts['igst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['igst_paise']) : null,
+                    'event_type' => 'renewal',
+                    'profile_id' => $profile->id,
+                ])->save();
+            } else {
+                $txnRef = 'JNK-MEM-'.$locked->id.'-'.Str::upper(Str::random(10));
+                $payment = Payment::query()->create([
+                    'membership_id' => $locked->id,
+                    'profile_id' => $profile->id,
+                    'transaction_reference' => $txnRef,
+                    'gateway' => Payment::GATEWAY_RAZORPAY,
+                    'item_type' => Payment::ITEM_MEMBERSHIP,
+                    'amount' => PricingAmounts::paiseToDecimalString($totalPaise),
+                    'currency' => PricingAmounts::CURRENCY,
+                    'status' => Payment::STATUS_PENDING,
+                    'event_type' => 'renewal',
+                    'base_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
+                    'taxable_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
+                    'gst_rate_percent' => $amounts['gst_rate_percent'],
+                    'cgst_amount' => $amounts['cgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['cgst_paise']) : null,
+                    'sgst_amount' => $amounts['sgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['sgst_paise']) : null,
+                    'igst_amount' => $amounts['igst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['igst_paise']) : null,
+                ]);
+            }
+
+            if ($locked->status === 'active') {
+                $locked->forceFill(['status' => 'pending_renewal'])->save();
+            }
+
+            $config = $this->config();
+            if (! $config['enabled']) {
+                $payment->markInitiated(Payment::GATEWAY_RAZORPAY);
+
+                return $payment->fresh() ?? $payment;
+            }
+
+            $payload = $this->buildMembershipRenewalLinkPayload($locked, $payment, $amounts, $totalPaise);
             $response = $this->http()->post(self::RAZORPAY_LINKS_ENDPOINT, $payload);
 
             if (! $response->successful()) {
@@ -270,6 +414,63 @@ class RazorpayPaymentService
                 'event_type' => $includeAddon ? 'distinguished_interview_addon' : 'application_package',
                 'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
                 'distinguished_interview_addon' => $includeAddon ? '1' : '0',
+            ],
+            'callback_url' => $callbackUrl,
+            'callback_method' => 'get',
+            'cancel_url' => $cancelUrl,
+            'cancel_method' => 'get',
+        ];
+
+        if ($customer !== []) {
+            $payload['customer'] = $customer;
+        }
+
+        return $payload;
+    }
+
+    /**
+     * @param  array<string, mixed>  $amounts
+     * @return array<string, mixed>
+     */
+    private function buildMembershipRenewalLinkPayload(
+        Membership $membership,
+        Payment $payment,
+        array $amounts,
+        int $totalPaise,
+    ): array {
+        $profile = $membership->profile;
+        $callbackUrl = route('payments.razorpay.callback', ['payment_id' => $payment->id], true);
+        $cancelUrl = $profile
+            ? route('membership.show', $profile, true)
+            : route('payments.razorpay.callback', ['payment_id' => $payment->id], true);
+
+        $customer = [];
+        $name = trim((string) ($profile?->full_name ?? ''));
+        if ($name !== '') {
+            $customer['name'] = mb_substr($name, 0, 64);
+        }
+        $email = trim((string) ($profile?->user?->email ?? ''));
+        if ($email !== '' && filter_var($email, FILTER_VALIDATE_EMAIL)) {
+            $customer['email'] = $email;
+        }
+
+        $payload = [
+            'amount' => $totalPaise,
+            'currency' => PricingAmounts::CURRENCY,
+            'accept_partial' => false,
+            'reference_id' => (string) $payment->transaction_reference,
+            'description' => mb_substr('Jannayaks '.$amounts['label'].' — '.$name, 0, 255),
+            'notify' => [
+                'sms' => false,
+                'email' => isset($customer['email']),
+            ],
+            'reminder_enable' => true,
+            'notes' => [
+                'payment_id' => (string) $payment->id,
+                'membership_id' => (string) $membership->id,
+                'profile_id' => (string) ($profile?->id ?? ''),
+                'event_type' => 'renewal',
+                'item_type' => Payment::ITEM_MEMBERSHIP,
             ],
             'callback_url' => $callbackUrl,
             'callback_method' => 'get',

@@ -15,6 +15,9 @@ class PaymentInfolist
                 ->schema([
                     TextEntry::make('id'),
                     TextEntry::make('application_id')->label('Application'),
+                    TextEntry::make('membership_id')->label('Membership'),
+                    TextEntry::make('profile_id')->label('Profile'),
+                    TextEntry::make('item_type')->label('Item type'),
                     TextEntry::make('transaction_reference'),
                     TextEntry::make('status')->badge(),
                     TextEntry::make('amount'),

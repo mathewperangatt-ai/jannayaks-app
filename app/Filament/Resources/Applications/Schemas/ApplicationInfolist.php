@@ -4,6 +4,8 @@ namespace App\Filament\Resources\Applications\Schemas;
 
 use App\Models\Application;
 use App\Models\User;
+use App\Services\MembershipLifecycleService;
+use App\Services\ProfileUrlService;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -124,6 +126,58 @@ class ApplicationInfolist
                 ])
                 ->columns(2)
                 ->collapsed(),
+            Section::make('Membership lifecycle (read-only)')
+                ->description('Expiry, grace, deactivation, and retention. Staff cannot edit dates here. System cron and settled renewal payments are authoritative.')
+                ->schema([
+                    TextEntry::make('membership_status')
+                        ->label('Membership status')
+                        ->state(fn (?Application $record): string => (string) ($record?->profile?->membership?->status ?? '—')),
+                    TextEntry::make('membership_phase')
+                        ->label('Lifecycle phase')
+                        ->state(function (?Application $record): string {
+                            $m = $record?->profile?->membership;
+                            if (! $m) {
+                                return '—';
+                            }
+
+                            return app(MembershipLifecycleService::class)->lifecyclePhase($m);
+                        }),
+                    TextEntry::make('membership_starts_on')
+                        ->label('Starts on')
+                        ->state(fn (?Application $record): string => $record?->profile?->membership?->starts_on?->toDateString() ?? '—'),
+                    TextEntry::make('membership_ends_on')
+                        ->label('Expires on')
+                        ->state(fn (?Application $record): string => $record?->profile?->membership?->ends_on?->toDateString() ?? '—'),
+                    TextEntry::make('membership_grace_ends')
+                        ->label('Grace ends on')
+                        ->state(function (?Application $record): string {
+                            $m = $record?->profile?->membership;
+                            if (! $m) {
+                                return '—';
+                            }
+
+                            return app(MembershipLifecycleService::class)->graceEndsOn($m)?->toDateString() ?? '—';
+                        }),
+                    TextEntry::make('membership_retention_until')
+                        ->label('Retention until')
+                        ->state(fn (?Application $record): string => $record?->profile?->membership?->retention_until?->toDateString() ?? '—'),
+                    TextEntry::make('membership_lapsed_at')
+                        ->label('Lapsed at')
+                        ->state(fn (?Application $record): string => $record?->profile?->membership?->lapsed_at?->toDateTimeString() ?? '—'),
+                    TextEntry::make('profile_public_status')
+                        ->label('Profile public?')
+                        ->state(function (?Application $record): string {
+                            $profile = $record?->profile;
+                            if (! $profile) {
+                                return '—';
+                            }
+
+                            return app(ProfileUrlService::class)->isPubliclyVisible($profile) ? 'yes' : 'no';
+                        }),
+                ])
+                ->columns(2)
+                ->collapsed()
+                ->visible(fn (?Application $record): bool => $record?->profile?->membership !== null),
         ]);
     }
 

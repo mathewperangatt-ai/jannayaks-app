@@ -78,6 +78,13 @@
         </div>
     @endif
 
+    @if($application->status === \App\Models\Application::STATUS_PUBLISHED && $linkedProfile?->membership)
+        <h2 style="margin-top:10px;font-size:16px">Membership &amp; renewal</h2>
+        <div class="row">
+            <a class="btn" href="{{ route('membership.show', $linkedProfile) }}">View membership / renew →</a>
+        </div>
+    @endif
+
     @if($linkedProfile)
         <h2 style="margin-top:10px;font-size:16px">Photographs &amp; video</h2>
         <div class="row">

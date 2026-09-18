@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Payment;
 use App\Services\ApplicationPaymentStateService;
 use App\Services\InvoiceService;
+use App\Services\MembershipLifecycleService;
 use App\Services\RazorpayPaymentService;
 use App\Services\RazorpayWebhookVerifier;
 use App\Support\PricingAmounts;
@@ -339,6 +340,18 @@ class RazorpayWebhookController extends Controller
             } catch (\Throwable $e) {
                 Log::error('Razorpay webhook: afterSettled application update failed.', [
                     'payment_id' => $payment->id,
+                    'error' => $e->getMessage(),
+                ]);
+            }
+
+            try {
+                if ($payment->item_type === Payment::ITEM_MEMBERSHIP && $payment->membership_id !== null) {
+                    app(MembershipLifecycleService::class)->applySettledRenewal($payment->fresh() ?? $payment);
+                }
+            } catch (\Throwable $e) {
+                Log::error('Razorpay webhook: membership renewal apply failed.', [
+                    'payment_id' => $payment->id,
+                    'membership_id' => $payment->membership_id,
                     'error' => $e->getMessage(),
                 ]);
             }
