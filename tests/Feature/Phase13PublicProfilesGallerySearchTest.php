@@ -634,7 +634,9 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
                 'caption' => null,
                 'alt_text' => 'Portrait',
                 'display_order' => 1,
+                'is_primary' => true,
                 'privacy' => 'public',
+                'review_status' => 'approved',
                 'mime_type' => 'image/jpeg',
             ]);
         }
@@ -673,7 +675,9 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
             'caption' => null,
             'alt_text' => 'Test media',
             'display_order' => 1,
+            'is_primary' => (bool) ($attrs['is_primary'] ?? ($attrs['media_type'] === 'profile_photo' && ($attrs['privacy'] ?? '') === 'public')),
             'privacy' => $attrs['privacy'],
+            'review_status' => $attrs['review_status'] ?? (($attrs['privacy'] ?? '') === 'public' ? 'approved' : 'pending_review'),
             'mime_type' => 'image/jpeg',
         ]);
     }

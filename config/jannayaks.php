@@ -151,4 +151,42 @@ return [
         'expose_test_code' => env('JANNAYAKS_OTP_EXPOSE_TEST_CODE', false),
         'log_plaintext_in_non_production' => true, // logs length only, never the OTP value
     ],
+
+    /*
+    | Profile media (Phase 14). Public photographs vs private source materials stay separate.
+    | MEDIA_PUBLIC_DISK defaults to local "public" for development/tests; set to "r2" in production.
+    | Member uploads are always pending_review until editorial staff approve them.
+    | Uploads are resized/compressed server-side; originals are never stored on the media disk.
+    */
+    'media' => [
+        'public_disk' => env('MEDIA_PUBLIC_DISK', 'public'),
+        'object_prefix' => 'profile-media',
+        'max_upload_kb' => (int) env('MEDIA_MAX_UPLOAD_KB', 5120),
+        'allowed_mime_types' => [
+            'image/jpeg',
+            'image/png',
+            'image/webp',
+        ],
+        'allowed_extensions' => ['jpg', 'jpeg', 'png', 'webp'],
+        'forbidden_extensions' => [
+            'php', 'phtml', 'phar', 'php3', 'php4', 'php5', 'php7', 'php8',
+            'exe', 'bat', 'cmd', 'com', 'dll', 'so', 'sh', 'bash',
+            'js', 'mjs', 'html', 'htm', 'shtml', 'svg', 'svgz', 'xml',
+            'mp4', 'webm', 'mov', 'avi', 'mkv', 'm4v', 'mpeg', 'mpg',
+        ],
+        /*
+        | Optimization for premium editorial portraits on web:
+        | 1600px longest edge is high enough for hero/portrait display on retina
+        | screens while cutting multi‑megabyte phone originals substantially.
+        | Stored output is always JPEG at the configured quality.
+        */
+        'optimization' => [
+            'max_edge_px' => (int) env('MEDIA_MAX_EDGE_PX', 1600),
+            'jpeg_quality' => (int) env('MEDIA_JPEG_QUALITY', 82),
+        ],
+        'video_links' => [
+            // Technical abuse ceiling — not a product-tier entitlement.
+            'max_per_profile' => (int) env('MEDIA_VIDEO_LINKS_MAX_PER_PROFILE', 10),
+        ],
+    ],
 ];

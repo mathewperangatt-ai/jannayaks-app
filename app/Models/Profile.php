@@ -122,6 +122,12 @@ class Profile extends Model
         return $this->morphMany(MediaItem::class, 'mediable')->orderBy('display_order');
     }
 
+    /** @return HasMany<ProfileExternalLink> */
+    public function externalLinks(): HasMany
+    {
+        return $this->hasMany(ProfileExternalLink::class, 'profile_id')->orderByDesc('id');
+    }
+
     public function isPubliclyListed(): bool
     {
         return $this->status === 'published'

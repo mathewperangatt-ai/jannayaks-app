@@ -78,6 +78,13 @@
         </div>
     @endif
 
+    @if($linkedProfile)
+        <h2 style="margin-top:10px;font-size:16px">Photographs &amp; video</h2>
+        <div class="row">
+            <a class="btn" href="{{ route('applications.media', $application) }}">Manage profile media →</a>
+        </div>
+    @endif
+
     <h2 style="margin-top:10px;font-size:16px">Next action</h2>
     @if ($application->source_method === 'online_interview')
         @if($application->isInterviewSubmitted())

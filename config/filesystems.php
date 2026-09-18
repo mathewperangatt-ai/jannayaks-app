@@ -60,12 +60,31 @@ return [
             'report' => false,
         ],
 
+        /*
+        | Cloudflare R2 (S3-compatible) for public profile photographs.
+        | Private source materials remain on private_uploads.
+        | Credentials come only from environment variables.
+        */
+        'r2' => [
+            'driver' => 's3',
+            'key' => env('R2_ACCESS_KEY_ID'),
+            'secret' => env('R2_SECRET_ACCESS_KEY'),
+            'region' => env('R2_DEFAULT_REGION', 'auto'),
+            'bucket' => env('R2_BUCKET'),
+            'url' => env('R2_URL'),
+            'endpoint' => env('R2_ENDPOINT'),
+            'use_path_style_endpoint' => env('R2_USE_PATH_STYLE_ENDPOINT', false),
+            'throw' => false,
+            'report' => false,
+            'visibility' => 'private',
+        ],
+
         'private_uploads' => [
             'driver' => 'local',
-            'root'   => storage_path('app/private_uploads'),
+            'root' => storage_path('app/private_uploads'),
             'visibility' => 'private',
-            'throw'    => false,
-            'report'   => false,
+            'throw' => false,
+            'report' => false,
         ],
 
     ],
@@ -77,7 +96,7 @@ return [
     |
     | Here you may configure the symbolic links that will be created when the
     | `storage:link` Artisan command is executed. The array keys should be
-    | the locations of the links and the values should be their targets.
+    | the locations of the links and the values will be their targets.
     |
     */
 

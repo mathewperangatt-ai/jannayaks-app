@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\EditorialContent;
 use App\Models\MediaItem;
 use App\Models\Profile;
+use App\Models\ProfileExternalLink;
 use App\Models\ProfileGeography;
 use Illuminate\Support\Collection;
 
@@ -25,6 +26,8 @@ class PublicProfilePresentationService
      *     english: ?EditorialContent,
      *     malayalam: ?EditorialContent,
      *     photo: ?MediaItem,
+     *     photos: Collection,
+     *     videoLinks: Collection,
      *     language: string,
      *     activeEditorial: ?EditorialContent
      * }
@@ -42,6 +45,7 @@ class PublicProfilePresentationService
             'publicOffices',
             'application',
             'media',
+            'externalLinks',
         ]);
 
         $english = $this->resolveApprovedEnglish($profile);
@@ -54,6 +58,9 @@ class PublicProfilePresentationService
             abort(404);
         }
 
+        $photos = $this->publicProfilePhotos($profile);
+        $photo = $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary) ?? $photos->first();
+
         return [
             'profile' => $profile,
             'canonicalUrl' => $canonicalUrl,
@@ -64,7 +71,9 @@ class PublicProfilePresentationService
             'publicOffices' => $profile->publicOffices,
             'english' => $english,
             'malayalam' => $malayalam,
-            'photo' => $this->publicProfilePhoto($profile),
+            'photo' => $photo,
+            'photos' => $photos,
+            'videoLinks' => $this->publicVideoLinks($profile),
             'language' => $language === 'ml' && $malayalam ? 'ml' : 'en',
             'activeEditorial' => $active,
         ];
@@ -114,10 +123,34 @@ class PublicProfilePresentationService
 
     public function publicProfilePhoto(Profile $profile): ?MediaItem
     {
+        return $this->publicProfilePhotos($profile)->first(
+            fn (MediaItem $item): bool => (bool) $item->is_primary
+        ) ?? $this->publicProfilePhotos($profile)->first();
+    }
+
+    /**
+     * @return Collection<int, MediaItem>
+     */
+    public function publicProfilePhotos(Profile $profile): Collection
+    {
         return $profile->media
-            ->first(fn (MediaItem $item): bool => $item->media_type === 'profile_photo'
-                && $item->privacy === 'public'
-                && filled($item->storage_path_key));
+            ->filter(fn (MediaItem $item): bool => $item->isApprovedForPublicDisplay())
+            ->sortBy([
+                fn (MediaItem $item) => $item->is_primary ? 0 : 1,
+                fn (MediaItem $item) => $item->display_order,
+                fn (MediaItem $item) => $item->id,
+            ])
+            ->values();
+    }
+
+    /**
+     * @return Collection<int, ProfileExternalLink>
+     */
+    public function publicVideoLinks(Profile $profile): Collection
+    {
+        return $profile->externalLinks
+            ->filter(fn ($link): bool => $link->isActiveVideo())
+            ->values();
     }
 
     public function resolveApprovedEnglish(Profile $profile): ?EditorialContent

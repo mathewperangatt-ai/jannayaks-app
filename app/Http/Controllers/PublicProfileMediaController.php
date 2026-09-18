@@ -26,7 +26,9 @@ class PublicProfileMediaController extends Controller
             abort(404);
         }
 
-        if ($media->media_type !== 'profile_photo' || $media->privacy !== 'public') {
+        if ($media->media_type !== MediaItem::TYPE_PROFILE_PHOTO
+            || $media->privacy !== MediaItem::PRIVACY_PUBLIC
+            || $media->review_status !== MediaItem::REVIEW_APPROVED) {
             abort(404);
         }
 

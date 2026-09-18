@@ -158,6 +158,23 @@ class Application extends Model
         return $this->hasOne(Profile::class, 'id', 'profile_id');
     }
 
+    /** @return HasMany<MediaItem> */
+    public function profilePhotos(): HasMany
+    {
+        return $this->hasMany(MediaItem::class, 'mediable_id', 'profile_id')
+            ->where('mediable_type', (new Profile)->getMorphClass())
+            ->where('media_type', MediaItem::TYPE_PROFILE_PHOTO)
+            ->orderByDesc('is_primary')
+            ->orderBy('display_order');
+    }
+
+    /** @return HasMany<ProfileExternalLink> */
+    public function profileExternalLinks(): HasMany
+    {
+        return $this->hasMany(ProfileExternalLink::class, 'profile_id', 'profile_id')
+            ->orderByDesc('id');
+    }
+
     public function payments(): MorphMany
     {
         return $this->morphMany(Payment::class, 'payable');

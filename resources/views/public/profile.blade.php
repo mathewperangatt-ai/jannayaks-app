@@ -21,6 +21,11 @@
     .facts{margin:0 0 28px;padding:0;list-style:none}
     .facts li{padding:10px 0;border-bottom:1px solid var(--line);font-size:15px}
     .facts strong{display:inline-block;min-width:7.5rem;color:var(--ink-soft);font-weight:600}
+    .photo-row{display:flex;flex-wrap:wrap;gap:12px;margin:8px 0 28px}
+    .photo-row img{width:112px;height:140px;object-fit:cover;border-radius:12px;border:1px solid var(--line);background:#f3efe8}
+    .video-list{margin:0 0 28px;padding:0;list-style:none}
+    .video-list li{padding:12px 0;border-bottom:1px solid var(--line)}
+    .video-list a{font-weight:600}
     .back{margin-top:40px;font-size:14px}
 </style>
 @endpush
@@ -56,6 +61,17 @@
         </div>
     </div>
 
+    @if(isset($photos) && $photos->count() > 1)
+        <h2 class="eyebrow" style="margin-bottom:8px">Photographs</h2>
+        <div class="photo-row" role="list">
+            @foreach($photos as $galleryPhoto)
+                <a href="{{ route('profiles.public.photo', [$profile, $galleryPhoto]) }}" role="listitem">
+                    <img src="{{ route('profiles.public.photo', [$profile, $galleryPhoto]) }}" alt="{{ $galleryPhoto->alt_text ?: ($displayName.' photograph') }}" width="112" height="140" @if($galleryPhoto->is_primary) aria-current="true" @endif>
+                </a>
+            @endforeach
+        </div>
+    @endif
+
     @if($publicOffices->isNotEmpty())
         <h2 class="eyebrow" style="margin-bottom:8px">Public life</h2>
         <ul class="facts">
@@ -68,6 +84,18 @@
                     @if(filled($office->term_summary))
                         <span style="display:block;margin-top:4px;color:var(--ink-soft)">{{ $office->term_summary }}</span>
                     @endif
+                </li>
+            @endforeach
+        </ul>
+    @endif
+
+    @if(isset($videoLinks) && $videoLinks->isNotEmpty())
+        <h2 class="eyebrow" style="margin-bottom:8px">Video</h2>
+        <ul class="video-list">
+            @foreach($videoLinks as $video)
+                <li>
+                    <a href="{{ $video->url }}" rel="noopener noreferrer" target="_blank">{{ $video->label ?: 'Watch external video' }}</a>
+                    <span style="display:block;margin-top:4px;color:var(--ink-soft);font-size:13px">External link — opens in a new tab</span>
                 </li>
             @endforeach
         </ul>
