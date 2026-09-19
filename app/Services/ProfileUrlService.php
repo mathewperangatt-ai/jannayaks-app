@@ -144,12 +144,25 @@ class ProfileUrlService
      */
     public function selectPersonalSlug(Profile $profile, User $actor, string $rawSlug, string $packageTier): Profile
     {
-        if ((int) $profile->user_id !== (int) $actor->id) {
+        $isStaff = $actor->canManageEditorial();
+
+        if ((int) $profile->user_id !== (int) $actor->id && ! $isStaff) {
             throw new InvalidArgumentException('You may only change the URL for your own profile.');
         }
 
         if (! $this->packageTierAllowsPersonalSlug($packageTier)) {
             throw new InvalidArgumentException('Your membership tier uses a system-assigned profile URL and cannot choose a personal URL.');
+        }
+
+        if (! $isStaff) {
+            $profile->loadMissing('application');
+            $application = $profile->application;
+            if ($application instanceof Application && $application->memberDirectEditsLocked()) {
+                throw new InvalidArgumentException('Your profile URL is locked after approval. Contact Jannayaks if a correction is required.');
+            }
+            if ($profile->status === 'published' || $profile->published_at !== null) {
+                throw new InvalidArgumentException('Published profile URLs cannot be changed directly. Contact Jannayaks if a correction is required.');
+            }
         }
 
         $validation = $this->validatePersonalSlugCandidate($rawSlug, (int) $profile->id);

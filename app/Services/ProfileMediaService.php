@@ -69,6 +69,7 @@ class ProfileMediaService
         bool $makePrimary = false,
     ): MediaItem {
         $this->assertOwnedByMemberOrStaff($profile, $actor);
+        $this->assertMemberMayMutateProfileContent($profile, $actor);
 
         $tier = $this->authoritativeTier($profile);
         if ($tier === null) {
@@ -179,6 +180,7 @@ class ProfileMediaService
     public function setPrimary(Profile $profile, MediaItem $media, User $actor): MediaItem
     {
         $this->assertOwnedByMemberOrStaff($profile, $actor);
+        $this->assertMemberMayMutateProfileContent($profile, $actor);
         $this->assertMediaBelongsToProfile($profile, $media);
 
         if ($media->media_type !== MediaItem::TYPE_PROFILE_PHOTO) {
@@ -390,6 +392,7 @@ class ProfileMediaService
     public function deletePhoto(Profile $profile, MediaItem $media, User $actor): void
     {
         $this->assertOwnedByMemberOrStaff($profile, $actor);
+        $this->assertMemberMayMutateProfileContent($profile, $actor);
         $this->assertMediaBelongsToProfile($profile, $media);
 
         if ($media->media_type !== MediaItem::TYPE_PROFILE_PHOTO) {
@@ -567,5 +570,31 @@ class ProfileMediaService
         throw ValidationException::withMessages([
             'media' => 'You are not allowed to manage this profile media.',
         ]);
+    }
+
+    /**
+     * After final customer approval / publication, members may not directly alter photos.
+     * Editorial staff retain authorized correction paths.
+     */
+    private function assertMemberMayMutateProfileContent(Profile $profile, User $actor): void
+    {
+        if ($actor->canManageEditorial()) {
+            return;
+        }
+
+        $profile->loadMissing('application');
+        $application = $profile->application;
+
+        if ($application instanceof Application && $application->memberDirectEditsLocked()) {
+            throw ValidationException::withMessages([
+                'photo' => 'This profile has been approved. Photograph changes must be handled by Jannayaks editorial staff.',
+            ]);
+        }
+
+        if ($profile->status === 'published' || $profile->published_at !== null) {
+            throw ValidationException::withMessages([
+                'photo' => 'Published profile photographs cannot be changed directly. Contact Jannayaks for an editorial correction.',
+            ]);
+        }
     }
 }

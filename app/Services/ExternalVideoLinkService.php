@@ -41,6 +41,17 @@ class ExternalVideoLinkService
     {
         $this->assertMemberOwner($profile, $actor);
 
+        $profile->loadMissing('application');
+        $application = $profile->application;
+        if ($application instanceof Application
+            && $application->memberDirectEditsLocked()
+            && ! $profile->isPubliclyListed()) {
+            // After approval but before publication: no direct member video mutations.
+            throw ValidationException::withMessages([
+                'url' => 'This profile has been approved. Video link changes must be handled by Jannayaks editorial staff.',
+            ]);
+        }
+
         if (! $this->tierAllowsVideo($profile)) {
             throw ValidationException::withMessages([
                 'url' => 'External video links are not included with this package.',

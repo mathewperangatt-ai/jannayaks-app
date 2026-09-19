@@ -47,9 +47,11 @@ return [
             'support_email' => env('JANNAYAKS_BILLING_SUPPORT_EMAIL', ''),
         ],
         'in_memoriam' => [
-            'label' => 'In Memoriam (5 years hosting)',
+            'label' => 'In Memoriam (3 years hosting)',
+            // Sticker amount shown to customers; treated as GST-inclusive like living packages.
             'base_amount' => 25000,
-            'hosting_years' => 5,
+            'gst_inclusive' => true,
+            'hosting_years' => 3,
             'photo_slots' => (int) env('JANNAYAKS_IN_MEMORIAM_PHOTO_SLOTS', 20),
             'contact_email' => env(
                 'JANNAYAKS_IN_MEMORIAM_CONTACT_EMAIL',

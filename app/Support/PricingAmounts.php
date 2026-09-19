@@ -200,11 +200,50 @@ class PricingAmounts
 
     public static function forInMemoriam5yr(): array
     {
-        return self::forPlusGstItem(
-            (array) config('jannayaks.tier_pricing.in_memoriam', []),
-            (float) config('jannayaks.tier_pricing.gst_percent', 18),
-            'In Memoriam (5 years hosting)',
-        );
+        $cfg = (array) config('jannayaks.tier_pricing.in_memoriam', []);
+        $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
+        $label = (string) ($cfg['label'] ?? 'In Memoriam (3 years hosting)');
+
+        // Product sticker is GST-inclusive when configured (customer-facing ₹25,000).
+        if ((bool) ($cfg['gst_inclusive'] ?? false)) {
+            $inclusiveRupees = (int) ($cfg['base_amount'] ?? 0);
+            if ($inclusiveRupees <= 0) {
+                throw new InvalidArgumentException('Invalid In Memoriam amount.');
+            }
+
+            $inclusivePaise = self::rupeesToPaise($inclusiveRupees);
+            $split = self::splitInclusiveTotal($inclusivePaise, $gstRate);
+            $cgst = null;
+            $sgst = null;
+            if ($split['gst_paise'] > 0) {
+                $cgst = intdiv($split['gst_paise'], 2);
+                $sgst = $split['gst_paise'] - $cgst;
+            }
+
+            return [
+                'currency' => self::CURRENCY,
+                'tier_key' => 'in_memoriam',
+                'label' => $label,
+                'description' => $label,
+                'gst_inclusive' => true,
+                'gst_rate_percent' => $gstRate,
+                'amount_incl_paise' => $inclusivePaise,
+                'amount_incl_rupees' => $inclusiveRupees,
+                'base_paise' => $split['base_paise'],
+                'gst_paise' => $split['gst_paise'],
+                'cgst_paise' => $cgst,
+                'sgst_paise' => $sgst,
+                'igst_paise' => null,
+                'amount_incl_formatted' => self::formatMoneyInr($inclusivePaise),
+                'base_formatted' => self::formatMoneyInr($split['base_paise']),
+                'gst_formatted' => self::formatMoneyInr($split['gst_paise']),
+                'cgst_formatted' => $cgst !== null ? self::formatMoneyInr($cgst) : null,
+                'sgst_formatted' => $sgst !== null ? self::formatMoneyInr($sgst) : null,
+                'igst_formatted' => null,
+            ];
+        }
+
+        return self::forPlusGstItem($cfg, $gstRate, $label, 'in_memoriam');
     }
 
     /**

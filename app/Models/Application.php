@@ -248,4 +248,21 @@ class Application extends Model
     {
         return $this->status === self::STATUS_PUBLISHED;
     }
+
+    /**
+     * After final member approval (or publication), the member must not directly
+     * alter approved/public profile content. Staff corrections remain separate.
+     */
+    public function memberDirectEditsLocked(): bool
+    {
+        if ($this->customer_approved_at !== null) {
+            return true;
+        }
+
+        return in_array($this->status, [
+            self::STATUS_AWAITING_PUBLICATION,
+            self::STATUS_PUBLISHED,
+            self::STATUS_ARCHIVED,
+        ], true);
+    }
 }

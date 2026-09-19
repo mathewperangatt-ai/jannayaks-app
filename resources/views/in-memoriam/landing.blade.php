@@ -11,8 +11,10 @@
     .im-panel h2{font-family:var(--serif);font-size:1.25rem;margin:0 0 10px}
     .im-panel p,.im-panel li{color:var(--ink-soft);line-height:1.65}
     .im-panel ul{margin:0 0 14px;padding-left:1.2rem}
-    .im-cta{display:inline-block;margin-top:8px;padding:12px 18px;border-radius:12px;background:var(--brand);color:#fff;font-weight:700;text-decoration:none}
-    .im-cta:hover{background:var(--brand-dark);color:#fff}
+    .im-cta{display:inline-block;margin-top:8px;padding:12px 18px;border-radius:6px;background:var(--saffron,#C65102);color:#fff;font-weight:700;text-decoration:none}
+    .im-cta:hover{background:#a84400;color:#fff}
+    .im-hero h1{font-family:var(--serif);font-size:clamp(2rem,5vw,2.75rem);line-height:1.15;margin:0 0 14px;letter-spacing:-.02em;color:var(--navy,#0F1F3D)}
+    .im-panel h2{font-family:var(--serif);font-size:1.25rem;margin:0 0 10px;color:var(--navy,#0F1F3D)}
     .im-note{font-size:13px;color:var(--ink-soft);margin-top:16px}
 </style>
 @endpush
