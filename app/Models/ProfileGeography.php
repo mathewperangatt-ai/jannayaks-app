@@ -18,6 +18,34 @@ class ProfileGeography extends Model
         'postal_code',
     ];
 
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'country_code' => 'IN',
+        'state_region_name' => 'Keralam',
+    ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (ProfileGeography $geography): void {
+            $geography->state_region_name = self::normalizedStateName($geography->state_region_name);
+            if (! filled($geography->country_code)) {
+                $geography->country_code = GeoState::currentCountryCode();
+            }
+        });
+    }
+
+    public static function normalizedStateName(?string $value): string
+    {
+        $name = trim((string) $value);
+        if ($name === '' || strcasecmp($name, 'Kerala') === 0) {
+            return GeoState::currentDisplayName();
+        }
+
+        return $name;
+    }
+
     /** @return BelongsTo<Profile> */
     public function profile(): BelongsTo
     {

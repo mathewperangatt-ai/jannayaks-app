@@ -167,6 +167,7 @@ footer{background:var(--navy);padding:48px 22px 28px;}
 .f-about-ml{font-family:var(--fm);font-size:11px;color:rgba(255,255,255,.35);display:block;margin-top:4px;line-height:1.65;}
 .f-contact a{display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.45);text-decoration:none;margin-bottom:5px;transition:color .2s;min-height:40px;}
 .f-contact a:hover{color:var(--saffron);}
+.f-address{font-size:12px;color:rgba(255,255,255,.45);line-height:1.6;margin:8px 0 0;}
 .f-col-title{font-size:10px;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
 .f-links{list-style:none;display:flex;flex-direction:column;gap:8px;}
 .f-links a{font-size:12px;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;display:inline-flex;align-items:center;min-height:40px;}
@@ -353,7 +354,7 @@ function setLang(lang){
     </div>
     <div id="tab-area" style="display:none;">
       <div class="cascade-row">
-        <select class="cascade-select"><option>Kerala ▾</option></select>
+        <select class="cascade-select"><option>{{ config('jannayaks.geography.current_state_name') }} ▾</option></select>
         <select class="cascade-select"><option>Select District ▾</option><option>Thiruvananthapuram</option><option>Kollam</option><option>Pathanamthitta</option><option>Alappuzha</option><option>Kottayam</option><option>Idukki</option><option>Ernakulam</option><option>Thrissur</option><option>Palakkad</option><option>Malappuram</option><option>Kozhikode</option><option>Wayanad</option><option>Kannur</option><option>Kasaragod</option></select>
         <select class="cascade-select"><option>Local Body ▾</option></select>
       </div>
@@ -479,8 +480,10 @@ function setLang(lang){
       <div>
         <div class="f-logo"><img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks"></div>
         <div class="f-contact">
-          <a href="mailto:hello@jannayaks.in">✉ hello@jannayaks.in</a>
+          <a href="mailto:{{ config('jannayaks.contact.public_email') }}">✉ {{ config('jannayaks.contact.public_email') }}</a>
+          <a href="tel:{{ config('jannayaks.contact.public_phone_tel') }}">☎ {{ config('jannayaks.contact.public_phone') }}</a>
           <a href="{{ route('home') }}">🌐 jannayaks.in</a>
+          <p class="f-address">{{ config('jannayaks.contact.legal_address') }}</p>
         </div>
       </div>
       <div>
@@ -495,7 +498,7 @@ function setLang(lang){
       <div>
         <div class="f-col-title">Support</div>
         <ul class="f-links">
-          <li><a href="mailto:hello@jannayaks.in">Contact Us</a></li>
+          <li><a href="mailto:{{ config('jannayaks.contact.public_email') }}">Contact Us</a></li>
           <li><a href="#">Help Centre</a></li>
           <li><a href="#">Privacy Policy</a></li>
           <li><a href="#">Terms of Service</a></li>

@@ -130,14 +130,14 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
     {
         [$profile, $member] = $this->makePublishedProfile(['display_name' => 'Profile A']);
         $old = (string) $profile->slug;
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $member, 'profile-a-public', 'accomplished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), User::factory()->admin()->create(), 'profile.a', 'accomplished');
 
-        $this->get('/p/'.$old)->assertRedirect('/p/profile-a-public');
-        $this->get('/p/profile-a-public')->assertOk()->assertSee('Profile A', false);
+        $this->get('/p/'.$old)->assertRedirect('/profile.a');
+        $this->get('/profile.a')->assertOk()->assertSee('Profile A', false);
 
         [$other] = $this->makePublishedProfile(['display_name' => 'Profile B', 'slug_seed' => 'other']);
-        $this->get('/p/'.$old)->assertRedirect('/p/profile-a-public');
-        $this->assertNotSame('profile-a-public', $other->fresh()->slug);
+        $this->get('/p/'.$old)->assertRedirect('/profile.a');
+        $this->assertNotSame('profile.a', $other->fresh()->slug);
     }
 
     public function test_public_profile_shows_approved_english_and_malayalam_without_internals(): void
@@ -220,7 +220,7 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
             'display_name' => 'Mohanlal',
             'profession' => 'social worker',
             'locality' => 'Wyoming',
-            'state_region' => 'Kerala',
+            'state_region' => 'Keralam',
             'district_name' => 'Thiruvananthapuram',
             'local_body_name' => 'Neyyattinkara',
             'ward_name' => 'Kattakkada',
@@ -233,7 +233,7 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
         $this->get('/search?q=Wyoming')->assertOk()->assertSee('Mohanlal', false);
         $this->get('/search?q=Kattakkada')->assertOk()->assertSee('Mohanlal', false);
         $this->get('/search?q=Thiruvananthapuram')->assertOk()->assertSee('Mohanlal', false);
-        $this->get('/search?q=doctor%20Kerala')->assertOk()->assertDontSee('Mohanlal', false);
+        $this->get('/search?q=doctor%20Keralam')->assertOk()->assertDontSee('Mohanlal', false);
         $this->get('/search?q=social%20worker%20Kattakkada')->assertOk()->assertSee('Mohanlal', false);
         $this->get('/search?q=artist%20Trivandrum')->assertOk()->assertDontSee('relevance', false);
 
@@ -292,19 +292,19 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
             'tier' => 'accomplished',
         ]);
 
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $member, 'same-person', 'accomplished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), User::factory()->admin()->create(), 'same.person', 'accomplished');
         $profile = $profile->fresh();
 
-        $this->get(route('profiles.public', ['slug' => 'same-person', 'lang' => 'en']))
+        $this->get(route('profiles.public', ['slug' => 'same.person', 'lang' => 'en']))
             ->assertOk()
             ->assertSee('Same Person', false);
-        $this->get(route('profiles.public', ['slug' => 'same-person', 'lang' => 'ml']))
+        $this->get(route('profiles.public', ['slug' => 'same.person', 'lang' => 'ml']))
             ->assertOk()
             ->assertSee('Same Person', false)
             ->assertSee('ഒരേ വ്യക്തി', false);
 
         $payload = app(ProfileQrCodeService::class)->encodedPayload($profile);
-        $this->assertSame('https://www.jannayaks.in/p/same-person', $payload);
+        $this->assertSame('https://www.jannayaks.in/same.person', $payload);
     }
 
     public function test_profile_without_photograph_remains_presentable(): void
@@ -430,10 +430,9 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
             'display_email_consent' => false,
         ]);
 
-        ProfileGeography::query()->create([
-            'profile_id' => $unpublished->id,
+        $unpublished->geography()->update([
             'country_code' => 'IN',
-            'state_region_name' => 'Kerala',
+            'state_region_name' => 'Keralam',
             'locality_place' => $uniqueLocality,
         ]);
 
@@ -599,15 +598,17 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
                     ['ward_code' => 'W'.random_int(1000, 9999)],
                 );
             }
-            ProfileGeography::query()->create([
-                'profile_id' => $profile->id,
-                'country_code' => 'IN',
-                'state_region_name' => $opts['state_region'] ?? 'Kerala',
-                'district_id' => $district?->id,
-                'local_body_id' => $localBody?->id,
-                'ward_id' => $ward?->id,
-                'locality_place' => $opts['locality'] ?? null,
-            ]);
+            ProfileGeography::query()->updateOrCreate(
+                ['profile_id' => $profile->id],
+                [
+                    'country_code' => 'IN',
+                    'state_region_name' => $opts['state_region'] ?? GeoState::currentDisplayName(),
+                    'district_id' => $district?->id,
+                    'local_body_id' => $localBody?->id,
+                    'ward_id' => $ward?->id,
+                    'locality_place' => $opts['locality'] ?? null,
+                ]
+            );
         }
 
         if (! empty($opts['office_name'])) {
@@ -684,12 +685,13 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
 
     private function seedGeo(): void
     {
-        $state = GeoState::query()->where('name', 'Kerala')->first();
+        $state = GeoState::query()->where('code', GeoState::currentCountryCode())->first()
+            ?? GeoState::query()->where('name', GeoState::currentDisplayName())->first();
         if (! $state) {
             $state = GeoState::query()->create([
-                'code' => 'KL',
-                'name' => 'Kerala',
-                'country_name' => 'India',
+                'code' => GeoState::currentCountryCode(),
+                'name' => GeoState::currentDisplayName(),
+                'country_name' => GeoState::currentCountryName(),
             ]);
         }
 

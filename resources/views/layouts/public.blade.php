@@ -112,9 +112,9 @@
                 <a href="{{ route('search.index') }}">Search</a>
                 <a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a>
                 <a href="{{ route('in-memoriam.index') }}">In Memoriam</a>
-                <a href="mailto:hello@jannayaks.in">Contact</a>
+                <a href="mailto:{{ config('jannayaks.contact.public_email') }}">Contact</a>
             </nav>
-            <div class="copy">© {{ date('Y') }} Jannayaks™ · Aurex Network. Apolitical. Verified.</div>
+            <div class="copy">{{ config('jannayaks.contact.legal_address') }} · © {{ date('Y') }} Jannayaks™ · Aurex Network. Apolitical. Verified.</div>
         </div>
     </footer>
 </body>

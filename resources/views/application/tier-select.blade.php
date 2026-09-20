@@ -82,9 +82,9 @@
                 @error('full_name')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
             <div class="field">
-                <label for="preferred_slug">Preferred short URL slug (optional)</label>
-                <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[-_][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. vijayan-k-m">
-                <div class="hint">Letters, numbers, single hyphens/underscores. Editorial review will confirm before publication.</div>
+                <label for="preferred_slug">Preferred personal URL (optional hint)</label>
+                <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
+                <div class="hint">Optional. After your verified name is on file, Jannayaks will suggest available name-based URLs such as arun.kumar. You do not invent a username.</div>
                 @error('preferred_slug')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
             <div class="field">

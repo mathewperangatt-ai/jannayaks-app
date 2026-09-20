@@ -69,7 +69,10 @@
 
     @php
         $linkedProfile = $application->profile;
-        $showProfileUrl = $linkedProfile && filled($linkedProfile->slug);
+        $canChoosePersonal = in_array(strtolower((string) $application->package_tier), ['accomplished', 'distinguished'], true);
+        $showProfileUrl = $canChoosePersonal
+            || ($linkedProfile && filled($linkedProfile->slug))
+            || $application->status === \App\Models\Application::STATUS_PUBLISHED;
     @endphp
     @if($showProfileUrl || $application->status === \App\Models\Application::STATUS_PUBLISHED)
         <h2 style="margin-top:10px;font-size:16px">Profile URL &amp; QR</h2>

@@ -25,7 +25,14 @@ class ProfileUrlController extends Controller
     public function show(Request $request, Application $application): View|RedirectResponse
     {
         $member = $this->authenticatedOwner($application);
+        $tier = strtolower((string) $application->package_tier);
+        $canSelectPersonal = $this->profileUrls->packageTierAllowsPersonalSlug($tier);
+
         $profile = $application->profile;
+        if (! $profile && $canSelectPersonal) {
+            $profile = $this->profileUrls->ensureDraftProfileForApplication($application);
+            $application->refresh();
+        }
 
         if (! $profile) {
             return redirect()
@@ -33,11 +40,14 @@ class ProfileUrlController extends Controller
                 ->withErrors(['profile_url' => 'Your profile is not ready yet.']);
         }
 
-        $tier = strtolower((string) $application->package_tier);
-        $canSelectPersonal = $this->profileUrls->packageTierAllowsPersonalSlug($tier);
         $isPublished = $this->profileUrls->isPubliclyVisible($profile);
         $canonicalUrl = $this->profileUrls->canonicalPublicUrl($profile);
         $history = $profile->slugRedirects()->orderByDesc('id')->limit(20)->get();
+        $personalSlugLocked = $this->profileUrls->hasPermanentPersonalSlug($profile);
+        $verifiedName = (string) ($profile->full_name ?: $application->full_name);
+        $suggestions = $canSelectPersonal
+            ? $this->profileUrls->suggestPersonalSlugs($verifiedName, (int) $profile->id)
+            : [];
 
         return view('application.profile-url', [
             'application' => $application,
@@ -49,13 +59,22 @@ class ProfileUrlController extends Controller
             'canonicalUrl' => $canonicalUrl,
             'history' => $history,
             'preferredSlug' => $application->preferred_slug,
+            'personalSlugLocked' => $personalSlugLocked,
+            'verifiedName' => $verifiedName,
+            'suggestions' => $suggestions,
         ]);
     }
 
     public function update(SelectPersonalProfileUrlRequest $request, Application $application): RedirectResponse
     {
         $member = $this->authenticatedOwner($application);
+        $tier = strtolower((string) $application->package_tier);
         $profile = $application->profile;
+
+        if (! $profile && $this->profileUrls->packageTierAllowsPersonalSlug($tier)) {
+            $profile = $this->profileUrls->ensureDraftProfileForApplication($application);
+            $application->refresh();
+        }
 
         if (! $profile) {
             return redirect()
@@ -63,7 +82,6 @@ class ProfileUrlController extends Controller
                 ->withErrors(['profile_url' => 'Your profile is not ready yet.']);
         }
 
-        // Never trust a client-supplied profile_id / application_id for ownership.
         if ((int) $profile->user_id !== (int) $member->id) {
             abort(403);
         }
@@ -81,7 +99,7 @@ class ProfileUrlController extends Controller
 
         return redirect()
             ->route('applications.profile-url', $application)
-            ->with('status', 'Your personal profile URL has been updated.');
+            ->with('status', 'Your personal profile URL has been reserved. It becomes public after approval.');
     }
 
     public function qr(Request $request, Application $application): Response|RedirectResponse
@@ -114,9 +132,12 @@ class ProfileUrlController extends Controller
 
         $raw = (string) $request->query('slug', '');
         $profile = $application->profile;
+        $fullName = (string) ($profile?->full_name ?: $application->full_name);
         $result = $this->profileUrls->validatePersonalSlugCandidate(
             $raw,
             $profile?->id,
+            $fullName,
+            $profile?->profession,
         );
 
         return response()->json([

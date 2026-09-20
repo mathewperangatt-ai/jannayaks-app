@@ -334,6 +334,8 @@ class EditorialGenerationService
             $application->forceFill(['profile_id' => $profile->id])->save();
         }
 
+        $profile->ensureMandatoryGeography();
+
         return $profile;
     }
 

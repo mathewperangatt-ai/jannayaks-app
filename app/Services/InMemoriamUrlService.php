@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\InMemoriamProfile;
 use App\Models\Profile;
 use App\Models\SlugRedirect;
+use App\Models\SlugReservation;
 use App\Models\User;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
@@ -46,9 +47,7 @@ class InMemoriamUrlService
 
     public function isReserved(string $slug): bool
     {
-        $reserved = array_map('strtolower', (array) config('jannayaks.slug.reserved', []));
-
-        return in_array(strtolower(trim($slug)), $reserved, true);
+        return app(ProfileUrlService::class)->isReserved($slug);
     }
 
     public function isSlugTaken(string $slug, ?int $ignoreMemorialId = null, ?int $ignoreProfileId = null): bool
@@ -71,7 +70,13 @@ class InMemoriamUrlService
             return true;
         }
 
-        return SlugRedirect::query()->whereRaw('LOWER(old_slug) = ?', [$normalized])->exists();
+        if (SlugRedirect::query()->whereRaw('LOWER(old_slug) = ?', [$normalized])->exists()) {
+            return true;
+        }
+
+        return SlugReservation::query()
+            ->whereRaw('LOWER(slug) = ?', [$normalized])
+            ->exists();
     }
 
     /**
@@ -131,7 +136,24 @@ class InMemoriamUrlService
                         'old_slug' => (string) $previous,
                         'new_slug' => $newSlug,
                     ]);
+                    SlugReservation::query()->insertOrIgnore([
+                        'slug' => (string) $previous,
+                        'profile_id' => null,
+                        'application_id' => null,
+                        'source' => SlugReservation::SOURCE_IN_MEMORIAM,
+                        'created_at' => $now,
+                        'updated_at' => $now,
+                    ]);
                 }
+
+                SlugReservation::query()->insertOrIgnore([
+                    'slug' => $newSlug,
+                    'profile_id' => null,
+                    'application_id' => null,
+                    'source' => SlugReservation::SOURCE_IN_MEMORIAM,
+                    'created_at' => $now,
+                    'updated_at' => $now,
+                ]);
 
                 $this->audit->log(
                     action: 'in_memoriam.slug_assigned',

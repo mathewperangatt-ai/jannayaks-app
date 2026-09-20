@@ -85,10 +85,10 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         [$member, $application, $profile] = $this->prepareUnpublishedLiving('accomplished');
 
         $this->actingAs($member)->post(route('applications.profile-url.update', $application), [
-            'slug' => 'alice-leader',
+            'slug' => 'arun.kumar',
         ])->assertRedirect(route('applications.profile-url', $application));
 
-        $this->assertSame('alice-leader', $profile->fresh()->slug);
+        $this->assertSame('arun.kumar', $profile->fresh()->slug);
     }
 
     public function test_distinguished_can_select_available_personal_url(): void
@@ -98,25 +98,25 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         app(ProfileUrlService::class)->selectPersonalSlug(
             $profile->fresh(),
             $member,
-            'distinguished-leader',
+            'arun.kumar.nair',
             'distinguished',
         );
 
-        $this->assertSame('distinguished-leader', $profile->fresh()->slug);
+        $this->assertSame('arun.kumar.nair', $profile->fresh()->slug);
         $this->actingAs($member)->get(route('applications.profile-url', $application))
             ->assertOk()
-            ->assertSee('distinguished-leader', false);
+            ->assertSee('arun.kumar.nair', false);
     }
 
     public function test_duplicate_personal_urls_are_rejected(): void
     {
         [$memberA, , $profileA] = $this->prepareUnpublishedLiving('accomplished');
-        app(ProfileUrlService::class)->selectPersonalSlug($profileA->fresh(), $memberA, 'shared-handle', 'accomplished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profileA->fresh(), $memberA, 'arun.kumar', 'accomplished');
 
         [$memberB, , $profileB] = $this->prepareUnpublishedLiving('distinguished');
 
         $this->expectException(\InvalidArgumentException::class);
-        app(ProfileUrlService::class)->selectPersonalSlug($profileB->fresh(), $memberB, 'shared-handle', 'distinguished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profileB->fresh(), $memberB, 'arun.kumar', 'distinguished');
     }
 
     public function test_member_cannot_change_personal_url_after_publication(): void
@@ -193,10 +193,10 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $admin = User::factory()->admin()->create();
         $old = (string) $profile->fresh()->slug;
 
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'first-canonical', 'accomplished');
-        $this->assertSame('first-canonical', $profile->fresh()->slug);
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'arun.kumar', 'accomplished');
+        $this->assertSame('arun.kumar', $profile->fresh()->slug);
 
-        $this->get('/p/'.$old)->assertRedirect('/p/first-canonical');
+        $this->get('/p/'.$old)->assertRedirect('/arun.kumar');
 
         [, , $other] = $this->publishLiving('distinguished');
 
@@ -208,12 +208,12 @@ class Phase12ProfileUrlAndQrTest extends TestCase
     {
         [, , $profile] = $this->publishLiving('accomplished');
         $admin = User::factory()->admin()->create();
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'old-handle', 'accomplished');
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'new-handle', 'accomplished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'arun.kumar', 'accomplished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'arun.kumar.nair', 'accomplished');
 
-        $this->assertSame('new-handle', $profile->fresh()->slug);
-        $this->get('/p/old-handle')->assertRedirect('/p/new-handle');
-        $this->get('/p/new-handle')->assertOk()->assertSee('new-handle', false);
+        $this->assertSame('arun.kumar.nair', $profile->fresh()->slug);
+        $this->get('/p/arun.kumar')->assertRedirect('/arun.kumar.nair');
+        $this->get('/arun.kumar.nair')->assertOk()->assertSee('arun.kumar.nair', false);
     }
 
     public function test_historical_url_redirects_do_not_auto_expire(): void
@@ -222,7 +222,7 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $admin = User::factory()->admin()->create();
         $old = (string) $profile->fresh()->slug;
 
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'durable-handle', 'accomplished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'arun.kumar', 'accomplished');
 
         $redirect = SlugRedirect::query()->where('old_slug', $old)->firstOrFail();
         $this->assertNull($redirect->expires_at);
@@ -230,7 +230,7 @@ class Phase12ProfileUrlAndQrTest extends TestCase
 
         $this->travel(400)->days();
 
-        $this->get('/p/'.$old)->assertRedirect('/p/durable-handle');
+        $this->get('/p/'.$old)->assertRedirect('/arun.kumar');
         $this->assertTrue(
             SlugRedirect::query()
                 ->where('old_slug', $old)
@@ -250,9 +250,9 @@ class Phase12ProfileUrlAndQrTest extends TestCase
 
         $this->assertSame($six, $profile->fresh()->slug);
 
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'upgraded-leader', 'accomplished');
-        $this->assertSame('upgraded-leader', $profile->fresh()->slug);
-        $this->get('/p/'.$six)->assertRedirect('/p/upgraded-leader');
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'arun.kumar', 'accomplished');
+        $this->assertSame('arun.kumar', $profile->fresh()->slug);
+        $this->get('/p/'.$six)->assertRedirect('/arun.kumar');
     }
 
     public function test_qr_contains_current_canonical_public_url_and_updates_on_change(): void
@@ -262,14 +262,14 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $qr = app(ProfileQrCodeService::class);
 
         $firstPayload = $qr->encodedPayload($profile->fresh());
-        $this->assertSame('https://www.jannayaks.in/p/'.$profile->fresh()->slug, $firstPayload);
+        $this->assertSame('https://www.jannayaks.in/'.$profile->fresh()->slug, $firstPayload);
         $this->assertStringNotContainsString('/applications/', $firstPayload);
         $this->assertStringNotContainsString('/preview', $firstPayload);
         $this->assertStringNotContainsString('/admin', $firstPayload);
 
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'qr-leader', 'accomplished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'arun.kumar', 'accomplished');
         $second = $qr->encodedPayload($profile->fresh());
-        $this->assertSame('https://www.jannayaks.in/p/qr-leader', $second);
+        $this->assertSame('https://www.jannayaks.in/arun.kumar', $second);
 
         $this->actingAs($member)
             ->get(route('applications.profile-qr', $application))
@@ -327,12 +327,12 @@ class Phase12ProfileUrlAndQrTest extends TestCase
     {
         [$member, $application, $profile] = $this->publishLiving('accomplished');
         $admin = User::factory()->admin()->create();
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'inspect-me', 'accomplished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'arun.kumar', 'accomplished');
 
         $this->actingAs($admin);
 
         $html = $this->get('/admin/applications/'.$application->id)->assertOk()->getContent();
-        $this->assertStringContainsString('inspect-me', $html);
+        $this->assertStringContainsString('arun.kumar', $html);
         $this->assertStringContainsString('Profile URL (read-only)', $html);
         $this->assertStringNotContainsString('Reassign URL', $html);
         $this->assertStringNotContainsString('applications.profile-url.update', $html);
@@ -342,12 +342,12 @@ class Phase12ProfileUrlAndQrTest extends TestCase
     {
         [, , $profile] = $this->publishLiving('accomplished');
         $admin = User::factory()->admin()->create();
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'Mathew-Perangatt', 'accomplished');
-        $this->assertSame('mathew-perangatt', $profile->fresh()->slug);
+        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'Arun-Kumar', 'accomplished');
+        $this->assertSame('arun-kumar', $profile->fresh()->slug);
 
         [, , $other] = $this->publishLiving('distinguished');
         $result = app(ProfileUrlService::class)->validatePersonalSlugCandidate(
-            'MATHEW-PERANGATT',
+            'ARUN-KUMAR',
             (int) $other->id,
         );
         $this->assertFalse($result['ok']);
@@ -358,16 +358,16 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         [, , $profileA] = $this->publishLiving('accomplished');
         $admin = User::factory()->admin()->create();
         $oldA = (string) $profileA->fresh()->slug;
-        app(ProfileUrlService::class)->selectPersonalSlug($profileA->fresh(), $admin, 'profile-a', 'accomplished');
+        app(ProfileUrlService::class)->selectPersonalSlug($profileA->fresh(), $admin, 'arun.kumar', 'accomplished');
 
         [, , $profileB] = $this->publishLiving('accomplished');
-        $this->assertNotSame('profile-a', $profileB->fresh()->slug);
+        $this->assertNotSame('arun.kumar', $profileB->fresh()->slug);
 
         $redirect = SlugRedirect::query()->where('old_slug', $oldA)->firstOrFail();
         $this->assertSame((int) $profileA->id, (int) $redirect->redirectable_id);
 
-        $this->get('/p/'.$oldA)->assertRedirect('/p/profile-a');
-        $this->get('/p/'.$profileB->fresh()->slug)->assertOk()->assertDontSee('profile-a', false);
+        $this->get('/p/'.$oldA)->assertRedirect('/arun.kumar');
+        $this->get('/'.$profileB->fresh()->slug)->assertOk()->assertDontSee('arun.kumar', false);
     }
 
     /**
@@ -382,10 +382,9 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $profile = Profile::query()->create([
             'user_id' => $member->id,
             'status' => 'under_editorial_review',
-            'full_name' => 'Leader '.$tier.' '.uniqid(),
-            'display_name' => 'Leader',
+            'full_name' => 'Arun Kumar Nair',
+            'display_name' => 'Arun Kumar Nair',
             'profession' => '',
-            'slug' => 'tmp-'.strtolower(substr(uniqid(), -8)),
             'display_phone_consent' => false,
             'display_email_consent' => false,
         ]);
@@ -417,8 +416,8 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $profile = Profile::query()->create([
             'user_id' => $member->id,
             'status' => 'under_editorial_review',
-            'full_name' => 'Leader '.$tier.' '.uniqid(),
-            'display_name' => 'Leader',
+            'full_name' => 'Arun Kumar Nair',
+            'display_name' => 'Arun Kumar Nair',
             'profession' => '',
             'display_phone_consent' => false,
             'display_email_consent' => false,

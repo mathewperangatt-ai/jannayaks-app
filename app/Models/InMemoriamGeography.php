@@ -18,6 +18,24 @@ class InMemoriamGeography extends Model
         'postal_code',
     ];
 
+    /**
+     * @var array<string, mixed>
+     */
+    protected $attributes = [
+        'country_code' => 'IN',
+        'state_region_name' => 'Keralam',
+    ];
+
+    protected static function booted(): void
+    {
+        static::saving(function (InMemoriamGeography $geography): void {
+            $geography->state_region_name = ProfileGeography::normalizedStateName($geography->state_region_name);
+            if (! filled($geography->country_code)) {
+                $geography->country_code = GeoState::currentCountryCode();
+            }
+        });
+    }
+
     /** @return BelongsTo<InMemoriamProfile> */
     public function inMemoriamProfile(): BelongsTo
     {

@@ -64,8 +64,12 @@ class ProfileQrCodeService
     private function assertPublicCanonicalPayload(string $url): void
     {
         $path = parse_url($url, PHP_URL_PATH);
-        if (! is_string($path) || ! str_starts_with($path, '/p/')) {
-            throw new InvalidArgumentException('QR payload must be a public /p/{slug} profile URL.');
+        if (! is_string($path) || preg_match('#^/[A-Za-z0-9][A-Za-z0-9.\-]*$#', $path) !== 1) {
+            throw new InvalidArgumentException('QR payload must be a public /{slug} profile URL.');
+        }
+
+        if (str_starts_with($path, '/p/')) {
+            throw new InvalidArgumentException('QR payload must be a public /{slug} profile URL.');
         }
 
         $lower = strtolower($url);

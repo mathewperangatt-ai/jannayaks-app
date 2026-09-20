@@ -10,6 +10,13 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Profile extends Model
 {
+    protected static function booted(): void
+    {
+        static::created(function (Profile $profile): void {
+            $profile->ensureMandatoryGeography();
+        });
+    }
+
     protected $fillable = [
         'user_id',
         'representative_user_id',
@@ -72,6 +79,24 @@ class Profile extends Model
     public function geography(): HasOne
     {
         return $this->hasOne(ProfileGeography::class, 'profile_id');
+    }
+
+    public function ensureMandatoryGeography(): ProfileGeography
+    {
+        $geography = $this->geography()->firstOrCreate(
+            [],
+            [
+                'country_code' => GeoState::currentCountryCode(),
+                'state_region_name' => GeoState::currentDisplayName(),
+            ]
+        );
+
+        $normalized = ProfileGeography::normalizedStateName($geography->state_region_name);
+        if ($geography->state_region_name !== $normalized) {
+            $geography->forceFill(['state_region_name' => $normalized])->save();
+        }
+
+        return $geography->fresh() ?? $geography;
     }
 
     /** @return HasMany<ProfilePublicOffice> */

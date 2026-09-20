@@ -41,9 +41,9 @@ Route::get('/in-memoriam/{slug}/photo/{media}', [PublicInMemoriamMediaController
     ->whereNumber('media')
     ->name('in-memoriam.photo');
 
-Route::get('/p/{slug}', [PublicProfileUrlController::class, 'show'])
-    ->where('slug', '[A-Za-z0-9][A-Za-z0-9\-]*')
-    ->name('profiles.public');
+Route::get('/p/{slug}', [PublicProfileUrlController::class, 'legacyShow'])
+    ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
+    ->name('profiles.public.legacy');
 
 Route::get('/p/{profile}/photo/{media}', [PublicProfileMediaController::class, 'show'])
     ->whereNumber('profile')
@@ -142,3 +142,7 @@ Route::get('/payments/razorpay/callback', [RazorpayCallbackController::class, 's
 Route::middleware(['throttle:30,1'])->group(function () {
     Route::post('/payments/razorpay/webhook', [RazorpayWebhookController::class, 'handle'])->name('payments.razorpay.webhook');
 });
+
+Route::get('/{slug}', [PublicProfileUrlController::class, 'show'])
+    ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
+    ->name('profiles.public');

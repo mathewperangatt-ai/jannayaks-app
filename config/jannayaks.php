@@ -107,7 +107,7 @@ return [
 
     'slug' => [
         // Reserved against collision with application/system routes (inspect routes/web.php + Filament).
-        // Keep this list focused — profile URLs live under /p/{slug}, but reserved words stay blocked.
+        // Admin-manageable extras live in reserved_slugs; this list is the system baseline.
         'reserved' => [
             'admin',
             'api',
@@ -119,6 +119,7 @@ return [
             'consent',
             'contact',
             'dashboard',
+            'faq-charges',
             'filament',
             'gallery',
             'home',
@@ -141,15 +142,29 @@ return [
             'staff',
             'storage',
             'terms',
+            'up',
             'user',
             'users',
             'applications',
             'application',
         ],
-        // 0 = never auto-expire. Historical /p/{slug} redirects remain indefinite.
+        // 0 = never auto-expire. Historical /{slug} redirects remain indefinite.
         // A non-null expires_at may still be set manually for legal/security disablement.
         'redirect_expiry_days' => 0,
         'default_patterns' => ['simple', 'name_place', 'name_family', 'custom_handle'],
+    ],
+
+    'contact' => [
+        'public_email' => env('JANNAYAKS_PUBLIC_EMAIL', 'hello@jannayaks.in'),
+        'public_phone' => env('JANNAYAKS_PUBLIC_PHONE', '94 95 94 93 99'),
+        'public_phone_tel' => env('JANNAYAKS_PUBLIC_PHONE_TEL', '+919495949399'),
+        'legal_address' => env('JANNAYAKS_LEGAL_ADDRESS', '3/532, Trivandrum 695573'),
+    ],
+
+    'geography' => [
+        'current_state_name' => 'Keralam',
+        'current_country_code' => 'IN',
+        'current_country_name' => 'India',
     ],
 
     'ai' => [

@@ -57,6 +57,8 @@ class SelectPersonalProfileUrlRequest extends FormRequest
             $result = $urls->validatePersonalSlugCandidate(
                 (string) $this->input('slug'),
                 $application->profile_id ? (int) $application->profile_id : null,
+                (string) ($application->profile?->full_name ?: $application->full_name),
+                $application->profile?->profession,
             );
 
             if (! $result['ok']) {

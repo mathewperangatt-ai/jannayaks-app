@@ -11,11 +11,11 @@
     <form method="get" action="{{ route('search.index') }}" role="search">
         <label for="q">Search</label>
         <div class="search-row">
-            <input id="q" name="q" type="search" value="{{ $q }}" placeholder="e.g. doctor Kerala, artist Trivandrum, Wyoming" maxlength="200" autocomplete="off" autofocus>
+            <input id="q" name="q" type="search" value="{{ $q }}" placeholder="e.g. doctor {{ config('jannayaks.geography.current_state_name') }}, artist Trivandrum, Wyoming" maxlength="200" autocomplete="off" autofocus>
             <button type="submit">Search</button>
         </div>
         <div class="filters" aria-label="Optional filters">
-            <label class="visually-hidden" for="district_id">Kerala district</label>
+            <label class="visually-hidden" for="district_id">{{ config('jannayaks.geography.current_state_name') }} district</label>
             <select id="district_id" name="district_id">
                 <option value="">All districts</option>
                 @foreach($districts as $district)

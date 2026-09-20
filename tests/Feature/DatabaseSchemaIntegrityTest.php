@@ -144,10 +144,11 @@ class DatabaseSchemaIntegrityTest extends TestCase
 
     public function test_geography_reference_tables_are_empty_foundation(): void
     {
-        $this->assertSame(1, GeoState::query()->count(), 'geo_states must contain exactly 1 Kerala state row after Phase 2 seed');
-        $this->assertSame(14, GeoDistrict::query()->count(), 'geo_districts must contain 14 Kerala districts after Phase 2 seed');
-        $this->assertSame(1200, GeoLocalBody::query()->count(), 'geo_local_bodies must contain 1,200 Kerala local bodies after Phase 2 seed');
-        $this->assertSame(23611, GeoWard::query()->count(), 'geo_wards must contain 23,611 Kerala wards after Phase 2 seed');
+        $this->assertSame(1, GeoState::query()->count(), 'geo_states must contain exactly 1 Keralam state row after Phase 2 seed');
+        $this->assertSame(GeoState::currentDisplayName(), GeoState::query()->value('name'));
+        $this->assertSame(14, GeoDistrict::query()->count(), 'geo_districts must contain 14 Keralam districts after Phase 2 seed');
+        $this->assertSame(1200, GeoLocalBody::query()->count(), 'geo_local_bodies must contain 1,200 Keralam local bodies after Phase 2 seed');
+        $this->assertSame(23611, GeoWard::query()->count(), 'geo_wards must contain 23,611 Keralam wards after Phase 2 seed');
 
         $typeCounts = GeoLocalBody::query()
             ->selectRaw('type, count(*) as c')
@@ -191,6 +192,26 @@ class DatabaseSchemaIntegrityTest extends TestCase
             "postal_code must be stored as text/varchar, actual type: {$type->data_type}"
         );
         $this->assertGreaterThan(0, $type->len);
+    }
+
+    public function test_profile_geographies_state_is_mandatory_and_catalog_name_is_keralam(): void
+    {
+        $column = DB::selectOne(
+            "SELECT is_nullable, column_default
+             FROM information_schema.columns
+             WHERE table_catalog = current_database()
+               AND table_schema = 'public'
+               AND table_name = 'profile_geographies'
+               AND column_name = 'state_region_name'"
+        );
+
+        $this->assertNotNull($column);
+        $this->assertSame('NO', $column->is_nullable, 'profile_geographies.state_region_name must be mandatory');
+        $this->assertNotFalse(
+            str_contains((string) $column->column_default, 'Keralam'),
+            'profile_geographies.state_region_name must default to Keralam'
+        );
+        $this->assertSame('Keralam', GeoState::query()->value('name'));
     }
 
     public function test_media_items_has_no_binary_bytea_columns(): void

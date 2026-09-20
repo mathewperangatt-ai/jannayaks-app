@@ -15,7 +15,7 @@
             <button type="submit">Search</button>
         </div>
         <div class="filters" aria-label="Optional filters">
-            <label class="visually-hidden" for="district_id">Kerala district</label>
+            <label class="visually-hidden" for="district_id">{{ config('jannayaks.geography.current_state_name') }} district</label>
             <select id="district_id" name="district_id">
                 <option value="">All districts</option>
                 @foreach($districts as $district)

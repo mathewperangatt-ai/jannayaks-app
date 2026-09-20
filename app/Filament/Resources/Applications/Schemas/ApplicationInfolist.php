@@ -64,7 +64,7 @@ class ApplicationInfolist
                                 return '—';
                             }
 
-                            return url('/p/'.$record->profile->slug);
+                            return app(ProfileUrlService::class)->canonicalPublicUrl($record->profile) ?? '—';
                         }),
                     TextEntry::make('package_tier')
                         ->label('URL tier rules')
@@ -103,7 +103,7 @@ class ApplicationInfolist
                                 return 'Unavailable';
                             }
                             if ($profile->status === 'published' && $profile->published_at && ! $profile->unpublished_at) {
-                                return 'Available (encodes current /p/{slug})';
+                                return 'Available (encodes current /{slug})';
                             }
 
                             return 'Unavailable until published';

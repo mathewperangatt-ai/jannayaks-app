@@ -18,9 +18,27 @@ class PublicProfileUrlController extends Controller
     ) {}
 
     /**
-     * Resolve /p/{slug}: redirect historical URLs; render published profiles only.
+     * Resolve /{slug}: redirect historical URLs; render published profiles only.
      */
     public function show(Request $request, string $slug): View|RedirectResponse|Response
+    {
+        return $this->resolve($request, $slug, canonical: true);
+    }
+
+    /**
+     * Legacy /p/{slug} always redirects to the canonical /{slug} when public.
+     */
+    public function legacyShow(Request $request, string $slug): RedirectResponse|Response
+    {
+        $resolved = $this->resolve($request, $slug, canonical: false);
+        if ($resolved instanceof RedirectResponse || $resolved instanceof Response) {
+            return $resolved;
+        }
+
+        abort(404);
+    }
+
+    private function resolve(Request $request, string $slug, bool $canonical): View|RedirectResponse|Response
     {
         $normalized = strtolower(trim($slug));
         if ($normalized === '' || str_contains($slug, '/') || str_contains($slug, '\\') || str_contains($slug, '..')) {
@@ -32,6 +50,10 @@ class PublicProfileUrlController extends Controller
             ->first();
 
         if ($profile) {
+            if (! $canonical) {
+                return $this->redirectToCanonical($request, $profile);
+            }
+
             return $this->renderOrHide($request, $profile);
         }
 
@@ -59,6 +81,22 @@ class PublicProfileUrlController extends Controller
 
         return redirect()->route('profiles.public', [
             'slug' => $target->slug,
+            'lang' => $request->query('lang'),
+        ], 301);
+    }
+
+    private function redirectToCanonical(Request $request, Profile $profile): RedirectResponse|Response
+    {
+        if (! $this->profileUrls->isPubliclyVisible($profile)) {
+            abort(404);
+        }
+
+        if (! filled($profile->slug)) {
+            abort(404);
+        }
+
+        return redirect()->route('profiles.public', [
+            'slug' => $profile->slug,
             'lang' => $request->query('lang'),
         ], 301);
     }

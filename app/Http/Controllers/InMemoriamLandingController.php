@@ -16,7 +16,7 @@ class InMemoriamLandingController extends Controller
             'hostingYears' => (int) config('jannayaks.tier_pricing.in_memoriam.hosting_years', 5),
             'contactEmail' => (string) config(
                 'jannayaks.tier_pricing.in_memoriam.contact_email',
-                'hello@jannayaks.in'
+                config('jannayaks.contact.public_email', 'hello@jannayaks.in')
             ),
         ]);
     }
