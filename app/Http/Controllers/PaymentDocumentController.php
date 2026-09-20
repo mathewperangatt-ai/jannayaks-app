@@ -90,10 +90,24 @@ class PaymentDocumentController extends Controller
             throw new AccessDeniedHttpException('Login required.');
         }
 
+        $userId = (int) Auth::id();
+
         $application = $payment->application;
-        if ($application === null || (int) $application->user_id !== (int) Auth::id()) {
-            throw new AccessDeniedHttpException('This payment document is not yours.');
+        if ($application !== null && (int) $application->user_id === $userId) {
+            return;
         }
+
+        $profile = $payment->profile;
+        if ($profile !== null && (int) $profile->user_id === $userId) {
+            return;
+        }
+
+        $membershipProfile = $payment->membership?->profile;
+        if ($membershipProfile !== null && (int) $membershipProfile->user_id === $userId) {
+            return;
+        }
+
+        throw new AccessDeniedHttpException('This payment document is not yours.');
     }
 
     private function ensureSettled(Payment $payment): void

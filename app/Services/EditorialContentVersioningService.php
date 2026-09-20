@@ -78,6 +78,7 @@ class EditorialContentVersioningService
     private function createSuccessorVersion(EditorialContent $original, array $data, User $actor): EditorialContent
     {
         return DB::transaction(function () use ($original, $data, $actor) {
+            Application::query()->where('profile_id', $original->profile_id)->lockForUpdate()->first();
             Profile::query()->whereKey($original->profile_id)->lockForUpdate()->firstOrFail();
 
             $nextVersion = (int) EditorialContent::query()
@@ -86,14 +87,7 @@ class EditorialContentVersioningService
                 ->max('version_number');
             $nextVersion++;
 
-            $status = (string) ($data['status'] ?? EditorialContent::STATUS_DRAFT);
-            if (! in_array($status, [
-                EditorialContent::STATUS_DRAFT,
-                EditorialContent::STATUS_APPROVED,
-                EditorialContent::STATUS_ARCHIVED,
-            ], true)) {
-                $status = EditorialContent::STATUS_DRAFT;
-            }
+            $status = EditorialContent::STATUS_DRAFT;
 
             $successor = EditorialContent::query()->create([
                 'profile_id' => $original->profile_id,
@@ -108,7 +102,7 @@ class EditorialContentVersioningService
                 'source_material' => (string) ($data['source_material'] ?? 'Human editorial revision of immutable prior version '.$original->version_number.'.'),
                 'ai_generated' => false,
                 'created_by_id' => $actor->id,
-                'reviewed_by_id' => $status === EditorialContent::STATUS_APPROVED ? $actor->id : null,
+                'reviewed_by_id' => null,
                 'review_comment' => $data['review_comment'] ?? null,
             ]);
 

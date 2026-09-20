@@ -3,6 +3,7 @@
 namespace App\Services;
 
 use App\Models\Application;
+use App\Models\EditorialContent;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
@@ -15,12 +16,15 @@ class ApplicationWorkflowService
     /**
      * After Online Interview submit: mark completed and advance workflow status.
      */
-    public function markInterviewSubmitted(Application $application): Application
+    public function markInterviewSubmitted(Application $application, ?User $actor = null): Application
     {
-        return DB::transaction(function () use ($application) {
-            $application->online_interview_completed_at = now();
+        return DB::transaction(function () use ($application, $actor) {
+            /** @var Application $locked */
+            $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+            $beforeStatus = $locked->status;
+            $locked->online_interview_completed_at = now();
 
-            $unlocked = app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application);
+            $unlocked = app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($locked);
 
             $terminalOrLater = [
                 Application::STATUS_IN_EDITORIAL_REVIEW,
@@ -34,16 +38,29 @@ class ApplicationWorkflowService
             ];
 
             if ($unlocked) {
-                if (! in_array($application->status, $terminalOrLater, true)) {
-                    $application->status = Application::STATUS_AWAITING_EDITORIAL_REVIEW;
+                if (! in_array($locked->status, $terminalOrLater, true)) {
+                    $locked->status = Application::STATUS_AWAITING_EDITORIAL_REVIEW;
                 }
             } else {
-                $application->status = Application::STATUS_INTERVIEW_SUBMITTED;
+                $locked->status = Application::STATUS_INTERVIEW_SUBMITTED;
             }
 
-            $application->save();
+            $locked->save();
 
-            return $application->fresh() ?? $application;
+            if ($beforeStatus !== $locked->status) {
+                $this->auditLogger->log(
+                    action: 'application.questionnaire_submitted',
+                    subject: $locked,
+                    before: ['status' => $beforeStatus],
+                    after: [
+                        'status' => $locked->status,
+                        'online_interview_completed_at' => $locked->online_interview_completed_at?->toIso8601String(),
+                    ],
+                    actor: $actor,
+                );
+            }
+
+            return $locked->fresh() ?? $locked;
         });
     }
 
@@ -56,8 +73,14 @@ class ApplicationWorkflowService
 
         if ($actor->canManageEditorial() && array_key_exists('status', $attributes)) {
             $newStatus = (string) $attributes['status'];
-            $this->assertEditorialStatusChangeAllowed($application, $newStatus, $actor);
-            $allowed['status'] = $newStatus;
+            if ($newStatus === Application::STATUS_PUBLISHED) {
+                if ($application->status !== Application::STATUS_PUBLISHED) {
+                    throw new InvalidArgumentException('Publication must use the authorised Publish action.');
+                }
+            } else {
+                $this->assertEditorialStatusChangeAllowed($application, $newStatus, $actor);
+                $allowed['status'] = $newStatus;
+            }
         }
 
         if ($allowed === []) {
@@ -100,8 +123,18 @@ class ApplicationWorkflowService
             /** @var Application $locked */
             $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
 
-            if ($locked->status === Application::STATUS_PUBLISHED) {
-                throw new InvalidArgumentException('This application is already published.');
+            if (! $locked->profile_id) {
+                throw new InvalidArgumentException('A linked profile is required before publication.');
+            }
+
+            /** @var Profile $profile */
+            $profile = Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->firstOrFail();
+
+            $isReplacement = $locked->status === Application::STATUS_PUBLISHED
+                || ($profile->status === 'published' && $profile->published_at !== null && $profile->unpublished_at === null);
+
+            if ($locked->status === Application::STATUS_PUBLISHED && $requireCustomerApproval) {
+                throw new InvalidArgumentException('Replacement publication requires a fresh customer-approved version awaiting publication.');
             }
 
             if (! $locked->isPaymentSettled() && $locked->source_method !== 'admin_test_demo') {
@@ -117,23 +150,33 @@ class ApplicationWorkflowService
                 }
             }
 
-            if (! $locked->profile_id) {
-                throw new InvalidArgumentException('A linked profile is required before publication.');
+            $english = $this->resolveEnglishVersionToPublish($locked, $requireCustomerApproval);
+            $malayalam = $english instanceof EditorialContent
+                ? $this->resolveMalayalamVersionToPublish($profile, $english)
+                : null;
+
+            if ($requireCustomerApproval && ! $english instanceof EditorialContent) {
+                throw new InvalidArgumentException('Customer approval of a specific editorial version is required.');
             }
 
-            $before = ['status' => $locked->status];
+            $before = [
+                'status' => $locked->status,
+                'published_english_editorial_content_id' => $locked->published_english_editorial_content_id,
+            ];
             $locked->forceFill([
                 'status' => Application::STATUS_PUBLISHED,
                 'converted_to_profile_at' => $locked->converted_to_profile_at ?? now(),
+                'published_english_editorial_content_id' => $english?->id,
+                'published_malayalam_editorial_content_id' => $malayalam?->id,
             ])->save();
 
-            Profile::query()->whereKey($locked->profile_id)->update([
+            $profile->forceFill([
                 'status' => 'published',
-                'published_at' => now(),
+                'published_at' => $profile->published_at ?? now(),
+                'unpublished_at' => null,
                 'updated_at' => now(),
-            ]);
+            ])->save();
 
-            $profile = Profile::query()->findOrFail($locked->profile_id);
             app(ProfileUrlService::class)->assignInitialCanonicalSlug(
                 $profile,
                 (string) $locked->package_tier,
@@ -143,12 +186,14 @@ class ApplicationWorkflowService
             app(MembershipLifecycleService::class)->startMembershipForPublishedProfile($profile);
 
             $this->auditLogger->log(
-                action: 'application.published',
+                action: $isReplacement ? 'application.published.replacement' : 'application.published',
                 subject: $locked,
                 before: $before,
                 after: [
                     'status' => Application::STATUS_PUBLISHED,
                     'require_customer_approval' => $requireCustomerApproval,
+                    'published_english_editorial_content_id' => $locked->published_english_editorial_content_id,
+                    'published_malayalam_editorial_content_id' => $locked->published_malayalam_editorial_content_id,
                     'customer_approved_english_editorial_content_id' => $locked->customer_approved_english_editorial_content_id,
                 ],
                 actor: $actor,
@@ -156,6 +201,52 @@ class ApplicationWorkflowService
 
             return $locked->fresh() ?? $locked;
         });
+    }
+
+    private function resolveEnglishVersionToPublish(Application $application, bool $requireCustomerApproval): ?EditorialContent
+    {
+        $candidateIds = [];
+        if ($application->customer_approved_english_editorial_content_id) {
+            $candidateIds[] = (int) $application->customer_approved_english_editorial_content_id;
+        }
+        if (! $requireCustomerApproval && $application->preview_english_editorial_content_id) {
+            $candidateIds[] = (int) $application->preview_english_editorial_content_id;
+        }
+
+        foreach (array_unique($candidateIds) as $contentId) {
+            $english = EditorialContent::query()
+                ->whereKey($contentId)
+                ->where('profile_id', $application->profile_id)
+                ->where('language', EditorialContent::LANGUAGE_EN)
+                ->where('status', EditorialContent::STATUS_APPROVED)
+                ->first();
+            if ($english instanceof EditorialContent) {
+                return $english;
+            }
+        }
+
+        if ($requireCustomerApproval) {
+            return null;
+        }
+
+        // Exceptional admin publication freezes the approved version present at publish time.
+        return EditorialContent::query()
+            ->where('profile_id', $application->profile_id)
+            ->where('language', EditorialContent::LANGUAGE_EN)
+            ->where('status', EditorialContent::STATUS_APPROVED)
+            ->orderByDesc('version_number')
+            ->first();
+    }
+
+    private function resolveMalayalamVersionToPublish(Profile $profile, EditorialContent $english): ?EditorialContent
+    {
+        return EditorialContent::query()
+            ->where('profile_id', $profile->id)
+            ->where('language', EditorialContent::LANGUAGE_ML)
+            ->where('status', EditorialContent::STATUS_APPROVED)
+            ->where('source_editorial_content_id', $english->id)
+            ->orderByDesc('version_number')
+            ->first();
     }
 
     private function assertEditorialStatusChangeAllowed(Application $application, string $newStatus, User $actor): void

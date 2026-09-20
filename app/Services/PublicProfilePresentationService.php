@@ -156,48 +156,40 @@ class PublicProfilePresentationService
     public function resolveApprovedEnglish(Profile $profile): ?EditorialContent
     {
         $application = $profile->application;
-        if ($application instanceof Application
-            && $application->customer_approved_english_editorial_content_id) {
-            $approved = EditorialContent::query()
-                ->whereKey($application->customer_approved_english_editorial_content_id)
-                ->where('profile_id', $profile->id)
-                ->where('language', EditorialContent::LANGUAGE_EN)
-                ->where('status', EditorialContent::STATUS_APPROVED)
-                ->first();
-            if ($approved) {
-                return $approved;
-            }
+        if (! $application instanceof Application || $application->published_english_editorial_content_id === null) {
+            return null;
         }
 
         return EditorialContent::query()
+            ->whereKey($application->published_english_editorial_content_id)
             ->where('profile_id', $profile->id)
             ->where('language', EditorialContent::LANGUAGE_EN)
             ->where('status', EditorialContent::STATUS_APPROVED)
-            ->orderByDesc('version_number')
             ->first();
     }
 
     public function resolveApprovedMalayalam(Profile $profile, ?EditorialContent $english): ?EditorialContent
     {
-        if ($english) {
-            $linked = EditorialContent::query()
-                ->where('profile_id', $profile->id)
-                ->where('language', EditorialContent::LANGUAGE_ML)
-                ->where('status', EditorialContent::STATUS_APPROVED)
-                ->where('source_editorial_content_id', $english->id)
-                ->orderByDesc('version_number')
-                ->first();
-            if ($linked) {
-                return $linked;
-            }
+        $application = $profile->application;
+        if (! $application instanceof Application || $application->published_malayalam_editorial_content_id === null) {
+            return null;
         }
 
-        return EditorialContent::query()
+        $bound = EditorialContent::query()
+            ->whereKey($application->published_malayalam_editorial_content_id)
             ->where('profile_id', $profile->id)
             ->where('language', EditorialContent::LANGUAGE_ML)
             ->where('status', EditorialContent::STATUS_APPROVED)
-            ->orderByDesc('version_number')
             ->first();
+
+        if ($english instanceof EditorialContent
+            && $bound instanceof EditorialContent
+            && $bound->source_editorial_content_id !== null
+            && (int) $bound->source_editorial_content_id !== (int) $english->id) {
+            return null;
+        }
+
+        return $bound;
     }
 
     /**

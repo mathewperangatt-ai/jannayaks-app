@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\Membership;
 use App\Models\Payment;
+use App\Models\Profile;
 use App\Models\User;
 use App\Services\ApplicationPaymentStateService;
 use App\Services\InvoiceService;
@@ -479,5 +481,50 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $this->actingAs($other)->get(route('payments.credit-note', $refunded))->assertForbidden();
         $this->actingAs($owner)->get(route('payments.credit-note', $refunded))->assertOk();
+    }
+
+    public function test_owner_can_view_membership_renewal_receipt_without_application_id(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $other = User::factory()->create(['email_verified_at' => now()]);
+        $profile = Profile::query()->create([
+            'user_id' => $user->id,
+            'status' => 'published',
+            'full_name' => 'Renewing Member',
+            'display_name' => 'Renewing Member',
+            'slug' => 'renewing.member.'.uniqid(),
+            'published_at' => now(),
+            'display_phone_consent' => false,
+            'display_email_consent' => false,
+        ]);
+        $membership = Membership::query()->create([
+            'profile_id' => $profile->id,
+            'status' => 'active',
+            'tier' => 'basic',
+            'starts_on' => now()->toDateString(),
+            'ends_on' => now()->addYear()->toDateString(),
+            'renewal_due_on' => now()->addYear()->toDateString(),
+            'retention_until' => now()->addYears(2)->toDateString(),
+            'auto_renew' => false,
+        ]);
+        $payment = Payment::query()->create([
+            'application_id' => null,
+            'membership_id' => $membership->id,
+            'profile_id' => $profile->id,
+            'transaction_reference' => 'MEM-'.$membership->id.'-'.uniqid(),
+            'gateway' => Payment::GATEWAY_MANUAL,
+            'item_type' => Payment::ITEM_MEMBERSHIP,
+            'amount' => '3000.00',
+            'currency' => 'INR',
+            'status' => Payment::STATUS_PAID,
+            'paid_at' => now(),
+            'event_type' => 'renewal',
+        ]);
+        app(InvoiceService::class)->assignSettlementDocuments($payment);
+
+        $this->actingAs($user)->get(route('payments.receipt', $payment))
+            ->assertOk()
+            ->assertSee('Payment Receipt', false);
+        $this->actingAs($other)->get(route('payments.receipt', $payment))->assertForbidden();
     }
 }

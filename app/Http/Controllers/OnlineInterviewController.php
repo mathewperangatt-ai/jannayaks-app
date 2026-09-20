@@ -194,7 +194,7 @@ class OnlineInterviewController extends Controller
                 ]);
         }
 
-        app(ApplicationWorkflowService::class)->markInterviewSubmitted($application);
+        app(ApplicationWorkflowService::class)->markInterviewSubmitted($application, $request->user());
         $application->refresh();
 
         if ($request->expectsJson()) {

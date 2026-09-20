@@ -132,11 +132,19 @@ class Phase10AiEditorialTest extends TestCase
         $this->assertSame(EditorialContent::STATUS_DRAFT, $english->status);
 
         $admin = User::factory()->admin()->create();
-        $published = app(ApplicationWorkflowService::class)->updateStaffFields(
-            $application->fresh(),
-            ['status' => Application::STATUS_PUBLISHED],
-            $admin,
-        );
+
+        try {
+            app(ApplicationWorkflowService::class)->updateStaffFields(
+                $application->fresh(),
+                ['status' => Application::STATUS_PUBLISHED],
+                $admin,
+            );
+            $this->fail('Admin form status must not publish.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('Publish action', $e->getMessage());
+        }
+
+        $published = app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false);
         $this->assertSame(Application::STATUS_PUBLISHED, $published->status);
     }
 

@@ -234,7 +234,16 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
             ->assertOk()
             ->assertSee(route('profiles.public.photo', [$profile, $photoA], false), false);
 
-        $photoB = $service->uploadProfilePhoto($profile, $this->jpegUpload('b.jpg'), $member, 'B', true);
+        try {
+            $service->uploadProfilePhoto($profile, $this->jpegUpload('blocked.jpg'), $member, 'Blocked', true);
+            $this->fail('Members must not upload photographs after publication.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('photo', $e->errors());
+        }
+
+        $this->assertSame(1, MediaItem::query()->where('mediable_id', $profile->id)->count());
+
+        $photoB = $service->uploadProfilePhoto($profile, $this->jpegUpload('b.jpg'), $editor, 'B', true);
         $this->assertTrue($photoB->fresh()->is_primary);
         $this->assertFalse($photoA->fresh()->is_primary);
         $this->assertSame(MediaItem::REVIEW_PENDING, $photoB->review_status);

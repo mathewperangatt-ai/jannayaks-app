@@ -52,7 +52,6 @@ class CustomerEditorialWorkflowService
             $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
 
             if (in_array($locked->status, [
-                Application::STATUS_PUBLISHED,
                 Application::STATUS_CANCELLED,
                 Application::STATUS_REFUNDED,
                 Application::STATUS_ARCHIVED,
@@ -208,10 +207,13 @@ class CustomerEditorialWorkflowService
                 $locked->forceFill($updates)->save();
 
                 if ($locked->profile_id) {
-                    Profile::query()->whereKey($locked->profile_id)->update([
-                        'status' => 'revision_requested',
-                        'updated_at' => now(),
-                    ]);
+                    $profile = Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->first();
+                    if ($profile instanceof Profile && ! $profile->isPubliclyListed()) {
+                        $profile->forceFill([
+                            'status' => 'revision_requested',
+                            'updated_at' => now(),
+                        ])->save();
+                    }
                 }
 
                 $this->auditLogger->log(
@@ -282,6 +284,14 @@ class CustomerEditorialWorkflowService
                 ]);
 
                 $before = ['status' => $locked->status];
+                $profile = $locked->profile_id
+                    ? Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->first()
+                    : null;
+                $profileIsLive = $profile instanceof Profile
+                    && $profile->status === 'published'
+                    && $profile->published_at !== null
+                    && $profile->unpublished_at === null;
+
                 $locked->forceFill([
                     'status' => Application::STATUS_AWAITING_PUBLICATION,
                     'customer_approved_at' => $approval->approved_at,
@@ -289,11 +299,11 @@ class CustomerEditorialWorkflowService
                     'customer_approved_by_user_id' => $member->id,
                 ])->save();
 
-                if ($locked->profile_id) {
-                    Profile::query()->whereKey($locked->profile_id)->update([
+                if ($profile instanceof Profile && ! $profileIsLive) {
+                    $profile->forceFill([
                         'status' => 'member_approved',
                         'updated_at' => now(),
-                    ]);
+                    ])->save();
                 }
 
                 $this->auditLogger->log(

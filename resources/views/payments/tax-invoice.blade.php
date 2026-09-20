@@ -77,7 +77,13 @@
     </div>
 
     <div class="actions" style="margin-top:18px">
-        <a class="btn ghost" href="{{ route('applications.payment', ['application' => $payment->application_id]) }}">← Payment page</a>
+        @if ($payment->application_id)
+            <a class="btn ghost" href="{{ route('applications.payment', ['application' => $payment->application_id]) }}">← Payment page</a>
+        @elseif ($payment->profile_id)
+            <a class="btn ghost" href="{{ route('membership.show', $payment->profile_id) }}">← Membership</a>
+        @else
+            <a class="btn ghost" href="{{ route('home') }}">← Home</a>
+        @endif
         <a class="btn" href="{{ route('payments.receipt', $payment) }}">View Payment Receipt</a>
     </div>
 </section>

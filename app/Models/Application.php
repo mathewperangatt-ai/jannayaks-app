@@ -220,6 +220,16 @@ class Application extends Model
         return $this->belongsTo(EditorialContent::class, 'customer_approved_english_editorial_content_id');
     }
 
+    public function publishedEnglishContent(): BelongsTo
+    {
+        return $this->belongsTo(EditorialContent::class, 'published_english_editorial_content_id');
+    }
+
+    public function publishedMalayalamContent(): BelongsTo
+    {
+        return $this->belongsTo(EditorialContent::class, 'published_malayalam_editorial_content_id');
+    }
+
     public function isInterviewSubmitted(): bool
     {
         return $this->online_interview_completed_at !== null;

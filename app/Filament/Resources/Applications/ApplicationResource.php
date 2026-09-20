@@ -99,4 +99,26 @@ class ApplicationResource extends Resource
     {
         return false;
     }
+
+    public static function getNavigationBadge(): ?string
+    {
+        $count = static::getModel()::query()
+            ->whereIn('status', [
+                Application::STATUS_AWAITING_EDITORIAL_REVIEW,
+                Application::STATUS_EDITORIAL_REVISION_REQUESTED,
+            ])
+            ->count();
+
+        return $count > 0 ? (string) $count : null;
+    }
+
+    public static function getNavigationBadgeColor(): string|array|null
+    {
+        return 'warning';
+    }
+
+    public static function getNavigationBadgeTooltip(): ?string
+    {
+        return 'Applications waiting for editorial staff review';
+    }
 }

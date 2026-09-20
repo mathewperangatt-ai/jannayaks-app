@@ -347,12 +347,18 @@ class Phase9AdminAclTest extends TestCase
         );
         $this->assertSame(Application::STATUS_AWAITING_PUBLICATION, $awaitingPublication->status);
 
-        $published = $service->updateStaffFields(
-            $awaitingPublication,
-            ['status' => Application::STATUS_PUBLISHED],
-            $admin,
-        );
-        $this->assertSame(Application::STATUS_PUBLISHED, $published->status);
+        try {
+            $service->updateStaffFields(
+                $awaitingPublication,
+                ['status' => Application::STATUS_PUBLISHED],
+                $admin,
+            );
+            $this->fail('Admin form status must not publish.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('Publish action', $e->getMessage());
+        }
+
+        $this->assertSame(Application::STATUS_AWAITING_PUBLICATION, $awaitingPublication->fresh()->status);
 
         $this->assertDatabaseHas('staff_action_logs', [
             'action' => 'application.staff_update',
@@ -360,7 +366,7 @@ class Phase9AdminAclTest extends TestCase
             'subject_id' => $application->id,
         ]);
 
-        $this->assertTrue(
+        $this->assertFalse(
             StaffActionLog::query()
                 ->where('actor_user_id', $admin->id)
                 ->where('subject_id', $application->id)

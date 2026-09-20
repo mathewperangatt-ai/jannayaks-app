@@ -3,11 +3,15 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use Illuminate\Http\JsonResponse;
+use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Support\Facades\Auth;
+use Illuminate\View\View;
 
 class RazorpayCallbackController extends Controller
 {
-    public function show(Request $request): \Illuminate\View\View|\Illuminate\Http\RedirectResponse|\Illuminate\Http\JsonResponse
+    public function show(Request $request): View|RedirectResponse|JsonResponse
     {
         $paymentId = $request->input('payment_id');
         $razorpayPaymentId = $request->input('razorpay_payment_id');
@@ -32,16 +36,16 @@ class RazorpayCallbackController extends Controller
         }
 
         $messages = [
-            'paid'      => ['Payment is being verified. You will be updated once confirmation is received.',
-                            'പേയ്‌മെൻ്റ് സ്ഥിരീകരിക്കുന്നു. സ്ഥിരീകരണം ലഭിച്ചാൽ നിങ്ങളെ അറിയിക്കും.'],
-            'failed'    => ['Payment failed. You can retry from your application dashboard.',
-                            'പേയ്‌മെൻ്റ് പരാജയപ്പെട്ടു. അപ്ലിക്കേഷൻ ഡാഷ്‌ബോർഡിൽ നിന്ന് വീണ്ടും ശ്രമിക്കാം.'],
+            'paid' => ['Payment is being verified. You will be updated once confirmation is received.',
+                'പേയ്‌മെൻ്റ് സ്ഥിരീകരിക്കുന്നു. സ്ഥിരീകരണം ലഭിച്ചാൽ നിങ്ങളെ അറിയിക്കും.'],
+            'failed' => ['Payment failed. You can retry from your application dashboard.',
+                'പേയ്‌മെൻ്റ് പരാജയപ്പെട്ടു. അപ്ലിക്കേഷൻ ഡാഷ്‌ബോർഡിൽ നിന്ന് വീണ്ടും ശ്രമിക്കാം.'],
             'cancelled' => ['Payment was cancelled. You can retry whenever ready.',
-                            'പേയ്‌മെൻ്റ് റദ്ദാക്കി. തയ്യാറായാൽ വീണ്ടും ശ്രമിക്കാം.'],
-            'expired'   => ['Payment link has expired. Please initiate a fresh payment.',
-                            'പേയ്‌മെൻ്റ് ലിങ്ക് കാലഹരണപ്പെട്ടു. പുതിയ പേയ്‌മെൻ്റ് ആരംഭിക്കുക.'],
-            'default'   => ['Payment verification is in progress. Please check back shortly.',
-                            'പേയ്‌മെൻ്റ് സ്ഥിരീകരണം പ്രോഗ്രസ്സിൽ ആണ്. താൽക്കാലം പരിശോധിക്കുക.'],
+                'പേയ്‌മെൻ്റ് റദ്ദാക്കി. തയ്യാറായാൽ വീണ്ടും ശ്രമിക്കാം.'],
+            'expired' => ['Payment link has expired. Please initiate a fresh payment.',
+                'പേയ്‌മെൻ്റ് ലിങ്ക് കാലഹരണപ്പെട്ടു. പുതിയ പേയ്‌മെൻ്റ് ആരംഭിക്കുക.'],
+            'default' => ['Payment verification is in progress. Please check back shortly.',
+                'പേയ്‌മെൻ്റ് സ്ഥിരീകരണം പ്രോഗ്രസ്സിൽ ആണ്. താൽക്കാലം പരിശോധിക്കുക.'],
         ];
 
         $key = 'default';
@@ -54,13 +58,13 @@ class RazorpayCallbackController extends Controller
 
         if ($request->expectsJson()) {
             return response()->json([
-                'ok'             => true,
-                'verified'       => false,
-                'callback_only'  => true,
-                'message'        => $msgEn,
-                'payment_status' => $payment?->status,
-                'application_id' => $applicationId,
-                'redirect_to'    => $applicationId !== null ? route('applications.payment', ['application' => $applicationId]) : route('home'),
+                'ok' => true,
+                'verified' => false,
+                'callback_only' => true,
+                'message' => $msgEn,
+                'redirect_to' => $applicationId !== null && Auth::check()
+                    ? route('applications.payment', ['application' => $applicationId])
+                    : route('home'),
             ]);
         }
 

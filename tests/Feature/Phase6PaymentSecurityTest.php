@@ -63,7 +63,7 @@ class Phase6PaymentSecurityTest extends TestCase
             $this->assertSame($totalPaise, $basePaise + $gstPaise, "Tier $tier base+gst must equal total inclusive.");
 
             $eighteenOnTop = (int) round($totalPaise * 0.18);
-            $this->assertLessThan($eighteenOnTop, $gstPaise, "GST must be derived (inclusive), not added on top.");
+            $this->assertLessThan($eighteenOnTop, $gstPaise, 'GST must be derived (inclusive), not added on top.');
 
             if ($amt['cgst_paise'] !== null && $amt['sgst_paise'] !== null) {
                 $this->assertSame($gstPaise, (int) $amt['cgst_paise'] + (int) $amt['sgst_paise']);
@@ -167,19 +167,19 @@ class Phase6PaymentSecurityTest extends TestCase
         $payment = $payment->fresh();
 
         $payload = [
-            'event'     => 'payment.captured',
-            'event_id'  => 'evt_testabc999',
-            'created_at'=> time(),
-            'payload'   => [
+            'event' => 'payment.captured',
+            'event_id' => 'evt_testabc999',
+            'created_at' => time(),
+            'payload' => [
                 'payment' => [
                     'entity' => [
-                        'id'         => 'pay_test9999',
-                        'order_id'   => null,
-                        'amount'     => 300000,
-                        'currency'   => 'INR',
-                        'notes'      => [
-                            'payment_id'    => (string) $payment->id,
-                            'application_id'=> (string) $app->id,
+                        'id' => 'pay_test9999',
+                        'order_id' => null,
+                        'amount' => 300000,
+                        'currency' => 'INR',
+                        'notes' => [
+                            'payment_id' => (string) $payment->id,
+                            'application_id' => (string) $app->id,
                         ],
                     ],
                 ],
@@ -191,7 +191,7 @@ class Phase6PaymentSecurityTest extends TestCase
             ],
         ];
         $rawPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
-        $signature = (new RazorpayWebhookVerifier())->computeSignature(
+        $signature = (new RazorpayWebhookVerifier)->computeSignature(
             $rawPayload,
             'test-secret-phase6',
         );
@@ -254,7 +254,7 @@ class Phase6PaymentSecurityTest extends TestCase
             ],
         ];
         $rawPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
-        $signature = (new RazorpayWebhookVerifier())->computeSignature($rawPayload, 'test-secret-phase6');
+        $signature = (new RazorpayWebhookVerifier)->computeSignature($rawPayload, 'test-secret-phase6');
 
         $res = $this->postJson(route('payments.razorpay.webhook'), $payload, [
             RazorpayWebhookVerifier::SIGNATURE_HEADER => $signature,
@@ -293,7 +293,7 @@ class Phase6PaymentSecurityTest extends TestCase
             ],
         ];
         $rawPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
-        $signature = (new RazorpayWebhookVerifier())->computeSignature($rawPayload, 'test-secret-phase6');
+        $signature = (new RazorpayWebhookVerifier)->computeSignature($rawPayload, 'test-secret-phase6');
 
         $res = $this->postJson(route('payments.razorpay.webhook'), $payload, [
             RazorpayWebhookVerifier::SIGNATURE_HEADER => $signature,
@@ -332,7 +332,7 @@ class Phase6PaymentSecurityTest extends TestCase
             ],
         ];
         $rawPayload = json_encode($payload, JSON_UNESCAPED_SLASHES);
-        $signature = (new RazorpayWebhookVerifier())->computeSignature($rawPayload, 'test-secret-phase6');
+        $signature = (new RazorpayWebhookVerifier)->computeSignature($rawPayload, 'test-secret-phase6');
 
         $res = $this->postJson(route('payments.razorpay.webhook'), $payload, [
             RazorpayWebhookVerifier::SIGNATURE_HEADER => $signature,
@@ -361,17 +361,17 @@ class Phase6PaymentSecurityTest extends TestCase
             'payload' => [
                 'payment' => [
                     'entity' => [
-                        'id'       => 'pay_idem1',
-                        'amount'   => 300000,
+                        'id' => 'pay_idem1',
+                        'amount' => 300000,
                         'currency' => 'INR',
-                        'notes'    => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
+                        'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
                     ],
                 ],
                 'payment_link' => ['entity' => ['id' => 'link_idem1']],
             ],
         ];
         $raw = json_encode($payload, JSON_UNESCAPED_SLASHES);
-        $sig = (new RazorpayWebhookVerifier())->computeSignature($raw, 's3cr3t1d3mp0t3nt');
+        $sig = (new RazorpayWebhookVerifier)->computeSignature($raw, 's3cr3t1d3mp0t3nt');
 
         $res1 = $this->postJson(route('payments.razorpay.webhook'), $payload, [
             RazorpayWebhookVerifier::SIGNATURE_HEADER => $sig,
@@ -387,18 +387,109 @@ class Phase6PaymentSecurityTest extends TestCase
         $this->assertSame($firstInvoiceRef, (string) $payment->fresh()->invoice_number);
     }
 
+    public function test_already_paid_webhook_retries_downstream_application_activation(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $app = Application::factory(['user_id' => $user->id, 'package_tier' => 'emerging'])->create([
+            'source_method' => 'online_interview',
+            'online_interview_completed_at' => now(),
+        ]);
+        Config::set('services.razorpay.enabled', false);
+        Config::set('services.razorpay.webhook_secret', 'test-secret-phase6');
+
+        $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+        $payment->update(['razorpay_link_id' => 'link_already_paid']);
+        $payment->markPaidOrCaptured(Payment::STATUS_PAID, 'pay_already', 'evt_already', Payment::EVENT_PAYMENT_CAPTURED);
+
+        $this->assertTrue($payment->fresh()->isPaidOrBetter());
+        $this->assertNotSame(Application::STATUS_AWAITING_EDITORIAL_REVIEW, $app->fresh()->status);
+
+        $payload = [
+            'event' => 'payment.captured',
+            'event_id' => 'evt_already_retry',
+            'created_at' => time(),
+            'payload' => [
+                'payment' => [
+                    'entity' => [
+                        'id' => 'pay_already',
+                        'amount' => 300000,
+                        'currency' => 'INR',
+                        'notes' => [
+                            'payment_id' => (string) $payment->id,
+                            'application_id' => (string) $app->id,
+                        ],
+                    ],
+                ],
+                'payment_link' => ['entity' => ['id' => 'link_already_paid']],
+            ],
+        ];
+        $raw = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $sig = (new RazorpayWebhookVerifier)->computeSignature($raw, 'test-secret-phase6');
+
+        $this->postJson(route('payments.razorpay.webhook'), $payload, [
+            RazorpayWebhookVerifier::SIGNATURE_HEADER => $sig,
+        ])->assertOk()->assertJson(['ok' => true, 'paid' => true]);
+
+        $this->assertSame(Application::STATUS_AWAITING_EDITORIAL_REVIEW, $app->fresh()->status);
+        $this->assertTrue($payment->fresh()->isPaidOrBetter());
+    }
+
+    public function test_downstream_failure_after_payment_does_not_leave_a_settled_orphan(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $app = Application::factory(['user_id' => $user->id, 'package_tier' => 'emerging'])->create();
+        Config::set('services.razorpay.enabled', false);
+        Config::set('services.razorpay.webhook_secret', 'test-secret-phase6');
+
+        $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+        $payment->update(['razorpay_link_id' => 'link_downstream_fail']);
+
+        $this->mock(ApplicationPaymentStateService::class, function ($mock): void {
+            $mock->shouldReceive('afterSettled')->once()->andThrow(new \RuntimeException('downstream boom'));
+        });
+
+        $payload = [
+            'event' => 'payment.captured',
+            'event_id' => 'evt_downstream_fail',
+            'created_at' => time(),
+            'payload' => [
+                'payment' => [
+                    'entity' => [
+                        'id' => 'pay_downstream_fail',
+                        'amount' => 300000,
+                        'currency' => 'INR',
+                        'notes' => [
+                            'payment_id' => (string) $payment->id,
+                            'application_id' => (string) $app->id,
+                        ],
+                    ],
+                ],
+                'payment_link' => ['entity' => ['id' => 'link_downstream_fail']],
+            ],
+        ];
+        $raw = json_encode($payload, JSON_UNESCAPED_SLASHES);
+        $sig = (new RazorpayWebhookVerifier)->computeSignature($raw, 'test-secret-phase6');
+
+        $this->postJson(route('payments.razorpay.webhook'), $payload, [
+            RazorpayWebhookVerifier::SIGNATURE_HEADER => $sig,
+        ])->assertStatus(500);
+
+        $this->assertFalse($payment->fresh()->isPaidOrBetter());
+        $this->assertNotSame(Application::PAYMENT_STATUS_PAID, $app->fresh()->payment_status);
+    }
+
     /* 15. Out-of-order event cannot downgrade paid payment. */
     public function test_out_of_order_failed_event_cannot_downgrade_paid_payment(): void
     {
         $payment = Payment::query()->create([
-                'application_id'  => null,
-                'transaction_reference' => 'txn_downgrade_test_1',
-                'gateway'         => Payment::GATEWAY_RAZORPAY,
-                'item_type'       => Payment::ITEM_APPLICATION_PAYMENT,
-                'amount'          => '3000.00',
-                'currency'        => 'INR',
-                'status'          => Payment::STATUS_PENDING,
-            ]);
+            'application_id' => null,
+            'transaction_reference' => 'txn_downgrade_test_1',
+            'gateway' => Payment::GATEWAY_RAZORPAY,
+            'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
+            'amount' => '3000.00',
+            'currency' => 'INR',
+            'status' => Payment::STATUS_PENDING,
+        ]);
 
         $payment->markPaidOrCaptured(Payment::STATUS_PAID, 'pay_dg1', 'evt_dg1', Payment::EVENT_PAYMENT_CAPTURED);
         $this->assertTrue($payment->isPaidOrBetter());
@@ -419,15 +510,28 @@ class Phase6PaymentSecurityTest extends TestCase
         $this->assertFalse($payment->isPaidOrBetter());
 
         $res = $this->get(route('payments.razorpay.callback', [
-            'payment_id'                  => $payment->id,
-            'razorpay_payment_id'         => 'pay_fake_cb_99',
-            'razorpay_payment_link_id'    => $payment->razorpay_link_id ?? 'any',
-            'razorpay_payment_link_status'=> 'paid',
+            'payment_id' => $payment->id,
+            'razorpay_payment_id' => 'pay_fake_cb_99',
+            'razorpay_payment_link_id' => $payment->razorpay_link_id ?? 'any',
+            'razorpay_payment_link_status' => 'paid',
         ]));
 
         $res->assertRedirect();
         $this->assertFalse($payment->fresh()->isPaidOrBetter());
         $this->assertSame(Application::PAYMENT_STATUS_PAID !== ($payment->application->payment_status ?? ''), true);
+
+        $json = $this->getJson(route('payments.razorpay.callback', [
+            'payment_id' => $payment->id,
+            'razorpay_payment_link_status' => 'paid',
+        ]));
+        $json->assertOk()
+            ->assertJson([
+                'ok' => true,
+                'verified' => false,
+                'callback_only' => true,
+            ]);
+        $json->assertJsonMissing(['payment_status']);
+        $json->assertJsonMissing(['application_id']);
     }
 
     /* 17. Payment success cannot publish profile. */
@@ -439,13 +543,13 @@ class Phase6PaymentSecurityTest extends TestCase
         $this->assertNull($app->converted_to_profile_at);
 
         $payment = Payment::query()->create([
-            'application_id'  => $app->id,
+            'application_id' => $app->id,
             'transaction_reference' => 'txn_publish_test',
-            'gateway'         => Payment::GATEWAY_RAZORPAY,
-            'item_type'       => Payment::ITEM_APPLICATION_PAYMENT,
-            'amount'          => PricingAmounts::paiseToDecimalString(PricingAmounts::forTier('accomplished')['amount_incl_paise']),
-            'currency'        => 'INR',
-            'status'          => Payment::STATUS_INITIATED,
+            'gateway' => Payment::GATEWAY_RAZORPAY,
+            'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
+            'amount' => PricingAmounts::paiseToDecimalString(PricingAmounts::forTier('accomplished')['amount_incl_paise']),
+            'currency' => 'INR',
+            'status' => Payment::STATUS_INITIATED,
         ]);
 
         app(ApplicationPaymentStateService::class)->afterSettled($payment);
@@ -632,9 +736,9 @@ class Phase6PaymentSecurityTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
 
         $createRes = $this->actingAs($user)->postJson(route('applications.store'), [
-            'package_tier'  => 'emerging',
+            'package_tier' => 'emerging',
             'source_method' => 'online_interview',
-            'full_name'     => 'Phase Check Citizen',
+            'full_name' => 'Phase Check Citizen',
             'contact_email' => 'phasecheck@example.com',
         ]);
         $createRes->assertCreated();
@@ -648,7 +752,7 @@ class Phase6PaymentSecurityTest extends TestCase
         $blocked = $this->actingAs($user)->get(route('online-interview.show', ['application' => $appId]));
         $blocked->assertRedirect(route('applications.payment', ['application' => $appId]));
 
-        $app = \App\Models\Application::query()->findOrFail($appId);
+        $app = Application::query()->findOrFail($appId);
         $this->unlockApplicationForInterview($app);
 
         $intRes = $this->actingAs($user)->get(route('online-interview.show', ['application' => $appId]));
@@ -656,7 +760,7 @@ class Phase6PaymentSecurityTest extends TestCase
 
         $saveRes = $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $appId]), [
             'question_id' => 'q1',
-            'answer'      => 'Phase check answer text.',
+            'answer' => 'Phase check answer text.',
         ]);
         $saveRes->assertOk();
 

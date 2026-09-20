@@ -2,7 +2,6 @@
 
 namespace App\Services;
 
-use App\Models\EditorialContent;
 use App\Models\GeoDistrict;
 use App\Models\GeoState;
 use App\Models\Profile;
@@ -92,13 +91,20 @@ class PublicProfileSearchService
                             ->orWhere('where_location', 'ilike', $like)
                             ->orWhere('term_summary', 'ilike', $like);
                     })
-                    ->orWhereHas('editorialContents', function (Builder $editorial) use ($like): void {
-                        $editorial->where('status', EditorialContent::STATUS_APPROVED)
-                            ->where(function (Builder $e) use ($like): void {
-                                $e->where('title', 'ilike', $like)
-                                    ->orWhere('summary', 'ilike', $like)
-                                    ->orWhere('body', 'ilike', $like);
-                            });
+                    ->orWhereHas('application', function (Builder $application) use ($like): void {
+                        $application->where(function (Builder $bindings) use ($like): void {
+                            $bindings
+                                ->whereHas('publishedEnglishContent', function (Builder $editorial) use ($like): void {
+                                    $editorial->where('title', 'ilike', $like)
+                                        ->orWhere('summary', 'ilike', $like)
+                                        ->orWhere('body', 'ilike', $like);
+                                })
+                                ->orWhereHas('publishedMalayalamContent', function (Builder $editorial) use ($like): void {
+                                    $editorial->where('title', 'ilike', $like)
+                                        ->orWhere('summary', 'ilike', $like)
+                                        ->orWhere('body', 'ilike', $like);
+                                });
+                        });
                     });
             });
         }

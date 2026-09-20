@@ -144,7 +144,7 @@ class RazorpayWebhookController extends Controller
             $amountPaise,
             $currency,
         ) {
-            $payment = $payment->fresh() ?? $payment;
+            $payment = Payment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
 
             if (! $this->checkAssociations($payment, $gatewayLinkId, $orderId)) {
                 return ['status' => 409, 'body' => ['ok' => false, 'error' => 'Stale or mismatched link identifier.']];
@@ -156,6 +156,10 @@ class RazorpayWebhookController extends Controller
 
             $duplicate = $this->isDuplicateEvent($payment, $eventId, $event);
             if ($duplicate) {
+                if ($payment->isPaidOrBetter()) {
+                    $this->applySettledSideEffects($payment);
+                }
+
                 return ['status' => 200, 'body' => ['ok' => true, 'idempotent' => true, 'payment_id' => $payment->id]];
             }
 
@@ -291,6 +295,20 @@ class RazorpayWebhookController extends Controller
         $lower = strtolower($event);
 
         if (in_array($lower, $successEvents, true)) {
+            if ($payment->isPaidOrBetter()) {
+                $this->applySettledSideEffects($payment);
+
+                return ['status' => 200, 'body' => [
+                    'ok' => true,
+                    'paid' => true,
+                    'idempotent' => true,
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                    'receipt_ref' => $payment->invoice_number,
+                    'tax_invoice_ref' => $payment->tax_invoice_number,
+                ]];
+            }
+
             if (! $payment->isActiveAttempt()) {
                 return ['status' => 409, 'body' => [
                     'ok' => false,
@@ -333,37 +351,7 @@ class RazorpayWebhookController extends Controller
                 $payment->save();
             }
 
-            try {
-                if ($payment->application_id !== null) {
-                    $this->stateService->afterSettled($payment);
-                }
-            } catch (\Throwable $e) {
-                Log::error('Razorpay webhook: afterSettled application update failed.', [
-                    'payment_id' => $payment->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            try {
-                if ($payment->item_type === Payment::ITEM_MEMBERSHIP && $payment->membership_id !== null) {
-                    app(MembershipLifecycleService::class)->applySettledRenewal($payment->fresh() ?? $payment);
-                }
-            } catch (\Throwable $e) {
-                Log::error('Razorpay webhook: membership renewal apply failed.', [
-                    'payment_id' => $payment->id,
-                    'membership_id' => $payment->membership_id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
-
-            try {
-                $this->invoices->assignSettlementDocuments($payment);
-            } catch (\Throwable $e) {
-                Log::warning('Razorpay webhook: settlement document assignment failed.', [
-                    'payment_id' => $payment->id,
-                    'error' => $e->getMessage(),
-                ]);
-            }
+            $this->applySettledSideEffects($payment);
 
             return ['status' => 200, 'body' => [
                 'ok' => true,
@@ -413,7 +401,6 @@ class RazorpayWebhookController extends Controller
             if (! $payment->isPaidOrBetter()) {
                 return ['status' => 409, 'body' => ['ok' => false, 'error' => 'Cannot refund non-settled payment.']];
             }
-            $refundEntity = $GLOBALS['refund_payload_safe'] ?? null;
 
             return ['status' => 200, 'body' => ['ok' => true, 'ignored' => 'refund_state_only', 'payment_id' => $payment->id]];
         }
@@ -424,5 +411,25 @@ class RazorpayWebhookController extends Controller
             'event' => $event,
             'payment_id' => $payment->id,
         ]];
+    }
+
+    private function applySettledSideEffects(Payment $payment): void
+    {
+        if ($payment->application_id !== null) {
+            $this->stateService->afterSettled($payment);
+        }
+
+        if ($payment->item_type === Payment::ITEM_MEMBERSHIP && $payment->membership_id !== null) {
+            app(MembershipLifecycleService::class)->applySettledRenewal($payment->fresh() ?? $payment);
+        }
+
+        try {
+            $this->invoices->assignSettlementDocuments($payment);
+        } catch (\Throwable $e) {
+            Log::warning('Razorpay webhook: settlement document assignment failed.', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 }
