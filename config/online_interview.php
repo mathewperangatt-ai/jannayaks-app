@@ -69,7 +69,8 @@ return [
             'application/rtf',
         ],
         'forbidden_extensions'   => ['php', 'phar', 'phtml', 'exe', 'bat', 'cmd', 'ps1', 'sh', 'js', 'html', 'svg', 'vbs'],
-        'disk'                   => 'private_uploads',
+        // "source_materials" (private R2) is durable on Railway; "private_uploads" (local) is the legacy default.
+        'disk'                   => env('SOURCE_MATERIALS_DISK', 'private_uploads'),
         'storage_prefix'         => 'source-materials/applications',
         'sanitize_original_name' => true,
     ],

@@ -87,6 +87,30 @@ return [
             'report' => false,
         ],
 
+        /*
+        | Durable PRIVATE storage for applicant source materials (documents).
+        | S3-compatible Cloudflare R2 bucket that MUST remain private: files are
+        | only ever streamed through the policy-gated staff download route
+        | (Staff/SourceMaterialDownloadController), never exposed by URL.
+        | Opt-in per environment via SOURCE_MATERIALS_DISK (see config/online_interview.php);
+        | when unset, local private_uploads stays the default. Each SourceMaterial row
+        | records the disk it was stored on (storage_disk), so legacy local rows
+        | keep downloading unchanged.
+        */
+        'source_materials' => [
+            'driver' => 's3',
+            'key' => env('R2_SOURCE_ACCESS_KEY_ID', env('R2_ACCESS_KEY_ID')),
+            'secret' => env('R2_SOURCE_SECRET_ACCESS_KEY', env('R2_SECRET_ACCESS_KEY')),
+            'region' => env('R2_SOURCE_REGION', 'auto'),
+            'bucket' => env('R2_SOURCE_BUCKET'),
+            'endpoint' => env('R2_SOURCE_ENDPOINT'),
+            'url' => env('R2_SOURCE_URL'),
+            'use_path_style_endpoint' => env('R2_SOURCE_USE_PATH_STYLE_ENDPOINT', true),
+            'throw' => true,
+            'report' => false,
+            'visibility' => 'private',
+        ],
+
     ],
 
     /*

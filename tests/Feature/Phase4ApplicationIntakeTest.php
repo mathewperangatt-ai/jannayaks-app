@@ -317,6 +317,60 @@ class Phase4ApplicationIntakeTest extends TestCase
         Storage::disk('private_uploads')->assertExists($mat->storage_path);
     }
 
+    /* 14b. Configurable durable disk: uploads land on the configured disk and the row records it. */
+    public function test_source_material_can_be_stored_on_alternate_configured_disk(): void
+    {
+        Storage::fake('source_materials');
+        config(['online_interview.uploads.disk' => 'source_materials']);
+
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $app = Application::factory([
+            'user_id'       => $user->id,
+            'package_tier'  => 'accomplished',
+            'source_method' => 'direct_submission',
+            'full_name'     => 'Alternate Disk Uploader',
+        ])->paid()->create();
+
+        $file = UploadedFile::fake()->create('notes.pdf', 32, 'application/pdf');
+
+        $res = $this->actingAs($user)->postJson(route('applications.upload.material', ['application' => $app->id]), [
+            'material'      => $file,
+            'material_type' => 'personal_notes',
+        ]);
+
+        $res->assertCreated()->assertJson(['ok' => true]);
+        $mat = SourceMaterial::query()->latest('id')->first();
+        $this->assertSame('source_materials', (string) $mat->storage_disk);
+        Storage::disk('source_materials')->assertExists($mat->storage_path);
+    }
+
+    /* 14c. Default disk remains private_uploads when SOURCE_MATERIALS_DISK is not set. */
+    public function test_source_material_defaults_to_private_uploads_disk(): void
+    {
+        Storage::fake('private_uploads');
+        config(['online_interview.uploads.disk' => env('SOURCE_MATERIALS_DISK', 'private_uploads')]);
+
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $app = Application::factory([
+            'user_id'       => $user->id,
+            'package_tier'  => 'emerging',
+            'source_method' => 'direct_submission',
+            'full_name'     => 'Default Disk Uploader',
+        ])->paid()->create();
+
+        $file = UploadedFile::fake()->create('story.txt', 8, 'text/plain');
+
+        $res = $this->actingAs($user)->postJson(route('applications.upload.material', ['application' => $app->id]), [
+            'material'      => $file,
+            'material_type' => 'biography',
+        ]);
+
+        $res->assertCreated();
+        $mat = SourceMaterial::query()->latest('id')->first();
+        $this->assertSame('private_uploads', (string) $mat->storage_disk);
+        Storage::disk('private_uploads')->assertExists($mat->storage_path);
+    }
+
     /* 15. Application / Profile distinction (no automatic Profile publication yet) */
     public function test_application_submission_does_not_create_or_publish_profile(): void
     {
