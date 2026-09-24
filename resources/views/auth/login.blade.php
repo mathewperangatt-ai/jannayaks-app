@@ -20,7 +20,13 @@
 <div class="wrap">
     <div class="card">
         <h1>Sign in to Jannayaks</h1>
-        <p class="sub">Google is the primary sign-in. Indian members may use mobile OTP as a fallback.</p>
+        <p class="sub">
+            @if (config('jannayaks.otp.login_enabled', true))
+                Google is the primary sign-in. Indian members may use mobile OTP as a fallback.
+            @else
+                Google is the sign-in method for Jannayaks.
+            @endif
+        </p>
 
         @if ($errors->any())
             <div class="errors">
@@ -31,8 +37,10 @@
         @endif
 
         <a class="btn primary" href="{{ route('auth.google') }}">Continue with Google</a>
-        <div class="divider">or</div>
-        <a class="btn" href="{{ route('auth.otp.request.show') }}">Sign in with Indian mobile OTP</a>
+        @if (config('jannayaks.otp.login_enabled', true))
+            <div class="divider">or</div>
+            <a class="btn" href="{{ route('auth.otp.request.show') }}">Sign in with Indian mobile OTP</a>
+        @endif
     </div>
 </div>
 </body>

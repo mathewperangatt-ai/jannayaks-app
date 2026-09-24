@@ -1,5 +1,6 @@
 <?php
 
+use App\Console\Commands\FailStaleAiEditorialRunsCommand;
 use App\Console\Commands\ProcessMembershipLifecycleCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -23,3 +24,15 @@ Schedule::command(ProcessMembershipLifecycleCommand::class)
     ->timezone($lifecycleTz !== '' ? $lifecycleTz : 'Asia/Kolkata')
     ->withoutOverlapping(120)
     ->name('membership-process-lifecycle');
+
+/*
+| AI editorial generation runs synchronously in the HTTP request. If the process
+| dies mid-run (proxy timeout, OOM, redeploy), the ai_editorial_runs row stays
+| "running" forever and the per-application partial unique index blocks every
+| retry. This sweeper releases those wedges; runs on the production scheduler
+| service (see docs/membership-lifecycle-scheduler.md).
+*/
+Schedule::command(FailStaleAiEditorialRunsCommand::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(10)
+    ->name('fail-stale-ai-editorial-runs');

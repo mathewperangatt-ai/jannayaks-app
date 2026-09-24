@@ -36,7 +36,18 @@ class EditApplication extends EditRecord
 
                     /** @var Application $application */
                     $application = $this->getRecord();
-                    $run = app(EditorialGenerationService::class)->generateForApplication($application, $actor);
+
+                    try {
+                        $run = app(EditorialGenerationService::class)->generateForApplication($application, $actor);
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()
+                            ->title('Cannot start AI generation')
+                            ->body($e->getMessage())
+                            ->warning()
+                            ->send();
+
+                        return;
+                    }
 
                     if ($run->isFailed()) {
                         Notification::make()

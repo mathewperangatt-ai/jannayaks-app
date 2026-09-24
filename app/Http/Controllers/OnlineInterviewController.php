@@ -5,6 +5,7 @@ namespace App\Http\Controllers;
 use App\Models\Application;
 use App\Services\ApplicationPaymentStateService;
 use App\Services\ApplicationWorkflowService;
+use App\Services\ConsentRecordingService;
 use App\Services\OnlineInterviewService;
 use App\Support\OnlineInterviewCatalog;
 use Illuminate\Http\JsonResponse;
@@ -196,6 +197,13 @@ class OnlineInterviewController extends Controller
 
         app(ApplicationWorkflowService::class)->markInterviewSubmitted($application, $request->user());
         $application->refresh();
+
+        app(ConsentRecordingService::class)->recordOnce(
+            $request->user(),
+            ConsentRecordingService::KEY_INTERVIEW_AI_PROCESSING,
+            $request->ip(),
+            (string) $request->userAgent(),
+        );
 
         if ($request->expectsJson()) {
             return response()->json([

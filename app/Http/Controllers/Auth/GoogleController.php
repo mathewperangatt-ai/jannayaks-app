@@ -92,6 +92,14 @@ class GoogleController extends Controller
 
     private function completeLogin(User $user): RedirectResponse
     {
+        if (! $user->isActiveAccount()) {
+            return redirect()->route('login')->withErrors([
+                'google' => 'This account is suspended and cannot sign in. Contact support for assistance.',
+            ]);
+        }
+
+        // Bounded remember-me: 30 days instead of Laravel's ~5-year default.
+        Auth::guard()->setRememberDuration(60 * 24 * 30);
         Auth::login($user, remember: true);
         request()->session()->regenerate();
 

@@ -106,6 +106,7 @@ class ApplicationResource extends Resource
             ->whereIn('status', [
                 Application::STATUS_AWAITING_EDITORIAL_REVIEW,
                 Application::STATUS_EDITORIAL_REVISION_REQUESTED,
+                Application::STATUS_AWAITING_PUBLICATION,
             ])
             ->count();
 
@@ -119,6 +120,6 @@ class ApplicationResource extends Resource
 
     public static function getNavigationBadgeTooltip(): ?string
     {
-        return 'Applications waiting for editorial staff review';
+        return 'Applications waiting for editorial review, revision, or publication';
     }
 }

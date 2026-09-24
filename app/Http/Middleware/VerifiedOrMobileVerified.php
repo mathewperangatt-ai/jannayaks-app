@@ -20,6 +20,23 @@ class VerifiedOrMobileVerified
         }
 
         $user = Auth::user();
+
+        if ($user instanceof \App\Models\User && ! $user->isActiveAccount()) {
+            Auth::guard()->logout();
+            $request->session()->invalidate();
+            $request->session()->regenerateToken();
+
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'This account is suspended and cannot be used. Contact support.',
+                ], 403);
+            }
+
+            return redirect()->route('login')
+                ->withErrors(['account' => 'This account is suspended and cannot be used. Contact support.']);
+        }
+
         $emailOk = $user && isset($user->email_verified_at) && $user->email_verified_at !== null;
         $mobileOk = $user && isset($user->mobile_verified_at) && $user->mobile_verified_at !== null;
 

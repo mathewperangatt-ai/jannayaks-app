@@ -9,6 +9,7 @@ use App\Models\EditorialContent;
 use App\Models\EditorialRevisionRequest;
 use App\Models\User;
 use App\Services\CustomerEditorialWorkflowService;
+use App\Services\ConsentRecordingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -95,6 +96,13 @@ class CustomerProfilePreviewController extends Controller
         } catch (InvalidArgumentException $e) {
             return back()->withErrors(['approval' => $e->getMessage()]);
         }
+
+        app(ConsentRecordingService::class)->recordOnce(
+            $member,
+            ConsentRecordingService::KEY_EDITORIAL_APPROVAL_PUBLICATION,
+            $request->ip(),
+            (string) $request->userAgent(),
+        );
 
         return redirect()
             ->route('applications.preview', $application)

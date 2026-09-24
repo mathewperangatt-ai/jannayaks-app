@@ -190,6 +190,9 @@ return [
     'otp' => [
         // P7 delivery is log/test-cache only. No SMS provider is implemented.
         // Do not set sms_enabled=true until a real provider exists in a later phase.
+        // Set login_enabled=false in production until a real SMS provider is wired up,
+        // so the UI never claims an OTP was sent when nothing can be delivered.
+        'login_enabled' => env('JANNAYAKS_OTP_LOGIN_ENABLED', true),
         'expiry_minutes' => 10,
         'channel' => env('JANNAYAKS_OTP_CHANNEL', 'log'), // log | test-cache metadata only
         'sms_enabled' => false,
