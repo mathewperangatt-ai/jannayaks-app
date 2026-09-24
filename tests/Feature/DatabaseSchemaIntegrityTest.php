@@ -250,7 +250,9 @@ class DatabaseSchemaIntegrityTest extends TestCase
 
     public function test_consent_records_allows_changelog_history_not_single_row(): void
     {
-        $uniqueIdx = DB::selectOne(
+        // A full-table UNIQUE(user_id,consent_key) would block the consent →
+        // revoke → consent changelog design; it must NOT exist.
+        $fullUniqueIdx = DB::selectOne(
             "SELECT 1 AS present
              FROM pg_indexes
              WHERE schemaname = 'public'
@@ -258,9 +260,24 @@ class DatabaseSchemaIntegrityTest extends TestCase
                AND indexname = 'consent_records_user_id_consent_key_unique'"
         );
         $this->assertEmpty(
-            $uniqueIdx,
+            $fullUniqueIdx,
             'consent_records UNIQUE(user_id,consent_key) must NOT exist — required to log consent → revoke → consent history'
         );
+
+        // Publication-approval consents are the one exception: duplicates are
+        // barred at the DB level by a partial unique index scoped to that key.
+        $publicationUniqueIdx = DB::selectOne(
+            "SELECT 1 AS present
+             FROM pg_indexes
+             WHERE schemaname = 'public'
+               AND tablename = 'consent_records'
+               AND indexname = 'consent_records_publication_approval_unique'"
+        );
+        $this->assertNotEmpty(
+            $publicationUniqueIdx,
+            'consent_records partial UNIQUE for publication approvals is missing'
+        );
+
         $columns = Schema::getColumnListing('consent_records');
         $this->assertNotContains(
             'revoked_at',

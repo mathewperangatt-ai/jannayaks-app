@@ -9,6 +9,8 @@ class ConsentRecord extends Model
 {
     protected $fillable = [
         'user_id',
+        'application_id',
+        'profile_id',
         'consent_key',
         'consented',
         'action_at',
@@ -29,5 +31,17 @@ class ConsentRecord extends Model
     public function user(): BelongsTo
     {
         return $this->belongsTo(User::class, 'user_id');
+    }
+
+    /** @return BelongsTo<Application|null> */
+    public function application(): BelongsTo
+    {
+        return $this->belongsTo(Application::class, 'application_id');
+    }
+
+    /** @return BelongsTo<Profile|null> */
+    public function profile(): BelongsTo
+    {
+        return $this->belongsTo(Profile::class, 'profile_id');
     }
 }

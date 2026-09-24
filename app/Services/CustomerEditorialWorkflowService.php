@@ -240,6 +240,8 @@ class CustomerEditorialWorkflowService
         Application $application,
         User $member,
         int $englishEditorialContentId,
+        ?string $ipAddress = null,
+        ?string $userAgent = null,
     ): EditorialCustomerApproval {
         $this->assertApplicationOwner($application, $member);
 
@@ -249,7 +251,7 @@ class CustomerEditorialWorkflowService
         }
 
         try {
-            return DB::transaction(function () use ($application, $member, $englishEditorialContentId) {
+            return DB::transaction(function () use ($application, $member, $englishEditorialContentId, $ipAddress, $userAgent) {
                 /** @var Application $locked */
                 $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
 
@@ -316,6 +318,16 @@ class CustomerEditorialWorkflowService
                         'application_status' => Application::STATUS_AWAITING_PUBLICATION,
                     ],
                     actor: $member,
+                );
+
+                // Durable publication-approval consent, written inside this same
+                // transaction as the LAST statement: if it cannot be recorded,
+                // the entire approval rolls back (fail-closed).
+                app(ConsentRecordingService::class)->recordPublicationApproval(
+                    $locked,
+                    $member,
+                    $ipAddress,
+                    $userAgent,
                 );
 
                 return $approval->fresh() ?? $approval;

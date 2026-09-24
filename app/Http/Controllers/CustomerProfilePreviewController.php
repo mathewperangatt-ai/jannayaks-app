@@ -9,7 +9,6 @@ use App\Models\EditorialContent;
 use App\Models\EditorialRevisionRequest;
 use App\Models\User;
 use App\Services\CustomerEditorialWorkflowService;
-use App\Services\ConsentRecordingService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -88,21 +87,18 @@ class CustomerProfilePreviewController extends Controller
         $member = $this->authenticatedOwner($application);
 
         try {
+            // The publication-approval consent is recorded atomically inside
+            // approvePreview's transaction — approval and consent commit together.
             app(CustomerEditorialWorkflowService::class)->approvePreview(
                 $application,
                 $member,
                 (int) $request->validated('english_editorial_content_id'),
+                $request->ip(),
+                (string) $request->userAgent(),
             );
         } catch (InvalidArgumentException $e) {
             return back()->withErrors(['approval' => $e->getMessage()]);
         }
-
-        app(ConsentRecordingService::class)->recordOnce(
-            $member,
-            ConsentRecordingService::KEY_EDITORIAL_APPROVAL_PUBLICATION,
-            $request->ip(),
-            (string) $request->userAgent(),
-        );
 
         return redirect()
             ->route('applications.preview', $application)

@@ -52,13 +52,13 @@
     @if($canApprove)
         <div class="divider"></div>
         <h3 style="font-size:15px;margin:0">Approve for publication</h3>
-        <p class="sub" style="margin:0">This confirms you approve the current profile version. Approval does not publish it by itself — Jannayaks staff completes publication.</p>
-        <form method="POST" action="{{ route('applications.preview.approve', $application) }}" class="stack" onsubmit="return confirm('Approve this profile version for publication?');">
+        <p class="sub" style="margin:0">By approving, you consent to this editorially prepared profile being published on Jannayaks. Approval does not publish it by itself — Jannayaks staff completes publication.</p>
+        <form method="POST" action="{{ route('applications.preview.approve', $application) }}" class="stack" onsubmit="return confirm('Approve this editorially prepared profile for publication on Jannayaks?');">
             @csrf
             <input type="hidden" name="english_editorial_content_id" value="{{ $english->id }}">
             <label class="field" style="display:flex;gap:10px;align-items:flex-start">
                 <input type="checkbox" name="confirm_approval" value="1" required style="margin-top:4px">
-                <span>I have reviewed this profile and approve it for publication.</span>
+                <span>I have reviewed this editorially prepared profile and I approve its publication on Jannayaks.</span>
             </label>
             <button class="btn primary" type="submit">Approve this profile</button>
         </form>

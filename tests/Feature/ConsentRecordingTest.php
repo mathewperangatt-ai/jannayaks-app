@@ -2,12 +2,15 @@
 
 namespace Tests\Feature;
 
-use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
 use App\Models\ConsentRecord;
+use App\Models\EditorialCustomerApproval;
 use App\Models\User;
 use App\Services\ConsentRecordingService;
+use App\Services\CustomerEditorialWorkflowService;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use RuntimeException;
 use Tests\TestCase;
 
 class ConsentRecordingTest extends TestCase
@@ -57,15 +60,113 @@ class ConsentRecordingTest extends TestCase
     {
         [$member, $application, $englishId] = $this->seedApprovablePreview();
 
-        $this->actingAs($member)->postJson(route('applications.preview.approve', ['application' => $application->id]), [
+        $this->actingAs($member)->post(route('applications.preview.approve', ['application' => $application->id]), [
             'english_editorial_content_id' => $englishId,
             'confirm_approval' => true,
         ])->assertRedirect();
 
-        $approval = ConsentRecord::query()
+        $consent = ConsentRecord::query()
             ->where('consent_key', ConsentRecordingService::KEY_EDITORIAL_APPROVAL_PUBLICATION)
             ->firstOrFail();
-        $this->assertSame($member->id, (int) $approval->user_id);
+        $this->assertSame($member->id, (int) $consent->user_id);
+        // Durable linkage: the consent names the exact application and profile approved.
+        $this->assertSame($application->id, (int) $consent->application_id);
+        $this->assertSame($application->fresh()->profile_id, (int) $consent->profile_id);
+        $this->assertTrue((bool) $consent->consented);
+        $this->assertNotNull($consent->action_at);
+        $this->assertSame(ConsentRecordingService::NOTICE_VERSION, (string) $consent->notice_version);
+
+        // Approval itself succeeded.
+        $this->assertSame(Application::STATUS_AWAITING_PUBLICATION, $application->fresh()->status);
+    }
+
+    public function test_approval_requires_explicit_confirmation(): void
+    {
+        [$member, $application, $englishId] = $this->seedApprovablePreview();
+
+        $this->actingAs($member)->post(route('applications.preview.approve', ['application' => $application->id]), [
+            'english_editorial_content_id' => $englishId,
+        ])->assertSessionHasErrors('confirm_approval');
+
+        $this->assertSame(0, ConsentRecord::query()->count());
+        $this->assertNull($application->fresh()->customer_approved_at);
+        $this->assertSame(0, EditorialCustomerApproval::query()->count());
+    }
+
+    public function test_publication_approval_consent_is_atomic_with_approval(): void
+    {
+        [$member, $application, $englishId] = $this->seedApprovablePreview();
+
+        // Simulate a consent-write failure inside the approval transaction.
+        $this->app->bind(ConsentRecordingService::class, fn () => new class
+        {
+            public function recordPublicationApproval(): void
+            {
+                throw new RuntimeException('consent write failed');
+            }
+        });
+
+        $service = app(CustomerEditorialWorkflowService::class);
+
+        $thrown = null;
+        try {
+            $service->approvePreview($application->fresh(), $member, $englishId);
+        } catch (RuntimeException $e) {
+            $thrown = $e;
+        }
+
+        $this->assertNotNull($thrown, 'Consent failure must abort the approval.');
+
+        // Rolled back: no approval, no status change, no consent row.
+        $this->assertSame(0, EditorialCustomerApproval::query()->count());
+        $this->assertSame(0, ConsentRecord::query()->count());
+        $this->assertSame(Application::STATUS_EDITORIAL_APPROVED, $application->fresh()->status);
+        $this->assertNull($application->fresh()->customer_approved_at);
+    }
+
+    public function test_duplicate_publication_consent_records_are_rejected_at_database_level(): void
+    {
+        [$member, $application, $englishId] = $this->seedApprovablePreview();
+
+        $this->actingAs($member)->post(route('applications.preview.approve', ['application' => $application->id]), [
+            'english_editorial_content_id' => $englishId,
+            'confirm_approval' => true,
+        ])->assertRedirect();
+
+        $this->assertSame(1, ConsentRecord::query()->count());
+
+        // A concurrent duplicate insert violates the (user_id, consent_key) unique index.
+        // Nested transaction: contains the Postgres transaction abort to a savepoint.
+        $duplicateRejected = false;
+        try {
+            \Illuminate\Support\Facades\DB::transaction(function () use ($member) {
+                ConsentRecord::query()->create([
+                    'user_id' => $member->id,
+                    'consent_key' => ConsentRecordingService::KEY_EDITORIAL_APPROVAL_PUBLICATION,
+                    'consented' => true,
+                    'action_at' => now(),
+                    'notice_version' => ConsentRecordingService::NOTICE_VERSION,
+                ]);
+            });
+        } catch (QueryException) {
+            $duplicateRejected = true;
+        }
+
+        $this->assertTrue($duplicateRejected, 'Database must reject duplicate publication-consent records.');
+        $this->assertSame(1, ConsentRecord::query()->count());
+    }
+
+    public function test_repeated_publication_approval_reuses_the_same_consent_record(): void
+    {
+        [$member, $application, $englishId] = $this->seedApprovablePreview();
+        $service = app(ConsentRecordingService::class);
+
+        $first = $service->recordPublicationApproval($application, $member, '203.0.113.5', 'UA');
+        $second = $service->recordPublicationApproval($application, $member, '198.51.100.7', 'UA2');
+
+        $this->assertSame($first->id, $second->id);
+        $this->assertSame($application->id, (int) $second->application_id);
+        $this->assertSame(1, ConsentRecord::query()->count());
     }
 
     /**
