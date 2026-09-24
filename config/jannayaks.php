@@ -185,6 +185,32 @@ return [
 
     'security' => [
         'test_bypass_role' => 'admin',
+
+        /*
+        | HTTP response security headers (app/Http/Middleware/SetSecurityHeaders.php).
+        | The CSP below is derived from the resources the application actually loads:
+        | self-hosted assets, Google Fonts stylesheets + gstatic font files, the
+        | Google Translate widget on the homepage, and pervasive inline
+        | scripts/styles (see docs/security-headers-csp.md for the report-only
+        | rationale and the enforcement path). 'unsafe-eval' is deliberately absent.
+        */
+        'headers' => [
+            // Report-Only until production reports are clean; then set true.
+            'csp_enforce' => env('JANNAYAKS_CSP_ENFORCE', false),
+            'csp' => implode('; ', [
+                "default-src 'self'",
+                "base-uri 'self'",
+                "object-src 'none'",
+                "frame-ancestors 'none'",
+                "form-action 'self'",
+                "img-src 'self' data:",
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+                "font-src 'self' https://fonts.gstatic.com",
+                "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com",
+                "connect-src 'self' https://translate.googleapis.com",
+                "frame-src https://translate.googleapis.com",
+            ]),
+        ],
     ],
 
     'otp' => [

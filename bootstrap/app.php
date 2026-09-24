@@ -1,5 +1,6 @@
 <?php
 
+use App\Http\Middleware\SetSecurityHeaders;
 use App\Http\Middleware\VerifiedOrMobileVerified;
 use App\Support\TrustedProxiesConfig;
 use Illuminate\Foundation\Application;
@@ -15,6 +16,7 @@ return Application::configure(basePath: dirname(__DIR__))
     )
     ->withMiddleware(function (Middleware $middleware): void {
         $middleware->trustProxies(at: TrustedProxiesConfig::fromEnv());
+        $middleware->append(SetSecurityHeaders::class);
         $middleware->alias([
             'verified.or.mobile' => VerifiedOrMobileVerified::class,
         ]);
