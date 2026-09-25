@@ -185,6 +185,11 @@ class ExternalVideoLinkService
                 actor: $reviewer,
             );
 
+            app(ProfileIntegrityService::class)->refreshSnapshot(
+                $link->profile,
+                'media.external_video_approved',
+            );
+
             return $link->fresh() ?? $link;
         });
     }

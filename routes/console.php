@@ -2,6 +2,7 @@
 
 use App\Console\Commands\FailStaleAiEditorialRunsCommand;
 use App\Console\Commands\ProcessMembershipLifecycleCommand;
+use App\Console\Commands\VerifyProfileIntegrityCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -36,3 +37,15 @@ Schedule::command(FailStaleAiEditorialRunsCommand::class)
     ->everyFifteenMinutes()
     ->withoutOverlapping(10)
     ->name('fail-stale-ai-editorial-runs');
+
+/*
+| Published Profile Integrity Monitor (Wave 2C) — REPORT-ONLY watchdog.
+| Compares each published profile's live public state against its known-good
+| snapshot; records incidents for unexplained differences. Never suspends or
+| modifies content in this wave. Chunked and circuit-broken (see
+| VerifyProfileIntegrityCommand); runs on the existing scheduler service.
+*/
+Schedule::command(VerifyProfileIntegrityCommand::class)
+    ->twiceDaily(0, 12)
+    ->withoutOverlapping(60)
+    ->name('verify-profile-integrity');

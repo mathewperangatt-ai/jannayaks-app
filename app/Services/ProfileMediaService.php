@@ -227,6 +227,11 @@ class ProfileMediaService
                 actor: $actor,
             );
 
+            app(ProfileIntegrityService::class)->refreshSnapshot(
+                $profile,
+                'media.profile_photo_primary_set',
+            );
+
             return $media->fresh() ?? $media;
         });
     }
@@ -322,6 +327,13 @@ class ProfileMediaService
                     'profile_id' => $profile->id,
                 ],
                 actor: $reviewer,
+            );
+
+            // Keep the published profile's known-good snapshot in step with
+            // the authorized public photo state (same transaction).
+            app(ProfileIntegrityService::class)->refreshSnapshot(
+                $profile,
+                'media.profile_photo_approved',
             );
 
             return $media->fresh() ?? $media;
@@ -490,6 +502,11 @@ class ProfileMediaService
                     //
                 }
             }
+
+            app(ProfileIntegrityService::class)->refreshSnapshot(
+                $profile,
+                'media.profile_photo_deleted',
+            );
         });
     }
 

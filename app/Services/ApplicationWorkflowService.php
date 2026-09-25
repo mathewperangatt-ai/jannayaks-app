@@ -186,6 +186,14 @@ class ApplicationWorkflowService
             // Living-profile annual membership begins at publication (not In Memoriam).
             app(MembershipLifecycleService::class)->startMembershipForPublishedProfile($profile);
 
+            // Known-good integrity baseline for the newly published public
+            // state (same transaction — a failed snapshot write rolls back
+            // publication rather than leaving a stale baseline).
+            app(ProfileIntegrityService::class)->refreshSnapshot(
+                $profile,
+                $isReplacement ? 'application.published.replacement' : 'application.published',
+            );
+
             $this->auditLogger->log(
                 action: $isReplacement ? 'application.published.replacement' : 'application.published',
                 subject: $locked,

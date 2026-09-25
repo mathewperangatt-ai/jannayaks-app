@@ -187,6 +187,22 @@ return [
         'test_bypass_role' => 'admin',
 
         /*
+        | Published Profile Integrity Monitor (Wave 2C, REPORT-ONLY).
+        | mode: only "report" exists in this wave — the watchdog records
+        | incidents and NEVER suspends or modifies content. Enforce mode is a
+        | separate future wave after burn-in.
+        | deep_verify_percent: share of published primary photos receiving a
+        | full streamed SHA-256 verification each run (others get a cheap
+        | size/HEAD check). Default 100 is correct at pre-launch scale
+        | (currently a handful of photos); lower it (e.g. 10) as the corpus
+        | grows — the rotation is deterministic per profile per day.
+        */
+        'integrity' => [
+            'mode' => env('JANNAYAKS_INTEGRITY_MODE', 'report'),
+            'deep_verify_percent' => (int) env('JANNAYAKS_INTEGRITY_DEEP_PERCENT', 100),
+        ],
+
+        /*
         | HTTP response security headers (app/Http/Middleware/SetSecurityHeaders.php).
         | The CSP below is derived from the resources the application actually loads:
         | self-hosted assets, Google Fonts stylesheets + gstatic font files, the

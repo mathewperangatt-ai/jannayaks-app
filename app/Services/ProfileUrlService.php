@@ -339,6 +339,11 @@ class ProfileUrlService
                     actor: $actor,
                 );
 
+                app(ProfileIntegrityService::class)->refreshSnapshot(
+                    $locked,
+                    'profile_url.slug_changed',
+                );
+
                 if (filled($previous) && strtolower((string) $previous) !== $newSlug) {
                     $this->reserveSlug((string) $previous, $locked, SlugReservation::SOURCE_HISTORICAL);
                     $this->recordRedirect($locked, (string) $previous, $newSlug);
