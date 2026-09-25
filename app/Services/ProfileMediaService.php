@@ -137,6 +137,7 @@ class ProfileMediaService
                     'review_status' => MediaItem::REVIEW_PENDING,
                     'mime_type' => $processed['mime_type'],
                     'size_bytes' => $processed['size_bytes'],
+                    'photo_sha256' => $processed['sha256'],
                     'width' => $processed['width'],
                     'height' => $processed['height'],
                 ]);

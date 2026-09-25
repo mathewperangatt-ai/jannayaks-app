@@ -180,6 +180,7 @@ class ApplicationWorkflowService
             app(ProfileUrlService::class)->assignInitialCanonicalSlug(
                 $profile,
                 (string) $locked->package_tier,
+                $actor,
             );
 
             // Living-profile annual membership begins at publication (not In Memoriam).

@@ -46,6 +46,7 @@ class MediaItem extends Model
         'review_note',
         'mime_type',
         'size_bytes',
+        'photo_sha256',
         'width',
         'height',
     ];

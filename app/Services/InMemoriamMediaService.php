@@ -96,6 +96,7 @@ class InMemoriamMediaService
                     'review_status' => MediaItem::REVIEW_PENDING,
                     'mime_type' => $processed['mime_type'] ?? 'image/jpeg',
                     'size_bytes' => $processed['size_bytes'] ?? null,
+                    'photo_sha256' => $processed['sha256'] ?? null,
                     'width' => $processed['width'] ?? null,
                     'height' => $processed['height'] ?? null,
                 ]);

@@ -34,6 +34,10 @@ class ProfilePhotoOptimizer
         $encoded = $image->encode(new JpegEncoder(quality: $jpegQuality));
         $bytes = (string) $encoded;
 
+        // Integrity hash of the EXACT bytes written to storage and later served
+        // publicly. Captured here — the single point where the final JPEG exists.
+        $sha256 = hash('sha256', $bytes);
+
         $finalKey = preg_replace('/\.[^.]+$/', '.jpg', $objectKey) ?: ($objectKey.'.jpg');
         $written = Storage::disk($disk)->put($finalKey, $bytes);
         if ($written !== true) {
@@ -46,6 +50,7 @@ class ProfilePhotoOptimizer
             'size_bytes' => strlen($bytes),
             'width' => $image->width(),
             'height' => $image->height(),
+            'sha256' => $sha256,
         ];
     }
 }

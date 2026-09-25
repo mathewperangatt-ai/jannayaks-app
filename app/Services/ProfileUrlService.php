@@ -24,19 +24,22 @@ class ProfileUrlService
 
     private const MAX_GENERATION_ATTEMPTS = 32;
 
-    public function __construct(private PersonalSlugGenerator $personalSlugs) {}
+    public function __construct(
+        private PersonalSlugGenerator $personalSlugs,
+        private StaffAuditLogger $auditLogger,
+    ) {}
 
     /**
      * Ensure a published living profile has a canonical slug.
      * Emerging (and A/D before personal selection) receive a 6-character system URL.
      */
-    public function assignInitialCanonicalSlug(Profile $profile, string $packageTier): Profile
+    public function assignInitialCanonicalSlug(Profile $profile, string $packageTier, ?User $actor = null): Profile
     {
         if ($packageTier === 'in_memoriam') {
             throw new InvalidArgumentException('In Memoriam profiles are outside living profile URL assignment.');
         }
 
-        return DB::transaction(function () use ($profile) {
+        return DB::transaction(function () use ($profile, $actor, $packageTier) {
             /** @var Profile $locked */
             $locked = Profile::query()->whereKey($profile->id)->lockForUpdate()->firstOrFail();
 
@@ -54,6 +57,15 @@ class ProfileUrlService
                 'slug_generated_at' => $now,
                 'slug_changed_at' => $now,
             ])->save();
+
+            // Authorized-change evidence for the public URL.
+            $this->auditLogger->log(
+                action: 'profile_url.slug_assigned',
+                subject: $locked,
+                before: ['slug' => null],
+                after: ['slug' => $slug, 'package_tier' => $packageTier],
+                actor: $actor,
+            );
 
             $this->reserveSlug($slug, $locked);
 
@@ -293,7 +305,7 @@ class ProfileUrlService
         $newSlug = $validation['slug'];
 
         try {
-            return DB::transaction(function () use ($profile, $newSlug) {
+            return DB::transaction(function () use ($profile, $newSlug, $actor) {
                 /** @var Profile $locked */
                 $locked = Profile::query()->whereKey($profile->id)->lockForUpdate()->firstOrFail();
 
@@ -317,6 +329,15 @@ class ProfileUrlService
                     'slug_changed_at' => $now,
                     'slug_generated_at' => $locked->slug_generated_at ?? $now,
                 ])->save();
+
+                // Authorized-change evidence for the public URL.
+                $this->auditLogger->log(
+                    action: 'profile_url.slug_changed',
+                    subject: $locked,
+                    before: ['slug' => $previous],
+                    after: ['slug' => $newSlug, 'previous_slug' => $previous],
+                    actor: $actor,
+                );
 
                 if (filled($previous) && strtolower((string) $previous) !== $newSlug) {
                     $this->reserveSlug((string) $previous, $locked, SlugReservation::SOURCE_HISTORICAL);
