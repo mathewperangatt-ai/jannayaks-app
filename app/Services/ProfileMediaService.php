@@ -241,6 +241,29 @@ class ProfileMediaService
             ]);
         }
 
+        // Separation of duties: the uploader of a photograph can never approve it.
+        // Fail closed when uploader identity is missing (legacy rows after user
+        // deletion) — such photographs require an administrator to resolve.
+        if ($media->uploaded_by_id === null) {
+            throw ValidationException::withMessages([
+                'media' => 'This photograph has no recorded uploader and cannot be approved. Contact an administrator.',
+            ]);
+        }
+
+        if ((int) $media->uploaded_by_id === (int) $reviewer->id) {
+            $this->audit->log(
+                action: 'media.profile_photo_approval_denied',
+                subject: $media,
+                before: ['review_status' => $media->review_status],
+                after: ['reason' => 'uploader_cannot_approve_own_upload'],
+                actor: $reviewer,
+            );
+
+            throw ValidationException::withMessages([
+                'media' => 'A photograph cannot be approved by the person who uploaded it. A different reviewer must approve it.',
+            ]);
+        }
+
         if ($media->media_type !== MediaItem::TYPE_PROFILE_PHOTO) {
             throw ValidationException::withMessages([
                 'media' => 'Only profile photographs can be approved here.',

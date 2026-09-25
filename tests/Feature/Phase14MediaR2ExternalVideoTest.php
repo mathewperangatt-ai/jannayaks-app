@@ -223,6 +223,7 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         [$member, $application, $profile] = $this->makeReadyApplication('accomplished');
         $service = app(ProfileMediaService::class);
         $editor = User::factory()->editor()->create();
+        $editor2 = User::factory()->editor()->create();
         $admin = User::factory()->admin()->create();
 
         $photoA = $service->uploadProfilePhoto($profile, $this->jpegUpload('a.jpg'), $member, 'A');
@@ -254,7 +255,8 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         $this->assertStringContainsString('/p/'.$profile->id.'/photo/'.$photoA->id, $html);
         $this->assertStringNotContainsString('/p/'.$profile->id.'/photo/'.$photoB->id, $html);
 
-        $service->approve($photoB->fresh(), $editor);
+        // Photo B was uploaded by $editor, so a different reviewer approves it.
+        $service->approve($photoB->fresh(), $editor2);
         $html = $this->get(route('profiles.public', $profile->slug))->assertOk()->getContent();
         $this->assertStringContainsString('/p/'.$profile->id.'/photo/'.$photoB->id, $html);
         $this->assertTrue(StaffActionLog::query()->where('action', 'media.profile_photo_approved')->exists());

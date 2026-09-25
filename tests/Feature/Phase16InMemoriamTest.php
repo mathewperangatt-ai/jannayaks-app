@@ -103,6 +103,7 @@ class Phase16InMemoriamTest extends TestCase
     {
         Storage::fake('public');
         $editor = User::factory()->editor()->create();
+        $reviewer = User::factory()->editor()->create();
         $support = User::factory()->support()->create();
         $admin = User::factory()->admin()->create();
 
@@ -123,7 +124,8 @@ class Phase16InMemoriamTest extends TestCase
             // expected
         }
 
-        $approved = $media->approve($pending, $editor);
+        // The uploader cannot self-approve; a different reviewer approves.
+        $approved = $media->approve($pending, $reviewer);
         $this->assertSame(MediaItem::REVIEW_APPROVED, $approved->review_status);
         $this->assertSame(MediaItem::PRIVACY_PUBLIC, $approved->privacy);
 
@@ -350,6 +352,7 @@ class Phase16InMemoriamTest extends TestCase
 
         $admin = User::factory()->admin()->create();
         $editor = User::factory()->editor()->create();
+        $reviewer = User::factory()->editor()->create();
         $support = User::factory()->support()->create();
 
         $memorial = InMemoriamProfile::factory()->paid()->create([
@@ -388,7 +391,8 @@ class Phase16InMemoriamTest extends TestCase
         $this->assertSame(MediaItem::PRIVACY_PRIVATE, $pending->privacy);
         $this->get($photoUrl)->assertNotFound();
 
-        $approved = $mediaService->approve($pending, $editor);
+        // The uploader cannot self-approve; a different reviewer approves.
+        $approved = $mediaService->approve($pending, $reviewer);
         $this->assertSame(MediaItem::REVIEW_APPROVED, $approved->review_status);
         $this->assertSame(MediaItem::PRIVACY_PUBLIC, $approved->privacy);
         $this->get($photoUrl)->assertOk();
