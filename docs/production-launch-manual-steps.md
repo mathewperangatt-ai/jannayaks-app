@@ -88,7 +88,7 @@ server-side only) before authenticating the MSG91-verified mobile number.
 
 | Variable | Value |
 |---|---|
-| `MSG91_AUTH_KEY` | server-only secret (already in Railway) |
+| `MSG91_AUTHKEY` | server-only secret (already in Railway) |
 | `MSG91_WIDGET_ID` | non-secret widget ID from the MSG91 dashboard |
 | `MSG91_WIDGET_TOKEN` | non-secret widget token from the MSG91 dashboard |
 | `JANNAYAKS_OTP_LOGIN_ENABLED` | `true` to enable; `false` hides/disables the flow (kill switch) |

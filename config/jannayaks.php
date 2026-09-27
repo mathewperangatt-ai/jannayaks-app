@@ -236,7 +236,7 @@ return [
 
         /*
         | MSG91 OTP Widget (Jannayaks-specific integration).
-        | - auth_key: SERVER-ONLY secret (Railway env MSG91_AUTH_KEY). Never
+        | - auth_key: SERVER-ONLY secret (Railway env MSG91_AUTHKEY). Never
         |   exposed to the browser, tests, logs, or source.
         | - widget_id / widget_token: NON-secret client-side widget values from
         |   the MSG91 dashboard (SecureOTPWidgetYLBE). Safe to render in HTML.
@@ -246,7 +246,7 @@ return [
         |   verified response. Fail-closed on every anomaly.
         */
         'msg91' => [
-            'auth_key' => env('MSG91_AUTH_KEY', ''),
+            'auth_key' => env('MSG91_AUTHKEY', ''),
             'widget_id' => env('MSG91_WIDGET_ID', ''),
             'widget_token' => env('MSG91_WIDGET_TOKEN', ''),
             'verify_url' => env('MSG91_VERIFY_URL', 'https://control.msg91.com/api/v5/widget/verifyAccessToken'),
