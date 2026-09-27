@@ -3,16 +3,26 @@
 namespace Tests\Feature;
 
 use App\Models\User;
-use App\Services\MobileOtpService;
 use App\Support\IndiaMobile;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
 
 class AccountSuspensionAndOtpFlagTest extends TestCase
 {
     use RefreshDatabase;
+
+    private const VERIFY_URL = 'control.msg91.com/api/v5/widget/verifyAccessToken';
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['jannayaks.otp.msg91.auth_key' => 'test-server-auth-key']);
+        config(['jannayaks.otp.msg91.widget_id' => 'SecureOTPWidgetYLBE']);
+        config(['jannayaks.otp.msg91.widget_token' => 'test-widget-token']);
+    }
 
     public function test_suspended_member_is_blocked_from_member_routes_and_logged_out(): void
     {
@@ -27,7 +37,6 @@ class AccountSuspensionAndOtpFlagTest extends TestCase
 
     public function test_suspended_member_cannot_login_via_otp(): void
     {
-        $service = app(MobileOtpService::class);
         $mobile = IndiaMobile::normalize('9495949399');
         $user = User::factory()->suspended()->create([
             'mobile' => $mobile,
@@ -35,30 +44,23 @@ class AccountSuspensionAndOtpFlagTest extends TestCase
         ]);
         $this->assertFalse($user->isActiveAccount());
 
-        $service->request($mobile, '127.0.0.1');
-        $code = (string) $service->testCodeFor($mobile);
-        $this->assertMatchesRegularExpression('/^\d{6}$/', $code);
+        Http::fake([self::VERIFY_URL => Http::response(['type' => 'success', 'mobile' => $mobile])]);
 
-        $this->post(route('auth.otp.verify'), [
-            'mobile' => $mobile,
-            'otp' => $code,
-        ])->assertRedirect(route('login'));
+        $this->post(route('auth.otp.verify'), ['access_token' => 'jwt'])
+            ->assertRedirect(route('login'));
 
         $this->assertFalse(Auth::check());
     }
 
     public function test_active_member_still_logs_in_via_otp(): void
     {
-        $service = app(MobileOtpService::class);
-        $mobile = IndiaMobile::normalize('9495949398');
+        Http::fake([self::VERIFY_URL => Http::response([
+            'type' => 'success',
+            'mobile' => IndiaMobile::normalize('9495949398'),
+        ])]);
 
-        $service->request($mobile, '127.0.0.1');
-        $code = (string) $service->testCodeFor($mobile);
-
-        $this->post(route('auth.otp.verify'), [
-            'mobile' => $mobile,
-            'otp' => $code,
-        ])->assertRedirect(route('apply'));
+        $this->post(route('auth.otp.verify'), ['access_token' => 'jwt'])
+            ->assertRedirect(route('apply'));
 
         $this->assertTrue(Auth::check());
     }
@@ -69,9 +71,7 @@ class AccountSuspensionAndOtpFlagTest extends TestCase
 
         $this->get(route('auth.otp.request.show'))
             ->assertRedirect(route('login'));
-        $this->post(route('auth.otp.send'), ['mobile' => '9495949397'])
-            ->assertRedirect(route('login'));
-        $this->get(route('auth.otp.verify.show'))
+        $this->post(route('auth.otp.verify'), ['access_token' => 'jwt'])
             ->assertRedirect(route('login'));
 
         $login = $this->get(route('login'));

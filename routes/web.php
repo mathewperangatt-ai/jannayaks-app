@@ -55,10 +55,11 @@ Route::middleware('guest')->group(function () {
     Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google');
     Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
 
-    Route::get('/auth/otp', [MobileOtpController::class, 'showRequestForm'])->name('auth.otp.request.show');
-    Route::post('/auth/otp', [MobileOtpController::class, 'send'])->middleware('throttle:10,1')->name('auth.otp.send');
-    Route::get('/auth/otp/verify', [MobileOtpController::class, 'showVerifyForm'])->name('auth.otp.verify.show');
-    Route::post('/auth/otp/verify', [MobileOtpController::class, 'verify'])->middleware('throttle:20,1')->name('auth.otp.verify');
+    // Indian mobile OTP via the MSG91 widget: GET renders the widget page;
+    // POST /auth/otp/verify receives the widget's access token and performs
+    // the server-side MSG91 verification before any authentication.
+    Route::get('/auth/otp', [MobileOtpController::class, 'showWidget'])->name('auth.otp.request.show');
+    Route::post('/auth/otp/verify', [MobileOtpController::class, 'verify'])->middleware('throttle:10,1')->name('auth.otp.verify');
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');

@@ -79,19 +79,22 @@ Verify: `request()->ip()` in a logged context should show the true client IP
 (Cloudflare `CF-Connecting-IP`-resolved), not a 172.7x.x.x / 10.x.x.x hop, and
 spoofed `X-Forwarded-For` from outsiders must be ignored.
 
-## 4. OTP login disabled until an SMS provider exists
+## 4. Indian mobile OTP login (MSG91 OTP Widget)
 
-`MobileOtpService` still has no SMS transport: requesting an "OTP" logs it and
-nothing is delivered. Wave 2 adds an honest kill switch.
+OTP sign-in is delivered by the MSG91 OTP Widget (SecureOTPWidgetYLBE):
+the widget sends/verifies the OTP in the browser and returns an access token,
+which the Jannayaks server verifies with MSG91 (`verifyAccessToken`, AuthKey
+server-side only) before authenticating the MSG91-verified mobile number.
 
 | Variable | Value |
 |---|---|
-| `JANNAYAKS_OTP_LOGIN_ENABLED` | `false` |
+| `MSG91_AUTH_KEY` | server-only secret (already in Railway) |
+| `MSG91_WIDGET_ID` | non-secret widget ID from the MSG91 dashboard |
+| `MSG91_WIDGET_TOKEN` | non-secret widget token from the MSG91 dashboard |
+| `JANNAYAKS_OTP_LOGIN_ENABLED` | `true` to enable; `false` hides/disables the flow (kill switch) |
 
-Effect: OTP routes redirect to login with "Mobile OTP sign-in is currently
-unavailable", and the login page hides the OTP entry point. Google sign-in is
-unaffected. When a real SMS provider is implemented later, remove the variable
-(defaults to enabled).
+Until the two widget variables are set, the OTP page shows a safe
+"temporarily unavailable" state (fail-closed; Google sign-in unaffected).
 
 ## 5. Post-deploy verification checklist
 

@@ -4,13 +4,12 @@ namespace Tests\Feature;
 
 use App\Models\Application;
 use App\Models\User;
-use App\Services\MobileOtpService;
 use App\Support\IndiaMobile;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\RateLimiter;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
@@ -20,6 +19,14 @@ use Tests\TestCase;
 class Phase7AuthJourneyTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        config(['jannayaks.otp.msg91.auth_key' => 'test-server-auth-key']);
+        config(['jannayaks.otp.msg91.widget_id' => 'SecureOTPWidgetYLBE']);
+        config(['jannayaks.otp.msg91.widget_token' => 'test-widget-token']);
+    }
 
     public function test_member_login_page_is_available_to_guests(): void
     {
@@ -126,26 +133,30 @@ class Phase7AuthJourneyTest extends TestCase
 
     public function test_india_otp_login_rejects_non_india_numbers(): void
     {
-        $this->post(route('auth.otp.send'), ['mobile' => '+1 4155552671'])
-            ->assertSessionHasErrors('mobile');
+        // MSG91 verified response carries a non-Indian number -> fail closed.
+        Http::fake(['control.msg91.com/api/v5/widget/verifyAccessToken' => Http::response([
+            'type' => 'success',
+            'mobile' => '+1 4155552671',
+        ])]);
+
+        $this->post(route('auth.otp.verify'), ['access_token' => 'jwt'])
+            ->assertSessionHasErrors('otp');
+        $this->assertGuest();
     }
 
     public function test_india_otp_request_and_verify_logs_in_member(): void
     {
-        $this->post(route('auth.otp.send'), ['mobile' => '9876543210'])
-            ->assertRedirect(route('auth.otp.verify.show'));
+        Http::fake(['control.msg91.com/api/v5/widget/verifyAccessToken' => Http::response([
+            'type' => 'success',
+            'mobile' => IndiaMobile::normalize('9876543210'),
+        ])]);
 
-        $mobile = IndiaMobile::normalize('9876543210');
-        $code = app(MobileOtpService::class)->testCodeFor($mobile);
-        $this->assertNotNull($code);
-
-        $this->post(route('auth.otp.verify'), [
-            'mobile' => $mobile,
-            'otp' => $code,
-        ])->assertRedirect(route('apply'));
+        $this->get(route('auth.otp.request.show'))->assertOk();
+        $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt'])
+            ->assertRedirect(route('apply'));
 
         $this->assertAuthenticated();
-        $user = User::query()->where('mobile', $mobile)->first();
+        $user = User::query()->where('mobile', IndiaMobile::normalize('9876543210'))->first();
         $this->assertNotNull($user);
         $this->assertNotNull($user->mobile_verified_at);
     }
@@ -155,14 +166,13 @@ class Phase7AuthJourneyTest extends TestCase
         $this->startSession();
         $before = session()->getId();
 
-        $this->post(route('auth.otp.send'), ['mobile' => '9876500001']);
-        $mobile = IndiaMobile::normalize('9876500001');
-        $code = app(MobileOtpService::class)->testCodeFor($mobile);
+        Http::fake(['control.msg91.com/api/v5/widget/verifyAccessToken' => Http::response([
+            'type' => 'success',
+            'mobile' => '919876500001',
+        ])]);
 
-        $this->post(route('auth.otp.verify'), [
-            'mobile' => $mobile,
-            'otp' => $code,
-        ])->assertRedirect(route('apply'));
+        $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt'])
+            ->assertRedirect(route('apply'));
 
         $this->assertAuthenticated();
         $this->assertNotSame($before, session()->getId());
@@ -170,55 +180,41 @@ class Phase7AuthJourneyTest extends TestCase
 
     public function test_otp_cannot_be_reused(): void
     {
-        $this->post(route('auth.otp.send'), ['mobile' => '9876500002']);
-        $mobile = IndiaMobile::normalize('9876500002');
-        $code = app(MobileOtpService::class)->testCodeFor($mobile);
-        $this->assertNotNull($code);
+        // Token replay is rejected by MSG91 server-side; our side fails closed.
+        Http::fake([
+            'control.msg91.com/api/v5/widget/verifyAccessToken' => Http::sequence()
+                ->push(['type' => 'success', 'mobile' => '919876500002'])
+                ->push(['type' => 'error', 'message' => 'Token already consumed'], 401),
+        ]);
 
-        $this->post(route('auth.otp.verify'), [
-            'mobile' => $mobile,
-            'otp' => $code,
-        ])->assertRedirect(route('apply'));
+        $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt'])
+            ->assertRedirect(route('apply'));
 
         Auth::logout();
         $this->flushSession();
 
-        $this->post(route('auth.otp.verify'), [
-            'mobile' => $mobile,
-            'otp' => $code,
-        ])->assertSessionHasErrors('otp');
+        $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt'])
+            ->assertSessionHasErrors('otp');
 
         $this->assertGuest();
     }
 
     public function test_otp_verification_has_per_ip_rate_limiting(): void
     {
-        RateLimiter::clear('otp-verify:ip:127.0.0.1');
-        RateLimiter::clear('otp-request:ip:127.0.0.1');
+        // Failing verifications still exercise the route; the 10/min throttle
+        // must bound repeated attempts.
+        Http::fake(['control.msg91.com/api/v5/widget/verifyAccessToken' => Http::response([
+            'type' => 'error',
+            'message' => 'Invalid token',
+        ], 401)]);
 
-        $svc = app(MobileOtpService::class);
-
-        for ($i = 0; $i < 20; $i++) {
-            RateLimiter::clear('otp-request:ip:127.0.0.1');
-            $mobile = '98765'.str_pad((string) $i, 5, '0', STR_PAD_LEFT);
-            $svc->request($mobile, '127.0.0.1');
-            try {
-                $svc->verify($mobile, '000000', '127.0.0.1');
-            } catch (\Illuminate\Validation\ValidationException) {
-                // expected invalid OTP
-            }
+        $response = null;
+        for ($i = 0; $i < 11; $i++) {
+            $response = $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt']);
         }
 
-        RateLimiter::clear('otp-request:ip:127.0.0.1');
-        $svc->request('9876599999', '127.0.0.1');
-
-        try {
-            $svc->verify('9876599999', '000000', '127.0.0.1');
-            $this->fail('Expected per-IP OTP verification rate limit to throw.');
-        } catch (\Illuminate\Validation\ValidationException $e) {
-            $this->assertArrayHasKey('otp', $e->errors());
-            $this->assertStringContainsString('network', strtolower(implode(' ', $e->errors()['otp'])));
-        }
+        $this->assertSame(429, $response->getStatusCode());
+        $this->assertGuest();
     }
 
     public function test_member_cannot_access_filament_admin_panel(): void

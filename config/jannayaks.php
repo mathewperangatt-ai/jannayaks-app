@@ -219,27 +219,39 @@ return [
                 "object-src 'none'",
                 "frame-ancestors 'none'",
                 "form-action 'self'",
-                "img-src 'self' data:",
-                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+                "img-src 'self' data: https://verify.msg91.com",
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://verify.msg91.com",
                 "font-src 'self' https://fonts.gstatic.com",
-                "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com",
-                "connect-src 'self' https://translate.googleapis.com",
-                "frame-src https://translate.googleapis.com",
+                "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://verify.msg91.com",
+                "connect-src 'self' https://translate.googleapis.com https://verify.msg91.com",
+                "frame-src https://translate.googleapis.com https://verify.msg91.com",
             ]),
         ],
     ],
 
     'otp' => [
-        // P7 delivery is log/test-cache only. No SMS provider is implemented.
-        // Do not set sms_enabled=true until a real provider exists in a later phase.
-        // Set login_enabled=false in production until a real SMS provider is wired up,
-        // so the UI never claims an OTP was sent when nothing can be delivered.
+        // Kill switch: set JANNAYAKS_OTP_LOGIN_ENABLED=false to hide and disable
+        // the OTP entry point entirely (preserved from the pre-MSG91 era).
         'login_enabled' => env('JANNAYAKS_OTP_LOGIN_ENABLED', true),
-        'expiry_minutes' => 10,
-        'channel' => env('JANNAYAKS_OTP_CHANNEL', 'log'), // log | test-cache metadata only
-        'sms_enabled' => false,
-        'expose_test_code' => env('JANNAYAKS_OTP_EXPOSE_TEST_CODE', false),
-        'log_plaintext_in_non_production' => true, // logs length only, never the OTP value
+
+        /*
+        | MSG91 OTP Widget (Jannayaks-specific integration).
+        | - auth_key: SERVER-ONLY secret (Railway env MSG91_AUTH_KEY). Never
+        |   exposed to the browser, tests, logs, or source.
+        | - widget_id / widget_token: NON-secret client-side widget values from
+        |   the MSG91 dashboard (SecureOTPWidgetYLBE). Safe to render in HTML.
+        | - The widget sends/verifies the OTP client-side and returns a JWT
+        |   access token; this server verifies that token with MSG91
+        |   (verifyAccessToken) and trusts ONLY the mobile number in MSG91's
+        |   verified response. Fail-closed on every anomaly.
+        */
+        'msg91' => [
+            'auth_key' => env('MSG91_AUTH_KEY', ''),
+            'widget_id' => env('MSG91_WIDGET_ID', ''),
+            'widget_token' => env('MSG91_WIDGET_TOKEN', ''),
+            'verify_url' => env('MSG91_VERIFY_URL', 'https://control.msg91.com/api/v5/widget/verifyAccessToken'),
+            'timeout_seconds' => (int) env('MSG91_TIMEOUT_SECONDS', 15),
+        ],
     ],
 
     /*
