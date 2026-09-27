@@ -43,8 +43,6 @@
                 <input type="hidden" name="access_token" id="otp-access-token" value="">
             </form>
 
-            <script src="https://verify.msg91.com/otp-provider.js"
-                    onload="initSendOTP(otpWidgetConfig())"></script>
             <script>
                 function otpWidgetConfig() {
                     return {
@@ -68,6 +66,8 @@
                     };
                 }
             </script>
+            <script src="https://verify.msg91.com/otp-provider.js"
+                    onload="initSendOTP(otpWidgetConfig())"></script>
         @else
             <p class="sub" style="color:#7a1414">Mobile OTP sign-in is temporarily unavailable. Please use Google sign-in.</p>
             <a class="btn" href="{{ route('login') }}">Back to sign-in options</a>
