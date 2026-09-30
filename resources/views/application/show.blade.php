@@ -24,7 +24,7 @@
     <h1>{{ $application->full_name }}</h1>
     <div class="sub">
         @php
-            $tierMap = ['emerging' => 'Emerging Leader','accomplished' => 'Accomplished Leader','distinguished' => 'Distinguished Leader'];
+            $tierMap = ['emerging' => \App\Support\TierLabels::label('emerging'),'accomplished' => \App\Support\TierLabels::label('accomplished'),'distinguished' => \App\Support\TierLabels::label('distinguished')];
             $priceMap = ['emerging' => '₹3,000','accomplished' => '₹8,000','distinguished' => '₹25,000'];
         @endphp
         <span class="list-pill">Tier: <b>{{ $tierMap[(string)$application->package_tier] ?? ucfirst($application->package_tier) }}</b> ({{ $priceMap[(string)$application->package_tier] ?? '—' }} incl. GST)</span>

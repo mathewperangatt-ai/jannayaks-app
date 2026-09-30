@@ -14,7 +14,12 @@ class FaqChargesController extends Controller
             'accomplished' => PricingAmounts::forTier('accomplished'),
             'distinguished' => PricingAmounts::forTier('distinguished'),
             'distinguishedAddon' => PricingAmounts::forDistinguishedInterviewAddon(),
-            'membership' => PricingAmounts::forAnnualMembership(),
+            // Annual membership renewal is tier-priced at the applicable annual tier price.
+            'renewals' => [
+                'emerging' => PricingAmounts::forTierRenewal('emerging'),
+                'accomplished' => PricingAmounts::forTierRenewal('accomplished'),
+                'distinguished' => PricingAmounts::forTierRenewal('distinguished'),
+            ],
             'revision' => PricingAmounts::forRevisionUpdate(),
             'inMemoriam' => PricingAmounts::forInMemoriam5yr(),
             'hostingYears' => (int) config('jannayaks.tier_pricing.in_memoriam.hosting_years', 5),

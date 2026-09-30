@@ -81,7 +81,7 @@
     @else
         <h2 style="margin-top:14px;font-size:16px">System-assigned URL</h2>
         <p class="lead" style="margin:0">
-            Emerging profiles use a six-character system URL. A personal name-based URL is not available on this tier.
+            {{ \App\Support\TierLabels::label('emerging') }} profiles use a six-character system URL. A personal name-based URL is not available on this tier.
         </p>
     @endif
 

@@ -54,7 +54,7 @@
 <div class="card">
     <h2 style="margin-top:0;margin-bottom:6px">Package Price Breakdown / ചെലവ് വിഭജനം</h2>
     <div class="sub" style="margin-bottom:14px">
-        GST-inclusive package pricing / ജിഎസ്ടി ഉൾപ്പെട്ട പാക്കേജ് വില</div>
+        Base price + GST (added at payment)</div>
 
     <div class="stack" style="gap:10px">
         <div class="row" style="justify-content:space-between">
@@ -79,14 +79,14 @@
 
         @if (is_string($package['cgst_formatted'] ?? null))
         <div class="row" style="justify-content:space-between">
-            <div class="note-safe">CGST (included)</div>
+            <div class="note-safe">CGST (added)</div>
             <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['cgst_formatted'] }}</div>
         </div>
         @endif
 
         @if (is_string($package['sgst_formatted'] ?? null))
         <div class="row" style="justify-content:space-between">
-            <div class="note-safe">SGST (included)</div>
+            <div class="note-safe">SGST (added)</div>
             <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['sgst_formatted'] }}</div>
         </div>
         @endif
@@ -96,7 +96,7 @@
         <div class="row" style="justify-content:space-between">
             <div>
             <div style="font-weight:700">Total (incl. GST) / ആകെ (ജിഎസ്ടി ഉൾപ്പെടെ)</div>
-            <div class="note-safe">{{ $package['gst_rate_percent'] }}% GST included / ജിഎസ്ടി ഉൾപ്പെടുത്തി</div>
+            <div class="note-safe">{{ $package['gst_rate_percent'] }}% GST added at payment</div>
         </div>
             <div style="font-size:22px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums">{{ $package['amount_incl_formatted'] ?? '' }}</div>
         </div>

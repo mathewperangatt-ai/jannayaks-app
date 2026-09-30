@@ -59,12 +59,13 @@ class HomepageIntegrationTest extends TestCase
         $response->assertOk();
         $response->assertSee('noindex, nofollow', false);
         $response->assertSee('Under Construction', false);
-        $response->assertSee($emerging['amount_incl_formatted'], false);
-        $response->assertSee($accomplished['amount_incl_formatted'], false);
-        $response->assertSee($distinguished['amount_incl_formatted'], false);
-        $response->assertSee($inMemoriam['amount_incl_formatted'], false);
+        $response->assertSee($emerging['base_formatted'], false);
+        $response->assertSee($accomplished['base_formatted'], false);
+        $response->assertSee($distinguished['base_formatted'], false);
+        $response->assertSee($inMemoriam['base_formatted'], false);
         $response->assertSee('3 years', false);
         $response->assertDontSee('₹29,500', false);
+        $response->assertSee('+ GST', false);
         $response->assertSee(route('in-memoriam.index', absolute: false), false);
         $response->assertSee(route('gallery.index', absolute: false), false);
     }
@@ -75,7 +76,7 @@ class HomepageIntegrationTest extends TestCase
         $this->get(route('search.index'))->assertOk();
         $this->get(route('in-memoriam.index'))
             ->assertOk()
-            ->assertSee('₹25,000', false)
+            ->assertSee('₹24,000', false)
             ->assertSee('3 years', false)
             ->assertDontSee('₹29,500', false);
         $this->get(route('login'))->assertOk();

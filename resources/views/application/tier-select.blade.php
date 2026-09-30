@@ -14,7 +14,7 @@
 
     <div class="warnbox" role="note" aria-label="Pricing note">
         After you choose a tier and sign in, <b>payment comes next</b>. The Online Interview and source-material uploads unlock after payment is settled.
-        The prices below are inclusive of GST.
+        The prices below are exclusive of GST; 18% GST is added at payment. Tiers renew annually at the same tier price.
     </div>
 
     <form method="POST" action="{{ route('apply.intent') }}" novalidate>
@@ -25,15 +25,15 @@
             @php
                 $packages = config('jannayaks.tier_pricing.packages', []);
                 $tiers = ['emerging' => [
-                    'title' => 'Emerging Leader',
+                    'title' => \App\Support\TierLabels::label('emerging'),
                     'sections' => ['About You', 'Your Journey', 'Looking Back', 'Closing'],
                     'include' => ['14-question backbone (Emerging scoped)', '1 photo slot', 'Documentary editorial treatment', 'Review + approval before publication'],
                 ], 'accomplished' => [
-                    'title' => 'Accomplished Leader',
+                    'title' => \App\Support\TierLabels::label('accomplished'),
                     'sections' => ['Emerging content', '+ Your Contribution', '+ Experiences & Challenges', '+ 3 photo slots', '+ video link'],
                     'include' => ['11 unlocked questions', '3 photo slots', 'Video link', 'Expanded contribution editorial'],
                 ], 'distinguished' => [
-                    'title' => 'Distinguished Leader',
+                    'title' => \App\Support\TierLabels::label('distinguished'),
                     'sections' => ['Full interview: Responsibilities & Recognition', 'The Person Behind the Public Life', '5 photo slots', 'In-person journalist interview optional'],
                     'include' => ['All 14 backbone questions + closing', '5 photo slots', 'Video link', 'Senior journalist editorial pass'],
                 ]];
@@ -45,7 +45,7 @@
                     <h3>
                         <span>{{ $meta['title'] }}</span>
                     </h3>
-                    <div class="price">₹{{ $amt }}<span style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-left:6px">incl. GST</span></div>
+                    <div class="price">₹{{ $amt }}<span style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-left:6px">+ GST / year</span></div>
                     <ul>
                         @foreach ($meta['sections'] as $s)
                             <li>{{ $s }}</li>

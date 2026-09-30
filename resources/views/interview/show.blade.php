@@ -4,7 +4,7 @@
 @php
     $isSubmitted = (bool) $readOnly;
     $sectionLabels = config('online_interview.sections', []);
-    $tierMap = ['emerging' => 'Emerging','accomplished' => 'Accomplished','distinguished' => 'Distinguished'];
+    $tierMap = ['emerging' => \App\Support\TierLabels::label('emerging'),'accomplished' => \App\Support\TierLabels::label('accomplished'),'distinguished' => \App\Support\TierLabels::label('distinguished')];
 @endphp
 
 <section class="card {{ $isSubmitted ? 'readonly' : '' }}" aria-label="Online Interview">

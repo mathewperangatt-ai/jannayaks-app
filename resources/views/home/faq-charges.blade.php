@@ -82,17 +82,17 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <h1>Membership charges and common questions</h1>
   <p class="lede">
     Package amounts below are the authoritative charges used by the Jannayaks application
-    (inclusive of GST at {{ number_format($gstPercent, 0) }}% where the package is GST-inclusive).
+    (exclusive of GST; {{ number_format($gstPercent, 0) }}% GST is added at payment).
     Payment is completed through the application journey after you create a profile.
   </p>
 
   <div class="card gold">
     <div class="tier-name">Distinguished</div>
     <span class="tier-name-ml">പ്രശസ്തർ</span>
-    <div class="price">{{ $distinguished['amount_incl_formatted'] }}</div>
+    <div class="price">{{ $distinguished['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
     <div class="price-sub">
-      Incl. GST · annual membership {{ $membership['amount_incl_formatted'] }} ·
-      post-publication revision {{ $revision['amount_incl_formatted'] }}
+      + GST (added at payment) · renews annually at the same tier price ·
+      post-publication revision {{ $revision['base_formatted'] }} + GST
     </div>
     <div class="who">
       Senior political leaders, state-level office-bearers, and the most established names in community and cultural leadership
@@ -111,12 +111,12 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   </div>
 
   <div class="card navy">
-    <div class="tier-name">Accomplished</div>
+    <div class="tier-name">{{ \App\Support\TierLabels::label('accomplished') }}</div>
     <span class="tier-name-ml">ജനസമ്മതർ</span>
-    <div class="price">{{ $accomplished['amount_incl_formatted'] }}</div>
+    <div class="price">{{ $accomplished['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
     <div class="price-sub">
-      Incl. GST · annual membership {{ $membership['amount_incl_formatted'] }} ·
-      post-publication revision {{ $revision['amount_incl_formatted'] }}
+      + GST (added at payment) · renews annually at the same tier price ·
+      post-publication revision {{ $revision['base_formatted'] }} + GST
     </div>
     <div class="who">
       Elected and former representatives, and established leaders of organisations, institutions, and community bodies
@@ -128,18 +128,18 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
       <li>Personal URL — jannayaks.in/slug</li>
       <li>Digital visiting card + QR code</li>
       <li>Posts — text &amp; photos</li>
-      <li>Priority listing above Emerging</li>
+      <li>Priority listing above {{ \App\Support\TierLabels::label('emerging') }}</li>
       <li>Annual profile refresh</li>
     </ul>
   </div>
 
   <div class="card">
-    <div class="tier-name">Emerging</div>
+    <div class="tier-name">{{ \App\Support\TierLabels::label('emerging') }}</div>
     <span class="tier-name-ml">ജനകീയർ</span>
-    <div class="price">{{ $emerging['amount_incl_formatted'] }}</div>
+    <div class="price">{{ $emerging['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
     <div class="price-sub">
-      Incl. GST · annual membership {{ $membership['amount_incl_formatted'] }} ·
-      post-publication revision {{ $revision['amount_incl_formatted'] }}
+      + GST (added at payment) · renews annually at the same tier price ·
+      post-publication revision {{ $revision['base_formatted'] }} + GST
     </div>
     <div class="who">
       Local body members, active workers, and rising figures in community or cultural life
@@ -159,7 +159,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <div class="card">
     <div class="tier-name">In Memoriam</div>
     <span class="tier-name-ml">സ്മരണാഞ്ജലി</span>
-    <div class="price">{{ $inMemoriam['amount_incl_formatted'] }}</div>
+    <div class="price">{{ $inMemoriam['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
     <div class="price-sub">
       {{ $hostingYears }} years hosting · arranged offline with Jannayaks · see
       <a href="{{ route('in-memoriam.index') }}">/in-memoriam</a>
@@ -181,7 +181,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   </div>
   <div class="faq">
     <strong>What is annual membership?</strong>
-    <p>After publication, membership renews on the annual cycle configured in the application. The current annual membership amount is {{ $membership['amount_incl_formatted'] }}.</p>
+    <p>After publication, membership renews on the annual cycle configured in the application. The current annual renewal is your tier's annual price plus GST: {{ $renewals['emerging']['base_formatted'] }} ({{ \App\Support\TierLabels::label('emerging') }}), {{ $renewals['accomplished']['base_formatted'] }} ({{ \App\Support\TierLabels::label('accomplished') }}), {{ $renewals['distinguished']['base_formatted'] }} ({{ \App\Support\TierLabels::label('distinguished') }}) — each + GST.</p>
   </div>
   <div class="faq">
     <strong>What about profile revisions after publication?</strong>

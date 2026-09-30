@@ -162,7 +162,7 @@ class RazorpayPaymentService
             throw new InvalidArgumentException('This membership is outside the retention window and cannot be renewed here.');
         }
 
-        $amounts = PricingAmounts::forAnnualMembership();
+        $amounts = PricingAmounts::forTierRenewal(PricingAmounts::tierKeyForMembership($membership));
         PricingAmounts::assertInr($amounts['currency']);
         $totalPaise = (int) $amounts['amount_incl_paise'];
         if ($totalPaise <= 0) {

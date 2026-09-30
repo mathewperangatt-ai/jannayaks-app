@@ -7,6 +7,7 @@ use App\Models\User;
 use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
+use App\Support\TierLabels;
 use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
@@ -44,6 +45,7 @@ class ApplicationForm
                 ->schema([
                     TextInput::make('package_tier')
                         ->disabled()
+                        ->formatStateUsing(fn (?string $state): string => TierLabels::label($state))
                         ->dehydrated(false),
                     TextInput::make('source_method')
                         ->disabled()

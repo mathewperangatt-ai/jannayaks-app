@@ -27,11 +27,7 @@ class ApplicationController extends Controller
     {
         $tiers = self::LIVING_TIERS;
         $sourceMethods = ['online_interview', 'direct_submission'];
-        $tierLabels = [
-            'emerging' => 'Emerging Leader',
-            'accomplished' => 'Accomplished Leader',
-            'distinguished' => 'Distinguished Leader',
-        ];
+        $tierLabels = \App\Support\TierLabels::forLivingTiers();
 
         $auth = Auth::check();
         $showTiers = $auth || $request->boolean('tiers') || $request->query('step') === 'tiers';

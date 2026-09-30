@@ -20,58 +20,58 @@ class Phase6PaymentSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
-    /* 1. Correct Emerging amount. */
-    public function test_pricing_emerging_amount_3000_inr_gst_inclusive(): void
+    /* 1. Correct Recognised amount (₹3,000 + GST, GST-exclusive model). */
+    public function test_pricing_recognised_amount_3000_plus_gst(): void
     {
         $amt = PricingAmounts::forTier('emerging');
         $this->assertSame('INR', $amt['currency']);
-        $this->assertSame(3000 * 100, $amt['amount_incl_paise']);
-        $this->assertSame(3000, $amt['amount_incl_rupees']);
-        $this->assertTrue($amt['gst_inclusive']);
+        $this->assertSame(3000 * 100, $amt['base_paise']);
+        $this->assertSame(54000, $amt['gst_paise']);
+        $this->assertSame(354000, $amt['amount_incl_paise']);
+        $this->assertSame(3540, $amt['amount_incl_rupees']);
+        $this->assertFalse($amt['gst_inclusive']);
         $this->assertSame(18.0, $amt['gst_rate_percent']);
-        $this->assertSame('₹3,000.00', $amt['amount_incl_formatted']);
+        $this->assertSame('₹3,000.00', $amt['base_formatted']);
+        $this->assertSame('₹3,540.00', $amt['amount_incl_formatted']);
     }
 
-    /* 2. Correct Accomplished amount. */
-    public function test_pricing_accomplished_amount_8000_inr_gst_inclusive(): void
+    /* 2. Correct Acclaimed amount (₹6,000 + GST, GST-exclusive model). */
+    public function test_pricing_acclaimed_amount_6000_plus_gst(): void
     {
         $amt = PricingAmounts::forTier('accomplished');
         $this->assertSame('INR', $amt['currency']);
-        $this->assertSame(8000 * 100, $amt['amount_incl_paise']);
-        $this->assertSame(8000, $amt['amount_incl_rupees']);
-        $this->assertTrue($amt['gst_inclusive']);
+        $this->assertSame(6000 * 100, $amt['base_paise']);
+        $this->assertSame(108000, $amt['gst_paise']);
+        $this->assertSame(708000, $amt['amount_incl_paise']);
+        $this->assertFalse($amt['gst_inclusive']);
     }
 
-    /* 3. Correct Distinguished amount. */
-    public function test_pricing_distinguished_amount_25000_inr_gst_inclusive(): void
+    /* 3. Correct Distinguished amount (₹9,000 + GST, GST-exclusive model). */
+    public function test_pricing_distinguished_amount_9000_plus_gst(): void
     {
         $amt = PricingAmounts::forTier('distinguished');
         $this->assertSame('INR', $amt['currency']);
-        $this->assertSame(25000 * 100, $amt['amount_incl_paise']);
-        $this->assertSame(25000, $amt['amount_incl_rupees']);
-        $this->assertTrue($amt['gst_inclusive']);
+        $this->assertSame(9000 * 100, $amt['base_paise']);
+        $this->assertSame(162000, $amt['gst_paise']);
+        $this->assertSame(1062000, $amt['amount_incl_paise']);
+        $this->assertFalse($amt['gst_inclusive']);
     }
 
-    /* 4. Correct GST-inclusive calculation (not 18% added on top). */
-    public function test_gst_inclusive_calculation_base_plus_gst_equals_total_exactly(): void
+    /* 4. Correct GST-exclusive calculation (18% added on top of base). */
+    public function test_gst_exclusive_calculation_base_plus_gst_equals_total_exactly(): void
     {
-        foreach (['emerging' => 3000, 'accomplished' => 8000, 'distinguished' => 25000] as $tier => $rupees) {
+        foreach (['emerging' => 3000, 'accomplished' => 6000, 'distinguished' => 9000] as $tier => $rupees) {
             $amt = PricingAmounts::forTier($tier);
             $totalPaise = (int) $amt['amount_incl_paise'];
             $basePaise = (int) $amt['base_paise'];
             $gstPaise = (int) $amt['gst_paise'];
-            $this->assertSame($totalPaise, $basePaise + $gstPaise, "Tier $tier base+gst must equal total inclusive.");
+            $this->assertSame($totalPaise, $basePaise + $gstPaise, "Tier $tier base+gst must equal total.");
 
-            $eighteenOnTop = (int) round($totalPaise * 0.18);
-            $this->assertLessThan($eighteenOnTop, $gstPaise, 'GST must be derived (inclusive), not added on top.');
+            $this->assertSame((int) round($basePaise * 0.18), $gstPaise, 'GST must be 18% added on top of the base.');
 
             if ($amt['cgst_paise'] !== null && $amt['sgst_paise'] !== null) {
                 $this->assertSame($gstPaise, (int) $amt['cgst_paise'] + (int) $amt['sgst_paise']);
             }
-
-            $split = PricingAmounts::splitInclusiveTotal($totalPaise, 18.0);
-            $this->assertSame($basePaise, (int) $split['base_paise']);
-            $this->assertSame($gstPaise, (int) $split['gst_paise']);
         }
     }
 
@@ -93,7 +93,7 @@ class Phase6PaymentSecurityTest extends TestCase
         );
         $res->assertStatus(201);
         $payment = Payment::query()->latest('id')->firstOrFail();
-        $this->assertSame(300000, $payment->totalPaise());
+        $this->assertSame(354000, $payment->totalPaise());
         $this->assertSame('INR', strtoupper((string) $payment->currency));
         $this->assertSame(Payment::STATUS_INITIATED, $payment->status);
         $this->assertSame('emerging', (string) $app->fresh()->package_tier);
@@ -175,7 +175,7 @@ class Phase6PaymentSecurityTest extends TestCase
                     'entity' => [
                         'id' => 'pay_test9999',
                         'order_id' => null,
-                        'amount' => 300000,
+                        'amount' => 354000,
                         'currency' => 'INR',
                         'notes' => [
                             'payment_id' => (string) $payment->id,
@@ -284,7 +284,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_usd',
-                        'amount' => 300000,
+                        'amount' => 354000,
                         'currency' => 'USD',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
                     ],
@@ -323,7 +323,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_stale1',
-                        'amount' => 800000,
+                        'amount' => 708000,
                         'currency' => 'INR',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
                     ],
@@ -362,7 +362,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_idem1',
-                        'amount' => 300000,
+                        'amount' => 354000,
                         'currency' => 'INR',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
                     ],
@@ -412,7 +412,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_already',
-                        'amount' => 300000,
+                        'amount' => 354000,
                         'currency' => 'INR',
                         'notes' => [
                             'payment_id' => (string) $payment->id,
@@ -456,7 +456,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_downstream_fail',
-                        'amount' => 300000,
+                        'amount' => 354000,
                         'currency' => 'INR',
                         'notes' => [
                             'payment_id' => (string) $payment->id,

@@ -47,7 +47,7 @@
         <p>
             Current offering: <strong>{{ $pricingLabel }}</strong>
             for {{ $hostingYears }} {{ $hostingYears === 1 ? 'year' : 'years' }} of hosting
-            (inclusive of GST as configured).
+            (exclusive of GST; GST is added as applicable).
         </p>
     @endif
     <a class="im-cta" href="mailto:{{ $contactEmail }}?subject={{ rawurlencode('In Memoriam enquiry') }}">

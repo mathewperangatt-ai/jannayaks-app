@@ -19,47 +19,45 @@ class PricingAmounts
         $pkg = $packages[$tierKey];
 
         $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
-        $inclusiveRupees = (int) $pkg['base_amount'];
-        $inclusivePaise = self::rupeesToPaise($inclusiveRupees);
 
-        $split = self::splitInclusiveTotal($inclusivePaise, $gstRate);
+        // Confirmed commercial model: tier prices are GST-EXCLUSIVE.
+        // base_amount is the annual tier price; the customer pays base + GST.
+        return self::buildPlusGst(
+            baseRupees: (int) $pkg['base_amount'],
+            gstRate: $gstRate,
+            label: (string) $pkg['label'],
+            description: (string) ($pkg['description'] ?? 'Profile package'),
+            itemKey: $tierKey,
+        );
+    }
 
-        $cgst = null;
-        $sgst = null;
-        $igst = null;
-        if ($split['gst_paise'] > 0) {
-            $cgst = intdiv($split['gst_paise'], 2);
-            $sgst = $split['gst_paise'] - $cgst;
+    /**
+     * Tier-priced annual membership renewal (replaces the former flat ₹2,000 renewal).
+     * Renewal costs the member's applicable annual tier price + GST.
+     *
+     * @return array<string, mixed>
+     */
+    public static function forTierRenewal(string $tierKey): array
+    {
+        $packages = (array) config('jannayaks.tier_pricing.packages', []);
+        if (! isset($packages[$tierKey])) {
+            throw new InvalidArgumentException('Unknown package tier: '.$tierKey);
         }
+        $pkg = $packages[$tierKey];
 
-        return [
-            'currency' => self::CURRENCY,
-            'tier_key' => $tierKey,
-            'label' => (string) $pkg['label'],
-            'description' => (string) ($pkg['description'] ?? 'Profile package'),
-            'gst_inclusive' => true,
-            'gst_rate_percent' => $gstRate,
-            'amount_incl_paise' => $inclusivePaise,
-            'amount_incl_rupees' => $inclusiveRupees,
-            'base_paise' => $split['base_paise'],
-            'gst_paise' => $split['gst_paise'],
-            'cgst_paise' => $cgst,
-            'sgst_paise' => $sgst,
-            'igst_paise' => $igst,
-            'amount_incl_formatted' => self::formatMoneyInr($inclusivePaise),
-            'base_formatted' => self::formatMoneyInr($split['base_paise']),
-            'gst_formatted' => self::formatMoneyInr($split['gst_paise']),
-            'cgst_formatted' => $cgst !== null ? self::formatMoneyInr($cgst) : null,
-            'sgst_formatted' => $sgst !== null ? self::formatMoneyInr($sgst) : null,
-            'igst_formatted' => $igst !== null ? self::formatMoneyInr($igst) : null,
-            'includes_addon' => false,
-            'addon' => null,
-        ];
+        return self::buildPlusGst(
+            baseRupees: (int) $pkg['base_amount'],
+            gstRate: (float) config('jannayaks.tier_pricing.gst_percent', 18),
+            label: (string) $pkg['label'].' — Annual Membership Renewal',
+            description: 'Annual membership renewal at the applicable annual tier price.',
+            itemKey: 'membership_renewal_'.$tierKey,
+        );
     }
 
     /**
      * Distinguished optional in-person interview add-on.
      * Amount is the configured sticker price; GST-inclusive treatment is provisional.
+     * Unchanged per commercial decision: kept at this stage.
      *
      * @return array<string, mixed>
      */
@@ -174,13 +172,21 @@ class PricingAmounts
         ];
     }
 
-    public static function forAnnualMembership(): array
+    /**
+     * Resolve the living package tier for a membership's profile.
+     * Memberships store a legacy 'basic' tier value; the applicable annual
+     * tier price comes from the profile's originating application.
+     */
+    public static function tierKeyForMembership(\App\Models\Membership $membership): string
     {
-        return self::forPlusGstItem(
-            (array) config('jannayaks.tier_pricing.membership', []),
-            (float) config('jannayaks.tier_pricing.gst_percent', 18),
-            'Annual Membership',
-        );
+        $tierKey = \App\Models\Application::query()
+            ->where('profile_id', $membership->profile_id)
+            ->orderByDesc('id')
+            ->value('package_tier');
+
+        $packages = (array) config('jannayaks.tier_pricing.packages', []);
+
+        return isset($packages[$tierKey]) ? (string) $tierKey : 'emerging';
     }
 
     public static function forRevisionUpdate(): array

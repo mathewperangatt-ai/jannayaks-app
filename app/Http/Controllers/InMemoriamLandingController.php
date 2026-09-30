@@ -12,7 +12,7 @@ class InMemoriamLandingController extends Controller
         $pricing = PricingAmounts::forInMemoriam5yr();
 
         return view('in-memoriam.landing', [
-            'pricingLabel' => $pricing['amount_incl_formatted'] ?? null,
+            'pricingLabel' => ($pricing['base_formatted'] ?? null) ? $pricing['base_formatted'].' + GST' : null,
             'hostingYears' => (int) config('jannayaks.tier_pricing.in_memoriam.hosting_years', 5),
             'contactEmail' => (string) config(
                 'jannayaks.tier_pricing.in_memoriam.contact_email',

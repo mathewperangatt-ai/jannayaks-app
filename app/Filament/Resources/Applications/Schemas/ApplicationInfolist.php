@@ -8,6 +8,7 @@ use App\Services\MembershipLifecycleService;
 use App\Services\ProfileUrlService;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
+use App\Support\TierLabels;
 use Filament\Schemas\Schema;
 
 class ApplicationInfolist
@@ -35,7 +36,8 @@ class ApplicationInfolist
                 ->schema([
                     TextEntry::make('status')
                         ->formatStateUsing(fn (?string $state): string => Application::workflowStatusLabels()[$state] ?? (string) $state),
-                    TextEntry::make('package_tier'),
+                    TextEntry::make('package_tier')
+                        ->formatStateUsing(fn (?string $state): string => TierLabels::label($state)),
                     TextEntry::make('source_method'),
                     TextEntry::make('included_revision_rounds_used')
                         ->label('Included revision rounds used')

@@ -4,25 +4,32 @@ return [
     'tier_pricing' => [
         'currency' => 'INR',
         'gst_percent' => 18,
+        /*
+        | Commercial model (Master Editorial Specification §12, confirmed):
+        | Internal storage keys are retained (emerging/accomplished/distinguished);
+        | customer-facing tier names come from these labels / App\Support\TierLabels.
+        | base_amount is EXCLUSIVE of GST — the customer pays base + GST at checkout.
+        | Annual membership renewal is tier-priced (same annual tier price).
+        */
         'packages' => [
             'emerging' => [
-                'label' => 'Emerging Leader',
+                'label' => 'Recognised',
                 'base_amount' => 3000,
-                'description' => 'Single upfront profile package.',
+                'description' => 'Annual profile package.',
                 'photo_slots' => 1,
                 'includes_video_link' => false,
             ],
             'accomplished' => [
-                'label' => 'Accomplished Leader',
-                'base_amount' => 8000,
-                'description' => 'Single upfront profile package.',
+                'label' => 'Acclaimed',
+                'base_amount' => 6000,
+                'description' => 'Annual profile package.',
                 'photo_slots' => 3,
                 'includes_video_link' => true,
             ],
             'distinguished' => [
-                'label' => 'Distinguished Leader',
-                'base_amount' => 25000,
-                'description' => 'Single upfront profile package.',
+                'label' => 'Distinguished',
+                'base_amount' => 9000,
+                'description' => 'Annual profile package.',
                 'includes_video_link' => true,
                 'photo_slots' => 5,
             ],
@@ -48,9 +55,9 @@ return [
         ],
         'in_memoriam' => [
             'label' => 'In Memoriam (3 years hosting)',
-            // Sticker amount shown to customers; treated as GST-inclusive like living packages.
-            'base_amount' => 25000,
-            'gst_inclusive' => true,
+            // ₹24,000 + GST (exclusive) per the confirmed commercial model.
+            'base_amount' => 24000,
+            'gst_inclusive' => false,
             'hosting_years' => 3,
             'photo_slots' => (int) env('JANNAYAKS_IN_MEMORIAM_PHOTO_SLOTS', 20),
             'contact_email' => env(
@@ -58,9 +65,13 @@ return [
                 env('JANNAYAKS_BILLING_SUPPORT_EMAIL', 'hello@jannayaks.in')
             ),
         ],
+        /*
+        | Flat-rate 'membership' block removed: annual membership renewal is now
+        | tier-priced at the member's applicable annual tier price (see
+        | PricingAmounts::forTierRenewal()). Cycle length remains 1 year.
+        */
         'membership' => [
             'label' => 'Annual Membership',
-            'base_amount' => 2000,
             'cycle_years' => 1,
         ],
         'revision' => [

@@ -39,7 +39,7 @@ class MembershipController extends Controller
             'graceEndsOn' => $graceEnds,
             'isPublic' => $this->profileUrls->isPubliclyVisible($profile),
             'canRenew' => $phase !== 'retention_ended',
-            'amounts' => PricingAmounts::forAnnualMembership(),
+            'amounts' => PricingAmounts::forTierRenewal(PricingAmounts::tierKeyForMembership($membership)),
         ]);
     }
 

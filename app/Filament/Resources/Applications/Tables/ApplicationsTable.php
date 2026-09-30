@@ -7,6 +7,7 @@ use Filament\Actions\EditAction;
 use Filament\Actions\ViewAction;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Filters\SelectFilter;
+use App\Support\TierLabels;
 use Filament\Tables\Table;
 
 class ApplicationsTable
@@ -25,6 +26,7 @@ class ApplicationsTable
                 TextColumn::make('package_tier')
                     ->label('Package')
                     ->badge()
+                    ->formatStateUsing(fn (?string $state): string => TierLabels::label($state))
                     ->sortable(),
                 TextColumn::make('source_method')
                     ->label('Source')
