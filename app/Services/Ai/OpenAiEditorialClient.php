@@ -76,7 +76,7 @@ class OpenAiEditorialClient implements EditorialAiClient
     }
 
     /**
-     * @return array{title: string, summary: string, body: string, claims: list<array{excerpt: string, question_id: ?string}>}
+     * @return array{title: string, summary: string, body: string, claims: list<array{excerpt: string, question_id: ?string}>, flags: list<string>}
      */
     private function parseJsonContent(string $content): array
     {
@@ -118,11 +118,21 @@ class OpenAiEditorialClient implements EditorialAiClient
             ];
         }
 
+        // Review flags pass through raw here; the generation service enforces
+        // the approved vocabulary via EditorialContent::sanitizeReviewFlags().
+        $flags = [];
+        foreach ((array) ($decoded['flags'] ?? []) as $flag) {
+            if (is_string($flag) && trim($flag) !== '') {
+                $flags[] = trim($flag);
+            }
+        }
+
         return [
             'title' => $title,
             'summary' => $summary,
             'body' => $body,
             'claims' => $claims,
+            'flags' => $flags,
         ];
     }
 }

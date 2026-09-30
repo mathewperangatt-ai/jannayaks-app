@@ -1,0 +1,75 @@
+{
+    "source": "Jannayaks Master Editorial + API Specification (sections 26-40)",
+    "fixtures": [
+        {
+            "tier": "recognised",
+            "name": "s madhavan",
+            "file": "recognised_s_madhavan.md"
+        },
+        {
+            "tier": "recognised",
+            "name": "dr meera nair",
+            "file": "recognised_dr_meera_nair.md"
+        },
+        {
+            "tier": "recognised",
+            "name": "r abdul rahman",
+            "file": "recognised_r_abdul_rahman.md"
+        },
+        {
+            "tier": "recognised",
+            "name": "kavitha menon",
+            "file": "recognised_kavitha_menon.md"
+        },
+        {
+            "tier": "acclaimed",
+            "name": "anil varma",
+            "file": "acclaimed_anil_varma.md"
+        },
+        {
+            "tier": "acclaimed",
+            "name": "dr leela thomas",
+            "file": "acclaimed_dr_leela_thomas.md"
+        },
+        {
+            "tier": "acclaimed",
+            "name": "prakash dev",
+            "file": "acclaimed_prakash_dev.md"
+        },
+        {
+            "tier": "acclaimed",
+            "name": "farzana basheer",
+            "file": "acclaimed_farzana_basheer.md"
+        },
+        {
+            "tier": "distinguished",
+            "name": "k rajeev",
+            "file": "distinguished_k_rajeev.md"
+        },
+        {
+            "tier": "distinguished",
+            "name": "prof anitha krishnan",
+            "file": "distinguished_prof_anitha_krishnan.md"
+        },
+        {
+            "tier": "distinguished",
+            "name": "joseph mathew",
+            "file": "distinguished_joseph_mathew.md"
+        },
+        {
+            "tier": "distinguished",
+            "name": "nandini varma",
+            "file": "distinguished_nandini_varma.md"
+        },
+        {
+            "tier": "in_memoriam",
+            "name": "p narayanan",
+            "file": "in_memoriam_p_narayanan.md"
+        },
+        {
+            "tier": "in_memoriam",
+            "name": "dr amina rahman",
+            "file": "in_memoriam_dr_amina_rahman.md"
+        }
+    ]
+}

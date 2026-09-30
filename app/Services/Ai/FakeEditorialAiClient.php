@@ -19,6 +19,12 @@ class FakeEditorialAiClient implements EditorialAiClient
 
     public bool $includeUnsafeMarkup = false;
 
+    /** @var list<string> review flags to emit for the english purpose (acceptance tests) */
+    public array $englishFlags = [];
+
+    /** @var list<string> review flags to emit for the malayalam purpose (acceptance tests) */
+    public array $malayalamFlags = [];
+
     public function providerName(): string
     {
         return 'fake';
@@ -59,6 +65,7 @@ class FakeEditorialAiClient implements EditorialAiClient
                 'claims' => [
                     ['excerpt' => 'സ്രോതസ്സ് അടിസ്ഥാന വസ്തുത', 'question_id' => 'q1'],
                 ],
+                'flags' => $this->malayalamFlags,
             ];
         }
 
@@ -84,6 +91,7 @@ class FakeEditorialAiClient implements EditorialAiClient
                 ['excerpt' => 'Contribution mentioned in source answers', 'question_id' => 'q5'],
                 ['excerpt' => 'Unmapped AI-asserted excerpt', 'question_id' => 'q_missing'],
             ],
+            'flags' => $this->englishFlags,
         ];
     }
 }

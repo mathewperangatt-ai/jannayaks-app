@@ -225,7 +225,7 @@ class EditorialGenerationService
     }
 
     /**
-     * @param  array{title: string, summary: string, body: string, claims?: list<array{excerpt: string, question_id: ?string}>}  $result
+     * @param  array{title: string, summary: string, body: string, claims?: list<array{excerpt: string, question_id: ?string}>, flags?: list<string>}  $result
      */
     private function storeNewDraftVersion(
         Profile $profile,
@@ -257,6 +257,7 @@ class EditorialGenerationService
                 'body' => $this->sanitizer->sanitizeBody((string) $result['body']),
                 'source_material' => 'AI draft from application source material. Treat as untrusted draft pending human review.',
                 'ai_generated' => true,
+                'review_flags' => EditorialContent::sanitizeReviewFlags($result['flags'] ?? []),
                 'created_by_id' => $actor->id,
             ]);
         });

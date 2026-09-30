@@ -33,6 +33,12 @@ class EditorialContentInfolist
                 ->label('Editorial notes / draft marker')
                 ->columnSpanFull(),
             IconEntry::make('ai_generated')->boolean()->label('AI draft'),
+            TextEntry::make('review_flags')
+                ->label('Editorial review flags')
+                ->badge()
+                ->placeholder('—')
+                ->helperText('Internal workflow only — a flag means human review is required, never that content is forbidden. Not shown publicly.')
+                ->state(fn ($record): array => $record?->review_flags ?? []),
             TextEntry::make('claimTraces_count')
                 ->label('Internal claim→source QA traces')
                 ->helperText('Editorial QA only — not verification, not a public badge.')

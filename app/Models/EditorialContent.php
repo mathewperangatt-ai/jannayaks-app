@@ -18,6 +18,40 @@ class EditorialContent extends Model
 
     public const LANGUAGE_ML = 'ml';
 
+    /**
+     * Internal editorial review flags (Master Editorial Specification §10).
+     * A flag means human review is required — never that content is forbidden.
+     */
+    public const FLAG_CLAIM_REVIEW = 'CLAIM_REVIEW';
+
+    public const FLAG_SOURCE_CONFLICT = 'SOURCE_CONFLICT';
+
+    public const FLAG_SENSITIVE_PERSONAL_CONTENT = 'SENSITIVE_PERSONAL_CONTENT';
+
+    public const FLAG_UNCERTAIN_DATE = 'UNCERTAIN_DATE';
+
+    public const FLAG_STRONG_CLAIM = 'STRONG_CLAIM';
+
+    public const FLAG_POLITICAL_CONTENT_REVIEW = 'POLITICAL_CONTENT_REVIEW';
+
+    public const FLAG_IDENTITY_SENSITIVITY_REVIEW = 'IDENTITY_SENSITIVITY_REVIEW';
+
+    public const FLAG_QUOTE_VERIFICATION = 'QUOTE_VERIFICATION';
+
+    public const FLAG_THIRD_PARTY_PRIVACY_REVIEW = 'THIRD_PARTY_PRIVACY_REVIEW';
+
+    public const ALLOWED_REVIEW_FLAGS = [
+        self::FLAG_CLAIM_REVIEW,
+        self::FLAG_SOURCE_CONFLICT,
+        self::FLAG_SENSITIVE_PERSONAL_CONTENT,
+        self::FLAG_UNCERTAIN_DATE,
+        self::FLAG_STRONG_CLAIM,
+        self::FLAG_POLITICAL_CONTENT_REVIEW,
+        self::FLAG_IDENTITY_SENSITIVITY_REVIEW,
+        self::FLAG_QUOTE_VERIFICATION,
+        self::FLAG_THIRD_PARTY_PRIVACY_REVIEW,
+    ];
+
     protected $fillable = [
         'profile_id',
         'source_editorial_content_id',
@@ -30,6 +64,7 @@ class EditorialContent extends Model
         'summary',
         'source_material',
         'ai_generated',
+        'review_flags',
         'created_by_id',
         'reviewed_by_id',
         'review_comment',
@@ -40,7 +75,35 @@ class EditorialContent extends Model
         return [
             'ai_generated' => 'bool',
             'version_number' => 'int',
+            'review_flags' => 'array',
         ];
+    }
+
+    /**
+     * Filter an arbitrary flag list down to the approved vocabulary,
+     * de-duplicated, order-preserving. Single enforcement point for
+     * AI-emitted and staff-provided review flags.
+     *
+     * @param  mixed  $flags
+     * @return list<string>
+     */
+    public static function sanitizeReviewFlags($flags): array
+    {
+        if (! is_array($flags)) {
+            return [];
+        }
+
+        $allowed = [];
+        foreach ($flags as $flag) {
+            if (is_string($flag)) {
+                $flag = trim($flag);
+                if ($flag !== '' && in_array($flag, self::ALLOWED_REVIEW_FLAGS, true) && ! in_array($flag, $allowed, true)) {
+                    $allowed[] = $flag;
+                }
+            }
+        }
+
+        return $allowed;
     }
 
     /** @return BelongsTo<Profile, $this> */

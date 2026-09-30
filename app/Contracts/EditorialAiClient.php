@@ -14,7 +14,8 @@ interface EditorialAiClient
      *   title: string,
      *   summary: string,
      *   body: string,
-     *   claims: list<array{excerpt: string, question_id: ?string}>
+     *   claims: list<array{excerpt: string, question_id: ?string}>,
+     *   flags: list<string>
      * }
      */
     public function generateEditorial(array $request): array;

@@ -22,6 +22,12 @@ class EditorialContentsTable
                 TextColumn::make('version_number')->label('Ver')->sortable(),
                 TextColumn::make('title')->searchable()->limit(40),
                 IconColumn::make('ai_generated')->boolean()->label('AI'),
+                TextColumn::make('review_flags')
+                    ->label('Flags')
+                    ->badge()
+                    ->placeholder('—')
+                    ->limitList(2)
+                    ->expandableLimitedList(),
                 TextColumn::make('source_editorial_content_id')->label('EN master')->toggleable(),
                 TextColumn::make('generation_run_id')->label('AI run')->toggleable(isToggledHiddenByDefault: true),
                 TextColumn::make('updated_at')->dateTime()->sortable()->toggleable(isToggledHiddenByDefault: true),
@@ -39,6 +45,16 @@ class EditorialContentsTable
                         'approved' => 'Approved',
                         'archived' => 'Archived',
                     ]),
+                SelectFilter::make('review_flags')
+                    ->label('Review flag')
+                    ->options(array_combine(
+                        \App\Models\EditorialContent::ALLOWED_REVIEW_FLAGS,
+                        \App\Models\EditorialContent::ALLOWED_REVIEW_FLAGS,
+                    ))
+                    ->query(fn ($query, array $data) => $query->when(
+                        ($data['value'] ?? '') !== '',
+                        fn ($q) => $q->whereJsonContains('review_flags', $data['value']),
+                    )),
             ])
             ->recordActions([
                 ViewAction::make(),

@@ -58,7 +58,11 @@ class Phase10AiEditorialTest extends TestCase
         $this->assertStringContainsString('ELEVATED, BUT TRUE', $systemMessage);
         $this->assertStringContainsString('Do NOT aim at a target word count', $systemMessage);
         $this->assertStringContainsString('Length must be earned by substance', $systemMessage);
-        $this->assertStringContainsString('Emerging: approximately 500–800 words', $systemMessage);
+        // Spec §16: no hard-coded word counts — depth language only.
+        $this->assertStringContainsString('Recognised: a concise but complete editorial portrait', $systemMessage);
+        $this->assertStringNotContainsString('approximately 500', $systemMessage);
+        $this->assertStringNotContainsString('approximately 800', $systemMessage);
+        $this->assertStringNotContainsString('1,000–1,500', $systemMessage);
     }
 
     public function test_prompt_injection_does_not_prevent_source_grounded_draft(): void
