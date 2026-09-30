@@ -32,6 +32,7 @@ class Profile extends Model
         'slug_changed_at',
         'previous_slug',
         'profession',
+        'current_activity',
         'display_phone_consent',
         'display_email_consent',
         'submitted_at',

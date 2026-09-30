@@ -72,6 +72,7 @@ class PublicProfileSearchService
                 $outer->where('profiles.full_name', 'ilike', $like)
                     ->orWhere('profiles.display_name', 'ilike', $like)
                     ->orWhere('profiles.profession', 'ilike', $like)
+                    ->orWhere('profiles.current_activity', 'ilike', $like)
                     ->orWhere('profiles.bio_headline', 'ilike', $like)
                     ->orWhereHas('geography', function (Builder $geo) use ($like): void {
                         $geo->where('locality_place', 'ilike', $like)
