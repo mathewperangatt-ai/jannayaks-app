@@ -44,6 +44,7 @@ class PublicProfilePresentationService
             'geography.ward',
             'publicOffices',
             'application',
+            'membership',
             'media',
             'externalLinks',
         ]);
@@ -66,6 +67,7 @@ class PublicProfilePresentationService
             'canonicalUrl' => $canonicalUrl,
             'displayName' => $this->displayName($profile),
             'profession' => filled($profile->profession) ? (string) $profile->profession : null,
+            'currentActivity' => filled($profile->current_activity) ? (string) $profile->current_activity : null,
             'headline' => filled($profile->bio_headline) ? (string) $profile->bio_headline : null,
             'locationLabel' => $this->locationLabel($profile->geography),
             'publicOffices' => $profile->publicOffices,
@@ -74,9 +76,37 @@ class PublicProfilePresentationService
             'photo' => $photo,
             'photos' => $photos,
             'videoLinks' => $this->publicVideoLinks($profile),
+            'tier' => $this->tierLabel($profile),
+            'tierKey' => $this->tierKey($profile),
+            'publicContact' => $this->publicContact($profile),
             'language' => $language === 'ml' && $malayalam ? 'ml' : 'en',
             'activeEditorial' => $active,
         ];
+    }
+
+    public function tierLabel(Profile $profile): string
+    {
+        $tier = strtoupper((string) ($profile->membership?->tier ?? $profile->application?->package_tier ?? ''));
+        return match ($tier) {
+            'DISTINGUISHED' => 'Distinguished',
+            'ACCLAIMED' => 'Acclaimed',
+            'RECOGNISED', 'RECOGNIZED' => 'Recognised',
+            default => 'Jannayaks',
+        };
+    }
+
+    public function tierKey(Profile $profile): string
+    {
+        return strtolower(str_replace(' ', '-', $this->tierLabel($profile)));
+    }
+
+    /** @return array{email:?string,mobile:?string}|null */
+    public function publicContact(Profile $profile): ?array
+    {
+        $profile->loadMissing('user');
+        $email = $profile->display_email_consent && filled($profile->user?->email) ? (string) $profile->user->email : null;
+        $mobile = $profile->display_phone_consent && filled($profile->user?->mobile) ? (string) $profile->user->mobile : null;
+        return ($email || $mobile) ? ['email' => $email, 'mobile' => $mobile] : null;
     }
 
     public function displayName(Profile $profile): string
@@ -197,6 +227,9 @@ class PublicProfilePresentationService
      */
     public function conciseDescriptor(Profile $profile): ?string
     {
+        if (filled($profile->current_activity)) {
+            return (string) $profile->current_activity;
+        }
         if (filled($profile->profession)) {
             return (string) $profile->profession;
         }
