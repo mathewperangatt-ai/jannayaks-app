@@ -25,9 +25,13 @@
     <div class="sub">
         @php
             $tierMap = ['emerging' => \App\Support\TierLabels::label('emerging'),'accomplished' => \App\Support\TierLabels::label('accomplished'),'distinguished' => \App\Support\TierLabels::label('distinguished')];
-            $priceMap = ['emerging' => '₹3,000','accomplished' => '₹8,000','distinguished' => '₹25,000'];
+            $priceMap = [];
+            foreach (['emerging', 'accomplished', 'distinguished'] as $tierKey) {
+                $base = (int) config('jannayaks.tier_pricing.packages.'.$tierKey.'.base_amount', 0);
+                $priceMap[$tierKey] = '₹'.number_format($base).' + GST';
+            }
         @endphp
-        <span class="list-pill">Tier: <b>{{ $tierMap[(string)$application->package_tier] ?? ucfirst($application->package_tier) }}</b> ({{ $priceMap[(string)$application->package_tier] ?? '—' }} incl. GST)</span>
+        <span class="list-pill">Tier: <b>{{ $tierMap[(string)$application->package_tier] ?? ucfirst($application->package_tier) }}</b> ({{ $priceMap[(string)$application->package_tier] ?? '—' }})</span>
         <span class="list-pill">Started {{ $application->intake_started_at ? $application->intake_started_at->format('d M Y') : '—' }}</span>
         @if($application->online_interview_completed_at)
             <span class="list-pill">Submitted {{ $application->online_interview_completed_at->format('d M Y · H:i') }}</span>

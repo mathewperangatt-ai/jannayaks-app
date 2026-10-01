@@ -36,7 +36,10 @@ return [
         ],
         'addons' => [
             'distinguished_in_person_interview' => [
-                'label' => 'Distinguished In-Person Journalist Interview',
+                'label' => 'Direct Personal Interview (external professional service)',
+                // Outside the normal Jannayaks service: if specifically requested,
+                // arranged through an external professional service provider at
+                // additional cost. Jannayaks does not itself conduct the interview.
                 // Sticker amount charged as stated (+₹10,000). Treated as GST-inclusive
                 // provisionally until commercial/legal GST treatment is confirmed.
                 'base_amount' => 10000,

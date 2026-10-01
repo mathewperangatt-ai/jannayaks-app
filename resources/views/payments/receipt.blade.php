@@ -39,7 +39,7 @@
         <div>
             <div style="font-weight:600">{{ $document['package_description'] }}</div>
             @if (!empty($document['includes_distinguished_addon']))
-                <div class="note-safe">Includes optional Distinguished in-person interview add-on</div>
+                <div class="note-safe">Includes optional Direct Personal Interview add-on (external arrangement)</div>
             @endif
         </div>
         <div style="font-weight:700;font-variant-numeric:tabular-nums">{{ $document['total_amount_formatted'] }}</div>

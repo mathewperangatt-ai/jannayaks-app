@@ -34,8 +34,8 @@
                     'include' => ['Same complete Online Interview as every tier', '3 photo slots', 'Video link', 'Expanded contribution editorial'],
                 ], 'distinguished' => [
                     'title' => \App\Support\TierLabels::label('distinguished'),
-                    'sections' => ['Full Online Interview — all questions', 'Deeply developed long-form editorial profile (EN + ML)', '5 photo slots', 'Optional in-person journalist interview (add-on)'],
-                    'include' => ['Same complete Online Interview as every tier', '5 photo slots', 'Video link', 'Senior journalist editorial pass'],
+                    'sections' => ['Full Online Interview — all questions', 'Deeply developed long-form editorial profile (EN + ML)', '5 photo slots', 'Optional direct personal interview via external professional service (add-on)'],
+                    'include' => ['Same complete Online Interview as every tier', '5 photo slots', 'Video link'],
                 ]];
             @endphp
             @foreach (['emerging', 'accomplished', 'distinguished'] as $tier)
@@ -107,8 +107,8 @@
             <label class="row" style="gap:10px;align-items:flex-start;cursor:pointer">
                 <input type="checkbox" name="distinguished_interview_addon" value="1" @checked(old('distinguished_interview_addon')) style="margin-top:4px">
                 <span>
-                    <span style="font-weight:700">Optional: In-person Distinguished journalist interview (+₹{{ $addonAmt }})</span>
-                    <span class="note-safe" style="display:block;margin-top:4px">Not included in the base Distinguished package. You can also choose this later on the payment page before paying.</span>
+                    <span style="font-weight:700">Optional: Direct Personal Interview — arranged through an external professional service (+₹{{ $addonAmt }})</span>
+                    <span class="note-safe" style="display:block;margin-top:4px">Outside the normal Jannayaks service; arranged through an external professional service provider at additional cost. You can also choose this later on the payment page before paying.</span>
                 </span>
             </label>
         </div>

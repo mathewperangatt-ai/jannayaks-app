@@ -100,13 +100,13 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     </div>
     <ul class="features">
       <li>Verified profile — Gold badge</li>
-      <li>Artificial Intelligence–assisted biography — 700 words (EN + ML)</li>
+      <li>Artificial Intelligence–assisted biography — deeply developed long-form profile (EN + ML)</li>
       <li>Personal URL — jannayaks.in/slug</li>
       <li>Digital visiting card + QR code</li>
       <li>Posts — text, photos &amp; video links</li>
       <li>Featured listing — top of all directories</li>
       <li>Annual profile refresh</li>
-      <li>Optional add-on: {{ $distinguishedAddon['label'] }} — {{ $distinguishedAddon['amount_incl_formatted'] }}</li>
+      <li>Optional add-on: {{ $distinguishedAddon['label'] }} — {{ $distinguishedAddon['amount_incl_formatted'] }} (incl. GST)</li>
     </ul>
   </div>
 
@@ -124,7 +124,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     </div>
     <ul class="features">
       <li>Verified profile — Verified badge</li>
-      <li>Artificial Intelligence–assisted biography — 500 words (EN + ML)</li>
+      <li>Artificial Intelligence–assisted biography — substantially developed feature (EN + ML)</li>
       <li>Personal URL — jannayaks.in/slug</li>
       <li>Digital visiting card + QR code</li>
       <li>Posts — text &amp; photos</li>
@@ -147,7 +147,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     </div>
     <ul class="features">
       <li>Verified profile</li>
-      <li>Artificial Intelligence–assisted biography — 300 words (EN + ML)</li>
+      <li>Artificial Intelligence–assisted biography — concise but complete portrait (EN + ML)</li>
       <li>Personal URL — jannayaks.in/slug</li>
       <li>Digital visiting card + QR code</li>
       <li>Posts — text only</li>
@@ -180,12 +180,24 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     <p>Package payment is collected through the application payment step (Razorpay). Amounts shown here are the same server-side prices used by the application.</p>
   </div>
   <div class="faq">
+    <strong>How does the profile differ between membership tiers?</strong>
+    <p>The tiers differ primarily in the depth, scope and editorial treatment of the profile. Recognised provides a concise but complete portrait, Acclaimed provides a substantially developed feature, and Distinguished provides a deeply developed long-form profile.</p>
+  </div>
+  <div class="faq">
+    <strong>Is a direct personal interview available?</strong>
+    <p>Jannayaks primarily creates profiles from information submitted through its Online Interview and other approved source material. If a direct personal interview is specifically required, we may be able to arrange this through an external professional service provider at an additional cost.</p>
+  </div>
+  <div class="faq">
+    <strong>Are photography or reel production services available?</strong>
+    <p>Jannayaks does not itself provide photography or reel production. If required, we can try to arrange suitable external agencies for professional photography and/or reel production at an additional cost, subject to availability.</p>
+  </div>
+  <div class="faq">
     <strong>What is annual membership?</strong>
     <p>After publication, membership renews on the annual cycle configured in the application. The current annual renewal is your tier's annual price plus GST: {{ $renewals['emerging']['base_formatted'] }} ({{ \App\Support\TierLabels::label('emerging') }}), {{ $renewals['accomplished']['base_formatted'] }} ({{ \App\Support\TierLabels::label('accomplished') }}), {{ $renewals['distinguished']['base_formatted'] }} ({{ \App\Support\TierLabels::label('distinguished') }}) — each + GST.</p>
   </div>
   <div class="faq">
     <strong>What about profile revisions after publication?</strong>
-    <p>Meaningful post-publication revisions use the configured revision charge of {{ $revision['amount_incl_formatted'] }}. Routine factual or typographical corrections follow the editorial process.</p>
+    <p>Meaningful post-publication revisions use the configured revision charge of {{ $revision['base_formatted'] }} + GST. Routine factual or typographical corrections follow the editorial process.</p>
   </div>
   <div class="faq">
     <strong>Is there an online In Memoriam checkout?</strong>

@@ -112,8 +112,8 @@
             <input form="pay-initiate-form" type="hidden" name="distinguished_interview_addon" value="0">
             <input form="pay-initiate-form" type="checkbox" name="distinguished_interview_addon" value="1" @checked($application->distinguished_interview_addon) style="margin-top:4px">
             <span>
-                <span style="font-weight:700">Include optional in-person interview (+₹{{ $addonAmt }})</span>
-                <span class="note-safe" style="display:block;margin-top:4px">Applied when you click Pay Now. Changing this replaces any pending payment link.</span>
+                <span style="font-weight:700">Include optional Direct Personal Interview — arranged through an external professional service (+₹{{ $addonAmt }})</span>
+                <span class="note-safe" style="display:block;margin-top:4px">Outside the normal Jannayaks service; arranged through an external professional service provider. Applied when you click Pay Now. Changing this replaces any pending payment link.</span>
             </span>
         </label>
     @endif

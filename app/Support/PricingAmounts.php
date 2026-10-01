@@ -55,9 +55,11 @@ class PricingAmounts
     }
 
     /**
-     * Distinguished optional in-person interview add-on.
-     * Amount is the configured sticker price; GST-inclusive treatment is provisional.
-     * Unchanged per commercial decision: kept at this stage.
+     * Direct Personal Interview add-on (Distinguished only).
+     * Outside the normal Jannayaks service: arranged through an external
+     * professional service provider at additional cost when specifically
+     * requested. Amount is the configured sticker price; GST-inclusive
+     * treatment is provisional. Kept unchanged per commercial decision.
      *
      * @return array<string, mixed>
      */
@@ -86,8 +88,8 @@ class PricingAmounts
             return [
                 'currency' => self::CURRENCY,
                 'tier_key' => 'distinguished_in_person_interview',
-                'label' => (string) ($cfg['label'] ?? 'Distinguished In-Person Journalist Interview'),
-                'description' => 'Optional add-on; not included in the base Distinguished package.',
+                'label' => (string) ($cfg['label'] ?? 'Direct Personal Interview (external professional service)'),
+                'description' => 'Arranged through an external professional service provider; not conducted by Jannayaks.',
                 'gst_inclusive' => true,
                 'gst_rate_percent' => $gstRate,
                 'amount_incl_paise' => $inclusivePaise,
@@ -109,7 +111,7 @@ class PricingAmounts
         return self::buildPlusGst(
             baseRupees: $inclusiveRupees,
             gstRate: $gstRate,
-            label: (string) ($cfg['label'] ?? 'Distinguished In-Person Journalist Interview'),
+            label: (string) ($cfg['label'] ?? 'Direct Personal Interview (external professional service)'),
             description: 'Optional add-on; not included in the base Distinguished package.',
             itemKey: 'distinguished_in_person_interview',
         );
@@ -127,7 +129,7 @@ class PricingAmounts
 
         if ($includeDistinguishedAddon) {
             if ($tierKey !== 'distinguished') {
-                throw new InvalidArgumentException('In-person interview add-on is only available for Distinguished.');
+                throw new InvalidArgumentException('Direct Personal Interview add-on is only available for Distinguished.');
             }
             $addon = self::forDistinguishedInterviewAddon();
         }
@@ -150,7 +152,7 @@ class PricingAmounts
             'currency' => self::CURRENCY,
             'tier_key' => $tierKey,
             'label' => $package['label'].' + '.$addon['label'],
-            'description' => 'Package plus optional Distinguished in-person interview add-on.',
+            'description' => 'Package plus optional Direct Personal Interview add-on (external arrangement).',
             'gst_inclusive' => true,
             'gst_rate_percent' => $package['gst_rate_percent'],
             'amount_incl_paise' => $totalPaise,

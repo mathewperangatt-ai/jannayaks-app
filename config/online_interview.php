@@ -14,8 +14,10 @@
 | - Same comprehensive source pool for ALL living tiers — tier controls
 |   editorial depth, never access to questions.
 | - Q1 is the ONLY required question; Q2–Q22 are optional and skippable.
-| - Conditional modules are NOT part of this catalog yet; they require
-|   separately approved bilingual wording and must not be drafted here.
+| - Conditional/domain-specific interview modules are OUT OF SCOPE by
+|   editorial decision: the 22-question Online Interview is the complete
+|   interview for all living tiers. Do not implement or add modules,
+|   triggers, or any new bilingual interview wording.
 |
 | Q3 implementation note (approved): collect only the town/area of
 | current residence — never request a full residential address.
