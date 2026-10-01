@@ -11,6 +11,7 @@ use App\Http\Controllers\InMemoriamLandingController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\PaymentDocumentController;
+use App\Http\Controllers\ProfileConceptController;
 use App\Http\Controllers\ProfileExternalVideoLinkController;
 use App\Http\Controllers\ProfileMediaController;
 use App\Http\Controllers\ProfileUrlController;
@@ -28,6 +29,10 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/faq-charges', FaqChargesController::class)->name('faq-charges');
+
+// Isolated design exploration only — not a production surface, no data reads.
+// Compare visually against the live profile design; remove with the controller + view.
+Route::get('/profile-concept', ProfileConceptController::class)->name('profile-concept');
 
 Route::get('/gallery', [PublicGalleryController::class, 'index'])->name('gallery.index');
 Route::get('/search', [PublicSearchController::class, 'index'])->name('search.index');
