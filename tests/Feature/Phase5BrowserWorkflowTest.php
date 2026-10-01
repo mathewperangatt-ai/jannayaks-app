@@ -93,54 +93,50 @@ class Phase5BrowserWorkflowTest extends TestCase
         $this->actingAs($u2)->getJson(route('applications.show', $app))->assertForbidden();
     }
 
-    /** @test §21-6 Tier questions load on the interview page */
+    /** @test §21-6 Approved bilingual catalog loads on the interview page */
     public function test_interview_page_loads_with_tier_questions(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'distinguished', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
-        $res->assertSee('Your Journey', false);
+        $res->assertSee('Turning Points and Experiences', false);
         $res->assertSee('data-qid="q1"', false);
         $res->assertSee('Save and continue', false);
     }
 
-    /** @test §21-7 Emerging tier does NOT render Contribution/Experience/Recognition/Person sections */
-    public function test_emerging_tier_hides_locked_sections(): void
+    /** @test §21-7 Same pool for every tier — the lowest tier sees ALL 22 questions (spec §17) */
+    public function test_emerging_tier_sees_the_full_question_pool(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
-        // Match question field markers only — bare "q9" etc. can appear inside CSRF tokens.
-        $res->assertDontSee('data-qid="q5"', false);
-        $res->assertDontSee('data-qid="q7"', false);
-        $res->assertDontSee('data-qid="q9"', false);
-        $res->assertDontSee('data-qid="q11"', false);
-        $res->assertSee('data-qid="q1"', false);
+        foreach (['q1','q5','q7','q9','q11','q14','q16','q22'] as $qid) {
+            $res->assertSee('data-qid="'.$qid.'"', false);
+        }
     }
 
-    /** @test §21-8 Accomplished tier does NOT render Recognition or Person sections */
-    public function test_accomplished_tier_hides_recognition_and_person_sections(): void
+    /** @test §21-8 Accomplished tier sees the identical full pool */
+    public function test_accomplished_tier_sees_the_full_question_pool(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'accomplished', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
-        $res->assertSee('data-qid="q5"', false);
-        $res->assertSee('data-qid="q7"', false);
-        $res->assertDontSee('data-qid="q9"', false);
-        $res->assertDontSee('data-qid="q11"', false);
+        foreach (['q1','q5','q9','q11','q22'] as $qid) {
+            $res->assertSee('data-qid="'.$qid.'"', false);
+        }
     }
 
-    /** @test §21-9 Distinguished tier renders all unlocked sections */
+    /** @test §21-9 Distinguished tier renders the same complete catalog */
     public function test_distinguished_tier_renders_all_sections(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'distinguished', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
-        foreach (['q1','q3','q6','q7','q10','q12'] as $qid) {
+        foreach (['q1','q3','q6','q7','q10','q12','q22'] as $qid) {
             $res->assertSee('data-qid="'.$qid.'"', false);
         }
     }
@@ -357,13 +353,14 @@ class Phase5BrowserWorkflowTest extends TestCase
         $catalog = config('online_interview.source_material_types');
         $this->assertIsArray($catalog);
         $this->assertArrayHasKey('resume', $catalog);
-        $this->assertArrayHasKey('closing', config('online_interview.sections', []));
+        $this->assertArrayHasKey('important_facts', config('online_interview.sections', []));
 
         $this->assertSame(18, (int) config('jannayaks.tier_pricing.gst_percent'));
         $this->assertSame(3000, (int) config('jannayaks.tier_pricing.packages.emerging.base_amount'));
         $this->assertSame(6000, (int) config('jannayaks.tier_pricing.packages.accomplished.base_amount'));
         $this->assertSame(9000, (int) config('jannayaks.tier_pricing.packages.distinguished.base_amount'));
         $qids = array_map(static fn(array $q): string => (string) ($q['id'] ?? ''), (array) config('online_interview.questions', []));
-        $this->assertContains('closing_other', $qids);
+        $this->assertContains('q22', $qids);
+        $this->assertCount(22, $qids);
     }
 }

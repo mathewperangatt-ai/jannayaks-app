@@ -136,20 +136,18 @@ class Phase4ApplicationIntakeTest extends TestCase
         $accomp   = OnlineInterviewCatalog::idsForTier('accomplished');
         $dist     = OnlineInterviewCatalog::idsForTier('distinguished');
 
-        // Emerging: no contrib, experience, recog, person
-        $this->assertFalse(in_array('q5', $emerging, true));
-        $this->assertFalse(in_array('q9', $emerging, true));
+        // Same comprehensive source pool for ALL living tiers (spec §17).
+        $this->assertCount(22, $emerging);
+        $this->assertSame($emerging, $accomp);
+        $this->assertSame($emerging, $dist);
+        $this->assertContains('q22', $emerging);
 
-        // Accomplished adds contrib + experience but not recog/person
-        $this->assertTrue(in_array('q5', $accomp, true));
-        $this->assertTrue(in_array('q7', $accomp, true));
-        $this->assertFalse(in_array('q9', $accomp, true));
-        $this->assertFalse(in_array('q11', $accomp, true));
-
-        // Distinguished adds recog + person (all 14 + closing)
-        $this->assertTrue(in_array('q9', $dist, true));
-        $this->assertTrue(in_array('q11', $dist, true));
-        $this->assertCount(15, $dist); // 14 required/optionals + closing_other
+        // Q1 is the ONLY required question; everything else is optional.
+        $requiredIds = array_values(array_filter(array_map(
+            static fn (array $q): ?string => ! empty($q['required']) ? (string) ($q['id'] ?? '') : null,
+            OnlineInterviewCatalog::questionsForTier('emerging')
+        )));
+        $this->assertSame(['q1'], $requiredIds);
     }
 
     /* 8. Save incomplete interview (return, reopen, read answers) */
@@ -189,7 +187,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'full_name'     => 'Completed Submission',
         ])->paid()->create();
 
-        // Emerging required: q1, q2, q3, q13, q14 (per OnlineInterviewCatalog questions emerging-only section lock)
+        // Q1 is the only required question (approved 22-question catalog).
         $requiredIds = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
         $answers = [];
         foreach ($requiredIds as $id) {

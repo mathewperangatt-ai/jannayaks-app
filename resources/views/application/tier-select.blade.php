@@ -9,7 +9,7 @@
     <h1>Choose how deep we go.</h1>
     <p class="sub">
         Tier selection is <b>unrestricted</b>. Jannayaks does not check profession, public-office status, age, geography or achievements to decide your eligibility.
-        Your choice only controls the scope of the Online Interview and the editorial treatment.
+        Every tier answers the same complete Online Interview; your choice controls the editorial depth and treatment.
     </p>
 
     <div class="warnbox" role="note" aria-label="Pricing note">
@@ -26,16 +26,16 @@
                 $packages = config('jannayaks.tier_pricing.packages', []);
                 $tiers = ['emerging' => [
                     'title' => \App\Support\TierLabels::label('emerging'),
-                    'sections' => ['About You', 'Your Journey', 'Looking Back', 'Closing'],
-                    'include' => ['14-question backbone (Emerging scoped)', '1 photo slot', 'Documentary editorial treatment', 'Review + approval before publication'],
+                    'sections' => ['Full Online Interview — all questions', 'Concise but complete editorial portrait (EN + ML)', '1 photo slot', 'Human editorial review before publication'],
+                    'include' => ['Same complete Online Interview as every tier', '1 photo slot', 'Documentary editorial treatment', 'Review + approval before publication'],
                 ], 'accomplished' => [
                     'title' => \App\Support\TierLabels::label('accomplished'),
-                    'sections' => ['Emerging content', '+ Your Contribution', '+ Experiences & Challenges', '+ 3 photo slots', '+ video link'],
-                    'include' => ['11 unlocked questions', '3 photo slots', 'Video link', 'Expanded contribution editorial'],
+                    'sections' => ['Full Online Interview — all questions', 'Substantially developed editorial feature (EN + ML)', '3 photo slots', 'Video link'],
+                    'include' => ['Same complete Online Interview as every tier', '3 photo slots', 'Video link', 'Expanded contribution editorial'],
                 ], 'distinguished' => [
                     'title' => \App\Support\TierLabels::label('distinguished'),
-                    'sections' => ['Full interview: Responsibilities & Recognition', 'The Person Behind the Public Life', '5 photo slots', 'In-person journalist interview optional'],
-                    'include' => ['All 14 backbone questions + closing', '5 photo slots', 'Video link', 'Senior journalist editorial pass'],
+                    'sections' => ['Full Online Interview — all questions', 'Deeply developed long-form editorial profile (EN + ML)', '5 photo slots', 'Optional in-person journalist interview (add-on)'],
+                    'include' => ['Same complete Online Interview as every tier', '5 photo slots', 'Video link', 'Senior journalist editorial pass'],
                 ]];
             @endphp
             @foreach (['emerging', 'accomplished', 'distinguished'] as $tier)

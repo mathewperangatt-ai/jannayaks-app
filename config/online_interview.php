@@ -1,52 +1,78 @@
 <?php
 
+/*
+|--------------------------------------------------------------------------
+| Online Interview — approved bilingual question catalog
+|--------------------------------------------------------------------------
+|
+| The 22 question pairs below are the APPROVED production wording
+| (English + Malayalam) supplied by the human editor. Do not translate,
+| paraphrase, rewrite or "naturalise" this wording; textual changes
+| require an explicit editorial approval.
+|
+| Architecture (Master Editorial Specification §17–§19):
+| - Same comprehensive source pool for ALL living tiers — tier controls
+|   editorial depth, never access to questions.
+| - Q1 is the ONLY required question; Q2–Q22 are optional and skippable.
+| - Conditional modules are NOT part of this catalog yet; they require
+|   separately approved bilingual wording and must not be drafted here.
+|
+| Q3 implementation note (approved): collect only the town/area of
+| current residence — never request a full residential address.
+|
+*/
+
 return [
 
     'sections' => [
-        'about'      => 'About You',
-        'journey'    => 'Your Journey',
-        'contrib'    => 'Your Contribution',
-        'experience' => 'Experiences & Challenges',
-        'recog'      => 'Responsibilities & Recognition',
-        'person'     => 'The Person Behind the Public Life',
-        'lookback'   => 'Looking Back',
-        'closing'    => 'Closing',
-    ],
-
-    'section_tiers' => [
-        'about'      => ['emerging', 'accomplished', 'distinguished'],
-        'journey'    => ['emerging', 'accomplished', 'distinguished'],
-        'contrib'    => ['accomplished', 'distinguished'],
-        'experience' => ['accomplished', 'distinguished'],
-        'recog'      => ['distinguished'],
-        'person'     => ['distinguished'],
-        'lookback'   => ['emerging', 'accomplished', 'distinguished'],
-        'closing'    => ['emerging', 'accomplished', 'distinguished'],
+        'about'               => 'About You',
+        'education_work_life' => 'Education, Work and Life',
+        'entering_public_life' => 'Entering Public Life',
+        'turning_points'      => 'Turning Points and Experiences',
+        'work_contribution'   => 'Work and Contribution',
+        'people_personality'  => 'People and Personality',
+        'reflection'          => 'Reflection',
+        'important_facts'     => 'Important Facts',
     ],
 
     'questions' => [
-        ['id' => 'q1',  'section' => 'about',      'required' => true,  'label_en' => 'Tell us about yourself.', 'label_ml' => 'നിങ്ങളെക്കുറിച്ച് നമുക്ക് പറയൂ.', 'help_en' => 'A short introduction in your own words.'],
-        ['id' => 'q2',  'section' => 'about',      'required' => true,  'label_en' => 'How did you become involved in public life?', 'label_ml' => 'നിങ്ങൾക്ക് പൊതുജീവിതത്തിൽ എങ്ങനെ പ്രവേശിച്ചു?'],
+        // PART 1 — ABOUT YOU
+        ['id' => 'q1',  'section' => 'about',      'required' => true,  'label_en' => 'Tell us about yourself.', 'label_ml' => 'നിങ്ങളെക്കുറിച്ച് പറയാമോ?'],
+        ['id' => 'q2',  'section' => 'about',      'required' => false, 'label_en' => 'Where did you grow up, and what do you remember about your early years?', 'label_ml' => 'എവിടെയാണ് വളർന്നത്? കുട്ടിക്കാലത്തെക്കുറിച്ച് ഓർക്കുന്ന പ്രധാന കാര്യങ്ങൾ എന്തൊക്കെയാണ്?'],
+        ['id' => 'q3',  'section' => 'about',      'required' => false, 'label_en' => 'Where do you currently live? If your main work or public activity is in another town or area, please mention that as well.', 'label_ml' => 'ഇപ്പോൾ നിങ്ങൾ എവിടെയാണ് താമസിക്കുന്നത്? നിങ്ങളുടെ പ്രധാന ജോലി അല്ലെങ്കിൽ പൊതുപ്രവർത്തനം മറ്റൊരു പട്ടണത്തിലോ പ്രദേശത്തോ ആണെങ്കിൽ അതും പറയാമോ?'],
 
-        ['id' => 'q3',  'section' => 'journey',    'required' => true,  'label_en' => 'Tell us about your journey from your early involvement to where you are today.', 'label_ml' => 'ആദ്യ പ്രവര്‍ത്തനം മുതൽ ഇന്നത്തെ സ്ഥാനം വരെ നിങ്ങളുടെ യാത്രയെക്കുറിച്ച് പറയൂ.'],
-        ['id' => 'q4',  'section' => 'journey',    'required' => false, 'label_en' => 'Were there any important turning points along the way?', 'label_ml' => 'മാർഗ്ഗത്തിൽ പ്രധാന തിരിവ് മാറ്റങ്ങൾ ഉണ്ടായിരുന്നോ?'],
+        // PART 2 — EDUCATION, WORK AND LIFE
+        ['id' => 'q4',  'section' => 'education_work_life', 'required' => false, 'label_en' => 'Tell us about your education and the early part of your working life.', 'label_ml' => 'നിങ്ങളുടെ വിദ്യാഭ്യാസത്തെയും ജോലി ജീവിതത്തിന്റെ ആദ്യഘട്ടത്തെയും കുറിച്ച് പറയാമോ?'],
+        ['id' => 'q5',  'section' => 'education_work_life', 'required' => false, 'label_en' => 'Was there anything or anyone that influenced the way you think or the person you became?', 'label_ml' => 'നിങ്ങളുടെ ചിന്തകളെയും വ്യക്തിത്വത്തെയും സ്വാധീനിച്ച വ്യക്തികളോ അനുഭവങ്ങളോ കാര്യങ്ങളോ ഉണ്ടായിരുന്നോ?'],
+        ['id' => 'q6',  'section' => 'education_work_life', 'required' => false, 'label_en' => 'What interests you outside your main work or public responsibilities?', 'label_ml' => 'നിങ്ങളുടെ പ്രധാന ജോലിക്കും പൊതുപ്രവർത്തനങ്ങൾക്കും പുറത്ത് നിങ്ങൾക്ക് താൽപര്യമുള്ള കാര്യങ്ങൾ എന്തൊക്കെയാണ്?'],
 
-        ['id' => 'q5',  'section' => 'contrib',    'required' => true,  'label_en' => 'What do you consider your most significant contribution?', 'label_ml' => 'നിങ്ങളുടെ ഏറ്റവും പ്രധാനപ്പെട്ട സംഭാവന ഏതാണെന്ന് നിങ്ങൾ കരുതുന്നു?'],
-        ['id' => 'q6',  'section' => 'contrib',    'required' => false, 'label_en' => 'Tell us about another achievement, initiative or contribution that is important to you.', 'label_ml' => 'നിങ്ങൾക്ക് പ്രധാനമായ മറ്റൊരു നേട്ടം / ശ്രമം / സംഭാവനയെക്കുറിച്ച് പറയൂ. (ബാധിക്കുന്നില്ലെങ്കിൽ പ്രദേശം വിടരുത് / Not applicable സാധാരണമാണ്.)'],
+        // PART 3 — ENTERING PUBLIC LIFE
+        ['id' => 'q7',  'section' => 'entering_public_life', 'required' => false, 'label_en' => 'How did you first become involved in public, community, organisational or social life?', 'label_ml' => 'പൊതുജീവിതത്തിലോ സാമൂഹിക, സംഘടനാ, സമൂഹ പ്രവർത്തനങ്ങളിലോ നിങ്ങൾ ആദ്യമായി എങ്ങനെ എത്തിപ്പെട്ടു?'],
+        ['id' => 'q8',  'section' => 'entering_public_life', 'required' => false, 'label_en' => 'How did that involvement develop into what you do today?', 'label_ml' => 'ആ ആദ്യ ഇടപെടൽ പിന്നീട് നിങ്ങൾ ഇന്ന് ചെയ്യുന്ന പ്രവർത്തനങ്ങളിലേക്ക് എങ്ങനെ വളർന്നു?'],
 
-        ['id' => 'q7',  'section' => 'experience', 'required' => false, 'label_en' => 'Was there a difficult moment or decision that shaped your journey?', 'label_ml' => 'നിങ്ങളുടെ യാത്രയെ രൂപപ്പെടുത്തിയ ഒരു ബുദ്ധിമുട്ടുള്ള നിമിഷമോ തീരുമാനമോ ഉണ്ടായിരുന്നോ?'],
-        ['id' => 'q8',  'section' => 'experience', 'required' => false, 'label_en' => 'Is there a memorable incident or experience you would like to share?', 'label_ml' => 'പങ്കിടാൻ നിങ്ങൾ ആഗ്രഹിക്കുന്ന ഒരു മറക്കാനാവാത്ത സംഭവമോ അനുഭവമോ ഉണ്ടോ?'],
+        // PART 4 — TURNING POINTS AND EXPERIENCES
+        ['id' => 'q9',  'section' => 'turning_points', 'required' => false, 'label_en' => 'Were there any important turning points in your journey?', 'label_ml' => 'നിങ്ങളുടെ ജീവിതയാത്രയിൽ പ്രധാനപ്പെട്ട വഴിത്തിരിവുകൾ ഉണ്ടായിരുന്നോ?'],
+        ['id' => 'q10', 'section' => 'turning_points', 'required' => false, 'label_en' => 'Is there a particular incident or experience that you remember especially clearly?', 'label_ml' => 'പ്രത്യേകമായി ഓർമ്മയിൽ നിൽക്കുന്ന ഒരു സംഭവം അല്ലെങ്കിൽ അനുഭവം പങ്കുവെക്കാമോ?'],
+        ['id' => 'q11', 'section' => 'turning_points', 'required' => false, 'label_en' => 'Was there a difficult situation, setback or important decision that affected your journey?', 'label_ml' => 'നിങ്ങളുടെ യാത്രയെ സ്വാധീനിച്ച ഒരു ബുദ്ധിമുട്ടുള്ള സാഹചര്യമോ തിരിച്ചടിയോ പ്രധാന തീരുമാനമോ ഉണ്ടായിരുന്നോ?'],
 
-        ['id' => 'q9',  'section' => 'recog',      'required' => false, 'label_en' => 'What important positions, responsibilities or appointments have you held?', 'label_ml' => 'നിങ്ങൾ വഹിച്ച പ്രധാന സ്ഥാനങ്ങൾ, ചുമതലകൾ, നിയമനങ്ങൾ ഏതാണ്?'],
-        ['id' => 'q10', 'section' => 'recog',      'required' => false, 'label_en' => 'Have you received any awards, honours or other recognition?', 'label_ml' => 'നിങ്ങൾക്ക് ഏതെങ്കിലും പുരസ്കാരങ്ങൾ, ബഹുമതികൾ അല്ലെങ്കിൽ മറ്റ് അംഗീകാരങ്ങൾ ലഭിച്ചിട്ടുണ്ടോ? (ബാധിക്കുന്നില്ലെങ്കിൽ പ്രദേശം വിടരുത്.)'],
+        // PART 5 — WORK AND CONTRIBUTION
+        ['id' => 'q12', 'section' => 'work_contribution', 'required' => false, 'label_en' => 'What part of your work or public contribution is most closely associated with you?', 'label_ml' => 'നിങ്ങളുടെ പ്രവർത്തനങ്ങളിലോ പൊതുജീവിതത്തിലോ നിങ്ങളുമായി ഏറ്റവും അടുത്ത് ബന്ധിപ്പിക്കപ്പെടുന്ന സംഭാവന ഏതാണ്?'],
+        ['id' => 'q13', 'section' => 'work_contribution', 'required' => false, 'label_en' => 'Is there another achievement, initiative or contribution that is important to you?', 'label_ml' => 'നിങ്ങൾക്ക് പ്രധാനപ്പെട്ട മറ്റൊരു നേട്ടമോ സംരംഭമോ സംഭാവനയോ ഉണ്ടോ?'],
+        ['id' => 'q14', 'section' => 'work_contribution', 'required' => false, 'label_en' => 'What important positions, responsibilities or appointments have you held?', 'label_ml' => 'നിങ്ങൾ വഹിച്ച പ്രധാനപ്പെട്ട സ്ഥാനങ്ങളും ഉത്തരവാദിത്തങ്ങളും നിയമനങ്ങളും ഏതൊക്കെയാണ്?'],
+        ['id' => 'q15', 'section' => 'work_contribution', 'required' => false, 'label_en' => 'Have you received any awards, honours or other recognition?', 'label_ml' => 'പുരസ്കാരങ്ങളോ ബഹുമതികളോ മറ്റ് അംഗീകാരങ്ങളോ ലഭിച്ചിട്ടുണ്ടോ?'],
 
-        ['id' => 'q11', 'section' => 'person',     'required' => false, 'label_en' => 'Who or what has influenced you most?', 'label_ml' => 'ആരാണ് അല്ലെങ്കിൽ എന്താണ് നിങ്ങളെ ഏറ്റവും കൂടുതൽ സ്വാധീനിച്ചത്?'],
-        ['id' => 'q12', 'section' => 'person',     'required' => false, 'label_en' => 'Is there a lesser-known aspect of your life or work that you would like people to know?', 'label_ml' => 'നിങ്ങളുടെ ജീവിതത്തിലോ ജോലിയിലോ കുറച്ച് ആളുകൾക്ക് മാത്രം അറിയാവുന്ന ഒരു വശം ആളുകൾക്കറിയാൻ നിങ്ങൾ ആഗ്രഹിക്കുന്നുണ്ടോ?'],
+        // PART 6 — PEOPLE AND PERSONALITY
+        ['id' => 'q16', 'section' => 'people_personality', 'required' => false, 'label_en' => 'What is it like to work with or lead other people?', 'label_ml' => 'മറ്റുള്ളവരോടൊപ്പം പ്രവർത്തിക്കുമ്പോഴോ അവരെ നയിക്കുമ്പോഴോ നിങ്ങളുടെ സമീപനം എങ്ങനെയാണ്?'],
+        ['id' => 'q17', 'section' => 'people_personality', 'required' => false, 'label_en' => 'Is there something about you that people who know you well might notice, but others may not?', 'label_ml' => 'നിങ്ങളെ അടുത്തറിയുന്നവർ ശ്രദ്ധിക്കുന്ന, എന്നാൽ മറ്റുള്ളവർക്ക് അറിയാത്ത നിങ്ങളുടെ ഒരു പ്രത്യേക വശമുണ്ടോ?'],
 
-        ['id' => 'q13', 'section' => 'lookback',   'required' => true,  'label_en' => 'Looking back, what are you most proud or satisfied about?', 'label_ml' => 'പിന്നോക്കം നോക്കുമ്പോൾ, നിങ്ങൾ ഏതിനെക്കുറിച്ച് ഏറ്റവും അഭിമാനിക്കുന്നു അല്ലെങ്കിൽ തൃപ്തികരമായി കരുതുന്നു?'],
-        ['id' => 'q14', 'section' => 'lookback',   'required' => true,  'label_en' => 'What would you most like people to remember about your contribution?', 'label_ml' => 'നിങ്ങളുടെ സംഭാവനയെക്കുറിച്ച് ആളുകൾ ഏതിനെക്കുറിച്ച് നിങ്ങൾ ഓർമ്മിക്കണമെന്ന് നിങ്ങൾ ഏറ്റവും കൂടുതൽ ആഗ്രഹിക്കുന്നു?'],
+        // PART 7 — REFLECTION
+        ['id' => 'q18', 'section' => 'reflection', 'required' => false, 'label_en' => 'Looking back, what are you most proud or satisfied about?', 'label_ml' => 'തിരിഞ്ഞുനോക്കുമ്പോൾ നിങ്ങൾക്ക് ഏറ്റവും അഭിമാനമോ സംതൃപ്തിയോ നൽകുന്ന കാര്യം എന്താണ്?'],
+        ['id' => 'q19', 'section' => 'reflection', 'required' => false, 'label_en' => 'How have your experiences changed the way you think or work?', 'label_ml' => 'നിങ്ങളുടെ അനുഭവങ്ങൾ നിങ്ങളുടെ ചിന്തയെയോ പ്രവർത്തനരീതിയെയോ എങ്ങനെ മാറ്റി?'],
+        ['id' => 'q20', 'section' => 'reflection', 'required' => false, 'label_en' => 'What would you like to see happen next?', 'label_ml' => 'ഇനി എന്താണ് സംഭവിക്കണമെന്ന് നിങ്ങൾ ആഗ്രഹിക്കുന്നത്?'],
+        ['id' => 'q21', 'section' => 'reflection', 'required' => false, 'label_en' => 'What would you most like people to remember about you or your contribution?', 'label_ml' => 'നിങ്ങളെയോ നിങ്ങളുടെ സംഭാവനകളെയോ കുറിച്ച് ആളുകൾ എന്താണ് ഓർക്കണമെന്ന് നിങ്ങൾ ആഗ്രഹിക്കുന്നത്?'],
 
-        ['id' => 'closing_other', 'section' => 'closing', 'required' => false, 'label_en' => 'Anything else you would like to add?', 'label_ml' => 'ചേർക്കാൻ നിങ്ങൾക്ക് മറ്റെന്തെങ്കിലും ഉണ്ടോ?'],
+        // PART 8 — IMPORTANT FACTS
+        ['id' => 'q22', 'section' => 'important_facts', 'required' => false, 'label_en' => 'Is there anything important we should know to understand your story correctly?', 'label_ml' => 'നിങ്ങളുടെ കഥ ശരിയായി മനസ്സിലാക്കാൻ ഞങ്ങൾ അറിയേണ്ട മറ്റേതെങ്കിലും പ്രധാനപ്പെട്ട വിവരമുണ്ടോ?'],
     ],
 
     'source_material_types' => [

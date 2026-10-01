@@ -6,19 +6,17 @@ use Illuminate\Support\Collection;
 
 class OnlineInterviewCatalog
 {
+    /**
+     * All living tiers draw on the SAME comprehensive question pool
+     * (Master Editorial Specification §17). Tier controls editorial
+     * depth, never access to questions. Signatures keep the historical
+     * package-tier parameter for callers; it no longer filters.
+     *
+     * @return list<string>
+     */
     public static function sectionsForTier(?string $packageTier): array
     {
-        $tier = strtolower((string) $packageTier);
-        $tierMap = config('online_interview.section_tiers', []);
-        $sections = [];
-        foreach (config('online_interview.sections', []) as $key => $label) {
-            $tiers = (array) ($tierMap[$key] ?? []);
-            if (in_array($tier, $tiers, true)) {
-                $sections[] = (string) $key;
-            }
-        }
-
-        return $sections;
+        return array_keys(config('online_interview.sections', []));
     }
 
     public static function all(): array
@@ -28,14 +26,9 @@ class OnlineInterviewCatalog
 
     public static function questionsForTier(?string $packageTier): array
     {
-        $sections = self::sectionsForTier($packageTier);
-        if ($sections === []) {
-            return [];
-        }
-
         return array_values(array_filter(
             self::all(),
-            static fn (array $q): bool => in_array((string) ($q['section'] ?? ''), $sections, true)
+            static fn (array $q): bool => (string) ($q['id'] ?? '') !== ''
         ));
     }
 
