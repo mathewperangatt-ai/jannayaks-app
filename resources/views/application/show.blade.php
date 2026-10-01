@@ -79,7 +79,7 @@
             || $application->status === \App\Models\Application::STATUS_PUBLISHED;
     @endphp
     @if($showProfileUrl || $application->status === \App\Models\Application::STATUS_PUBLISHED)
-        <h2 style="margin-top:10px;font-size:16px">Profile URL &amp; QR</h2>
+        <h2 style="margin-top:10px;font-size:16px">Profile URL</h2>
         <div class="row">
             <a class="btn" href="{{ route('applications.profile-url', $application) }}">Manage your profile URL →</a>
         </div>

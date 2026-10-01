@@ -101,22 +101,6 @@
             <div style="font-size:22px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums">{{ $package['amount_incl_formatted'] ?? '' }}</div>
         </div>
     </div>
-
-    @if ($application->package_tier === 'distinguished' && ! $isSettled)
-        @php
-            $addonCfg = config('jannayaks.tier_pricing.addons.distinguished_in_person_interview', []);
-            $addonAmt = number_format((int) ($addonCfg['base_amount'] ?? 10000));
-        @endphp
-        <div class="divider"></div>
-        <label class="row" style="gap:10px;align-items:flex-start;cursor:pointer">
-            <input form="pay-initiate-form" type="hidden" name="distinguished_interview_addon" value="0">
-            <input form="pay-initiate-form" type="checkbox" name="distinguished_interview_addon" value="1" @checked($application->distinguished_interview_addon) style="margin-top:4px">
-            <span>
-                <span style="font-weight:700">Include optional Direct Personal Interview — arranged through an external professional service (+₹{{ $addonAmt }})</span>
-                <span class="note-safe" style="display:block;margin-top:4px">Outside the normal Jannayaks service; arranged through an external professional service provider. Applied when you click Pay Now. Changing this replaces any pending payment link.</span>
-            </span>
-        </label>
-    @endif
 </div>
 @endif
 

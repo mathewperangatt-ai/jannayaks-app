@@ -25,18 +25,18 @@ class Phase8PaymentDocumentsTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_distinguished_addon_increases_payable_amount(): void
+    public function test_interview_addon_no_longer_affects_payable_amount(): void
     {
-        $base = PricingAmounts::forApplicationPackage('distinguished', false);
-        $withAddon = PricingAmounts::forApplicationPackage('distinguished', true);
+        // The Direct Personal Interview add-on was removed as a product:
+        // the package must equal the plain tier amount with no addon data.
+        $package = PricingAmounts::forApplicationPackage('distinguished');
 
-        $this->assertSame(1062000, $base['amount_incl_paise']);
-        $this->assertSame(2062000, $withAddon['amount_incl_paise']);
-        $this->assertTrue($withAddon['includes_addon']);
-        $this->assertSame(1000000, $withAddon['addon']['amount_incl_paise']);
+        $this->assertSame(1062000, $package['amount_incl_paise']);
+        $this->assertArrayNotHasKey('includes_addon', $package);
+        $this->assertArrayNotHasKey('addon', $package);
     }
 
-    public function test_payment_initiation_charges_addon_when_flagged(): void
+    public function test_payment_initiation_ignores_legacy_addon_flag(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->create([
@@ -49,7 +49,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         $res->assertStatus(201);
 
         $payment = Payment::query()->where('application_id', $app->id)->latest('id')->firstOrFail();
-        $this->assertSame(2062000, $payment->totalPaise());
+        $this->assertSame(1062000, $payment->totalPaise());
     }
 
     public function test_payment_initiation_without_addon_charges_base_only(): void
@@ -66,7 +66,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         $this->assertSame(1062000, $payment->totalPaise());
     }
 
-    public function test_changing_addon_before_pay_replaces_stale_pending_amount(): void
+    public function test_reinitiating_payment_reuses_unchanged_amount(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->create([
@@ -76,30 +76,15 @@ class Phase8PaymentDocumentsTest extends TestCase
         Config::set('services.razorpay.enabled', false);
 
         $this->actingAs($user)->postJson(route('applications.payment.initiate', $app))->assertStatus(201);
-        $this->assertSame(1062000, Payment::query()->where('application_id', $app->id)->activeAttempts()->firstOrFail()->totalPaise());
+        $first = Payment::query()->where('application_id', $app->id)->activeAttempts()->firstOrFail();
+        $this->assertSame(1062000, $first->totalPaise());
 
-        $this->actingAs($user)->postJson(route('applications.payment.initiate', $app), [
-            'distinguished_interview_addon' => true,
-        ])->assertStatus(201);
+        $this->actingAs($user)->postJson(route('applications.payment.initiate', $app))->assertStatus(201);
 
-        $active = Payment::query()->where('application_id', $app->id)->activeAttempts()->latest('id')->firstOrFail();
-        $this->assertSame(2062000, $active->totalPaise());
-        $this->assertTrue((bool) $app->fresh()->distinguished_interview_addon);
-        $this->assertSame(1, Payment::query()->where('application_id', $app->id)->activeAttempts()->count());
-        $this->assertSame(
-            0,
-            Payment::query()
-                ->where('application_id', $app->id)
-                ->activeAttempts()
-                ->where('id', '!=', $active->id)
-                ->count()
-        );
-        $this->assertTrue(
-            Payment::query()
-                ->where('application_id', $app->id)
-                ->where('status', Payment::STATUS_CANCELLED)
-                ->exists()
-        );
+        $actives = Payment::query()->where('application_id', $app->id)->activeAttempts()->get();
+        $this->assertCount(1, $actives);
+        $this->assertSame(1062000, $actives->first()->totalPaise());
+        $this->assertSame($first->id, $actives->first()->id);
     }
 
     public function test_webhook_assigns_distinct_receipt_and_tax_invoice_numbers(): void
@@ -355,8 +340,8 @@ class Phase8PaymentDocumentsTest extends TestCase
         $this->assertNull($old->invoice_number);
     }
 
-    /** B. After addon change, zero other active attempts remain. */
-    public function test_addon_change_leaves_zero_other_active_attempts(): void
+    /** B. Re-initiating with a stale addon input never changes the amount. */
+    public function test_stale_addon_input_never_changes_amount(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->create([
@@ -374,53 +359,13 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $actives = Payment::query()->where('application_id', $app->id)->activeAttempts()->get();
         $this->assertCount(1, $actives);
-        $this->assertSame(2062000, $actives->first()->totalPaise());
-        $this->assertNotSame($firstId, $actives->first()->id);
-        $this->assertSame(Payment::STATUS_CANCELLED, Payment::query()->findOrFail($firstId)->status);
+        $this->assertSame(1062000, $actives->first()->totalPaise());
+        $this->assertSame($firstId, $actives->first()->id);
+        $this->assertFalse((bool) $app->fresh()->distinguished_interview_addon);
     }
 
-    /** C. Razorpay-enabled amount change supersedes old link and creates correct new amount. */
-    public function test_razorpay_enabled_amount_change_supersedes_old_link(): void
-    {
-        Config::set('services.razorpay.enabled', true);
-        Config::set('services.razorpay.key_id', 'rzp_test_phase8key');
-        Config::set('services.razorpay.key_secret', 'phase8secret');
-        Config::set('services.razorpay.mode', 'test');
-        Config::set('services.razorpay.require_test_prefix', true);
-
-        Http::fake([
-            'api.razorpay.com/v1/payment_links' => Http::sequence()
-                ->push(['id' => 'plink_first', 'short_url' => 'https://rzp.io/first'], 200)
-                ->push(['id' => 'plink_second', 'short_url' => 'https://rzp.io/second'], 200),
-            'api.razorpay.com/v1/payment_links/plink_first/cancel' => Http::response(['id' => 'plink_first'], 200),
-        ]);
-
-        $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory()->for($user)->create([
-            'package_tier' => 'distinguished',
-            'distinguished_interview_addon' => false,
-        ]);
-
-        $first = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
-        $this->assertSame('plink_first', $first->razorpay_link_id);
-        $this->assertSame(1062000, $first->totalPaise());
-
-        $app->forceFill(['distinguished_interview_addon' => true])->save();
-        $second = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app->fresh());
-
-        $this->assertSame(2062000, $second->totalPaise());
-        $this->assertSame('plink_second', $second->razorpay_link_id);
-        $this->assertSame(1, Payment::query()->where('application_id', $app->id)->activeAttempts()->count());
-        $this->assertSame(Payment::STATUS_CANCELLED, $first->fresh()->status);
-        $this->assertNull($first->fresh()->razorpay_link_url);
-
-        Http::assertSent(function ($request) {
-            return str_contains($request->url(), '/payment_links/plink_first/cancel');
-        });
-    }
-
-    /** D. Non-distinguished addon input is forced false and never affects amount. */
-    public function test_non_distinguished_addon_is_forced_false_and_does_not_affect_amount(): void
+    /** D. Addon input at store or initiate is ignored and never affects amount. */
+    public function test_addon_input_is_ignored_and_does_not_affect_amount(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         Config::set('services.razorpay.enabled', false);

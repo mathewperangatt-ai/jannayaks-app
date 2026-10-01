@@ -55,123 +55,15 @@ class PricingAmounts
     }
 
     /**
-     * Direct Personal Interview add-on (Distinguished only).
-     * Outside the normal Jannayaks service: arranged through an external
-     * professional service provider at additional cost when specifically
-     * requested. Amount is the configured sticker price; GST-inclusive
-     * treatment is provisional. Kept unchanged per commercial decision.
+     * Complete application package amount for a living tier.
+     * The Direct Personal Interview add-on was removed as a product; no
+     * interview add-on may be priced or charged.
      *
      * @return array<string, mixed>
      */
-    public static function forDistinguishedInterviewAddon(): array
+    public static function forApplicationPackage(string $tierKey): array
     {
-        $cfg = (array) config('jannayaks.tier_pricing.addons.distinguished_in_person_interview', []);
-        $inclusiveRupees = (int) ($cfg['base_amount'] ?? 0);
-        if ($inclusiveRupees <= 0) {
-            throw new InvalidArgumentException('Invalid distinguished interview add-on amount.');
-        }
-
-        $gstInclusive = (bool) ($cfg['gst_inclusive'] ?? true);
-        $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
-
-        if ($gstInclusive) {
-            $inclusivePaise = self::rupeesToPaise($inclusiveRupees);
-            $split = self::splitInclusiveTotal($inclusivePaise, $gstRate);
-            $cgst = null;
-            $sgst = null;
-            $igst = null;
-            if ($split['gst_paise'] > 0) {
-                $cgst = intdiv($split['gst_paise'], 2);
-                $sgst = $split['gst_paise'] - $cgst;
-            }
-
-            return [
-                'currency' => self::CURRENCY,
-                'tier_key' => 'distinguished_in_person_interview',
-                'label' => (string) ($cfg['label'] ?? 'Direct Personal Interview (external professional service)'),
-                'description' => 'Arranged through an external professional service provider; not conducted by Jannayaks.',
-                'gst_inclusive' => true,
-                'gst_rate_percent' => $gstRate,
-                'amount_incl_paise' => $inclusivePaise,
-                'amount_incl_rupees' => $inclusiveRupees,
-                'base_paise' => $split['base_paise'],
-                'gst_paise' => $split['gst_paise'],
-                'cgst_paise' => $cgst,
-                'sgst_paise' => $sgst,
-                'igst_paise' => $igst,
-                'amount_incl_formatted' => self::formatMoneyInr($inclusivePaise),
-                'base_formatted' => self::formatMoneyInr($split['base_paise']),
-                'gst_formatted' => self::formatMoneyInr($split['gst_paise']),
-                'cgst_formatted' => $cgst !== null ? self::formatMoneyInr($cgst) : null,
-                'sgst_formatted' => $sgst !== null ? self::formatMoneyInr($sgst) : null,
-                'igst_formatted' => $igst !== null ? self::formatMoneyInr($igst) : null,
-            ];
-        }
-
-        return self::buildPlusGst(
-            baseRupees: $inclusiveRupees,
-            gstRate: $gstRate,
-            label: (string) ($cfg['label'] ?? 'Direct Personal Interview (external professional service)'),
-            description: 'Optional add-on; not included in the base Distinguished package.',
-            itemKey: 'distinguished_in_person_interview',
-        );
-    }
-
-    /**
-     * Combined application package (+ optional Distinguished interview add-on).
-     *
-     * @return array<string, mixed>
-     */
-    public static function forApplicationPackage(string $tierKey, bool $includeDistinguishedAddon = false): array
-    {
-        $package = self::forTier($tierKey);
-        $addon = null;
-
-        if ($includeDistinguishedAddon) {
-            if ($tierKey !== 'distinguished') {
-                throw new InvalidArgumentException('Direct Personal Interview add-on is only available for Distinguished.');
-            }
-            $addon = self::forDistinguishedInterviewAddon();
-        }
-
-        if ($addon === null) {
-            return $package;
-        }
-
-        $totalPaise = (int) $package['amount_incl_paise'] + (int) $addon['amount_incl_paise'];
-        $basePaise = (int) $package['base_paise'] + (int) $addon['base_paise'];
-        $gstPaise = (int) $package['gst_paise'] + (int) $addon['gst_paise'];
-        $cgst = ((int) ($package['cgst_paise'] ?? 0)) + ((int) ($addon['cgst_paise'] ?? 0));
-        $sgst = ((int) ($package['sgst_paise'] ?? 0)) + ((int) ($addon['sgst_paise'] ?? 0));
-        $igstPaise = null;
-        if ($package['igst_paise'] !== null || $addon['igst_paise'] !== null) {
-            $igstPaise = ((int) ($package['igst_paise'] ?? 0)) + ((int) ($addon['igst_paise'] ?? 0));
-        }
-
-        return [
-            'currency' => self::CURRENCY,
-            'tier_key' => $tierKey,
-            'label' => $package['label'].' + '.$addon['label'],
-            'description' => 'Package plus optional Direct Personal Interview add-on (external arrangement).',
-            'gst_inclusive' => true,
-            'gst_rate_percent' => $package['gst_rate_percent'],
-            'amount_incl_paise' => $totalPaise,
-            'amount_incl_rupees' => (int) round($totalPaise / self::PAISE_PER_RUPEE),
-            'base_paise' => $basePaise,
-            'gst_paise' => $gstPaise,
-            'cgst_paise' => $cgst > 0 ? $cgst : null,
-            'sgst_paise' => $sgst > 0 ? $sgst : null,
-            'igst_paise' => $igstPaise,
-            'amount_incl_formatted' => self::formatMoneyInr($totalPaise),
-            'base_formatted' => self::formatMoneyInr($basePaise),
-            'gst_formatted' => self::formatMoneyInr($gstPaise),
-            'cgst_formatted' => $cgst > 0 ? self::formatMoneyInr($cgst) : null,
-            'sgst_formatted' => $sgst > 0 ? self::formatMoneyInr($sgst) : null,
-            'igst_formatted' => $igstPaise !== null ? self::formatMoneyInr($igstPaise) : null,
-            'includes_addon' => true,
-            'addon' => $addon,
-            'package' => $package,
-        ];
+        return self::forTier($tierKey);
     }
 
     /**

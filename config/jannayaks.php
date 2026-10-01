@@ -34,18 +34,6 @@ return [
                 'photo_slots' => 5,
             ],
         ],
-        'addons' => [
-            'distinguished_in_person_interview' => [
-                'label' => 'Direct Personal Interview (external professional service)',
-                // Outside the normal Jannayaks service: if specifically requested,
-                // arranged through an external professional service provider at
-                // additional cost. Jannayaks does not itself conduct the interview.
-                // Sticker amount charged as stated (+₹10,000). Treated as GST-inclusive
-                // provisionally until commercial/legal GST treatment is confirmed.
-                'base_amount' => 10000,
-                'gst_inclusive' => true,
-            ],
-        ],
         // Seller/legal fields for GST tax invoices. Leave blank until registration is confirmed.
         // Do not invent GSTIN or legal entity details.
         'billing' => [

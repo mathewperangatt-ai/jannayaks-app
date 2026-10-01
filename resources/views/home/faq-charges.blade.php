@@ -81,9 +81,9 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <span class="eyebrow">FAQ &amp; Charges / ചോദ്യങ്ങളും നിരക്കുകളും</span>
   <h1>Membership charges and common questions</h1>
   <p class="lede">
-    Package amounts below are the authoritative charges used by the Jannayaks application
-    (exclusive of GST; {{ number_format($gstPercent, 0) }}% GST is added at payment).
-    Payment is completed through the application journey after you create a profile.
+    The charges shown below are exclusive of GST. GST ({{ number_format($gstPercent, 0) }}%)
+    will be added to the applicable amount at checkout. Payment is completed through the
+    application journey after you create a profile.
   </p>
 
   <div class="card gold">
@@ -101,12 +101,9 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     <ul class="features">
       <li>Verified profile — Gold badge</li>
       <li>Artificial Intelligence–assisted biography — deeply developed long-form profile (EN + ML)</li>
-      <li>Personal URL — jannayaks.in/slug</li>
-      <li>Digital visiting card + QR code</li>
-      <li>Posts — text, photos &amp; video links</li>
-      <li>Featured listing — top of all directories</li>
-      <li>Annual profile refresh</li>
-      <li>Optional add-on: {{ $distinguishedAddon['label'] }} — {{ $distinguishedAddon['amount_incl_formatted'] }} (incl. GST)</li>
+      <li>Personal URL — jannayaks.in/name</li>
+      <li>Portrait photograph plus up to 5 gallery photographs</li>
+      <li>External video link on the profile</li>
     </ul>
   </div>
 
@@ -125,11 +122,9 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     <ul class="features">
       <li>Verified profile — Verified badge</li>
       <li>Artificial Intelligence–assisted biography — substantially developed feature (EN + ML)</li>
-      <li>Personal URL — jannayaks.in/slug</li>
-      <li>Digital visiting card + QR code</li>
-      <li>Posts — text &amp; photos</li>
-      <li>Priority listing above {{ \App\Support\TierLabels::label('emerging') }}</li>
-      <li>Annual profile refresh</li>
+      <li>Personal URL — jannayaks.in/name</li>
+      <li>Portrait photograph plus up to 3 gallery photographs</li>
+      <li>External video link on the profile</li>
     </ul>
   </div>
 
@@ -148,17 +143,14 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     <ul class="features">
       <li>Verified profile</li>
       <li>Artificial Intelligence–assisted biography — concise but complete portrait (EN + ML)</li>
-      <li>Personal URL — jannayaks.in/slug</li>
-      <li>Digital visiting card + QR code</li>
-      <li>Posts — text only</li>
-      <li>Standard listing in directories</li>
-      <li>Annual profile refresh</li>
+      <li>Personal URL — jannayaks.in/name</li>
+      <li>Portrait photograph</li>
     </ul>
   </div>
 
   <div class="card">
     <div class="tier-name">In Memoriam</div>
-    <span class="tier-name-ml">സ്മരണാഞ്ജലി</span>
+    <span class="tier-name-ml">ഓർമ്മയ്ക്കായി</span>
     <div class="price">{{ $inMemoriam['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
     <div class="price-sub">
       {{ $hostingYears }} years hosting · arranged offline with Jannayaks · see

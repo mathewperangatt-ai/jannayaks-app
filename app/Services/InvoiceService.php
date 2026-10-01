@@ -184,14 +184,9 @@ class InvoiceService
         }
 
         $packageDescription = 'Profile package';
-        $includesAddon = false;
         if ($application !== null && in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
-            $amt = PricingAmounts::forApplicationPackage(
-                $application->package_tier,
-                (bool) $application->distinguished_interview_addon,
-            );
+            $amt = PricingAmounts::forApplicationPackage($application->package_tier);
             $packageDescription = $amt['label'] ?? $packageDescription;
-            $includesAddon = (bool) ($amt['includes_addon'] ?? false);
         }
 
         return [
@@ -200,7 +195,7 @@ class InvoiceService
             'invoice_issued_at' => $payment->invoice_issued_at,
             'payment_date' => $payment->paid_at,
             'package_description' => $packageDescription,
-            'includes_distinguished_addon' => $includesAddon,
+            'includes_distinguished_addon' => false,
             'billing_name' => $billingName,
             'billing_email' => $billingEmail,
             'billing_mobile' => $billingMobile,

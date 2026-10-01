@@ -26,10 +26,7 @@ class RazorpayPaymentService
             throw new InvalidArgumentException('Invalid application package tier.');
         }
 
-        $includeAddon = (bool) $application->distinguished_interview_addon
-            && $application->package_tier === 'distinguished';
-
-        $amounts = PricingAmounts::forApplicationPackage($application->package_tier, $includeAddon);
+        $amounts = PricingAmounts::forApplicationPackage($application->package_tier);
         PricingAmounts::assertInr($amounts['currency']);
 
         $totalPaise = (int) $amounts['amount_incl_paise'];
@@ -37,7 +34,7 @@ class RazorpayPaymentService
             throw new RuntimeException('Payment amount must be positive.');
         }
 
-        return DB::transaction(function () use ($application, $amounts, $totalPaise, $includeAddon) {
+        return DB::transaction(function () use ($application, $amounts, $totalPaise) {
             $actives = Payment::query()
                 ->where('application_id', $application->id)
                 ->whereIn('status', [Payment::STATUS_PENDING, Payment::STATUS_INITIATED])
@@ -74,7 +71,7 @@ class RazorpayPaymentService
                     'cgst_amount' => $amounts['cgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['cgst_paise']) : null,
                     'sgst_amount' => $amounts['sgst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['sgst_paise']) : null,
                     'igst_amount' => $amounts['igst_paise'] !== null ? PricingAmounts::paiseToDecimalString((int) $amounts['igst_paise']) : null,
-                    'event_type' => $includeAddon ? 'distinguished_interview_addon' : 'application_package',
+                    'event_type' => 'application_package',
                 ])->save();
             } else {
                 $txnRef = 'JNK-PAY-'.$application->id.'-'.Str::upper(Str::random(10));
@@ -86,7 +83,7 @@ class RazorpayPaymentService
                     'amount' => PricingAmounts::paiseToDecimalString($totalPaise),
                     'currency' => PricingAmounts::CURRENCY,
                     'status' => Payment::STATUS_PENDING,
-                    'event_type' => $includeAddon ? 'distinguished_interview_addon' : 'application_package',
+                    'event_type' => 'application_package',
                     'base_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
                     'taxable_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
                     'gst_rate_percent' => $amounts['gst_rate_percent'],
@@ -103,7 +100,7 @@ class RazorpayPaymentService
                 return $payment->fresh() ?? $payment;
             }
 
-            $payload = $this->buildLinkPayload($application, $payment, $amounts, $totalPaise, $includeAddon);
+            $payload = $this->buildLinkPayload($application, $payment, $amounts, $totalPaise);
             $response = $this->http()->post(self::RAZORPAY_LINKS_ENDPOINT, $payload);
 
             if (! $response->successful()) {
@@ -377,7 +374,7 @@ class RazorpayPaymentService
         }
     }
 
-    private function buildLinkPayload(Application $application, Payment $payment, array $amounts, int $totalPaise, bool $includeAddon = false): array
+    private function buildLinkPayload(Application $application, Payment $payment, array $amounts, int $totalPaise): array
     {
         $callbackUrl = route('payments.razorpay.callback', ['payment_id' => $payment->id], true);
         $cancelUrl = route('applications.payment', ['application' => $application->id], true);
@@ -411,9 +408,8 @@ class RazorpayPaymentService
                 'payment_id' => (string) $payment->id,
                 'application_id' => (string) $application->id,
                 'package_tier' => (string) $application->package_tier,
-                'event_type' => $includeAddon ? 'distinguished_interview_addon' : 'application_package',
+                'event_type' => 'application_package',
                 'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
-                'distinguished_interview_addon' => $includeAddon ? '1' : '0',
             ],
             'callback_url' => $callbackUrl,
             'callback_method' => 'get',

@@ -13,7 +13,6 @@ class FaqChargesController extends Controller
             'emerging' => PricingAmounts::forTier('emerging'),
             'accomplished' => PricingAmounts::forTier('accomplished'),
             'distinguished' => PricingAmounts::forTier('distinguished'),
-            'distinguishedAddon' => PricingAmounts::forDistinguishedInterviewAddon(),
             // Annual membership renewal is tier-priced at the applicable annual tier price.
             'renewals' => [
                 'emerging' => PricingAmounts::forTierRenewal('emerging'),

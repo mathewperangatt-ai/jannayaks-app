@@ -260,7 +260,7 @@ footer{background:var(--navy);padding:48px 22px 28px;}
 function googleTranslateElementInit(){
   new google.translate.TranslateElement({
     pageLanguage:'en',
-    includedLanguages:'ml,hi,ta,kn,te,bn,gu,mr',
+    includedLanguages:'en,ml,hi,ta,kn,te,bn,gu,mr',
     layout:google.translate.TranslateElement.InlineLayout.SIMPLE,
     autoDisplay:false
   },'google_translate_element');
@@ -317,6 +317,7 @@ function setLang(lang){
       <div class="translate-wrap">
         <button type="button" class="translate-btn" onclick="toggleTranslate()" aria-label="Translate">🌐 <span class="translate-label">Translate ▾</span></button>
         <div class="translate-dropdown">
+          <a href="#" onclick="setLang('en');return false;">English</a>
           <a href="#" onclick="setLang('ml');return false;">മലയാളം</a>
           <a href="#" onclick="setLang('hi');return false;">हिन्दी</a>
           <a href="#" onclick="setLang('ta');return false;">தமிழ்</a>
@@ -332,6 +333,16 @@ function setLang(lang){
   <div class="hero-main-heading">
     <h1>A digital gallery of people's leaders from all walks of life, documenting their lives and contributions.</h1>
     <span class="hero-ml">സമൂഹത്തിന്റെ വിവിധ മേഖലകളിലെ ജനനായകരുടെ ജീവിതവും സമൂഹത്തിനുള്ള സംഭാവനകളും രേഖപ്പെടുത്തുന്ന ഒരു ഡിജിറ്റൽ ഗാലറി.</span>
+    <div class="hero-secondary-actions" style="margin-top:22px;display:flex;gap:26px;flex-wrap:wrap;font-size:14px">
+      <a href="{{ route('recommend.show') }}" style="color:inherit;text-decoration:underline;text-underline-offset:3px">
+        <strong>Recommend Someone You May Know</strong>
+        <span style="display:block;font-size:12.5px;opacity:.75">Know someone whose life or contribution deserves to be recorded?</span>
+      </a>
+      <a href="{{ route('invitation-request.show') }}" style="color:inherit;text-decoration:underline;text-underline-offset:3px">
+        <strong>Request an Invitation</strong>
+        <span style="display:block;font-size:12.5px;opacity:.75">For yourself — begin the conversation about your own profile.</span>
+      </a>
+    </div>
   </div>
 </section>
 <!-- SEARCH -->
@@ -423,14 +434,6 @@ function setLang(lang){
     </div>
   </div>
 </section>
-<!-- EDITORIAL PREPARATION -->
-<section class="ep-section">
-  <div class="container" style="max-width:680px;text-align:center;">
-    <h3 style="font-family:var(--fd);font-size:20px;font-weight:700;color:var(--navy);margin-bottom:6px;">Editorial Preparation</h3>
-    <p style="font-size:14px;color:var(--charcoal);line-height:1.7;">Every profile is prepared by our human editors, assisted by Artificial Intelligence.</p>
-    <span style="font-family:var(--fm);font-size:12px;color:var(--gray);line-height:1.7;display:block;margin-top:4px;">നിങ്ങളുടെ വിവരണം തയ്യാറാക്കാൻ മാനുഷിക ബുദ്ധിക്കു പുറമെ നിർമ്മിതബുദ്ധിയുടെ സഹായവും ഞങ്ങൾ ഉപയോഗിക്കുന്നു.</span>
-  </div>
-</section>
 <!-- URL NAMING -->
 <section class="url-section">
   <div class="url-box">
@@ -481,7 +484,6 @@ function setLang(lang){
         <div class="f-logo"><img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks"></div>
         <div class="f-contact">
           <a href="mailto:{{ config('jannayaks.contact.public_email') }}">✉ {{ config('jannayaks.contact.public_email') }}</a>
-          <a href="tel:{{ config('jannayaks.contact.public_phone_tel') }}">☎ {{ config('jannayaks.contact.public_phone') }}</a>
           <a href="{{ route('home') }}">🌐 jannayaks.in</a>
           <p class="f-address">{{ config('jannayaks.contact.legal_address') }}</p>
         </div>
@@ -489,33 +491,20 @@ function setLang(lang){
       <div>
         <div class="f-col-title">Platform</div>
         <ul class="f-links">
-          <li><a href="{{ route('gallery.index') }}">Browse Members</a></li>
+          <li><a href="{{ route('gallery.index') }}">View Demo Profiles</a></li>
           <li><a href="{{ route('apply') }}">Create Profile</a></li>
           <li><a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a></li>
-          <li><a href="{{ route('gallery.index') }}">View Demo Profiles</a></li>
         </ul>
       </div>
       <div>
         <div class="f-col-title">Support</div>
         <ul class="f-links">
           <li><a href="mailto:{{ config('jannayaks.contact.public_email') }}">Contact Us</a></li>
-          <li><a href="#">Help Centre</a></li>
-          <li><a href="#">Privacy Policy</a></li>
-          <li><a href="#">Terms of Service</a></li>
-        </ul>
-      </div>
-      <div>
-        <div class="f-col-title">About</div>
-        <ul class="f-links">
-          <li><a href="#">About Jannayaks</a></li>
-          <li><a href="#">Political Neutrality</a></li>
-          <li><a href="#">Identity Verification</a></li>
         </ul>
       </div>
       <div>
         <div class="f-col-title">More from Jannayaks</div>
         <ul class="f-links">
-          <li><a href="{{ route('gallery.index') }}">Directories</a></li>
           <li><a href="{{ route('in-memoriam.index') }}">In Memoriam</a></li>
         </ul>
         <p class="f-more-note">Rates on request. Contact us directly.</p>

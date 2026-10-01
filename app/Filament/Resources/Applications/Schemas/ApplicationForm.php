@@ -8,7 +8,6 @@ use Filament\Forms\Components\Placeholder;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\TextInput;
 use App\Support\TierLabels;
-use Filament\Forms\Components\Toggle;
 use Filament\Schemas\Components\Section;
 use Filament\Schemas\Schema;
 
@@ -50,11 +49,10 @@ class ApplicationForm
                     TextInput::make('source_method')
                         ->disabled()
                         ->dehydrated(false),
-                    Toggle::make('distinguished_interview_addon')
-                        ->disabled()
-                        ->dehydrated(false),
                 ])
                 ->columns(2),
+                /* Direct Personal Interview add-on removed as a product;
+                   legacy applications may still carry the historical flag. */
             Section::make('Workflow')
                 ->schema([
                     Select::make('status')

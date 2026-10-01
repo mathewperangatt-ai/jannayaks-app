@@ -24,7 +24,9 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee('Create Profile', false);
         $response->assertSee('Sign In', false);
         $response->assertSee('In Memoriam', false);
-        $response->assertSee('Editorial Preparation', false);
+        // The Editorial Preparation block was removed by the final frontend pass.
+        $response->assertDontSee('Editorial Preparation');
+        $response->assertDontSee('human editors', false);
         $response->assertSee('View Demo Profiles →', false);
         $response->assertSee('FAQ &amp; Charges →', false);
         $response->assertSee('nav-menu-btn', false);
@@ -45,6 +47,11 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee(route('apply', absolute: false), false);
         $response->assertSee(route('in-memoriam.index', absolute: false), false);
         $response->assertSee(route('search.index', absolute: false), false);
+        // Footer: no phone numbers, no directory link, Google Translate offers EN.
+        $response->assertDontSee('public_phone', false);
+        $response->assertDontSee('>Directories<', false);
+        $response->assertSee("setLang('en')", false);
+        $response->assertSee("'en,ml,hi,ta,kn,te,bn,gu,mr'", false);
     }
 
     public function test_faq_charges_uses_authoritative_pricing(): void
@@ -68,6 +75,13 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee('+ GST', false);
         $response->assertSee(route('in-memoriam.index', absolute: false), false);
         $response->assertSee(route('gallery.index', absolute: false), false);
+        // Final frontend pass removals: QR, directory claims, interview add-on.
+        $response->assertDontSee('QR', false);
+        $response->assertDontSee('visiting card', false);
+        $response->assertDontSee('directories', false);
+        $response->assertDontSee('Directories', false);
+        $response->assertDontSee('Optional add-on', false);
+        $response->assertSee('The charges shown below are exclusive of GST', false);
     }
 
     public function test_existing_key_routes_still_respond(): void

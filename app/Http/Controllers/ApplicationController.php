@@ -77,7 +77,6 @@ class ApplicationController extends Controller
             'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$/'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
-            'distinguished_interview_addon' => ['nullable', 'boolean'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
             'honey_bot' => ['nullable', 'string', 'max:0'],
         ]);
@@ -97,8 +96,6 @@ class ApplicationController extends Controller
             'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
             'contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
             'contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
-            'distinguished_interview_addon' => (string) $validated['package_tier'] === 'distinguished'
-                && (bool) ($validated['distinguished_interview_addon'] ?? false),
             'direct_submission_note' => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
         ];
 
@@ -162,7 +159,6 @@ class ApplicationController extends Controller
             'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$/'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
-            'distinguished_interview_addon' => ['nullable', 'boolean'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
             'honey_bot' => ['nullable', 'string', 'max:0'],
         ]);
@@ -188,8 +184,6 @@ class ApplicationController extends Controller
                 'full_name' => (string) $validated['full_name'],
                 'preferred_display_name' => (string) $validated['full_name'],
                 'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
-                'distinguished_interview_addon' => (string) $validated['package_tier'] === 'distinguished'
-                    && (bool) ($validated['distinguished_interview_addon'] ?? false),
                 'preferred_contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
                 'preferred_contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
                 'direct_submission_note' => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
@@ -426,10 +420,7 @@ class ApplicationController extends Controller
         $package = null;
         try {
             if (in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
-                $package = PricingAmounts::forApplicationPackage(
-                    $application->package_tier,
-                    (bool) $application->distinguished_interview_addon && $application->package_tier === 'distinguished',
-                );
+                $package = PricingAmounts::forApplicationPackage($application->package_tier);
             }
         } catch (\Throwable $e) {
             $package = null;
@@ -439,7 +430,6 @@ class ApplicationController extends Controller
             $summary = [
                 'application_id' => $application->id,
                 'package_tier' => $application->package_tier,
-                'distinguished_interview_addon' => (bool) $application->distinguished_interview_addon,
                 'payment_settled' => $application->isPaymentSettled(),
                 'payment_status' => $application->payment_status,
                 'package' => $package,
@@ -505,16 +495,6 @@ class ApplicationController extends Controller
             return redirect()
                 ->route('applications.payment', ['application' => $application->id])
                 ->withErrors(['payment' => 'Payment for this application has already been settled.']);
-        }
-
-        if ($application->package_tier === 'distinguished' && $request->exists('distinguished_interview_addon')) {
-            $application->forceFill([
-                'distinguished_interview_addon' => $request->boolean('distinguished_interview_addon'),
-            ])->save();
-        } elseif ($application->package_tier !== 'distinguished' && $application->distinguished_interview_addon) {
-            $application->forceFill([
-                'distinguished_interview_addon' => false,
-            ])->save();
         }
 
         try {

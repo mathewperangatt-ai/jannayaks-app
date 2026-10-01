@@ -86,11 +86,11 @@
     @endif
 
     @if($isPublished && $canonicalUrl)
-        <h2 style="margin-top:14px;font-size:16px">QR code</h2>
-        <p class="sub" style="margin:0">Encodes your current public profile URL only.</p>
-        <div style="margin-top:10px">
-            <img src="{{ route('applications.profile-qr', $application) }}" alt="Profile QR code" width="220" height="220" style="border:1px solid var(--line);border-radius:12px;background:#fff">
-        </div>
+        <h2 style="margin-top:14px;font-size:16px">Share your profile</h2>
+        <p class="sub" style="margin:0">
+            Your permanent profile address is <code>{{ $canonicalUrl }}</code> — copy it or share it
+            directly from your public profile page.
+        </p>
     @endif
 
     @if($history->isNotEmpty())
