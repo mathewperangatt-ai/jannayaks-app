@@ -8,10 +8,12 @@ use App\Http\Controllers\CustomerProfilePreviewController;
 use App\Http\Controllers\FaqChargesController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InMemoriamLandingController;
+use App\Http\Controllers\InvitationRequestController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\PaymentDocumentController;
 use App\Http\Controllers\ProfileConceptController;
+use App\Http\Controllers\ProfileEngagementController;
 use App\Http\Controllers\ProfileExternalVideoLinkController;
 use App\Http\Controllers\ProfileMediaController;
 use App\Http\Controllers\ProfileUrlController;
@@ -23,6 +25,7 @@ use App\Http\Controllers\PublicProfileUrlController;
 use App\Http\Controllers\PublicSearchController;
 use App\Http\Controllers\RazorpayCallbackController;
 use App\Http\Controllers\RazorpayWebhookController;
+use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\Staff\ProfileMediaPreviewController;
 use App\Http\Controllers\Staff\SourceMaterialDownloadController;
 use Illuminate\Support\Facades\Route;
@@ -37,12 +40,30 @@ Route::get('/profile-concept', ProfileConceptController::class)->name('profile-c
 Route::get('/gallery', [PublicGalleryController::class, 'index'])->name('gallery.index');
 Route::get('/search', [PublicSearchController::class, 'index'])->name('search.index');
 
+// Recommend Someone You May Know — recommending ANOTHER person (§17).
+Route::get('/recommend', [RecommendationController::class, 'show'])->name('recommend.show');
+Route::post('/recommend', [RecommendationController::class, 'store'])->middleware('throttle:10,1')->name('recommend.store');
+
+// Request an Invitation — the person THEMSELVES requesting inclusion (§18).
+Route::get('/request-invitation', [InvitationRequestController::class, 'show'])->name('invitation-request.show');
+Route::post('/request-invitation', [InvitationRequestController::class, 'store'])->middleware('throttle:10,1')->name('invitation-request.store');
+
+// Public profile engagement: Contact box + Like / Applaud (§15–§16).
+Route::post('/profiles/{slug}/contact', [ProfileEngagementController::class, 'contact'])
+    ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
+    ->middleware('throttle:20,1')
+    ->name('profiles.contact');
+Route::post('/profiles/{slug}/react', [ProfileEngagementController::class, 'react'])
+    ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
+    ->middleware(['auth', 'throttle:30,1'])
+    ->name('profiles.react');
+
 Route::get('/in-memoriam', InMemoriamLandingController::class)->name('in-memoriam.index');
 Route::get('/in-memoriam/{slug}', [PublicInMemoriamController::class, 'show'])
-    ->where('slug', '[A-Za-z0-9][A-Za-z0-9\-]*')
+    ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
     ->name('in-memoriam.show');
 Route::get('/in-memoriam/{slug}/photo/{media}', [PublicInMemoriamMediaController::class, 'show'])
-    ->where('slug', '[A-Za-z0-9][A-Za-z0-9\-]*')
+    ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
     ->whereNumber('media')
     ->name('in-memoriam.photo');
 

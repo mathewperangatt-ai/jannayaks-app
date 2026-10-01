@@ -153,6 +153,29 @@ class Profile extends Model
         return $this->hasMany(ProfileExternalLink::class, 'profile_id')->orderByDesc('id');
     }
 
+    /** @return HasMany<ProfileReaction> */
+    public function reactions(): HasMany
+    {
+        return $this->hasMany(ProfileReaction::class, 'profile_id');
+    }
+
+    /** @return HasMany<ProfileContactMessage> */
+    public function contactMessages(): HasMany
+    {
+        return $this->hasMany(ProfileContactMessage::class, 'profile_id');
+    }
+
+    /**
+     * Customer-facing tier label (Recognised / Acclaimed / Distinguished),
+     * resolved from the originating application's package tier.
+     */
+    public function tierLabel(): ?string
+    {
+        $tier = $this->application?->package_tier;
+
+        return $tier !== null ? \App\Support\TierLabels::label((string) $tier) : null;
+    }
+
     public function isPubliclyListed(): bool
     {
         return $this->status === 'published'

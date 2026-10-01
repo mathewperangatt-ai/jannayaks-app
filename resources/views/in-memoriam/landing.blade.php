@@ -20,6 +20,35 @@
 @endpush
 
 @section('content')
+
+@if(isset($memorials) && $memorials->isNotEmpty())
+<section class="im-panel" aria-labelledby="im-records" style="background:#f6f6f4;border-color:#d8d8d4">
+    <h2 id="im-records" style="letter-spacing:.22em">ഓർമ്മയ്ക്കായി · In Memoriam records</h2>
+    <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:14px">
+        @foreach($memorials as $memorial)
+            <a href="{{ route('in-memoriam.show', $memorial->slug) }}" style="display:block;background:#fafaf8;border:1px solid #d8d8d4;text-decoration:none;color:inherit">
+                <div style="aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;background:linear-gradient(165deg,#ececEA,#e2e2de);font:500 34px var(--serif, serif);color:#b0b0ac;filter:grayscale(1)">
+                    {{ mb_strtoupper(mb_substr($memorial->deceased_display_name ?: $memorial->deceased_full_name, 0, 1)) }}
+                </div>
+                <div style="padding:14px 16px">
+                    <strong style="display:block;font-family:var(--serif, serif);font-size:16px;color:#3c3c42">{{ $memorial->deceased_display_name ?: $memorial->deceased_full_name }}</strong>
+                    @if($memorial->deceased_date_of_birth || $memorial->deceased_date_of_death)
+                        <span style="font-size:13px;color:#6a6a70;font-style:italic">
+                            @if($memorial->deceased_date_of_birth){{ $memorial->deceased_date_of_birth->format('Y') }}@endif
+                            @if($memorial->deceased_date_of_birth && $memorial->deceased_date_of_death) – @endif
+                            @if($memorial->deceased_date_of_death){{ $memorial->deceased_date_of_death->format('Y') }}@endif
+                        </span>
+                    @endif
+                    @if(filled($memorial->bio_headline))
+                        <span style="display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8f8f95;margin-top:6px">{{ $memorial->bio_headline }}</span>
+                    @endif
+                </div>
+            </a>
+        @endforeach
+    </div>
+</section>
+@endif
+
 <section class="im-hero">
     <p class="eyebrow">Jannayaks service</p>
     <h1>In Memoriam</h1>

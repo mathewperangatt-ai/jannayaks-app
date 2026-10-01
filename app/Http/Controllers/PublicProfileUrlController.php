@@ -109,9 +109,15 @@ class PublicProfileUrlController extends Controller
 
         $lang = (string) $request->query('lang', 'en');
         $data = $this->presentation->present($profile, $lang);
+        $data['tierLabel'] = $profile->tierLabel();
+        $data['viewerReactions'] = $request->user()
+            ? $profile->reactions()->where('user_id', $request->user()->id)->pluck('reaction')->all()
+            : [];
+        // Demonstration profiles are owned by the locked internal demo account.
+        $data['isDemonstration'] = str_ends_with(strtolower((string) $profile->user?->email), '@jannayaks.internal');
 
         return response()
             ->view('public.profile', $data)
-            ->header('Cache-Control', 'public, max-age=60');
+            ->header('Cache-Control', $request->user() ? 'private, max-age=60' : 'public, max-age=60');
     }
 }

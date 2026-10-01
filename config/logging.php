@@ -65,6 +65,15 @@ return [
             'replace_placeholders' => true,
         ],
 
+        // Public-form engagement audit trail (contact, reactions, recommendations).
+        'security' => [
+            'driver' => 'daily',
+            'path' => storage_path('logs/security.log'),
+            'level' => env('LOG_LEVEL', 'debug'),
+            'max_files' => env('SECURITY_LOG_DAYS', 30),
+            'replace_placeholders' => true,
+        ],
+
         'daily' => [
             'driver' => 'daily',
             'path' => storage_path('logs/laravel.log'),
