@@ -1,6 +1,9 @@
 @extends('layouts.public')
 
 @section('title', 'Gallery — Jannayaks')
+@section('seoDescription', 'Browse published Jannayaks profiles — verified biographical records of people in public life.')
+@section('seoCanonical', route('gallery.index'))
+@section('schemaJson', app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->webPageGraph(route('gallery.index'), 'Gallery — Jannayaks')))
 
 @section('content')
 <p class="eyebrow">Public gallery</p>

@@ -27,6 +27,7 @@ use App\Http\Controllers\RazorpayCallbackController;
 use App\Http\Controllers\RazorpayWebhookController;
 use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\Staff\ProfileMediaPreviewController;
+use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Staff\SourceMaterialDownloadController;
 use Illuminate\Support\Facades\Route;
 
@@ -169,6 +170,9 @@ Route::get('/payments/razorpay/callback', [RazorpayCallbackController::class, 's
 Route::middleware(['throttle:30,1'])->group(function () {
     Route::post('/payments/razorpay/webhook', [RazorpayWebhookController::class, 'handle'])->name('payments.razorpay.webhook');
 });
+
+// SEO-3: dynamic XML sitemap (must precede the /{slug} catch-all).
+Route::get('/sitemap.xml', SitemapController::class)->name('sitemap.xml');
 
 Route::get('/{slug}', [PublicProfileUrlController::class, 'show'])
     ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')

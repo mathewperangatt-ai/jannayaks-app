@@ -1,6 +1,8 @@
 @extends('layouts.public')
 
 @section('title', ($q !== '' ? 'Search: '.$q.' — ' : '').'Search — Jannayaks')
+@section('seoDescription', 'Search published Jannayaks profiles by name, area or PIN code.')
+@section('seoCanonical', route('search.index'))
 
 @section('content')
 <p class="eyebrow">Public search</p>

@@ -72,6 +72,17 @@ return [
         ],
     ],
 
+    /*
+    | SEO-1: shared social/share metadata defaults. The temporary share image is
+    | the approved square logo; swap 'share_image' for the branded 1200x630
+    | artwork later without touching the metadata architecture.
+    */
+    'seo' => [
+        'site_name' => 'Jannayaks',
+        'share_image' => 'branding/jannayaks-logo-approved.jpg',
+        'twitter_card' => 'summary',
+    ],
+
     'refund' => [
         // Working assumption only — reconfirm before production. Not an immutable business rule.
         'before_publication_percent' => (int) env('JANNAYAKS_REFUND_BEFORE_PUBLICATION_PERCENT', 60),

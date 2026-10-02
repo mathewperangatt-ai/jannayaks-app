@@ -2,8 +2,23 @@
 
 @section('title', $displayName.' — In Memoriam — Jannayaks')
 
+@section('seoDescription', \Illuminate\Support\Str::limit(trim((string) ($activeEditorial?->summary ?: $headline ?: $profession)), 300))
+@section('seoCanonical', $canonicalUrl)
+@section('seoImage', $photo ? route('in-memoriam.photo', ['slug' => $profile->slug, 'media' => $photo]) : '')
+@section('seoType', 'profile')
+
+@section('schemaJson', app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->profileGraph(
+    $canonicalUrl,
+    $displayName,
+    ($activeEditorial && filled($activeEditorial->summary) && $activeEditorial->summary !== ($headline ?: $profession)) ? trim((string) $activeEditorial->summary) : null,
+    $photo ? route('in-memoriam.photo', ['slug' => $profile->slug, 'media' => $photo]) : null,
+    filled($headline) ? $headline : $profession,
+    [['Home', route('home')], ['In Memoriam', route('in-memoriam.index')], [$displayName, $canonicalUrl]],
+    $profile->deceased_date_of_birth?->format('Y'),
+    $profile->deceased_date_of_death?->format('Y'),
+)))
+
 @push('head')
-<link rel="canonical" href="{{ $canonicalUrl }}">
 <style>
     /* ————— Sombre memorial treatment —————
        Quiet charcoal palette, desaturated framing, generous whitespace.

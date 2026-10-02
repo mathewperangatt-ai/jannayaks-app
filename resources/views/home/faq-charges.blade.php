@@ -9,6 +9,13 @@
 <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('branding/favicon-180.png') }}">
 <link rel="icon" href="{{ asset('branding/favicon.ico') }}">
 <title>FAQ &amp; Charges — Jannayaks™</title>
+@php($schemaJson = app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->webPageGraph(route('faq-charges'), 'FAQ & Charges — Jannayaks')))
+@include('partials.schema-ld', ['json' => $schemaJson])
+@include('partials.seo-meta', [
+    'title' => 'FAQ &amp; Charges — Jannayaks™',
+    'description' => 'Jannayaks membership charges for the Recognised, Acclaimed and Distinguished tiers, In Memoriam hosting, and answers to common questions.',
+    'canonical' => route('faq-charges'),
+])
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=DM+Sans:wght@300;400;500;600&family=Noto+Serif+Malayalam:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -20,9 +27,8 @@
   --fd:'Cormorant Garamond',Georgia,serif;--fb:'DM Sans',sans-serif;--fm:'Noto Serif Malayalam',serif;
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
-body{background:var(--off);color:var(--charcoal);font-family:var(--fb);-webkit-font-smoothing:antialiased;padding-top:38px;}
-.construction-banner{background:var(--navy);color:#fff;text-align:center;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:10px;position:fixed;top:0;left:0;right:0;z-index:9999;}
-nav{background:var(--white);border-bottom:2px solid var(--saffron);position:sticky;top:38px;z-index:100;box-shadow:0 1px 12px rgba(0,0,0,.06);}
+body{background:var(--off);color:var(--charcoal);font-family:var(--fb);-webkit-font-smoothing:antialiased;}
+nav{background:var(--white);border-bottom:2px solid var(--saffron);position:sticky;top:0;z-index:100;box-shadow:0 1px 12px rgba(0,0,0,.06);}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 22px;max-width:1400px;margin:0 auto;}
 .nav-logo{display:flex;align-items:center;gap:10px;text-decoration:none;}
 .nav-logo img{height:58px;width:auto;}
@@ -58,7 +64,6 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 </style>
 </head>
 <body>
-<div class="construction-banner">Under Construction</div>
 <nav>
   <div class="nav-inner">
     <a class="nav-logo" href="{{ route('home') }}">
@@ -202,5 +207,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 
   <p class="back"><a href="{{ route('home') }}">← Back to homepage</a></p>
 </main>
+
+@include('partials.public-footer')
 </body>
 </html>

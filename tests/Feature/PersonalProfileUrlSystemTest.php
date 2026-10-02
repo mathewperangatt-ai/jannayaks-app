@@ -182,14 +182,14 @@ class PersonalProfileUrlSystemTest extends TestCase
 
     public function test_home_footer_uses_official_contact_details(): void
     {
-        // Final frontend pass §34: the phone number was removed from the
-        // footer; email and legal address remain.
+        // Final frontend pass §34 removed the phone; footer pass 2 removed the
+        // physical address (it belongs on the Contact page only).
         $this->get('/')
             ->assertOk()
             ->assertSee('hello@jannayaks.in', false)
-            ->assertSee('3/532, Trivandrum 695573', false)
             ->assertDontSee('hello@jannayaks.com', false)
-            ->assertDontSee('94 95 94 93 99', false);
+            ->assertDontSee('94 95 94 93 99', false)
+            ->assertDontSee('3/532, Trivandrum 695573', false);
     }
 
     /**

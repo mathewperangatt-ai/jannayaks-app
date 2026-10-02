@@ -9,6 +9,19 @@
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('branding/favicon-180.png') }}">
     <link rel="icon" href="{{ asset('branding/favicon.ico') }}">
     <title>@yield('title', config('app.name', 'Jannayaks'))</title>
+    {{-- SEO-1: page metadata via sections; indexing directives unchanged above. --}}
+    @include('partials.seo-meta', [
+        'title' => trim((string) $__env->yieldContent('title')) ?: (string) config('app.name', 'Jannayaks'),
+        // Inline @section values arrive escaped by Blade; decode once here so
+        // the partial escapes exactly once at output.
+        'description' => htmlspecialchars_decode((string) $__env->yieldContent('seoDescription'), ENT_QUOTES),
+        'canonical' => (string) $__env->yieldContent('seoCanonical'),
+        'image' => (string) $__env->yieldContent('seoImage'),
+        'type' => (string) $__env->yieldContent('seoType'),
+        'locale' => str_starts_with($htmlLang ?? 'en', 'ml') ? 'ml_IN' : 'en_IN',
+    ])
+    {{-- SEO-4: structured data, pre-encoded per page via the schemaJson section. --}}
+    @include('partials.schema-ld', ['json' => htmlspecialchars_decode((string) $__env->yieldContent('schemaJson'), ENT_QUOTES)])
     <link rel="preconnect" href="https://fonts.googleapis.com">
     <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=DM+Sans:wght@300;400;500;600&family=Noto+Serif+Malayalam:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -25,12 +38,10 @@
         }
         *{box-sizing:border-box}
         html,body{margin:0;padding:0;background:var(--off);color:var(--charcoal);font-family:var(--sans);line-height:1.6;-webkit-font-smoothing:antialiased}
-        body{padding-top:41px}
         a{color:var(--navy);text-decoration-thickness:1px;text-underline-offset:3px}
         a:hover{color:var(--saffron)}
         :focus-visible{outline:3px solid rgba(192,118,46,.35);outline-offset:2px;border-radius:6px}
-        .construction-banner{background:var(--navy);color:#fff;text-align:center;font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:10px;position:fixed;top:0;left:0;right:0;z-index:9999;height:41px;box-sizing:border-box}
-        .site-nav{background:#fff;border-bottom:2px solid var(--saffron);position:sticky;top:41px;z-index:100;box-shadow:0 1px 12px rgba(0,0,0,.06)}
+                .site-nav{background:#fff;border-bottom:2px solid var(--saffron);position:sticky;top:0;z-index:100;box-shadow:0 1px 12px rgba(0,0,0,.06)}
         .nav-inner{display:flex;align-items:center;justify-content:space-between;gap:16px;height:72px;padding:0 22px;max-width:1400px;margin:0 auto}
         .nav-logo{display:flex;align-items:center;text-decoration:none}
         .nav-logo img{height:58px;width:auto;display:block}
@@ -66,13 +77,6 @@
         .card-meta{margin:0;font-size:14px;color:var(--gray)}
         .pager{margin-top:28px;display:flex;justify-content:center}
         .empty{padding:36px 8px;color:var(--gray);text-align:center}
-        .site-footer{background:var(--navy);color:rgba(255,255,255,.55);padding:36px 22px 24px;margin-top:24px}
-        .site-footer-inner{max-width:1100px;margin:0 auto;display:flex;flex-wrap:wrap;gap:24px;justify-content:space-between;align-items:flex-start}
-        .site-footer img{height:48px;width:auto;filter:brightness(0) invert(1);opacity:.85}
-        .site-footer a{color:rgba(255,255,255,.55);text-decoration:none;font-size:13px}
-        .site-footer a:hover{color:var(--saffron)}
-        .site-footer nav{display:flex;flex-wrap:wrap;gap:14px}
-        .site-footer .copy{font-size:11px;color:rgba(255,255,255,.3);margin-top:20px;width:100%}
         @media (min-width:900px){.nav-links{display:flex}.nav-menu-btn{display:none !important}}
         @media (max-width:899px){
             .nav-menu-btn{display:inline-flex;align-items:center}
@@ -91,7 +95,6 @@
     @stack('head')
 </head>
 <body>
-    <div class="construction-banner">Under Construction</div>
     <header class="site-nav">
         <div class="nav-inner">
             <a class="nav-logo" href="{{ route('home') }}">
@@ -117,22 +120,7 @@
             @yield('content')
         </main>
     </div>
-    <footer class="site-footer">
-        <div class="site-footer-inner">
-            <a href="{{ route('home') }}"><img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks.in"></a>
-            <nav aria-label="Footer">
-                <a href="{{ route('gallery.index') }}">Demo Profiles</a>
-                <a href="{{ route('search.index') }}">Search</a>
-                <a href="{{ route('recommend.show') }}">Recommend Someone</a>
-                <a href="{{ route('invitation-request.show') }}">Request an Invitation</a>
-                <a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a>
-                <a href="{{ route('in-memoriam.index') }}">In Memoriam</a>
-                <a href="mailto:{{ config('jannayaks.contact.public_email') }}">Contact</a>
-            </nav>
-            <div class="copy">{{ config('jannayaks.contact.legal_address') }} · © {{ date('Y') }} Jannayaks™ · Aurex Network. Apolitical. Verified.</div>
-        </div>
-    </footer>
-    <script>
+    @include('partials.public-footer')    <script>
     (function(){
         var btn = document.getElementById('publicNavBtn');
         var links = document.getElementById('publicNavLinks');

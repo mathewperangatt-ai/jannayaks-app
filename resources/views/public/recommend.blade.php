@@ -1,6 +1,9 @@
 @extends('layouts.public', ['nav' => ''])
 
 @section('title', 'Recommend Someone You May Know — Jannayaks')
+@section('seoDescription', 'Recommend someone whose life, work or public contribution deserves to be recorded in the Jannayaks archive.')
+@section('seoCanonical', route('recommend.show'))
+@section('schemaJson', app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->webPageGraph(route('recommend.show'), 'Recommend Someone You May Know — Jannayaks')))
 
 @push('head')
 <style>

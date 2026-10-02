@@ -16,7 +16,8 @@ class HomepageIntegrationTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('noindex, nofollow', false);
-        $response->assertSee('Under Construction', false);
+        // Under Construction banner removed globally (footer pass 2).
+        $response->assertDontSee('Under Construction', false);
         $response->assertSee('branding/favicon-32.png', false);
         $response->assertSee('How It Works', false);
         $response->assertSee('FAQ &amp; Charges', false);
@@ -32,7 +33,8 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee('nav-menu-btn', false);
         $response->assertSee('Open menu', false);
         $response->assertSee('branding/jannayaks-logo.jpg', false);
-        $response->assertSee('f-logo', false);
+        // Shared footer partial (footer pass 1) replaced the old logo block.
+        $response->assertSee('jf-footer', false);
         $response->assertDontSee('brightness(0) invert(1)', false);
         $response->assertDontSee('Well-wishers', false);
         $response->assertDontSee('🙏', false);
@@ -65,7 +67,8 @@ class HomepageIntegrationTest extends TestCase
 
         $response->assertOk();
         $response->assertSee('noindex, nofollow', false);
-        $response->assertSee('Under Construction', false);
+        // Under Construction banner removed globally (footer pass 2).
+        $response->assertDontSee('Under Construction', false);
         $response->assertSee($emerging['base_formatted'], false);
         $response->assertSee($accomplished['base_formatted'], false);
         $response->assertSee($distinguished['base_formatted'], false);

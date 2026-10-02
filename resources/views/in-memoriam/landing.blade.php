@@ -1,6 +1,9 @@
 @extends('layouts.public', ['htmlLang' => 'en', 'nav' => 'in-memoriam'])
 
 @section('title', 'In Memoriam — Jannayaks')
+@section('seoDescription', 'In Memoriam on Jannayaks — dignified memorial records prepared with editorial care for the agreed hosting period.')
+@section('seoCanonical', route('in-memoriam.index'))
+@section('schemaJson', app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->webPageGraph(route('in-memoriam.index'), 'In Memoriam — Jannayaks')))
 
 @push('head')
 <style>

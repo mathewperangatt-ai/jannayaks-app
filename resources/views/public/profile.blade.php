@@ -2,8 +2,21 @@
 
 @section('title', $displayName.' — Jannayaks')
 
+@section('seoDescription', \Illuminate\Support\Str::limit(trim((string) ($activeEditorial?->summary ?: $headline ?: $profession)), 300))
+@section('seoCanonical', $canonicalUrl)
+@section('seoImage', $photo ? route('profiles.public.photo', [$profile, $photo]) : '')
+@section('seoType', 'profile')
+
+@section('schemaJson', app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->profileGraph(
+    $canonicalUrl,
+    $displayName,
+    trim((string) ($activeEditorial?->summary ?? '')) !== '' ? trim((string) $activeEditorial->summary) : null,
+    $photo ? route('profiles.public.photo', [$profile, $photo]) : null,
+    filled($profession) ? $profession : null,
+    [['Home', route('home')], ['Demo Profiles', route('gallery.index')], [$displayName, $canonicalUrl]],
+)))
+
 @push('head')
-<link rel="canonical" href="{{ $canonicalUrl }}">
 <style>
     /* ————— Approved profile visual standard —————
        Sage ground, deep blue serif typography, restrained saffron accents,

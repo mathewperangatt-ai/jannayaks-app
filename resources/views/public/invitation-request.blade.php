@@ -1,6 +1,9 @@
 @extends('layouts.public', ['nav' => ''])
 
 @section('title', 'Request an Invitation — Jannayaks')
+@section('seoDescription', 'Request an invitation to create a Jannayaks profile through the editorial process.')
+@section('seoCanonical', route('invitation-request.show'))
+@section('schemaJson', app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->webPageGraph(route('invitation-request.show'), 'Request an Invitation — Jannayaks')))
 
 @push('head')
 <style>

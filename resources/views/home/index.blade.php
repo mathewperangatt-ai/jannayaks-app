@@ -9,25 +9,36 @@
 <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('branding/favicon-180.png') }}">
 <link rel="icon" href="{{ asset('branding/favicon.ico') }}">
 <title>Jannayaks™ — Kerala's Public Presence Platform</title>
+@php($schemaJson = app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->websiteGraph(
+    'Jannayaks is a digital biographical archive — verified profiles and In Memoriam records documenting the lives, work and public contribution of people’s leaders.',
+    url('/search'),
+)))
+@include('partials.schema-ld', ['json' => $schemaJson])
+@include('partials.seo-meta', [
+    'title' => 'Jannayaks™ — A Digital Gallery of People’s Leaders',
+    'description' => 'Jannayaks is a digital biographical archive — verified profiles and In Memoriam records documenting the lives, work and public contribution of people’s leaders.',
+    'canonical' => url('/'),
+])
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
-<link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=DM+Sans:wght@300;400;500;600&family=Noto+Serif+Malayalam:wght@400;500;600;700&display=swap" rel="stylesheet">
+<link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400&family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=DM+Sans:wght@300;400;500;600&family=Noto+Serif+Malayalam:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --navy:#0F1F3D;--saffron:#C65102;--white:#FFFFFF;--off:#F8F6F2;
-  --gray:#6B7280;--light:#F3F4F6;--charcoal:#1F2937;--border:#E5E7EB;
-  --gold:#B8860B;--goldbg:#FFFBEB;--greenbg:#F0FDF4;--green:#1A6B3C;
-  --fd:'Cormorant Garamond',Georgia,serif;--fb:'DM Sans',sans-serif;--fm:'Noto Serif Malayalam',serif;
+  /* Approved Jannayaks homepage palette: soft sage ground, near-white warm
+     surfaces, greenish-charcoal text, muted Ashoka-Chakra blue primary,
+     restrained saffron secondary, subtle hairline borders. */
+  --navy:#214d68;--saffron:#C0762E;--white:#FDFDFB;--off:#F3F8F0;
+  --gray:#6f8075;--light:#eaf2e7;--charcoal:#1f2924;--border:#d3ddd1;
+  --gold:#A98A4E;--goldbg:#F7F3E8;--greenbg:#EDF3EA;--green:#2F6B4F;
+  --fd:'Fraunces','Cormorant Garamond',Georgia,serif;--fb:'DM Sans',sans-serif;--fm:'Noto Serif Malayalam',serif;
 }
 *,*::before,*::after{margin:0;padding:0;box-sizing:border-box;}
 html{scroll-behavior:smooth;}
-body{background:transparent;color:var(--charcoal);font-family:var(--fb);-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden;}
-.construction-banner{background:var(--navy);color:#fff;text-align:center;font-family:var(--fb);font-size:13px;letter-spacing:2px;text-transform:uppercase;padding:10px;position:fixed;top:0;left:0;right:0;z-index:9999;}
-body{padding-top:38px;}
+body{background:var(--off);color:var(--charcoal);font-family:var(--fb);-webkit-font-smoothing:antialiased;position:relative;overflow-x:hidden;}
 .container{width:100%;max-width:1100px;margin:0 auto;padding:0 22px;}
 .ml{font-family:var(--fm);display:block;font-size:.85em;color:var(--gray);margin-top:2px;}
 /* NAV */
-nav{background:var(--white);border-bottom:2px solid var(--saffron);position:sticky;top:38px;z-index:100;box-shadow:0 1px 12px rgba(0,0,0,.06);}
+nav{background:var(--white);border-bottom:2px solid var(--saffron);position:sticky;top:0;z-index:100;box-shadow:0 1px 12px rgba(0,0,0,.06);}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 22px;max-width:1400px;margin:0 auto;gap:12px;}
 .nav-logo{display:flex;align-items:center;gap:10px;flex-shrink:0;}
 .nav-logo img{height:58px;width:auto;display:block;}
@@ -47,23 +58,24 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .nav-login{background:transparent;border:1.5px solid var(--navy);color:var(--navy);padding:7px 16px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
 .nav-login:hover{background:var(--navy);color:white;}
 .nav-cta{background:var(--saffron);color:white;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:background .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
-.nav-cta:hover{background:#a84400;}
+.nav-cta:hover{background:#9d5e22;}
 /* HERO */
-.hero{background:linear-gradient(135deg,#F8F6F2 0%,#EEF0F8 100%);padding:80px 22px 88px;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
-.hero::before{content:'';position:absolute;top:-40px;right:-40px;width:300px;height:300px;border-radius:50%;background:radial-gradient(circle,rgba(198,81,2,.06),transparent);pointer-events:none;}
-.hero::after{content:'';position:absolute;bottom:-60px;left:-60px;width:400px;height:400px;border-radius:50%;background:radial-gradient(circle,rgba(15,31,61,.04),transparent);pointer-events:none;}
+.hero{background:var(--off);padding:80px 22px 88px;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+.hero::before{display:none;}
+.hero::after{display:none;}
 .hero-main-heading{text-align:center;max-width:900px;margin:0 auto 30px;position:relative;}
-.hero-main-heading h1{font-family:var(--fd);font-size:clamp(38px,7vw,68px);line-height:1.12;font-weight:700;color:var(--navy);margin:0 0 8px;overflow-wrap:anywhere;}
-.hero-main-heading .hero-ml{font-family:var(--fm);font-size:clamp(22px,4vw,38px);line-height:1.35;color:var(--navy);margin:0;opacity:.7;overflow-wrap:anywhere;}
+/* Kerala launch is Malayalam-first: Malayalam is the primary hero heading. */
+.hero-main-heading h1.hero-ml-primary{font-family:var(--fm);font-size:clamp(36px,6.4vw,64px);line-height:1.32;font-weight:700;color:var(--navy);margin:0 0 14px;overflow-wrap:anywhere;}
+.hero-en-secondary{display:block;font-family:var(--fd);font-size:clamp(17px,2.3vw,25px);line-height:1.4;font-weight:400;color:#52758a;margin:0;overflow-wrap:anywhere;}
 .hero-intro{max-width:760px;margin:0 auto 0;position:relative;}
 .hero-intro p{font-size:17px;line-height:1.65;font-weight:300;color:var(--charcoal);}
 .hero-intro .hero-ml{font-family:var(--fm);font-size:14px;line-height:1.7;color:var(--gray);margin-top:8px;display:block;}
 /* SEARCH BOX */
 .search-section{background:transparent;padding:56px 22px;border-bottom:1px solid var(--border);}
-.search-box{background:white;border:1.5px solid var(--border);border-radius:12px;padding:32px;max-width:740px;margin:0 auto;box-shadow:0 4px 24px rgba(0,0,0,.06);}
+.search-box{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:32px;max-width:740px;margin:0 auto;box-shadow:0 4px 24px rgba(0,0,0,.05);}
 .search-title{font-family:var(--fd);font-size:22px;font-weight:700;color:var(--navy);margin-bottom:4px;}
 .search-title-ml{font-family:var(--fm);font-size:14px;color:var(--gray);display:block;margin-bottom:22px;}
-.search-tabs{display:flex;gap:4px;background:var(--light);padding:4px;border-radius:8px;margin-bottom:20px;}
+.search-tabs{display:flex;flex-wrap:wrap;gap:4px;background:var(--light);padding:4px;border-radius:8px;margin-bottom:20px;}
 .search-tab{flex:1;padding:8px;border:none;background:transparent;border-radius:6px;font-size:12px;font-weight:500;cursor:pointer;font-family:var(--fb);color:var(--gray);transition:all .2s;line-height:1.35;}
 .search-tab.active{background:white;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.1);}
 .search-input-wrap{position:relative;margin-bottom:16px;}
@@ -122,7 +134,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .tier-f-x{color:#D1D5DB;font-size:13px;flex-shrink:0;margin-top:1px;}
 .tier-btn{width:100%;padding:11px;border-radius:6px;font-size:13px;font-weight:600;font-family:var(--fb);cursor:pointer;transition:all .2s;}
 .tbtn-d{background:var(--gold);color:white;border:none;}
-.tbtn-d:hover{background:#9a7009;}
+.tbtn-d:hover{background:#8a6d3b;}
 .tbtn-a{background:var(--navy);color:white;border:none;}
 .tbtn-a:hover{background:var(--saffron);}
 .tbtn-e{background:transparent;color:var(--navy);border:1.5px solid var(--navy);}
@@ -137,7 +149,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .url-badge{font-size:10px;font-family:var(--fb);background:var(--navy);color:white;padding:2px 8px;border-radius:10px;letter-spacing:.5px;flex-shrink:0;}
 .url-note{font-size:13px;color:var(--gray);line-height:1.7;margin-bottom:16px;overflow-wrap:anywhere;}
 .url-note-ml{font-family:var(--fm);font-size:12px;color:var(--gray);display:block;margin-top:4px;line-height:1.7;}
-.url-custom{background:var(--greenbg);border:1px solid #BBF7D0;border-radius:8px;padding:14px 16px;margin-top:12px;}
+.url-custom{background:var(--greenbg);border:1px solid #cfe0cb;border-radius:8px;padding:14px 16px;margin-top:12px;}
 .url-custom-title{font-size:13px;font-weight:600;color:var(--green);margin-bottom:4px;}
 .url-custom-text{font-size:12px;color:var(--gray);line-height:1.6;overflow-wrap:anywhere;}
 .url-custom-text-ml{font-family:var(--fm);font-size:11px;color:var(--gray);display:block;margin-top:3px;line-height:1.6;}
@@ -151,30 +163,21 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .ww-text-ml{font-family:var(--fm);font-size:12px;color:var(--gray);line-height:1.75;display:block;margin-bottom:24px;}
 .ww-btn{background:transparent;border:1.5px solid var(--saffron);color:var(--saffron);padding:12px 28px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;}
 .ww-btn:hover{background:var(--saffron);color:white;}
-.mem-section{padding:72px 22px;background:var(--navy);text-align:center;}
-.mem-title{font-family:var(--fd);font-size:26px;font-weight:700;color:white;margin-bottom:4px;}
-.mem-title-ml{font-family:var(--fm);font-size:16px;color:rgba(255,255,255,.65);display:block;margin-bottom:14px;}
-.mem-text{font-size:14px;color:rgba(255,255,255,.75);line-height:1.75;max-width:560px;margin:0 auto 6px;overflow-wrap:anywhere;}
-.mem-text-ml{font-family:var(--fm);font-size:12px;color:rgba(255,255,255,.6);line-height:1.75;display:block;max-width:560px;margin:0 auto 24px;overflow-wrap:anywhere;}
-.mem-btn{background:var(--gold);color:white;border:none;padding:12px 28px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;text-decoration:none;display:inline-block;min-height:44px;line-height:1.4;}
-.mem-btn:hover{background:#9a7009;}
+/* Recommend Someone — quiet secondary action above In Memoriam */
+.recommend-strip{padding:44px 22px;text-align:center;background:var(--off);}
+.recommend-strip a{color:var(--navy);text-decoration:none;}
+.recommend-strip a:hover{color:var(--saffron);}
+.recommend-strip strong{display:inline-block;font-size:15px;font-weight:600;border-bottom:1px dotted var(--navy);padding-bottom:2px;}
+.recommend-strip a:hover strong{border-color:var(--saffron);}
+.recommend-strip span{display:block;font-size:12.5px;color:var(--gray);margin-top:6px;}
+.mem-section{padding:64px 22px;background:var(--light);border-top:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;}
+.mem-title{font-family:var(--fd);font-size:26px;font-weight:600;color:var(--navy);margin-bottom:4px;}
+.mem-title-ml{font-family:var(--fm);font-size:16px;color:var(--gray);display:block;margin-bottom:14px;}
+.mem-text{font-size:14px;color:#46554d;line-height:1.75;max-width:560px;margin:0 auto 6px;overflow-wrap:anywhere;}
+.mem-text-ml{font-family:var(--fm);font-size:12px;color:var(--gray);line-height:1.75;display:block;max-width:560px;margin:0 auto 24px;overflow-wrap:anywhere;}
+.mem-btn{background:var(--navy);color:white;border:none;padding:12px 28px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;text-decoration:none;display:inline-block;min-height:44px;line-height:1.4;}
+.mem-btn:hover{background:#9d5e22;}
 /* FOOTER */
-footer{background:var(--navy);padding:48px 22px 28px;}
-.footer-grid{display:grid;grid-template-columns:1fr;gap:32px;margin-bottom:36px;max-width:1100px;margin-left:auto;margin-right:auto;}
-.f-logo{display:inline-flex;align-items:center;justify-content:center;margin-bottom:12px;padding:6px;background:#fff;border-radius:8px;}
-.f-logo img{height:64px;width:auto;display:block;}
-.f-about{font-size:13px;color:rgba(255,255,255,.45);line-height:1.65;max-width:240px;margin-bottom:14px;}
-.f-about-ml{font-family:var(--fm);font-size:11px;color:rgba(255,255,255,.35);display:block;margin-top:4px;line-height:1.65;}
-.f-contact a{display:flex;align-items:center;gap:6px;font-size:12px;color:rgba(255,255,255,.45);text-decoration:none;margin-bottom:5px;transition:color .2s;min-height:40px;}
-.f-contact a:hover{color:var(--saffron);}
-.f-address{font-size:12px;color:rgba(255,255,255,.45);line-height:1.6;margin:8px 0 0;}
-.f-col-title{font-size:10px;font-weight:600;color:rgba(255,255,255,.7);letter-spacing:1.5px;text-transform:uppercase;margin-bottom:12px;}
-.f-links{list-style:none;display:flex;flex-direction:column;gap:8px;}
-.f-links a{font-size:12px;color:rgba(255,255,255,.4);text-decoration:none;transition:color .2s;display:inline-flex;align-items:center;min-height:40px;}
-.f-links a:hover{color:var(--saffron);}
-.f-more-note{font-size:11px;color:rgba(255,255,255,.35);margin-top:10px;line-height:1.5;max-width:180px;}
-.f-bottom{border-top:1px solid rgba(255,255,255,.08);padding-top:20px;display:flex;flex-direction:column;gap:5px;align-items:center;text-align:center;max-width:1100px;margin:0 auto;}
-.f-copy,.f-tag{font-size:11px;color:rgba(255,255,255,.25);line-height:1.5;overflow-wrap:anywhere;}
 /* TRANSLATE DROPDOWN */
 .translate-wrap{position:relative;}
 .translate-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.1);min-width:160px;z-index:200;}
@@ -223,7 +226,6 @@ footer{background:var(--navy);padding:48px 22px 28px;}
   .mem-text,.mem-text-ml{font-size:14px;}
   .mem-text-ml{font-size:13px;}
   footer{padding:40px 16px 24px;}
-  .f-logo img{height:52px;}
   .f-more-note{max-width:100%;}
 }
 @media(max-width:340px){
@@ -236,7 +238,6 @@ footer{background:var(--navy);padding:48px 22px 28px;}
   .cascade-row{grid-template-columns:repeat(3,1fr);}
   .tiers-grid{flex-direction:row;align-items:stretch;}
   .tier-card{flex:1;}
-  .footer-grid{grid-template-columns:2fr 1fr 1fr;}
   .f-bottom{flex-direction:row;justify-content:space-between;text-align:left;}
   .search-input,.cascade-select,.pincode-input{font-size:14px;}
 }
@@ -248,12 +249,10 @@ footer{background:var(--navy);padding:48px 22px 28px;}
   .step{flex-direction:column;border-bottom:none;border-right:1px solid var(--border);padding:0 20px 0 0;flex:1;}
   .step:last-child{border-right:none;padding-right:0;}
   .step-num{margin-bottom:14px;}
-  .footer-grid{grid-template-columns:2fr 1fr 1fr 1fr 1fr;}
 }
 </style>
 </head>
 <body>
-<div class="construction-banner">Under Construction</div>
 <!-- GOOGLE TRANSLATE (hidden, triggered by button) -->
 <div id="google_translate_element" style="display:none;"></div>
 <script>
@@ -331,18 +330,8 @@ function setLang(lang){
 <!-- HERO -->
 <section class="hero">
   <div class="hero-main-heading">
-    <h1>A digital gallery of people's leaders from all walks of life, documenting their lives and contributions.</h1>
-    <span class="hero-ml">സമൂഹത്തിന്റെ വിവിധ മേഖലകളിലെ ജനനായകരുടെ ജീവിതവും സമൂഹത്തിനുള്ള സംഭാവനകളും രേഖപ്പെടുത്തുന്ന ഒരു ഡിജിറ്റൽ ഗാലറി.</span>
-    <div class="hero-secondary-actions" style="margin-top:22px;display:flex;gap:26px;flex-wrap:wrap;font-size:14px">
-      <a href="{{ route('recommend.show') }}" style="color:inherit;text-decoration:underline;text-underline-offset:3px">
-        <strong>Recommend Someone You May Know</strong>
-        <span style="display:block;font-size:12.5px;opacity:.75">Know someone whose life or contribution deserves to be recorded?</span>
-      </a>
-      <a href="{{ route('invitation-request.show') }}" style="color:inherit;text-decoration:underline;text-underline-offset:3px">
-        <strong>Request an Invitation</strong>
-        <span style="display:block;font-size:12.5px;opacity:.75">For yourself — begin the conversation about your own profile.</span>
-      </a>
-    </div>
+    <h1 class="hero-ml-primary" lang="ml">വിവിധ മേഖലകളിലെ ജനനായകരുടെ ഡിജിറ്റൽ ഗാലറി.</h1>
+    <span class="hero-en-secondary">A digital gallery of people's leaders.</span>
   </div>
 </section>
 <!-- SEARCH -->
@@ -351,15 +340,16 @@ function setLang(lang){
     <div class="search-title">Search</div>
     <span class="search-title-ml">കണ്ടെത്തൂ</span>
     <div class="search-tabs">
-      <button class="search-tab active" onclick="switchTab(this,'name')">🔍 By Name / പേര് പ്രകാരം</button>
-      <button class="search-tab" onclick="switchTab(this,'area')">📍 By Area / പ്രദേശം പ്രകാരം</button>
-      <button class="search-tab" onclick="switchTab(this,'pin')">📮 By Pin Code / പിൻകോഡ് പ്രകാരം</button>
+      <button class="search-tab active" onclick="switchTab(this,'name')">🔍 By Name / പേര്</button>
+      <button class="search-tab" onclick="switchTab(this,'area')">📍 By Area / പ്രദേശം</button>
+      <button class="search-tab" onclick="switchTab(this,'pin')">📮 By Pin Code / പിൻകോഡ്</button>
+      <button class="search-tab" onclick="switchTab(this,'text')">🔎 Text Search</button>
     </div>
     <div id="tab-name">
       <form method="get" action="{{ route('search.index') }}" id="home-search-form">
         <div class="search-input-wrap">
           <span class="search-icon">🔍</span>
-          <input class="search-input" type="search" name="q" placeholder="Type name, ward, panchayat... / പേര്, വാർഡ്, പഞ്ചായത്ത്..." maxlength="200">
+          <input class="search-input" type="search" name="q" id="home-q" placeholder="Type name, ward, panchayat... / പേര്, വാർഡ്, പഞ്ചായത്ത്..." maxlength="200">
         </div>
       </form>
     </div>
@@ -374,6 +364,12 @@ function setLang(lang){
     <div id="tab-pin" style="display:none;">
       <div class="pincode-row">
         <input class="pincode-input" type="text" placeholder="Enter 6-digit pin code..." maxlength="6">
+      </div>
+    </div>
+    <div id="tab-text" style="display:none;">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔎</span>
+        <input class="search-input" type="search" name="q" id="home-text-q" placeholder="Search by name, profession, organisation or place…" maxlength="200" form="home-search-form" disabled>
       </div>
     </div>
     <button type="submit" form="home-search-form" class="search-btn">Search — ലോകത്തെവിടെ നിന്നും തിരയൂ 🌍</button>
@@ -449,11 +445,11 @@ function setLang(lang){
         <span class="url-badge">Simple</span>
       </div>
       <div class="url-example">
-        jannayaks.in/<strong>sukumaraluva</strong>
+        jannayaks.in/<strong>sukumar.aluva</strong>
         <span class="url-badge">Name + Place</span>
       </div>
       <div class="url-example">
-        jannayaks.in/<strong>jacobvaliyaveed</strong>
+        jannayaks.in/<strong>jacob.valiyaveed</strong>
         <span class="url-badge">Name + Family Name</span>
       </div>
     </div>
@@ -466,10 +462,17 @@ function setLang(lang){
     </div>
   </div>
 </section>
+<!-- RECOMMEND SOMEONE (secondary action, above In Memoriam) -->
+<section class="recommend-strip">
+  <a href="{{ route('recommend.show') }}">
+    <strong>Recommend Someone You May Know</strong>
+    <span>Know someone whose life or contribution deserves to be recorded?</span>
+  </a>
+</section>
 <!-- IN MEMORIAM -->
 <section class="mem-section" id="memoriam">
   <h2 class="mem-title">In Memoriam</h2>
-  <span class="mem-title-ml">സ്മരണാഞ്ജലി</span>
+  <span class="mem-title-ml">ഓർമ്മയ്ക്കായി</span>
   <p class="mem-text">A special section is provided for popular personalities who have passed away. A dignified memorial page for someone who has passed — open to anyone, prepared with the same editorial care as a living profile. For details, write to founder@jannayaks.in.</p>
   <span class="mem-text-ml">യശശരീരുടെ ഓർമക്കായ്‌ ഒരു സ്ഥിരവും അന്തസ്സുള്ളതുമായ അനുസ്മരണ താൾ — ജീവിച്ചിരിക്കുന്ന പ്രൊഫൈലിന്റെ അതേ എഡിറ്റോറിയൽ ശ്രദ്ധയോടെ തയ്യാറാക്കുന്നത്.</span>
   <div>
@@ -477,52 +480,16 @@ function setLang(lang){
   </div>
 </section>
 <!-- FOOTER -->
-<footer>
-  <div class="container">
-    <div class="footer-grid">
-      <div>
-        <div class="f-logo"><img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks"></div>
-        <div class="f-contact">
-          <a href="mailto:{{ config('jannayaks.contact.public_email') }}">✉ {{ config('jannayaks.contact.public_email') }}</a>
-          <a href="{{ route('home') }}">🌐 jannayaks.in</a>
-          <p class="f-address">{{ config('jannayaks.contact.legal_address') }}</p>
-        </div>
-      </div>
-      <div>
-        <div class="f-col-title">Platform</div>
-        <ul class="f-links">
-          <li><a href="{{ route('gallery.index') }}">View Demo Profiles</a></li>
-          <li><a href="{{ route('apply') }}">Create Profile</a></li>
-          <li><a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a></li>
-        </ul>
-      </div>
-      <div>
-        <div class="f-col-title">Support</div>
-        <ul class="f-links">
-          <li><a href="mailto:{{ config('jannayaks.contact.public_email') }}">Contact Us</a></li>
-        </ul>
-      </div>
-      <div>
-        <div class="f-col-title">More from Jannayaks</div>
-        <ul class="f-links">
-          <li><a href="{{ route('in-memoriam.index') }}">In Memoriam</a></li>
-        </ul>
-        <p class="f-more-note">Rates on request. Contact us directly.</p>
-      </div>
-    </div>
-    <div class="f-bottom">
-      <div class="f-copy">© 2026 Jannayaks™ · Aurex Network. All rights reserved.</div>
-      <div class="f-tag">Apolitical. Verified.</div>
-    </div>
-  </div>
-</footer>
+@include('partials.public-footer')
 <script>
 function switchTab(btn,tab){
   document.querySelectorAll('.search-tab').forEach(b=>b.classList.remove('active'));
   btn.classList.add('active');
-  ['name','area','pin'].forEach(t=>{
+  ['name','area','pin','text'].forEach(t=>{
     document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
   });
+  var nq=document.getElementById('home-q'); if(nq) nq.disabled = (tab!=='name');
+  var tq=document.getElementById('home-text-q'); if(tq) tq.disabled = (tab!=='text');
 }
 </script>
 </body>
