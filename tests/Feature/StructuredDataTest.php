@@ -86,7 +86,7 @@ class StructuredDataTest extends TestCase
         $this->assertStringContainsString("T. Gopalakrishnan's public life", $person['description']);
 
         // jobTitle = the displayed profession line; nothing fabricated.
-        $this->assertSame('Social Educator & Community Leader', $person['jobTitle']);
+        $this->assertSame('President, Sree Narayana Community Development Council · Social Educator & Community Leader', $person['jobTitle']);
         $this->assertArrayNotHasKey('birthDate', $person);
         $this->assertArrayNotHasKey('deathDate', $person);
         $this->assertArrayNotHasKey('image', $person); // no approved portrait attached
@@ -113,7 +113,9 @@ class StructuredDataTest extends TestCase
         $nodes = $this->nodesByType('/in-memoriam/k.v.mathew');
 
         $person = $nodes['Person'];
-        $this->assertSame('K. V. Mathew', $person['name']);
+        // The approved memorial display convention appends ".late" to the
+        // displayed name (underlying full name is untouched).
+        $this->assertSame('K. V. Mathew .late', $person['name']);
         $this->assertSame(url('/in-memoriam/k.v.mathew'), $person['url']);
 
         // The years are displayed on the page, so they may be represented.

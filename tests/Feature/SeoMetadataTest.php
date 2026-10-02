@@ -124,7 +124,7 @@ class SeoMetadataTest extends TestCase
 
         $this->assertMatchesRegularExpression('#<meta name="description" content="[^"]+">#i', $content);
         $this->assertMatchesRegularExpression('#<meta property="og:url" content="[^"]+/in-memoriam/k\.v\.mathew">#i', $content);
-        $this->assertMatchesRegularExpression('#<meta property="og:title" content="K\. V\. Mathew — In Memoriam — Jannayaks">#i', $content);
+        $this->assertMatchesRegularExpression('#<meta property="og:title" content="K\. V\. Mathew \.late — In Memoriam — Jannayaks">#i', $content);
         $this->assertStringContainsString('property="og:type" content="profile"', $content);
         $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
     }
