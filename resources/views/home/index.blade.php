@@ -309,7 +309,8 @@ function setLang(lang){
       <li><a href="#search" onclick="closeNavMenu()">Search</a></li>
       <li><a href="#hiw" onclick="closeNavMenu()">How It Works</a></li>
       <li><a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a></li>
-      <li><a href="{{ route('gallery.index') }}">View Demo Profiles</a></li>
+      <li><a href="{{ route('gallery.index') }}">Gallery</a></li>
+      <li><a href="{{ route('demo-profiles.index') }}">View Demo Profiles</a></li>
       <li><a class="nav-login-mobile" href="{{ route('login') }}">Sign In</a></li>
     </ul>
     <div class="nav-right">
@@ -376,7 +377,7 @@ function setLang(lang){
     <p class="search-note">Search is open worldwide. / ലോകത്തെവിടെ നിന്നും തിരയാവുന്നതാണ്.</p>
   </div>
   <div class="home-actions" aria-label="Quick links">
-    <a class="home-action" href="{{ route('gallery.index') }}">View Demo Profiles →</a>
+    <a class="home-action" href="{{ route('demo-profiles.index') }}">View Demo Profiles <span lang="ml">· ഡെമോ പ്രൊഫൈലുകൾ</span> →</a>
     <a class="home-action" href="{{ route('faq-charges') }}">FAQ &amp; Charges →</a>
   </div>
 </section>

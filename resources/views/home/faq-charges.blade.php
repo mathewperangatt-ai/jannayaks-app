@@ -73,7 +73,8 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
       <li><a href="{{ route('home') }}#search">Search</a></li>
       <li><a href="{{ route('home') }}#hiw">How It Works</a></li>
       <li><a href="{{ route('faq-charges') }}" aria-current="page">FAQ &amp; Charges</a></li>
-      <li><a href="{{ route('gallery.index') }}">View Demo Profiles</a></li>
+      <li><a href="{{ route('gallery.index') }}">Gallery</a></li>
+      <li><a href="{{ route('demo-profiles.index') }}">View Demo Profiles</a></li>
     </ul>
     <div class="nav-right">
       <a class="nav-login" href="{{ route('login') }}">Sign In</a>
@@ -202,7 +203,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   </div>
   <div class="faq">
     <strong>Where can I see example profiles?</strong>
-    <p><a href="{{ route('gallery.index') }}">View Demo Profiles</a> opens the public gallery of published profiles.</p>
+    <p><a href="{{ route('demo-profiles.index') }}">View Demo Profiles</a> opens a collection of fictional demonstration profiles showing how finished pages read. Published profiles appear in the <a href="{{ route('gallery.index') }}">Gallery</a>.</p>
   </div>
 
   <p class="back"><a href="{{ route('home') }}">← Back to homepage</a></p>

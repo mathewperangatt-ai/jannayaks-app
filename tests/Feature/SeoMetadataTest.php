@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use Database\Seeders\DemoProfilesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -14,6 +15,12 @@ use Tests\TestCase;
 class SeoMetadataTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Storage::fake('public');
+    }
 
     public function test_homepage_has_description_og_and_twitter_with_noindex_intact(): void
     {
@@ -99,7 +106,7 @@ class SeoMetadataTest extends TestCase
 
         // Description from the stored editorial summary (verbatim, single-escaped).
         $this->assertStringContainsString(
-            'name="description" content="T. Gopalakrishnan&#039;s public life has developed',
+            'name="description" content="T. Gopalakrishnan’s public life has developed',
             $content
         );
 
@@ -124,7 +131,7 @@ class SeoMetadataTest extends TestCase
 
         $this->assertMatchesRegularExpression('#<meta name="description" content="[^"]+">#i', $content);
         $this->assertMatchesRegularExpression('#<meta property="og:url" content="[^"]+/in-memoriam/k\.v\.mathew">#i', $content);
-        $this->assertMatchesRegularExpression('#<meta property="og:title" content="K\. V\. Mathew \.late — In Memoriam — Jannayaks">#i', $content);
+        $this->assertMatchesRegularExpression('#<meta property="og:title" content="K\. V\. Mathew \(Late\) — In Memoriam — Jannayaks">#i', $content);
         $this->assertStringContainsString('property="og:type" content="profile"', $content);
         $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
     }

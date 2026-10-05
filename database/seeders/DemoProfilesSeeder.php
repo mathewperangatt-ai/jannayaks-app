@@ -10,49 +10,41 @@ use App\Models\InMemoriamProfile;
 use App\Models\InMemoriamPublicOffice;
 use App\Models\MediaItem;
 use App\Models\Profile;
-use App\Models\ProfileGeography;
-use App\Models\ProfilePublicOffice;
 use App\Models\User;
 use App\Services\ApplicationWorkflowService;
 use App\Services\CustomerEditorialWorkflowService;
+use App\Services\ProfileIntegrityService;
 use App\Services\ProfileUrlService;
 use App\Support\TierLabels;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Facades\Storage;
 use Illuminate\Support\Str;
 
 /**
- * FINAL DEMONSTRATION POPULATION.
+ * FINAL DEMONSTRATION POPULATION (corrected demonstration corpus).
  *
- * Living demonstrations (12) — seeded through the application's REAL
+ * Living demonstrations (10) — seeded through the application's REAL
  * editorial/publication workflow so each record is structurally identical
  * to a legitimately published profile (approval, version-pinned customer
  * approval, durable consent, admin publication, membership, reserved slug,
  * audit trail):
  *
- *   3 Recognised  — Fr. Joseph Mathew, K. Suresh Menon, P. Devika Nair
- *   4 Acclaimed   — Adv. Lakshmi Raghavan, Dr. N. Haridas, Shobha Menon,
- *                   V. Krishnakumar
- *   5 Distinguished — Adv. Farid Khan, Latha Varghese, R. Madhavan Nair,
- *                   T. N. Raghavan, T. Gopalakrishnan (recovered approved
- *                   English text used verbatim)
+ *   3 Recognised    — Fr. Joseph Mathew, P. Rajeev Menon, S. Beena Kumari
+ *   4 Acclaimed     — K. Shafiq Rahman, R. Leelamma, C. Manoj Kumar,
+ *                     A. Mariamma
+ *   3 Distinguished — T. Gopalakrishnan, P. Sreedharan, V. Suresh Babu
  *
- * The earlier Recognised T. Gopalakrishnan stress-test text is retired.
+ * Memorial demonstrations (2) — K. V. Mathew (Late) and Dr. Saroja Nair
+ * (Late), with the supplied English and Malayalam descriptions. The corpus
+ * supplies no dates or locations, so none are recorded.
  *
- * Memorial demonstrations (2) — K. V. Mathew and Dr. Saroja Nair. No
- * approved final memorial text was recovered: the body is a clearly-marked
- * TEMPORARY state built only from the confirmed identity facts, awaiting
- * insertion of the approved final text. Do not treat it as approved copy.
- *
- * Portraits: place approved images in database/seeders/demo-media/ using
- * the filenames referenced in demo-profiles-living.php (t_gopalakrishnan.jpg,
- * k_v_mathew_memorial_portrait.jpg, dr_saroja_nair_memorial_portrait.jpg)
- * and re-run the seeder. Missing files render the dignified monogram
- * placeholder. The extracted Kerala-gallery portraits belong to different
- * identities and are intentionally NOT cross-assigned.
+ * Content lives in demo-profiles-living.php and demo-profiles-memorial.php;
+ * portraits (each carrying the visible "AI GENERATED" watermark) live in
+ * database/seeders/demo-media/. Missing files render the monogram
+ * placeholder. Living portraits are attached before publication so the
+ * publication integrity snapshot already includes them.
  *
  * Demo exclusion from the sitemap uses the established internal-email
  * convention (all demo accounts live under @jannayaks.internal).
@@ -190,11 +182,15 @@ class DemoProfilesSeeder extends Seeder
 
         // 5. Walk the real workflow from the application's current stage.
         if ($application->status === Application::STATUS_PUBLISHED) {
-            $this->attachPortrait($profile, $entry['portrait'] ?? null, 'Portrait of '.$entry['name']);
+            if ($this->attachPortrait($profile, $entry['portrait'] ?? null, 'Portrait of '.$entry['name'])) {
+                app(ProfileIntegrityService::class)->refreshSnapshot($profile, 'demo_profiles_seeder.portrait_replaced');
+            }
             $this->command?->info(sprintf('Demo living profile (already published): %s — %s', $entry['name'], TierLabels::label($tier)));
 
             return;
         }
+
+        $this->attachPortrait($profile, $entry['portrait'] ?? null, 'Portrait of '.$entry['name']);
 
         $application = $workflow->releaseForCustomerPreview($application->fresh(), $this->demoAdmin);
 
@@ -217,8 +213,6 @@ class DemoProfilesSeeder extends Seeder
         $application->refresh();
         $profile->refresh();
 
-        $this->attachPortrait($profile, $entry['portrait'] ?? null, 'Portrait of '.$entry['name']);
-
         $this->command?->info(sprintf(
             'Demo living profile: %s — %s (slug: %s, application #%d, status: %s).',
             $entry['name'],
@@ -230,52 +224,25 @@ class DemoProfilesSeeder extends Seeder
     }
 
     /* -----------------------------------------------------------------
-     * Memorial demonstrations (temporary editorial state — see notes).
+     * Memorial demonstrations (supplied corpus text — see notes).
      * ----------------------------------------------------------------- */
     private function seedMemorials(): void
     {
-        $memorials = [
-            [
-                'slug' => 'k.v.mathew',
-                'name' => 'K. V. Mathew',
-                'display' => 'K. V. Mathew .late',
-                'profession' => 'Teacher',
-                'headline' => 'Teacher, Institution Builder, Mentor',
-                'headline_ml' => 'അധ്യാപകൻ · സ്ഥാപന നിർമ്മാതാവ് · പരിശീലകൻ',
-                'born' => '1945-01-01',
-                'died' => '2021-01-01',
-                'portrait' => 'k_v_mathew_memorial_portrait.jpg',
-                'summary' => 'K. V. Mathew (1945–2021) is remembered as a teacher, institution builder and mentor.',
-                'summary_ml' => 'കെ. വി. മാത്യു (1945–2021) അധ്യാപകനും സ്ഥാപന നിർമ്മാതാവും പരിശീലകനുമായി ഓർമ്മിക്കപ്പെടുന്നു.',
-            ],
-            [
-                'slug' => 'dr.saroja.nair',
-                'name' => 'Dr. Saroja Nair',
-                'display' => 'Dr. Saroja Nair .late',
-                'profession' => 'Doctor',
-                'headline' => "Pioneer in Women's Healthcare",
-                'headline_ml' => 'വനിതാ ആരോഗ്യ പരിചരണത്തിലെ മുൻനിര പ്രവർത്തക',
-                'born' => '1952-01-01',
-                'died' => '2020-01-01',
-                'portrait' => 'dr_saroja_nair_memorial_portrait.jpg',
-                'summary' => "Dr. Saroja Nair (1952–2020) is remembered as a pioneer in women's healthcare.",
-                'summary_ml' => 'ഡോ. സരോജ നായർ (1952–2020) വനിതാ ആരോഗ്യ പരിചരണത്തിലെ മുൻനിര പ്രവർത്തകയായി ഓർമ്മിക്കപ്പെടുന്നു.',
-            ],
-        ];
+        $memorials = require database_path('seeders/demo-profiles-memorial.php');
 
-        foreach ($memorials as $m) {
+        foreach ($memorials as $slug => $m) {
             $profile = InMemoriamProfile::query()->updateOrCreate(
-                ['slug' => $m['slug']],
+                ['slug' => $slug],
                 [
                     'deceased_full_name' => $m['name'],
-                    // ".late" is the approved memorial presentation suffix, applied
+                    // "(Late)" is the approved memorial presentation suffix, applied
                     // at the display-name layer only.
                     'deceased_display_name' => $m['display'],
                     'status' => InMemoriamProfile::STATUS_PUBLISHED_ARCHIVED,
                     'profession' => $m['profession'],
                     'bio_headline' => $m['headline'],
-                    'deceased_date_of_birth' => $m['born'],
-                    'deceased_date_of_death' => $m['died'],
+                    'deceased_date_of_birth' => null,
+                    'deceased_date_of_death' => null,
                     'verification_status' => InMemoriamProfile::VERIFICATION_WAIVED, // fictional demonstration profile
                     'commissioner_display_consent' => false,
                     'commissioner_contact_name' => 'Jannayaks Demonstration Records',
@@ -288,55 +255,28 @@ class DemoProfilesSeeder extends Seeder
                 ],
             );
 
-            InMemoriamGeography::query()->updateOrCreate(
-                ['in_memoriam_profile_id' => $profile->id],
-                ['country_code' => 'IN', 'state_region_name' => 'Kerala'],
-            );
+            // The corpus supplies no location for either memorial. Public
+            // offices require a location, so the role is carried by the
+            // headline alone.
+            InMemoriamGeography::query()->where('in_memoriam_profile_id', $profile->id)->delete();
+            InMemoriamPublicOffice::query()->where('in_memoriam_profile_id', $profile->id)->delete();
 
-            InMemoriamPublicOffice::query()->firstOrCreate(
-                ['in_memoriam_profile_id' => $profile->id, 'office_name' => $m['headline']],
-                ['where_location' => 'Kerala', 'is_current' => false, 'sort_order' => 1],
-            );
-
-            // TEMPORARY content state (EN + ML): the recovered corpus marks the
-            // approved final memorial text as NOT LOCATED / DO NOT INVENT. These
-            // bodies state only the confirmed identity facts. Replace with the
-            // approved final text when available.
-            $bodyEn = $m['summary']
-                ."\n\nThis memorial demonstration page is shown with a temporary editorial state. "
-                .'The complete life record for '.$m['name'].' is in preparation and will be published here.';
-            $bodyMl = $m['summary_ml']
-                ."\n\nഈ ഓർമ്മാഘട്ട ഡെമോൺസ്ട്രേഷൻ താൾ താൽക്കാലിക എഡിറ്റോറിയൽ നിലയിലാണ് പ്രദർശിപ്പിച്ചിരിക്കുന്നത്. "
-                .$m['name'].'-ന്റെ പൂർണ്ണമായ ജീവിതരേഖ തയ്യാറാക്കി ഇവിടെ പ്രസിദ്ധീകരിക്കുന്നതാണ്.';
-
-            InMemoriamEditorialContent::query()->updateOrCreate(
-                ['in_memoriam_profile_id' => $profile->id, 'language' => InMemoriamEditorialContent::LANGUAGE_EN, 'version_number' => 1],
-                [
-                    'title' => $m['name'],
-                    'summary' => $m['headline'],
-                    'body' => $bodyEn,
-                    'status' => InMemoriamEditorialContent::STATUS_APPROVED,
-                    'ai_generated' => false,
-                ],
-            );
-
-            InMemoriamEditorialContent::query()->updateOrCreate(
-                ['in_memoriam_profile_id' => $profile->id, 'language' => InMemoriamEditorialContent::LANGUAGE_ML, 'version_number' => 1],
-                [
-                    'title' => $m['name'],
-                    'summary' => $m['summary_ml'],
-                    'body' => $bodyMl,
-                    'status' => InMemoriamEditorialContent::STATUS_APPROVED,
-                    'ai_generated' => false,
-                ],
-            );
+            foreach ([InMemoriamEditorialContent::LANGUAGE_EN => $m['en'], InMemoriamEditorialContent::LANGUAGE_ML => $m['ml']] as $language => $content) {
+                InMemoriamEditorialContent::query()->updateOrCreate(
+                    ['in_memoriam_profile_id' => $profile->id, 'language' => $language, 'version_number' => 1],
+                    [
+                        'title' => $content['title'],
+                        'summary' => $content['summary'],
+                        'body' => $content['body'],
+                        'status' => InMemoriamEditorialContent::STATUS_APPROVED,
+                        'ai_generated' => false,
+                    ],
+                );
+            }
 
             $this->attachMemorialPortrait($profile, $m['portrait'], 'Portrait of '.$m['name']);
 
-            $this->command?->warn(sprintf(
-                '%s: temporary content state — approved final memorial text was not located; do not treat as final copy.',
-                $m['name'],
-            ));
+            $this->command?->info(sprintf('Demo memorial: %s (slug: %s).', $m['display'], $slug));
         }
     }
 
@@ -380,23 +320,30 @@ class DemoProfilesSeeder extends Seeder
 
     /* -----------------------------------------------------------------
      * Portrait attachment (approved files only; missing → monogram).
+     * Unchanged portraits (same SHA-256) are left untouched so re-runs do
+     * not rewrite storage keys under a published integrity snapshot.
+     * Returns true when the stored primary portrait was created or replaced.
      * ----------------------------------------------------------------- */
-    private function attachPortrait(Profile $profile, ?string $filename, string $alt): void
+    private function attachPortrait(Profile $profile, ?string $filename, string $alt): bool
     {
         if ($filename === null || $filename === '') {
-            return;
+            return false;
         }
 
         $source = database_path('seeders/demo-media/'.$filename);
         if (! is_file($source)) {
             $this->command?->warn("Portrait not bundled yet: {$filename} (skipping — placeholder will be shown).");
 
-            return;
+            return false;
         }
 
         $bytes = file_get_contents($source);
         if ($bytes === false) {
-            return;
+            return false;
+        }
+
+        if ($this->primaryPortraitHash($profile) === hash('sha256', $bytes)) {
+            return false;
         }
 
         $disk = (string) config('jannayaks.media.public_disk', 'public');
@@ -428,6 +375,8 @@ class DemoProfilesSeeder extends Seeder
                 'height' => $height,
             ],
         );
+
+        return true;
     }
 
     private function attachMemorialPortrait(InMemoriamProfile $profile, string $filename, string $alt): void
@@ -444,6 +393,10 @@ class DemoProfilesSeeder extends Seeder
             return;
         }
 
+        if ($this->primaryPortraitHash($profile) === hash('sha256', $bytes)) {
+            return;
+        }
+
         $disk = (string) config('jannayaks.media.public_disk', 'public');
         $prefix = trim((string) config('jannayaks.media.object_prefix', 'profile-media'), '/');
         $key = $prefix.'/in-memoriam/'.$profile->id.'/'.Str::lower((string) Str::ulid()).'.jpg';
@@ -454,11 +407,11 @@ class DemoProfilesSeeder extends Seeder
 
         // Memorial photographs share the polymorphic MediaItem table
         // (InMemoriamMediaService writes the same shape).
-        \App\Models\MediaItem::query()->updateOrCreate(
+        MediaItem::query()->updateOrCreate(
             [
                 'mediable_type' => $profile->getMorphClass(),
                 'mediable_id' => $profile->id,
-                'media_type' => \App\Models\MediaItem::TYPE_PROFILE_PHOTO,
+                'media_type' => MediaItem::TYPE_PROFILE_PHOTO,
                 'is_primary' => true,
             ],
             [
@@ -466,8 +419,8 @@ class DemoProfilesSeeder extends Seeder
                 'disk' => $disk,
                 'alt_text' => $alt,
                 'display_order' => 1,
-                'privacy' => \App\Models\MediaItem::PRIVACY_PUBLIC,
-                'review_status' => \App\Models\MediaItem::REVIEW_APPROVED,
+                'privacy' => MediaItem::PRIVACY_PUBLIC,
+                'review_status' => MediaItem::REVIEW_APPROVED,
                 'mime_type' => 'image/jpeg',
                 'size_bytes' => strlen($bytes),
                 'photo_sha256' => hash('sha256', $bytes),
@@ -475,5 +428,15 @@ class DemoProfilesSeeder extends Seeder
                 'height' => $height,
             ],
         );
+    }
+
+    private function primaryPortraitHash(Profile|InMemoriamProfile $owner): ?string
+    {
+        return MediaItem::query()
+            ->where('mediable_type', $owner->getMorphClass())
+            ->where('mediable_id', $owner->id)
+            ->where('media_type', MediaItem::TYPE_PROFILE_PHOTO)
+            ->where('is_primary', true)
+            ->value('photo_sha256');
     }
 }

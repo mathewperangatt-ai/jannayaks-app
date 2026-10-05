@@ -46,6 +46,7 @@ class PublicProfilePresentationService
             'application',
             'media',
             'externalLinks',
+            'user',
         ]);
 
         $english = $this->resolveApprovedEnglish($profile);
@@ -67,7 +68,7 @@ class PublicProfilePresentationService
             'displayName' => $this->displayName($profile),
             'profession' => filled($profile->profession) ? (string) $profile->profession : null,
             'headline' => filled($profile->bio_headline) ? (string) $profile->bio_headline : null,
-            'locationLabel' => $this->locationLabel($profile->geography),
+            'locationLabel' => $this->publicLocationLabel($profile),
             'publicOffices' => $profile->publicOffices,
             'english' => $english,
             'malayalam' => $malayalam,
@@ -86,6 +87,37 @@ class PublicProfilePresentationService
         }
 
         return (string) ($profile->full_name ?: 'Jannayaks profile');
+    }
+
+    /**
+     * Public location line for a profile. Demonstration profiles carry only
+     * the mandatory default state record (no source-supported place), so
+     * the line is withheld for them unless a district, local body, ward or
+     * locality has actually been recorded.
+     */
+    public function publicLocationLabel(Profile $profile): ?string
+    {
+        $geography = $profile->geography;
+
+        if ($this->isDemonstration($profile) && ! $this->hasSpecificPlace($geography)) {
+            return null;
+        }
+
+        return $this->locationLabel($geography);
+    }
+
+    public function isDemonstration(Profile $profile): bool
+    {
+        return str_ends_with(strtolower((string) $profile->user?->email), SitemapService::DEMO_EMAIL_DOMAIN);
+    }
+
+    private function hasSpecificPlace(?ProfileGeography $geography): bool
+    {
+        return $geography !== null
+            && (filled($geography->locality_place)
+                || $geography->ward_id !== null
+                || $geography->local_body_id !== null
+                || $geography->district_id !== null);
     }
 
     public function locationLabel(?ProfileGeography $geography): ?string

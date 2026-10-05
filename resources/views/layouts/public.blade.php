@@ -72,6 +72,11 @@
         .card-photo .placeholder{font-size:28px;font-weight:700;color:#b7c3b0;font-family:var(--serif)}
         .card-tier{position:absolute;top:10px;left:10px;background:rgba(33,77,104,.92);color:#fff;font:600 9px var(--sans);letter-spacing:.16em;text-transform:uppercase;padding:4px 8px;border-radius:2px}
         .card-tier.memorial{background:rgba(38,38,38,.92)}
+        .tier-mark{position:absolute;top:0;right:0;width:84px;height:84px;overflow:hidden;pointer-events:none;z-index:2}
+        .tier-mark i{position:absolute;right:-22px;width:110px;height:9px;transform:rotate(45deg);border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.18)}
+        .tier-mark i:nth-child(1){top:12px;background:var(--tier-c1)}
+        .tier-mark i:nth-child(2){top:28px;background:var(--tier-c2)}
+        .tier-mark i:nth-child(3){top:44px;background:var(--tier-c1)}
         .card-body{padding:16px 16px 18px}
         .card-body h2{margin:0 0 6px;font-size:18px;line-height:1.25;font-family:var(--serif);font-weight:600;color:var(--navy)}
         .card-meta{margin:0;font-size:14px;color:var(--gray)}
@@ -100,12 +105,13 @@
             <a class="nav-logo" href="{{ route('home') }}">
                 <img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks.in">
             </a>
-            <button type="button" class="nav-menu-btn" id="publicNavBtn" aria-expanded="false" aria-controls="publicNavLinks" aria-label="Open menu">☰</button>
+            <button type="button" class="nav-menu-btn" id="publicNavBtn" aria-expanded="false" aria-controls="publicNavLinks" aria-label="Open menu">?</button>
             <ul class="nav-links" id="publicNavLinks">
                 <li><a href="{{ route('home') }}#search" data-nav-close>Search</a></li>
                 <li><a href="{{ route('home') }}#hiw" data-nav-close>How It Works</a></li>
                 <li><a href="{{ route('faq-charges') }}" @if(($nav ?? '') === 'faq') aria-current="page" @endif data-nav-close>FAQ &amp; Charges</a></li>
-                <li><a href="{{ route('gallery.index') }}" @if(($nav ?? '') === 'gallery') aria-current="page" @endif data-nav-close>View Demo Profiles</a></li>
+                <li><a href="{{ route('gallery.index') }}" @if(($nav ?? '') === 'gallery') aria-current="page" @endif data-nav-close>Gallery</a></li>
+                <li><a href="{{ route('demo-profiles.index') }}" @if(($nav ?? '') === 'demo-profiles' || request()->routeIs('demo-profiles.index')) aria-current="page" @endif data-nav-close>View Demo Profiles</a></li>
                 <li><a href="{{ route('in-memoriam.index') }}" @if(($nav ?? '') === 'in-memoriam') aria-current="page" @endif data-nav-close>In Memoriam</a></li>
                 <li><a href="{{ route('login') }}" data-nav-close>Sign In</a></li>
             </ul>

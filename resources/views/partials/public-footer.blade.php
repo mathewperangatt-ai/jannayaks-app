@@ -35,7 +35,8 @@
         <div class="jf-col" role="navigation" aria-label="Platform">
             <h3 class="jf-title">Platform</h3>
             <ul class="jf-links">
-                <li><a href="{{ route('gallery.index') }}">View Demo Profiles</a></li>
+                <li><a href="{{ route('gallery.index') }}">Gallery</a></li>
+                <li><a href="{{ route('demo-profiles.index') }}">View Demo Profiles</a></li>
                 <li><a href="{{ route('search.index') }}">Search</a></li>
                 <li><a href="{{ route('apply') }}">Create Profile</a></li>
                 <li><a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a></li>

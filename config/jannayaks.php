@@ -132,6 +132,7 @@ return [
             'consent',
             'contact',
             'dashboard',
+            'demo-profiles',
             'faq-charges',
             'filament',
             'gallery',

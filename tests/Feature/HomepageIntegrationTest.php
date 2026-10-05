@@ -28,7 +28,7 @@ class HomepageIntegrationTest extends TestCase
         // The Editorial Preparation block was removed by the final frontend pass.
         $response->assertDontSee('Editorial Preparation');
         $response->assertDontSee('human editors', false);
-        $response->assertSee('View Demo Profiles →', false);
+        $response->assertSee('href="'.route('demo-profiles.index').'">View Demo Profiles <span lang="ml">· ഡെമോ പ്രൊഫൈലുകൾ</span> →</a>', false);
         $response->assertSee('FAQ &amp; Charges →', false);
         $response->assertSee('nav-menu-btn', false);
         $response->assertSee('Open menu', false);
@@ -85,6 +85,22 @@ class HomepageIntegrationTest extends TestCase
         $response->assertDontSee('Directories', false);
         $response->assertDontSee('Optional add-on', false);
         $response->assertSee('The charges shown below are exclusive of GST', false);
+    }
+
+    public function test_demo_links_open_the_demo_collection_and_gallery_stays_in_navigation(): void
+    {
+        foreach (['/', '/faq-charges', '/demo-profiles', '/no-such-page-anywhere'] as $path) {
+            $content = $this->get($path)->getContent();
+
+            $this->assertMatchesRegularExpression('#href="[^"]*/demo-profiles"[^>]*>View Demo Profiles#', $content, $path);
+            $this->assertDoesNotMatchRegularExpression('#href="[^"]*/gallery"[^>]*>View Demo Profiles#', $content, $path);
+            $this->assertMatchesRegularExpression('#href="[^"]*/gallery"[^>]*>Gallery</a>#', $content, $path);
+        }
+
+        $this->assertMatchesRegularExpression(
+            '#href="[^"]*/demo-profiles"\s+aria-current="page"#',
+            $this->get('/demo-profiles')->getContent()
+        );
     }
 
     public function test_existing_key_routes_still_respond(): void

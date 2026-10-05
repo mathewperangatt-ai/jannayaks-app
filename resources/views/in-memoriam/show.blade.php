@@ -34,8 +34,11 @@
     .im-designation .rule{height:1px;flex:1;background:var(--im-line)}
     .im-designation span{font:600 10.5px var(--sans);letter-spacing:.26em;text-transform:uppercase;color:var(--im-soft)}
     .im-hero{display:grid;grid-template-columns:230px minmax(0,1fr);gap:clamp(28px,4vw,52px);align-items:start;padding-bottom:44px;border-bottom:1px solid var(--im-line)}
-    .im-portrait-frame{padding:9px;border:1px solid #c4c4c0;background:var(--im-surface)}
+    .im-portrait-frame{position:relative;padding:9px;border:1px solid #c4c4c0;background:var(--im-surface)}
     .im-portrait{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;filter:grayscale(88%) contrast(.97);border:1px solid #b6b6b2;background:var(--im-bg)}
+    /* Demonstration portraits carry a diagonal "AI GENERATED" watermark that must stay fully visible. */
+    .im-portrait.im-portrait--whole{aspect-ratio:auto;height:auto;object-fit:contain}
+    .im-demo-note{margin:18px 0 0;font:500 11px var(--sans);color:var(--im-mute);letter-spacing:.06em}
     .im-portrait-mono{width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;border:1px solid #b6b6b2;background:linear-gradient(165deg,#ececEA,#e2e2de);font:500 64px var(--im-serif);color:#b0b0ac}
     .im-name{font:500 clamp(34px,4.6vw,58px)/1.04 var(--im-serif);color:var(--im-deep);margin:0 0 10px;letter-spacing:-.01em}
     .im-years{font:400 16px var(--im-serif);font-style:italic;color:var(--im-soft);margin:0 0 16px}
@@ -88,10 +91,11 @@
     <section class="im-hero">
         <div class="im-portrait-frame">
             @if($photo)
-                <img class="im-portrait" src="{{ route('in-memoriam.photo', ['slug' => $profile->slug, 'media' => $photo]) }}" alt="{{ $photo->alt_text ?: ('Portrait of '.$displayName) }}">
+                <img class="im-portrait{{ $isDemonstration ? ' im-portrait--whole' : '' }}" src="{{ route('in-memoriam.photo', ['slug' => $profile->slug, 'media' => $photo]) }}" alt="{{ $photo->alt_text ?: ('Portrait of '.$displayName) }}">
             @else
                 <div class="im-portrait-mono" aria-hidden="true">{{ mb_strtoupper(mb_substr($displayName, 0, 1)) }}</div>
             @endif
+            @include('public.partials.tier-mark', ['tier' => 'in_memoriam'])
         </div>
         <div>
             <h1 class="im-name">{{ $displayName }}</h1>
@@ -110,6 +114,10 @@
 
             @if($commissionerLabel)
                 <p style="margin:22px 0 0;font:400 12.5px var(--sans);color:var(--im-mute)">Remembered with the consent of {{ $commissionerLabel }}.</p>
+            @endif
+
+            @if($isDemonstration)
+                <p class="im-demo-note">Fictional demonstration profile — created to show how a Jannayaks memorial reads. It does not describe a real person.</p>
             @endif
 
             @if($malayalam)

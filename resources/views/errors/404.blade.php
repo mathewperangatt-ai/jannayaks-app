@@ -27,7 +27,7 @@
     </p>
     <div class="e404-actions">
         <a class="e404-home" href="{{ route('home') }}">Return to the homepage</a>
-        <a class="e404-ghost" href="{{ route('gallery.index') }}">View Demo Profiles</a>
+        <a class="e404-ghost" href="{{ route('demo-profiles.index') }}">View Demo Profiles</a>
     </div>
 </div>
 @endsection

@@ -8,12 +8,13 @@ use App\Mail\RecommendationReceivedMail;
 use App\Models\Application;
 use App\Models\Profile;
 use App\Models\ProfileReaction;
-use App\Models\Recommendation;
 use App\Models\User;
+use App\Services\ApplicationPaymentStateService;
 use Database\Seeders\DemoProfilesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Route;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -25,24 +26,30 @@ class FinalFrontendEngagementTest extends TestCase
 {
     use RefreshDatabase;
 
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Storage::fake('public');
+    }
+
     public function test_demo_profiles_seed_and_render_publicly(): void
     {
         $this->seed(DemoProfilesSeeder::class);
 
-        // Living final demo: T. Gopalakrishnan, Distinguished, recovered approved text.
+        // Living final demo: T. Gopalakrishnan, Distinguished, corpus text.
         $this->get('/t.gopalakrishnan')
             ->assertOk()
             ->assertSee('T. Gopalakrishnan', false)
-            ->assertSee('DISTINGUISHED', false)
-            ->assertSee('President, Sree Narayana Community Development Council', false)
+            ->assertSee('tier-mark tier-mark--distinguished', false)
+            ->assertSee('Social Educator and Community Leader', false)
             ->assertSee('Fictional demonstration profile', false)
-            ->assertSee('leave behind people who are capable of solving tomorrow', false);
+            ->assertSee('should eventually become participants in creating opportunities for others', false);
 
-        // Gallery lists the demo with the tier label card.
+        // Gallery lists the demo with the tier corner marker.
         $this->get('/gallery')
             ->assertOk()
             ->assertSee('T. Gopalakrishnan', false)
-            ->assertSee('Distinguished', false);
+            ->assertSee('tier-mark--distinguished', false);
 
         // Memorial demos render with the sombre treatment and the approved designation.
         foreach (['k.v.mathew' => 'K. V. Mathew', 'dr.saroja.nair' => 'Dr. Saroja Nair'] as $slug => $name) {
@@ -199,14 +206,14 @@ class FinalFrontendEngagementTest extends TestCase
             'source_method' => 'online_interview',
         ]);
 
-        $this->assertTrue(app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application));
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application));
 
         // An ordinary pending application stays locked.
         $ordinary = Application::factory()->for(User::factory()->create())->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
         ]);
-        $this->assertFalse(app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($ordinary));
+        $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($ordinary));
 
         // The public bypass pattern must not exist as a route.
         $this->get('/apply/continue?skip_payment=1')->assertRedirect(route('login'));

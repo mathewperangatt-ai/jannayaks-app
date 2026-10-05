@@ -6,6 +6,7 @@ use App\Models\InMemoriamEditorialContent;
 use App\Services\InMemoriamLifecycleService;
 use App\Services\InMemoriamMediaService;
 use App\Services\InMemoriamUrlService;
+use App\Services\SitemapService;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\View\View;
@@ -79,6 +80,8 @@ class PublicInMemoriamController extends Controller
             'commissionerLabel' => $commissionerLabel,
             'hostingStartsOn' => $profile->hosting_starts_on,
             'hostingEndsOn' => $profile->hosting_ends_on,
+            // Demonstration memorials are commissioner-listed under the internal demo domain.
+            'isDemonstration' => str_ends_with(strtolower((string) $profile->commissioner_contact_email), SitemapService::DEMO_EMAIL_DOMAIN),
         ]);
     }
 }

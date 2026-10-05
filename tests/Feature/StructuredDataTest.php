@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Profile;
 use Database\Seeders\DemoProfilesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -16,6 +18,12 @@ use Tests\TestCase;
 class StructuredDataTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Storage::fake('public');
+    }
 
     /** @return list<array<string, mixed>> all @graph nodes across ld+json blocks */
     private function nodes(string $path): array
@@ -83,19 +91,21 @@ class StructuredDataTest extends TestCase
         $this->assertSame(url('/t.gopalakrishnan'), $person['url']);
 
         // Description is the displayed editorial summary — apostrophe intact.
-        $this->assertStringContainsString("T. Gopalakrishnan's public life", $person['description']);
+        $this->assertStringContainsString('T. Gopalakrishnan’s public life', $person['description']);
 
         // jobTitle = the displayed profession line; nothing fabricated.
-        $this->assertSame('President, Sree Narayana Community Development Council · Social Educator & Community Leader', $person['jobTitle']);
+        $this->assertSame('Social Educator and Community Leader', $person['jobTitle']);
         $this->assertArrayNotHasKey('birthDate', $person);
         $this->assertArrayNotHasKey('deathDate', $person);
-        $this->assertArrayNotHasKey('image', $person); // no approved portrait attached
+        // The approved, displayed portrait is the only image represented.
+        $this->assertMatchesRegularExpression('#/p/\d+/photo/\d+$#', $person['image']);
         $this->assertArrayNotHasKey('sameAs', $person);
 
         // Breadcrumb mirrors the visible trail and ends at the canonical URL.
         $crumbs = $nodes['BreadcrumbList']['itemListElement'];
         $this->assertSame('Home', $crumbs[0]['name']);
         $this->assertSame('Demo Profiles', $crumbs[1]['name']);
+        $this->assertSame(route('demo-profiles.index'), $crumbs[1]['item']);
         $this->assertSame('T. Gopalakrishnan', $crumbs[2]['name']);
         $this->assertSame(url('/t.gopalakrishnan'), $crumbs[2]['item']);
 
@@ -106,6 +116,17 @@ class StructuredDataTest extends TestCase
         $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
     }
 
+    public function test_real_profile_breadcrumb_points_to_the_gallery(): void
+    {
+        $this->seed(DemoProfilesSeeder::class);
+        Profile::query()->where('slug', 't.gopalakrishnan')->firstOrFail()
+            ->user->forceFill(['email' => 'gopalakrishnan.member@example.com'])->save();
+
+        $crumbs = $this->nodesByType('/t.gopalakrishnan')['BreadcrumbList']['itemListElement'];
+
+        $this->assertSame(route('gallery.index'), $crumbs[1]['item']);
+    }
+
     public function test_memorial_schema_only_displayed_facts(): void
     {
         $this->seed(DemoProfilesSeeder::class);
@@ -113,14 +134,14 @@ class StructuredDataTest extends TestCase
         $nodes = $this->nodesByType('/in-memoriam/k.v.mathew');
 
         $person = $nodes['Person'];
-        // The approved memorial display convention appends ".late" to the
+        // The approved memorial display convention appends "(Late)" to the
         // displayed name (underlying full name is untouched).
-        $this->assertSame('K. V. Mathew .late', $person['name']);
+        $this->assertSame('K. V. Mathew (Late)', $person['name']);
         $this->assertSame(url('/in-memoriam/k.v.mathew'), $person['url']);
 
-        // The years are displayed on the page, so they may be represented.
-        $this->assertSame('1945', $person['birthDate']);
-        $this->assertSame('2021', $person['deathDate']);
+        // No years are displayed for the demo memorial, so none are represented.
+        $this->assertArrayNotHasKey('birthDate', $person);
+        $this->assertArrayNotHasKey('deathDate', $person);
 
         // The role line is displayed; nothing else is fabricated.
         $this->assertSame('Teacher, Institution Builder, Mentor', $person['jobTitle']);

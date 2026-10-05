@@ -5,6 +5,7 @@ use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MobileOtpController;
 use App\Http\Controllers\CustomerProfilePreviewController;
+use App\Http\Controllers\DemoProfilesController;
 use App\Http\Controllers\FaqChargesController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InMemoriamLandingController;
@@ -26,8 +27,8 @@ use App\Http\Controllers\PublicSearchController;
 use App\Http\Controllers\RazorpayCallbackController;
 use App\Http\Controllers\RazorpayWebhookController;
 use App\Http\Controllers\RecommendationController;
-use App\Http\Controllers\Staff\ProfileMediaPreviewController;
 use App\Http\Controllers\SitemapController;
+use App\Http\Controllers\Staff\ProfileMediaPreviewController;
 use App\Http\Controllers\Staff\SourceMaterialDownloadController;
 use Illuminate\Support\Facades\Route;
 
@@ -39,6 +40,7 @@ Route::get('/faq-charges', FaqChargesController::class)->name('faq-charges');
 Route::get('/profile-concept', ProfileConceptController::class)->name('profile-concept');
 
 Route::get('/gallery', [PublicGalleryController::class, 'index'])->name('gallery.index');
+Route::get('/demo-profiles', DemoProfilesController::class)->name('demo-profiles.index');
 Route::get('/search', [PublicSearchController::class, 'index'])->name('search.index');
 
 // Recommend Someone You May Know — recommending ANOTHER person (§17).

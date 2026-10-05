@@ -26,6 +26,8 @@ class PublicProfileSearchService
                 'geography.ward',
                 'publicOffices',
                 'media',
+                'application',
+                'user',
             ]);
 
         $this->applyOptionalFilters($query, $filters);
@@ -54,6 +56,8 @@ class PublicProfileSearchService
                 'geography.ward',
                 'publicOffices',
                 'media',
+                'application',
+                'user',
             ]);
 
         $this->applyOptionalFilters($query, $filters);

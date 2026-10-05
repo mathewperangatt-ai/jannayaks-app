@@ -1,4 +1,5 @@
-@extends('layouts.public', ['htmlLang' => $language === 'ml' ? 'ml' : 'en', 'nav' => 'gallery'])
+@extends('layouts.public', ['htmlLang' => $language === 'ml' ? 'ml' : 'en', 'nav' => $isDemonstration ? 'demo-profiles' : 'gallery'])
+@php($listingUrl = $isDemonstration ? route('demo-profiles.index') : route('gallery.index'))
 
 @section('title', $displayName.' — Jannayaks')
 
@@ -13,7 +14,7 @@
     trim((string) ($activeEditorial?->summary ?? '')) !== '' ? trim((string) $activeEditorial->summary) : null,
     $photo ? route('profiles.public.photo', [$profile, $photo]) : null,
     filled($profession) ? $profession : null,
-    [['Home', route('home')], ['Demo Profiles', route('gallery.index')], [$displayName, $canonicalUrl]],
+    [['Home', route('home')], ['Demo Profiles', $listingUrl], [$displayName, $canonicalUrl]],
 )))
 
 @push('head')
@@ -33,8 +34,10 @@
 
     /* hero */
     .jk-hero{display:grid;grid-template-columns:minmax(0,42fr) minmax(0,58fr);gap:clamp(28px,4.5vw,58px);align-items:center;padding:8px 0 64px;border-bottom:1px solid var(--jk-line)}
-    .jk-portrait-wrap{padding:10px;border:1px solid #bdcfba;max-width:430px;background:var(--jk-surface)}
+    .jk-portrait-wrap{position:relative;padding:10px;border:1px solid #bdcfba;max-width:430px;background:var(--jk-surface)}
     .jk-portrait{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;border:1px solid #aab9a6;background:var(--jk-surface2)}
+    /* Demonstration portraits carry a diagonal "AI GENERATED" watermark that must stay fully visible. */
+    .jk-portrait.jk-portrait--whole,.jk-side-feature.jk-portrait--whole{aspect-ratio:auto;height:auto;object-fit:contain}
     .jk-portrait-mono{width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;border:1px solid #aab9a6;background:linear-gradient(160deg,#e7efe4,#dbe7d7);font:500 clamp(64px,7vw,110px) var(--jk-serif);color:#9db3a4}
     .jk-caption{display:flex;justify-content:space-between;gap:12px;font:500 9.5px var(--jk-ui);letter-spacing:.18em;text-transform:uppercase;color:#82907f;padding-top:13px}
     .jk-eyebrow{font:600 11px var(--jk-ui);letter-spacing:.22em;text-transform:uppercase;color:var(--jk-saffron);margin:0}
@@ -149,7 +152,7 @@
 <div class="jk-wrap">
 
     <nav class="jk-crumbs" aria-label="Breadcrumb">
-        <a href="{{ route('home') }}">Home</a> / <a href="{{ route('gallery.index') }}">Demo Profiles</a> /
+        <a href="{{ route('home') }}">Home</a> / <a href="{{ $listingUrl }}">Demo Profiles</a> /
         <span aria-current="page">{{ $displayName }}</span>
     </nav>
 
@@ -157,20 +160,21 @@
         <figure style="margin:0">
             <div class="jk-portrait-wrap">
                 @if($photo)
-                    <img class="jk-portrait" src="{{ route('profiles.public.photo', [$profile, $photo]) }}" alt="{{ $photo->alt_text ?: ('Portrait of '.$displayName) }}">
+                    <img class="jk-portrait{{ $isDemonstration ? ' jk-portrait--whole' : '' }}" src="{{ route('profiles.public.photo', [$profile, $photo]) }}" alt="{{ $photo->alt_text ?: ('Portrait of '.$displayName) }}">
                 @else
                     <div class="jk-portrait-mono" aria-hidden="true">{{ mb_strtoupper(mb_substr(trim($nameLast !== '' ? $nameLast : $displayName), 0, 1)) }}</div>
                 @endif
+                @include('public.partials.tier-mark', ['tier' => $profile->application?->package_tier])
             </div>
             <figcaption class="jk-caption">
                 <span>{{ $locationLabel ? 'KERALAM · INDIA' : 'PUBLIC LIFE' }}</span>
-                <span>{{ $tierLabel ? strtoupper($tierLabel) : 'JANNAYAKS' }}</span>
+                <span>JANNAYAKS</span>
             </figcaption>
         </figure>
 
         <div>
-            @if($tierLabel || $profession || $headline)
-                <p class="jk-eyebrow">{{ implode(' · ', array_filter([$tierLabel, $headline ?: $profession])) }}</p>
+            @if($headline || $profession)
+                <p class="jk-eyebrow">{{ $headline ?: $profession }}</p>
             @endif
             <h1 class="name jk-name">@if($nameFirst !== ''){{ $nameFirst }} @endif<span>{{ $nameLast }}</span></h1>
             @if($profession && $headline)
@@ -276,7 +280,7 @@
                 </div>
                 <aside>
                     @if($photo)
-                        <img class="jk-side-feature" src="{{ route('profiles.public.photo', [$profile, $photo]) }}" alt="{{ $photo->alt_text ?: ($displayName.' — documentary photograph') }}">
+                        <img class="jk-side-feature{{ $isDemonstration ? ' jk-portrait--whole' : '' }}" src="{{ route('profiles.public.photo', [$profile, $photo]) }}" alt="{{ $photo->alt_text ?: ($displayName.' — documentary photograph') }}">
                         <p class="jk-figcap">{{ strtoupper($displayName) }} · DOCUMENTARY RECORD</p>
                     @else
                         <div class="jk-summary-quote"><p>{{ $activeEditorial->summary ?: ($headline ?: 'A carefully prepared record of a life of public contribution.') }}</p></div>
@@ -291,7 +295,7 @@
             <div class="jk-sectionhead">
                 <span class="jk-num">II</span><span class="jk-dash"></span>
                 <h2>{{ $language === 'ml' ? 'കരിയറും ഉത്തരവാദിത്തങ്ങളും' : 'Career &amp; Responsibilities' }}</h2>
-                <span class="jk-tail">{{ $tierLabel ? strtoupper($tierLabel) : 'PUBLIC LIFE' }}</span>
+                <span class="jk-tail">PUBLIC LIFE</span>
             </div>
             <div>
                 @foreach($publicOffices as $office)
@@ -347,7 +351,7 @@
         </section>
     @endif
 
-    <p style="margin-top:56px"><a href="{{ route('gallery.index') }}" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a></p>
+    <p style="margin-top:56px"><a href="{{ $listingUrl }}" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a></p>
 </div>
 </div>
 

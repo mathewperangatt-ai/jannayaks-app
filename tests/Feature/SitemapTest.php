@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\InMemoriamLifecycleService;
 use Database\Seeders\DemoProfilesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -19,6 +20,12 @@ use Tests\TestCase;
 class SitemapTest extends TestCase
 {
     use RefreshDatabase;
+
+    protected function setUp(): void
+    {
+        parent::setUp();
+        Storage::fake('public');
+    }
 
     public function test_sitemap_returns_well_formed_xml_with_correct_content_type(): void
     {
