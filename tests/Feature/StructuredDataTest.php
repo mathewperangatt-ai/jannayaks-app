@@ -90,8 +90,8 @@ class StructuredDataTest extends TestCase
         $this->assertSame('T. Gopalakrishnan', $person['name']);
         $this->assertSame(url('/t.gopalakrishnan'), $person['url']);
 
-        // Description is the displayed editorial summary — apostrophe intact.
-        $this->assertStringContainsString('T. Gopalakrishnan’s public life', $person['description']);
+        // Description is the displayed editorial summary.
+        $this->assertStringContainsString('T. Gopalakrishnan first came to the fictional', $person['description']);
 
         // jobTitle = the displayed profession line; nothing fabricated.
         $this->assertSame('Social Educator and Community Leader', $person['jobTitle']);

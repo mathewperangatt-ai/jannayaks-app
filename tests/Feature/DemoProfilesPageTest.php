@@ -28,7 +28,7 @@ class DemoProfilesPageTest extends TestCase
         $content = $response->getContent();
 
         $living = Profile::query()->with('user')->get();
-        $this->assertCount(10, $living);
+        $this->assertCount(14, $living);
         foreach ($living as $profile) {
             $response->assertSee('href="'.route('profiles.public', $profile->slug).'"', false);
             $response->assertSee($profile->full_name, false);
@@ -40,7 +40,7 @@ class DemoProfilesPageTest extends TestCase
 
         $this->assertSame(3, substr_count($content, 'tier-mark tier-mark--emerging'));
         $this->assertSame(4, substr_count($content, 'tier-mark tier-mark--accomplished'));
-        $this->assertSame(3, substr_count($content, 'tier-mark tier-mark--distinguished'));
+        $this->assertSame(7, substr_count($content, 'tier-mark tier-mark--distinguished'));
         $this->assertSame(2, substr_count($content, 'tier-mark tier-mark--in_memoriam'));
         $this->assertStringNotContainsString('class="card-tier', $content);
         foreach (['Recognised', 'Acclaimed', 'Distinguished'] as $tierWord) {

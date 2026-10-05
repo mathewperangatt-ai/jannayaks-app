@@ -15,6 +15,7 @@ use App\Services\ApplicationWorkflowService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\ProfileIntegrityService;
 use App\Services\ProfileUrlService;
+use App\Services\StaffAuditLogger;
 use App\Support\TierLabels;
 use Illuminate\Database\Seeder;
 use Illuminate\Support\Facades\DB;
@@ -25,7 +26,7 @@ use Illuminate\Support\Str;
 /**
  * FINAL DEMONSTRATION POPULATION (corrected demonstration corpus).
  *
- * Living demonstrations (10) — seeded through the application's REAL
+ * Living demonstrations (14) — seeded through the application's REAL
  * editorial/publication workflow so each record is structurally identical
  * to a legitimately published profile (approval, version-pinned customer
  * approval, durable consent, admin publication, membership, reserved slug,
@@ -34,7 +35,9 @@ use Illuminate\Support\Str;
  *   3 Recognised    — Fr. Joseph Mathew, P. Rajeev Menon, S. Beena Kumari
  *   4 Acclaimed     — K. Shafiq Rahman, R. Leelamma, C. Manoj Kumar,
  *                     A. Mariamma
- *   3 Distinguished — T. Gopalakrishnan, P. Sreedharan, V. Suresh Babu
+ *   7 Distinguished — T. Gopalakrishnan, P. Sreedharan, V. Suresh Babu,
+ *                     Arjun Menon, Nanditha Das, Fahim Yousuf,
+ *                     Meera Krishnan
  *
  * Memorial demonstrations (2) — K. V. Mathew (Late) and Dr. Saroja Nair
  * (Late), with the supplied English and Malayalam descriptions. The corpus
@@ -53,6 +56,17 @@ use Illuminate\Support\Str;
  */
 class DemoProfilesSeeder extends Seeder
 {
+    /**
+     * Published demos whose corpus text was revised after first publication.
+     * Only these are re-published when their live text differs from the
+     * corpus; every other published demo keeps its published text.
+     */
+    private const TEXT_REVISED_AFTER_PUBLICATION = [
+        't.gopalakrishnan',
+        'p.sreedharan',
+        'v.suresh.babu',
+    ];
+
     private User $demoAdmin;
 
     public function run(): void
@@ -185,6 +199,10 @@ class DemoProfilesSeeder extends Seeder
             if ($this->attachPortrait($profile, $entry['portrait'] ?? null, 'Portrait of '.$entry['name'])) {
                 app(ProfileIntegrityService::class)->refreshSnapshot($profile, 'demo_profiles_seeder.portrait_replaced');
             }
+            if (in_array($slug, self::TEXT_REVISED_AFTER_PUBLICATION, true)
+                && $this->republishRevisedText($application, $entry)) {
+                $this->command?->info(sprintf('Demo living profile re-published with revised text: %s', $entry['name']));
+            }
             $this->command?->info(sprintf('Demo living profile (already published): %s — %s', $entry['name'], TierLabels::label($tier)));
 
             return;
@@ -221,6 +239,94 @@ class DemoProfilesSeeder extends Seeder
             $application->id,
             $application->status,
         ));
+    }
+
+    /* -----------------------------------------------------------------
+     * Revised-text re-publication for an already published demo. Approved
+     * versions are immutable, so the revision becomes the next EN/ML
+     * version (the superseded pair is archived, not edited) and goes live
+     * through the standard admin replacement publication, which rebinds the
+     * published versions and refreshes the integrity snapshot in the same
+     * transaction. Returns false (no-op) when the live text already matches.
+     * ----------------------------------------------------------------- */
+    private function republishRevisedText(Application $application, array $entry): bool
+    {
+        $publishedEnglish = EditorialContent::query()->find($application->published_english_editorial_content_id);
+        $publishedMalayalam = EditorialContent::query()->find($application->published_malayalam_editorial_content_id);
+
+        if ($this->matchesCorpus($publishedEnglish, $entry['en']) && $this->matchesCorpus($publishedMalayalam, $entry['ml'])) {
+            return false;
+        }
+
+        DB::transaction(function () use ($application, $entry, $publishedEnglish, $publishedMalayalam): void {
+            $english = $this->createRevisionVersion($application, EditorialContent::LANGUAGE_EN, $entry['en'], null, $publishedEnglish);
+            $this->createRevisionVersion($application, EditorialContent::LANGUAGE_ML, $entry['ml'], $english->id, $publishedMalayalam);
+
+            EditorialContent::query()
+                ->whereKey(array_filter([$publishedEnglish?->id, $publishedMalayalam?->id]))
+                ->update(['status' => EditorialContent::STATUS_ARCHIVED]);
+
+            app(ApplicationWorkflowService::class)->publish($application->fresh(), $this->demoAdmin, requireCustomerApproval: false);
+        });
+
+        return true;
+    }
+
+    /**
+     * @param  array{title: string, summary: string, body: string}  $content
+     */
+    private function matchesCorpus(?EditorialContent $published, array $content): bool
+    {
+        return $published instanceof EditorialContent
+            && $published->title === $content['title']
+            && $published->summary === $content['summary']
+            && $published->body === $content['body'];
+    }
+
+    /**
+     * @param  array{title: string, summary: string, body: string}  $content
+     */
+    private function createRevisionVersion(
+        Application $application,
+        string $language,
+        array $content,
+        ?int $sourceEnglishId,
+        ?EditorialContent $superseded,
+    ): EditorialContent {
+        $version = EditorialContent::query()->create([
+            'profile_id' => $application->profile_id,
+            'source_editorial_content_id' => $sourceEnglishId,
+            'language' => $language,
+            'status' => EditorialContent::STATUS_APPROVED,
+            'version_number' => 1 + (int) EditorialContent::query()
+                ->where('profile_id', $application->profile_id)
+                ->where('language', $language)
+                ->max('version_number'),
+            'title' => $content['title'],
+            'summary' => $content['summary'],
+            'body' => $content['body'],
+            'source_material' => 'Revised demonstration corpus text (DemoProfilesSeeder).',
+            'ai_generated' => false,
+            'created_by_id' => $this->demoAdmin->id,
+            'reviewed_by_id' => $this->demoAdmin->id,
+        ]);
+
+        app(StaffAuditLogger::class)->log(
+            action: 'editorial_content.version_created_from_immutable',
+            subject: $version,
+            before: [
+                'source_version_id' => $superseded?->id,
+                'source_version_number' => $superseded?->version_number,
+            ],
+            after: [
+                'id' => $version->id,
+                'version_number' => $version->version_number,
+                'status' => $version->status,
+            ],
+            actor: $this->demoAdmin,
+        );
+
+        return $version;
     }
 
     /* -----------------------------------------------------------------

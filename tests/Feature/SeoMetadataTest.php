@@ -106,7 +106,7 @@ class SeoMetadataTest extends TestCase
 
         // Description from the stored editorial summary (verbatim, single-escaped).
         $this->assertStringContainsString(
-            'name="description" content="T. Gopalakrishnan’s public life has developed',
+            'name="description" content="T. Gopalakrishnan first came to the fictional Sree Narayana',
             $content
         );
 

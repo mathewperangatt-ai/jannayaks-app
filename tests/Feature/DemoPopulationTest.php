@@ -6,6 +6,7 @@ use App\Models\EditorialContent;
 use App\Models\InMemoriamGeography;
 use App\Models\InMemoriamProfile;
 use App\Models\MediaItem;
+use App\Models\Membership;
 use App\Models\Profile;
 use App\Models\ProfileIntegritySnapshot;
 use App\Services\ProfileIntegrityService;
@@ -18,8 +19,8 @@ use Tests\TestCase;
  * Demo population (corrected demonstration corpus).
  *
  * Proves the demo seeder produces the full presentation set through the
- * real workflow: 10 living published profiles (3 Recognised / 4 Acclaimed /
- * 3 Distinguished) with verbatim bilingual corpus text and the supplied
+ * real workflow: 14 living published profiles (3 Recognised / 4 Acclaimed /
+ * 7 Distinguished) with verbatim bilingual corpus text and the supplied
  * watermarked portraits, both memorials with the "(Late)" display and no
  * unsupported dates or locations, personal slugs on personal tiers,
  * memberships started, integrity snapshots that match the attached
@@ -34,7 +35,10 @@ class DemoPopulationTest extends TestCase
     private const LIVING_BY_TIER = [
         'emerging' => ['Fr. Joseph Mathew', 'P. Rajeev Menon', 'S. Beena Kumari'],
         'accomplished' => ['K. Shafiq Rahman', 'R. Leelamma', 'C. Manoj Kumar', 'A. Mariamma'],
-        'distinguished' => ['T. Gopalakrishnan', 'P. Sreedharan', 'V. Suresh Babu'],
+        'distinguished' => [
+            'T. Gopalakrishnan', 'P. Sreedharan', 'V. Suresh Babu',
+            'Arjun Menon', 'Nanditha Das', 'Fahim Yousuf', 'Meera Krishnan',
+        ],
     ];
 
     protected function setUp(): void
@@ -44,12 +48,12 @@ class DemoPopulationTest extends TestCase
         Storage::fake('public');
     }
 
-    public function test_seeder_publishes_ten_living_demos_with_tiers_slugs_ml_and_memberships(): void
+    public function test_seeder_publishes_fourteen_living_demos_with_tiers_slugs_ml_and_memberships(): void
     {
         $this->seed(DemoProfilesSeeder::class);
 
         $published = Profile::query()->where('status', 'published')->get();
-        $this->assertSame(10, $published->count());
+        $this->assertSame(14, $published->count());
 
         $namesByTier = [];
         foreach ($published as $profile) {
@@ -163,7 +167,7 @@ class DemoPopulationTest extends TestCase
         $this->seed(DemoProfilesSeeder::class);
         $second = Profile::query()->where('status', 'published')->count();
 
-        $this->assertSame(10, $first);
+        $this->assertSame(14, $first);
         $this->assertSame($first, $second, 're-seeding must not duplicate or unpublish demos');
         $this->assertSame($keys, MediaItem::query()->orderBy('id')->pluck('storage_path_key', 'id')->all(), 'unchanged portraits must not be rewritten');
 
@@ -197,6 +201,76 @@ class DemoPopulationTest extends TestCase
         );
     }
 
+    public function test_reseeding_republishes_revised_text_only_for_listed_demos_and_keeps_integrity_healthy(): void
+    {
+        $this->seed(DemoProfilesSeeder::class);
+        $living = require database_path('seeders/demo-profiles-living.php');
+
+        // Simulate a database seeded before the corpus revision: published text
+        // differs from the corpus and the snapshot reflects that older state.
+        $simulateEarlierSeed = function (string $fullName): Profile {
+            $profile = Profile::query()->where('full_name', $fullName)->firstOrFail();
+            EditorialContent::query()
+                ->whereKey([
+                    $profile->application->published_english_editorial_content_id,
+                    $profile->application->published_malayalam_editorial_content_id,
+                ])
+                ->update(['body' => 'Earlier demonstration text.']);
+            app(ProfileIntegrityService::class)->refreshSnapshot($profile, 'test.earlier_seed');
+
+            return $profile;
+        };
+        $revised = $simulateEarlierSeed('T. Gopalakrishnan');
+        $unlisted = $simulateEarlierSeed('Arjun Menon');
+        $previousEnglishId = $revised->application->published_english_editorial_content_id;
+        $previousMalayalamId = $revised->application->published_malayalam_editorial_content_id;
+        $slug = $revised->slug;
+
+        $this->seed(DemoProfilesSeeder::class);
+
+        $application = $revised->application->fresh();
+        $english = EditorialContent::query()->findOrFail($application->published_english_editorial_content_id);
+        $malayalam = EditorialContent::query()->findOrFail($application->published_malayalam_editorial_content_id);
+        $this->assertSame(2, $english->version_number);
+        $this->assertSame($living['t.gopalakrishnan']['en']['body'], $english->body);
+        $this->assertSame($living['t.gopalakrishnan']['ml']['body'], $malayalam->body);
+        $this->assertSame($english->id, $malayalam->source_editorial_content_id);
+
+        // Superseded versions are archived intact, not overwritten.
+        foreach ([$previousEnglishId, $previousMalayalamId] as $previousId) {
+            $previous = EditorialContent::query()->findOrFail($previousId);
+            $this->assertSame(EditorialContent::STATUS_ARCHIVED, $previous->status);
+            $this->assertSame('Earlier demonstration text.', $previous->body);
+        }
+
+        $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $revised->id)->firstOrFail();
+        $this->assertSame($english->id, $snapshot->english_editorial_content_id);
+        $this->assertSame('application.published.replacement', $snapshot->source_event);
+        $this->assertSame($slug, $revised->fresh()->slug);
+        $this->assertSame(1, Membership::query()->where('profile_id', $revised->id)->count());
+        $this->get('/t.gopalakrishnan?lang=en')->assertOk()
+            ->assertSee(last(explode("\n\n", $living['t.gopalakrishnan']['en']['body'])), false);
+
+        // Profiles outside the list keep their published text.
+        $unlistedEnglish = EditorialContent::query()->findOrFail($unlisted->application->fresh()->published_english_editorial_content_id);
+        $this->assertSame(1, $unlistedEnglish->version_number);
+        $this->assertSame('Earlier demonstration text.', $unlistedEnglish->body);
+
+        foreach ([$revised, $unlisted] as $profile) {
+            $this->assertSame(
+                ProfileIntegrityService::CLASSIFICATION_HEALTHY,
+                app(ProfileIntegrityService::class)->verifyProfile($profile->fresh(), 'demo-run', true)['classification'],
+                $profile->full_name,
+            );
+        }
+
+        // A further run is a no-op.
+        $versionCount = EditorialContent::query()->where('profile_id', $revised->id)->count();
+        $this->seed(DemoProfilesSeeder::class);
+        $this->assertSame($versionCount, EditorialContent::query()->where('profile_id', $revised->id)->count());
+        $this->assertSame($english->id, $revised->application->fresh()->published_english_editorial_content_id);
+    }
+
     public function test_living_demo_pages_render_full_bilingual_text_with_tier_marks_and_no_tier_words(): void
     {
         $this->seed(DemoProfilesSeeder::class);
@@ -225,24 +299,27 @@ class DemoPopulationTest extends TestCase
         $joseph->assertOk()->assertSee('Fr. Joseph Mathew', false)->assertSee('tier-mark tier-mark--emerging', false);
         $this->assertNoTierWordsOrDefaultLocation($joseph->getContent(), '/'.$slug);
 
-        $distinguished = $this->get('/t.gopalakrishnan');
-        $distinguished->assertOk()->assertSee('tier-mark tier-mark--distinguished', false);
-        $this->assertNoTierWordsOrDefaultLocation($distinguished->getContent(), '/t.gopalakrishnan');
-
-        // Gallery cards carry the markers instead of tier pills.
-        $gallery = $this->get('/gallery');
-        $gallery->assertOk();
-        foreach (array_merge(...array_values(self::LIVING_BY_TIER)) as $name) {
-            $gallery->assertSee($name, false);
+        foreach (['t.gopalakrishnan', 'arjun.menon', 'nanditha.das', 'fahim.yousuf', 'meera.krishnan'] as $distinguishedSlug) {
+            $distinguished = $this->get('/'.$distinguishedSlug.'?lang=en');
+            $distinguished->assertOk()->assertSee('tier-mark tier-mark--distinguished', false);
+            $this->assertNoTierWordsOrDefaultLocation($distinguished->getContent(), '/'.$distinguishedSlug);
         }
-        $this->assertSame(3, substr_count($gallery->getContent(), 'tier-mark--emerging'));
-        $this->assertSame(4, substr_count($gallery->getContent(), 'tier-mark--accomplished'));
-        $this->assertSame(3, substr_count($gallery->getContent(), 'tier-mark--distinguished'));
+
+        // Gallery cards carry the markers instead of tier pills. The gallery
+        // paginates at 12 cards, so the 14 demos span two pages.
+        $galleryContent = $this->get('/gallery')->assertOk()->getContent()
+            .$this->get('/gallery?page=2')->assertOk()->getContent();
+        foreach (array_merge(...array_values(self::LIVING_BY_TIER)) as $name) {
+            $this->assertStringContainsString($name, $galleryContent);
+        }
+        $this->assertSame(3, substr_count($galleryContent, 'tier-mark--emerging'));
+        $this->assertSame(4, substr_count($galleryContent, 'tier-mark--accomplished'));
+        $this->assertSame(7, substr_count($galleryContent, 'tier-mark--distinguished'));
         foreach (['Recognised', 'Acclaimed', 'Distinguished', 'class="card-tier'] as $word) {
-            $this->assertStringNotContainsString($word, $gallery->getContent(), '/gallery must not render '.$word);
+            $this->assertStringNotContainsString($word, $galleryContent, '/gallery must not render '.$word);
         }
         // The district filter label names the state; no card carries a location line.
-        $this->assertStringNotContainsString('<p class="card-meta">Keralam</p>', $gallery->getContent());
+        $this->assertStringNotContainsString('<p class="card-meta">Keralam</p>', $galleryContent);
     }
 
     public function test_memorial_demo_pages_show_late_name_notice_marker_and_whole_portrait(): void
