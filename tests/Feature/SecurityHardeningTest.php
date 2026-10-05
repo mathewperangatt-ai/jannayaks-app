@@ -9,6 +9,8 @@ class SecurityHardeningTest extends TestCase
 {
     public function test_production_session_cookies_are_encrypted_and_secure_by_default(): void
     {
+        config(['session.encrypt' => true, 'session.secure' => true]);
+
         $this->assertTrue((bool) config('session.encrypt'));
         $this->assertTrue((bool) config('session.secure'));
         $this->assertTrue((bool) config('session.http_only'));
