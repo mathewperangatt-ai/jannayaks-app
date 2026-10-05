@@ -76,7 +76,7 @@ class StructuredDataTest extends TestCase
     {
         $this->seed(DemoProfilesSeeder::class);
 
-        $nodes = $this->nodesByType('/t.gopalakrishnan');
+        $nodes = $this->nodesByType('/t.gopalakrishnan?lang=en');
 
         $this->assertArrayHasKey('ProfilePage', $nodes);
         $this->assertArrayHasKey('Person', $nodes);

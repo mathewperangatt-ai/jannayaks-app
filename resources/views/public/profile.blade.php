@@ -51,9 +51,12 @@
     .jk-urlpill,.jk-copy{height:42px;border:1px solid #b8c9b5;background:rgba(255,255,255,.36);padding:0 15px;display:inline-flex;align-items:center;font:500 12.5px var(--jk-ui);color:var(--jk-blue);border-radius:2px}
     .jk-copy{background:var(--jk-blue);color:#fff;border-color:var(--jk-blue);cursor:pointer;text-transform:uppercase;letter-spacing:.1em;font-size:10px;font-weight:600}
     .jk-copy:hover{background:var(--jk-saffron);border-color:var(--jk-saffron)}
-    .jk-lang{display:inline-flex;border:1px solid var(--jk-line);font:600 11px var(--jk-ui);margin-left:6px;background:var(--jk-surface)}
-    .jk-lang a{padding:9px 12px;color:var(--jk-muted);text-decoration:none}
-    .jk-lang a[aria-current="true"]{color:var(--jk-saffron);background:#fffdf8}
+    .jk-lang{display:inline-flex;border:1px solid #b8c9b5;border-radius:2px;margin-left:6px;background:rgba(255,255,255,.36)}
+    .jk-lang a{height:40px;display:inline-flex;align-items:center;padding:0 16px;font:500 13.5px var(--jk-ui);color:var(--jk-blue);text-decoration:none}
+    .jk-lang a + a{border-left:1px solid #b8c9b5}
+    .jk-lang a[lang="ml"]{font-family:'Noto Serif Malayalam',var(--jk-ui)}
+    .jk-lang a:hover{background:#fff}
+    .jk-lang a[aria-current="true"]{color:var(--jk-saffron);font-weight:600;background:#fffdf8;box-shadow:inset 0 -2px 0 var(--jk-saffron)}
     .jk-demo-note{margin:16px 0 0;font:500 11px var(--jk-ui);color:var(--jk-muted);letter-spacing:.06em}
 
     /* well-wisher rail: contact + reactions */
@@ -197,8 +200,8 @@
                 </span>
                 @if($malayalam)
                     <span class="jk-lang" role="navigation" aria-label="Language">
-                        <a href="{{ route('profiles.public', ['slug' => $profile->slug, 'lang' => 'en']) }}" @if($language === 'en') aria-current="true" @endif>EN</a>
-                        <a href="{{ route('profiles.public', ['slug' => $profile->slug, 'lang' => 'ml']) }}" @if($language === 'ml') aria-current="true" @endif>ML</a>
+                        <a href="{{ route('profiles.public', ['slug' => $profile->slug, 'lang' => 'en']) }}" lang="en" @if($language === 'en') aria-current="true" @endif>English</a>
+                        <a href="{{ route('profiles.public', ['slug' => $profile->slug, 'lang' => 'ml']) }}" lang="ml" @if($language === 'ml') aria-current="true" @endif>മലയാളം</a>
                     </span>
                 @endif
             </div>

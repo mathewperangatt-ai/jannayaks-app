@@ -203,7 +203,7 @@ class DemoPopulationTest extends TestCase
         $entry = (require database_path('seeders/demo-profiles-living.php'))['k.shafiq.rahman'];
         $lastParagraph = fn (string $body): string => last(explode("\n\n", $body));
 
-        $en = $this->get('/k.shafiq.rahman');
+        $en = $this->get('/k.shafiq.rahman?lang=en');
         $en->assertOk()
             ->assertSee('K. Shafiq Rahman', false)
             ->assertSee('Trade Union Leader and Workers’ Welfare Organiser', false)
@@ -212,7 +212,7 @@ class DemoPopulationTest extends TestCase
             ->assertSee('Fictional demonstration profile', false)
             ->assertSee('tier-mark tier-mark--accomplished', false)
             ->assertSee('jk-portrait jk-portrait--whole', false);
-        $this->assertNoTierWordsOrDefaultLocation($en->getContent(), '/k.shafiq.rahman');
+        $this->assertNoTierWordsOrDefaultLocation($en->getContent(), '/k.shafiq.rahman?lang=en');
 
         $ml = $this->get('/k.shafiq.rahman?lang=ml');
         $ml->assertOk()->assertSee($lastParagraph($entry['ml']['body']), false);

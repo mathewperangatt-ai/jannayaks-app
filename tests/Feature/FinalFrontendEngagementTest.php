@@ -37,7 +37,7 @@ class FinalFrontendEngagementTest extends TestCase
         $this->seed(DemoProfilesSeeder::class);
 
         // Living final demo: T. Gopalakrishnan, Distinguished, corpus text.
-        $this->get('/t.gopalakrishnan')
+        $this->get('/t.gopalakrishnan?lang=en')
             ->assertOk()
             ->assertSee('T. Gopalakrishnan', false)
             ->assertSee('tier-mark tier-mark--distinguished', false)

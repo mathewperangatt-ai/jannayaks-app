@@ -123,6 +123,47 @@ class DemoProfilesPageTest extends TestCase
         }
     }
 
+    public function test_demo_profile_opens_in_malayalam_unless_english_is_requested(): void
+    {
+        $this->seed(DemoProfilesSeeder::class);
+        $entry = (require database_path('seeders/demo-profiles-living.php'))['k.shafiq.rahman'];
+
+        foreach (['/k.shafiq.rahman' => 'ml', '/k.shafiq.rahman?lang=ml' => 'ml', '/k.shafiq.rahman?lang=en' => 'en'] as $path => $language) {
+            $content = $this->get($path)->assertOk()->getContent();
+
+            $this->assertStringContainsString('<html lang="'.$language.'">', $content, $path);
+            $this->assertStringContainsString(last(explode("\n\n", $entry[$language]['body'])), $content, $path);
+            $this->assertMatchesRegularExpression('#lang="'.$language.'"\s+aria-current="true"\s*>#', $content, $path);
+        }
+    }
+
+    public function test_language_switcher_names_both_languages_in_full(): void
+    {
+        $this->seed(DemoProfilesSeeder::class);
+
+        $this->get('/k.shafiq.rahman')
+            ->assertOk()
+            ->assertSee('>English</a>', false)
+            ->assertSee('>മലയാളം</a>', false)
+            ->assertDontSee('>EN</a>', false)
+            ->assertDontSee('>ML</a>', false);
+    }
+
+    public function test_real_profile_still_opens_in_english_by_default(): void
+    {
+        $this->seed(DemoProfilesSeeder::class);
+        $entry = (require database_path('seeders/demo-profiles-living.php'))['k.shafiq.rahman'];
+        Profile::query()->where('slug', 'k.shafiq.rahman')->firstOrFail()
+            ->user->forceFill(['email' => 'shafiq.member@example.com'])->save();
+
+        foreach (['/k.shafiq.rahman' => 'en', '/k.shafiq.rahman?lang=en' => 'en', '/k.shafiq.rahman?lang=ml' => 'ml'] as $path => $language) {
+            $content = $this->get($path)->assertOk()->getContent();
+
+            $this->assertStringContainsString('<html lang="'.$language.'">', $content, $path);
+            $this->assertStringContainsString(last(explode("\n\n", $entry[$language]['body'])), $content, $path);
+        }
+    }
+
     public function test_listing_path_is_reserved_from_member_profile_urls(): void
     {
         $this->assertTrue(app(ProfileUrlService::class)->isReserved('demo-profiles'));

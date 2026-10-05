@@ -107,14 +107,16 @@ class PublicProfileUrlController extends Controller
             abort(404);
         }
 
-        $lang = (string) $request->query('lang', 'en');
+        // Demonstration profiles are owned by the locked internal demo account
+        // and open in Malayalam unless a language is requested explicitly.
+        $isDemonstration = str_ends_with(strtolower((string) $profile->user?->email), '@jannayaks.internal');
+        $lang = (string) $request->query('lang', $isDemonstration ? 'ml' : 'en');
         $data = $this->presentation->present($profile, $lang);
         $data['tierLabel'] = $profile->tierLabel();
         $data['viewerReactions'] = $request->user()
             ? $profile->reactions()->where('user_id', $request->user()->id)->pluck('reaction')->all()
             : [];
-        // Demonstration profiles are owned by the locked internal demo account.
-        $data['isDemonstration'] = str_ends_with(strtolower((string) $profile->user?->email), '@jannayaks.internal');
+        $data['isDemonstration'] = $isDemonstration;
 
         return response()
             ->view('public.profile', $data)

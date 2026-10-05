@@ -100,7 +100,7 @@ class SeoMetadataTest extends TestCase
     {
         $this->seed(DemoProfilesSeeder::class);
 
-        $response = $this->get('/t.gopalakrishnan');
+        $response = $this->get('/t.gopalakrishnan?lang=en');
         $response->assertOk();
         $content = $response->getContent();
 
