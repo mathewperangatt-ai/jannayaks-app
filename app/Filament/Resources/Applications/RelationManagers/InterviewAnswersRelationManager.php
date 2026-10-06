@@ -28,6 +28,12 @@ class InterviewAnswersRelationManager extends RelationManager
                 TextColumn::make('answered_at')->dateTime()->sortable(),
             ])
             ->defaultSort('question_id')
+            ->emptyStateHeading(fn (): string => $this->getOwnerRecord()->source_method === 'online_interview'
+                ? 'Interview not submitted yet'
+                : 'No Online Interview exists')
+            ->emptyStateDescription(fn (): string => $this->getOwnerRecord()->source_method === 'online_interview'
+                ? 'The customer\'s answers will appear here once the Online Interview is submitted for editorial processing.'
+                : 'This application has no Online Interview record (direct submission or admin test/demo lane). Supplied files appear under Source materials.')
             ->headerActions([])
             ->recordActions([
                 ViewAction::make(),

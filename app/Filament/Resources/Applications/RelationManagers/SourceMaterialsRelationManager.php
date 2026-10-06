@@ -41,6 +41,10 @@ class SourceMaterialsRelationManager extends RelationManager
                 TextColumn::make('purged_at')->dateTime()->placeholder('—'),
             ])
             ->defaultSort('uploaded_at', 'desc')
+            ->emptyStateHeading('No source material supplied yet')
+            ->emptyStateDescription(fn (): string => $this->getOwnerRecord()->source_method === 'online_interview'
+                ? 'The customer has not uploaded optional source files. They are editorial context only — they do not replace the Online Interview answers.'
+                : 'Submitted files will appear here. Source material is optional editorial context.')
             ->headerActions([])
             ->recordActions([
                 Action::make('download')

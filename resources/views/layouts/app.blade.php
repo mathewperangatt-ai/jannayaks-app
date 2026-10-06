@@ -3,6 +3,7 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
+    <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600&display=swap" rel="stylesheet">
     <title>{{ config('app.name', 'Jannayaks') }} — Online Interview</title>
     <style>
         <?php
@@ -18,6 +19,7 @@
         :root{
             --brand:#8A1A1A;
             --brand-dark:#5c0d0d;
+            --saffron:#C0762E;
             --ink:#1B1B18;
             --ink-soft:#4b4b48;
             --paper:#FDFDFC;
@@ -28,13 +30,23 @@
             --bad:#7a1414;
         }
         *{box-sizing:border-box}
-        html,body{margin:0;padding:0;background:var(--paper);color:var(--ink);font-family:Inter,"Noto Sans Malayalam","Instrument Sans",ui-sans-serif,system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
+        /* Page background = standard Jannayaks sage (public site --off #f3f8f0) */
+        html,body{margin:0;padding:0;background:#f3f8f0;color:var(--ink);font-family:Inter,"Noto Sans Malayalam","Instrument Sans",ui-sans-serif,system-ui,sans-serif;line-height:1.55;-webkit-font-smoothing:antialiased}
         a{color:var(--brand)}
-        :focus-visible{outline:3px solid #f5b7b1;outline-offset:2px;border-radius:6px}
+        :focus-visible{outline:3px solid rgba(33,77,104,.35);outline-offset:2px;border-radius:6px}
         .wrap{max-width:720px;margin:0 auto;padding:20px 18px 80px}
-        .topbar{display:flex;align-items:center;justify-content:space-between;gap:12px;margin-bottom:22px;padding-bottom:14px;border-bottom:1px solid var(--line)}
-        .logo{display:flex;align-items:center;gap:10px;font-weight:700;letter-spacing:.2px}
-        .logo .pill{width:34px;height:34px;border-radius:999px;background:linear-gradient(135deg,#8A1A1A 0%,#C4202A 100%);display:inline-flex;align-items:center;justify-content:center;color:#fff;font-weight:800;font-size:14px;box-shadow:0 1px 0 rgba(0,0,0,.06)}
+        /* Customer header — white bar + saffron rule, matching the public nav */
+        .topbar{position:sticky;top:0;z-index:100;background:#fff;border-bottom:2px solid #C0762E;box-shadow:0 1px 8px rgba(31,41,36,.05)}
+        .topbar-inner{max-width:720px;margin:0 auto;padding:10px 18px;display:flex;align-items:center;justify-content:space-between;gap:12px}
+        .logo{display:flex;align-items:center;text-decoration:none}
+        .logo img{height:52px;width:auto;display:block}
+        .topbar-user{display:flex;align-items:center;gap:10px;min-width:0}
+        .user-chip{display:inline-flex;align-items:center;font-size:13px;font-weight:600;color:var(--ink-soft);background:var(--paper-alt);border:1px solid var(--line);border-radius:999px;padding:7px 14px;max-width:240px;overflow:hidden;text-overflow:ellipsis;white-space:nowrap}
+        .signout{border:1px solid var(--line);background:#fff;color:var(--ink);border-radius:8px;padding:8px 12px;font:inherit;font-size:13px;font-weight:600;cursor:pointer;min-height:36px}
+        .signout:hover{border-color:#cbc9c0;background:#fbfaf7}
+        .topbar-link{font-size:13px;font-weight:600;color:var(--ink);text-decoration:none;border:1px solid var(--line);border-radius:8px;padding:8px 12px;background:#fff;min-height:36px;display:inline-flex;align-items:center}
+        .topbar-link:hover{border-color:#cbc9c0;background:#fbfaf7}
+        @media(max-width:560px){.logo img{height:38px}.user-chip{max-width:150px}}
         .card{background:#fff;border:1px solid var(--line);border-radius:14px;box-shadow:0 1px 0 rgba(18,18,18,.03), 0 1px 2px rgba(18,18,18,.04);padding:22px 20px;margin-bottom:18px}
         .card h1,.card h2,.card h3{margin:0 0 10px;color:var(--ink)}
         .card h1{font-size:22px;line-height:1.25}
@@ -48,14 +60,14 @@
         .tag.bad{background:#fbe9e9;color:var(--bad);border-color:#f2c7c7}
         .progress{display:flex;flex-direction:column;gap:8px;margin:14px 0 6px}
         .bar{position:relative;height:10px;border-radius:999px;background:#efeee8;overflow:hidden;border:1px solid var(--line)}
-        .bar > span{position:absolute;inset:0;width:0;background:linear-gradient(90deg,#C4202A 0%,#8A1A1A 100%);border-radius:999px;transition:width .3s ease}
+        .bar > span{position:absolute;inset:0;width:0;background:linear-gradient(90deg,#52758a 0%,#214d68 100%);border-radius:999px;transition:width .3s ease}
         .progress-meta{display:flex;flex-wrap:wrap;gap:8px 18px;font-size:13px;color:var(--ink-soft)}
         .progress-meta b{color:var(--ink)}
         .btn{display:inline-flex;align-items:center;justify-content:center;gap:8px;font-weight:600;padding:12px 16px;border-radius:10px;border:1px solid var(--line);background:#fff;color:var(--ink);cursor:pointer;text-decoration:none;font-size:15px;min-height:44px}
         .btn:hover{border-color:#cbc9c0;background:#fbfaf7}
         .btn:active{background:#f4f2ec}
-        .btn.primary{background:linear-gradient(180deg,#C4202A,#8A1A1A);border-color:transparent;color:#fff;box-shadow:0 1px 0 rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.12)}
-        .btn.primary:hover{filter:brightness(1.03)}
+        .btn.primary{background:#214d68;border-color:transparent;color:#fff;box-shadow:0 1px 0 rgba(0,0,0,.08), inset 0 1px 0 rgba(255,255,255,.12)}
+        .btn.primary:hover{background:var(--saffron)}
         .btn.ghost{background:transparent}
         .btn.block{display:flex;width:100%}
         .btn[disabled],.btn[aria-disabled="true"]{opacity:.55;cursor:not-allowed}
@@ -108,23 +120,26 @@
 </head>
 <body>
 <div class="skip"><a href="#main">Skip to content</a></div>
-<div id="main" class="wrap">
-    <header class="topbar">
+<header class="topbar">
+    <div class="topbar-inner">
         <a href="{{ route('home') }}" class="logo" aria-label="Jannayaks home">
-            <span class="pill">ജ</span>
-            <span>{{ config('app.name', 'Jannayaks') }}</span>
+            <img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks">
         </a>
-        <div>
+        <div class="topbar-user">
             @auth
-                <a class="btn ghost" style="padding:8px 12px;font-size:14px;min-height:36px" href="{{ route('home') }}">{{ auth()->user()->name ?? 'Dashboard' }}</a>
+                <span class="user-chip">{{ auth()->user()->name }}</span>
+                <form method="POST" action="{{ route('logout') }}" style="margin:0">@csrf
+                    <button type="submit" class="signout">Sign out</button>
+                </form>
             @endauth
             @guest
-                <a class="btn ghost" style="padding:8px 12px;font-size:14px;min-height:36px" href="{{ route('filament.admin.auth.login') }}">Log in</a>
-                <a class="btn" style="padding:8px 12px;font-size:14px;min-height:36px;margin-left:6px" href="{{ route('filament.admin.auth.login') }}">Register</a>
+                <a class="topbar-link" href="{{ route('filament.admin.auth.login') }}">Log in</a>
+                <a class="topbar-link" href="{{ route('filament.admin.auth.login') }}">Register</a>
             @endguest
         </div>
-    </header>
-
+    </div>
+</header>
+<div id="main" class="wrap">
     @yield('content')
 </div>
 @stack('modals')

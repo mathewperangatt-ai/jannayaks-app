@@ -10,6 +10,7 @@ use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
+use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
@@ -24,6 +25,15 @@ class ProfileMediaRelationManager extends RelationManager
     {
         return $table
             ->columns([
+                ImageColumn::make('staff_preview_thumbnail')
+                    ->label('')
+                    ->state(fn (MediaItem $record): ?string => filled($record->storage_path_key)
+                        ? route('staff.profile-media.preview', ['media' => $record])
+                        : null)
+                    ->height(52)
+                    ->width(40)
+                    ->square(false)
+                    ->extraImgAttributes(['style' => 'border:1px solid #d3ddd1;border-radius:6px;background:#eaf2e7;object-fit:cover']),
                 TextColumn::make('id')->label('ID'),
                 TextColumn::make('review_status')->badge()->label('Review'),
                 IconColumn::make('is_primary')->boolean()->label('Primary req.'),

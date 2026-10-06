@@ -40,14 +40,19 @@ class EditorialContentVersioningService
     /**
      * Apply staff editorial form data. Locked narrative rows get a successor version.
      *
+     * $sourceEditorialContentId optionally establishes the EN↔ML adaptation
+     * pairing on the CREATED successor at creation time (used by the
+     * post-publication maintenance workflow so pairs are correct before any
+     * customer visibility). Existing callers are unaffected.
+     *
      * @param  array<string, mixed>  $data
      */
-    public function applyEditorUpdate(EditorialContent $content, array $data, User $actor): EditorialContent
+    public function applyEditorUpdate(EditorialContent $content, array $data, User $actor, ?int $sourceEditorialContentId = null): EditorialContent
     {
         $narrativeChanging = $this->narrativeFieldsChanging($content, $data);
 
         if ($this->isNarrativeImmutable($content) && $narrativeChanging) {
-            return $this->createSuccessorVersion($content, $data, $actor);
+            return $this->createSuccessorVersion($content, $data, $actor, $sourceEditorialContentId);
         }
 
         $content->fill($this->attributesForUpdate($content, $data, $actor))->save();
@@ -75,9 +80,9 @@ class EditorialContentVersioningService
     /**
      * @param  array<string, mixed>  $data
      */
-    private function createSuccessorVersion(EditorialContent $original, array $data, User $actor): EditorialContent
+    private function createSuccessorVersion(EditorialContent $original, array $data, User $actor, ?int $sourceEditorialContentId = null): EditorialContent
     {
-        return DB::transaction(function () use ($original, $data, $actor) {
+        return DB::transaction(function () use ($original, $data, $actor, $sourceEditorialContentId) {
             Application::query()->where('profile_id', $original->profile_id)->lockForUpdate()->first();
             Profile::query()->whereKey($original->profile_id)->lockForUpdate()->firstOrFail();
 
@@ -91,7 +96,7 @@ class EditorialContentVersioningService
 
             $successor = EditorialContent::query()->create([
                 'profile_id' => $original->profile_id,
-                'source_editorial_content_id' => $original->source_editorial_content_id,
+                'source_editorial_content_id' => $sourceEditorialContentId ?? $original->source_editorial_content_id,
                 'generation_run_id' => null,
                 'language' => $original->language,
                 'status' => $status,

@@ -7,6 +7,8 @@ use App\Models\Payment;
 use App\Models\SourceMaterial;
 use App\Services\ApplicationPaymentStateService;
 use App\Services\OnlineInterviewService;
+use App\Services\ProfileUrlService;
+use App\Services\PublicProfilePresentationService;
 use App\Services\RazorpayPaymentService;
 use App\Support\OnlineInterviewCatalog;
 use App\Support\PricingAmounts;
@@ -266,12 +268,29 @@ class ApplicationController extends Controller
 
         $typeMap = (array) config('online_interview.source_material_types', []);
 
+        // Identity area data: reference number comes from the profile itself;
+        // the photograph and public URL use the existing approved-media and
+        // publication gates, so an unpublished profile never links publicly.
+        $profile = $application->profile;
+        $publicProfileUrl = null;
+        $publicProfilePath = null;
+        $identityPhoto = null;
+        if ($profile !== null && filled($profile->slug)
+            && app(ProfileUrlService::class)->isPubliclyVisible($profile)) {
+            $publicProfileUrl = app(ProfileUrlService::class)->canonicalPublicUrl($profile);
+            $publicProfilePath = '/'.$profile->slug;
+            $identityPhoto = app(PublicProfilePresentationService::class)->publicProfilePhotos($profile)->first();
+        }
+
         return view('application.show', [
             'application' => $application,
             'materials' => $materials,
             'materialsCount' => $materials->count(),
             'progress' => $progress,
             'typeMap' => $typeMap,
+            'publicProfileUrl' => $publicProfileUrl,
+            'publicProfilePath' => $publicProfilePath,
+            'identityPhoto' => $identityPhoto,
         ]);
     }
 

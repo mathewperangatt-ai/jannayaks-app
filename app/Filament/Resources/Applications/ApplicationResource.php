@@ -122,4 +122,37 @@ class ApplicationResource extends Resource
     {
         return 'Applications waiting for editorial review, revision, or publication';
     }
+
+    /**
+     * Global search: name, immutable profile reference number (JN-XXXXX) and
+     * public slug — the operational lookup keys for support and editorial
+     * communication. Dot-notation relations resolve via whereHas.
+     *
+     * @return array<string>
+     */
+    public static function getGloballySearchableAttributes(): array
+    {
+        return ['full_name', 'profile.reference_code', 'profile.slug'];
+    }
+
+    public static function getGlobalSearchResultUrl(Model $record): ?string
+    {
+        return static::getUrl('view', ['record' => $record]);
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public static function getGlobalSearchResultDetails(Model $record): array
+    {
+        $details = [];
+        if (filled($record->profile?->reference_code)) {
+            $details['Reference'] = (string) $record->profile->reference_code;
+        }
+        if (filled($record->profile?->slug)) {
+            $details['Public URL'] = '/'.$record->profile->slug;
+        }
+
+        return $details;
+    }
 }

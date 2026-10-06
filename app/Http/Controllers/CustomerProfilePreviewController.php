@@ -39,6 +39,9 @@ class CustomerProfilePreviewController extends Controller
                 ->withErrors(['preview' => 'Preview content is unavailable. Please contact support.']);
         }
 
+        // Post-publication maintenance preview (application stays published).
+        $maintenanceRequest = app(\App\Services\PostPublicationUpdateService::class)->openRequestFor($application);
+
         return view('application.profile-preview', [
             'application' => $application,
             'member' => $member,
@@ -54,6 +57,14 @@ class CustomerProfilePreviewController extends Controller
             'canApprove' => $application->status === Application::STATUS_EDITORIAL_APPROVED
                 && $application->customer_approved_at === null,
             'alreadyApproved' => $application->customer_approved_at !== null,
+            'maintenanceRequest' => $maintenanceRequest,
+            'canApproveMaintenance' => $maintenanceRequest !== null
+                && $maintenanceRequest->status === EditorialRevisionRequest::STATUS_CUSTOMER_PREVIEW,
+            'maintenanceCorrectionPending' => $maintenanceRequest !== null
+                && $maintenanceRequest->status === EditorialRevisionRequest::STATUS_IN_PROGRESS
+                && filled($maintenanceRequest->customer_correction_text),
+            'maintenanceApproved' => $maintenanceRequest !== null
+                && $maintenanceRequest->status === EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED,
         ]);
     }
 

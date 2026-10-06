@@ -53,7 +53,7 @@ final class EditorialSourcePayloadBuilder
 
         $displayName = (string) ($application->preferred_display_name ?: $application->full_name ?: 'Member');
 
-        return [
+        $payload = [
             'package_tier' => (string) $application->package_tier,
             'source_method' => (string) $application->source_method,
             'display_name' => $displayName,
@@ -61,6 +61,40 @@ final class EditorialSourcePayloadBuilder
             'source_material_inventory' => $materials,
             'data_boundary' => 'SOURCE_DATA_ONLY',
         ];
+
+        // Post-publication maintenance: the currently published profile and
+        // the customer's bundled update request are the authoritative source
+        // material for the AI draft. Same pipeline, same provenance.
+        $maintenance = \App\Models\EditorialRevisionRequest::query()
+            ->where('application_id', $application->id)
+            ->where('request_type', \App\Models\EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE)
+            ->whereIn('status', [\App\Models\EditorialRevisionRequest::STATUS_SUBMITTED, \App\Models\EditorialRevisionRequest::STATUS_IN_PROGRESS])
+            ->orderByDesc('id')
+            ->first();
+
+        if ($maintenance !== null && $application->published_english_editorial_content_id !== null) {
+            $publishedEn = \App\Models\EditorialContent::query()->find($application->published_english_editorial_content_id);
+            $publishedMl = $application->published_malayalam_editorial_content_id !== null
+                ? \App\Models\EditorialContent::query()->find($application->published_malayalam_editorial_content_id)
+                : null;
+
+            $payload['maintenance_context'] = [
+                'task' => 'Draft the updated profile by applying the customer\'s requested changes to the current published text. Preserve everything else unchanged.',
+                'customer_update_request' => (string) $maintenance->request_text,
+                'current_published_english' => $publishedEn === null ? null : [
+                    'title' => (string) $publishedEn->title,
+                    'summary' => (string) $publishedEn->summary,
+                    'body' => (string) $publishedEn->body,
+                ],
+                'current_published_malayalam' => $publishedMl === null ? null : [
+                    'title' => (string) $publishedMl->title,
+                    'summary' => (string) $publishedMl->summary,
+                    'body' => (string) $publishedMl->body,
+                ],
+            ];
+        }
+
+        return $payload;
     }
 
     /**

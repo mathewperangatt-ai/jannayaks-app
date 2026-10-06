@@ -10,8 +10,36 @@ use Illuminate\Database\Eloquent\Relations\MorphMany;
 
 class Profile extends Model
 {
+    /**
+     * Profile Reference Number (e.g. JN-7K4P2): compact, human-readable,
+     * non-sequential, unique. Independent of the public slug and never used
+     * for routing. Alphabet excludes visually ambiguous glyphs (I, L, O, 0, 1).
+     */
+    public const REFERENCE_PREFIX = 'JN-';
+
+    public const REFERENCE_ALPHABET = 'ABCDEFGHJKMNPQRSTUVWXYZ23456789';
+
+    public const REFERENCE_LENGTH = 5;
+
+    private const MAX_REFERENCE_ATTEMPTS = 32;
+
     protected static function booted(): void
     {
+        // Canonical reference assignment: every living profile receives its
+        // immutable reference number at birth (the only creation path is the
+        // post-payment living-profile lifecycle).
+        static::creating(function (Profile $profile): void {
+            if (blank($profile->reference_code)) {
+                $profile->reference_code = self::generateUniqueReferenceCode();
+            }
+        });
+
+        static::updating(function (Profile $profile): void {
+            if ($profile->isDirty('reference_code') && filled($profile->getOriginal('reference_code'))) {
+                throw new \LogicException('The profile reference number is immutable.');
+            }
+        });
+
         static::created(function (Profile $profile): void {
             $profile->ensureMandatoryGeography();
         });
@@ -174,6 +202,35 @@ class Profile extends Model
         $tier = $this->application?->package_tier;
 
         return $tier !== null ? \App\Support\TierLabels::label((string) $tier) : null;
+    }
+
+    /**
+     * Collision-safe reference allocation. The pre-check keeps collisions rare;
+     * the database unique index is the hard guarantee, so the create path
+     * fails loudly in the (practically unreachable) race case.
+     */
+    public static function generateUniqueReferenceCode(): string
+    {
+        for ($attempt = 0; $attempt < self::MAX_REFERENCE_ATTEMPTS; $attempt++) {
+            $candidate = self::REFERENCE_PREFIX.self::randomReferenceSuffix();
+            if (! self::query()->where('reference_code', $candidate)->exists()) {
+                return $candidate;
+            }
+        }
+
+        throw new \RuntimeException('Unable to allocate a unique profile reference number.');
+    }
+
+    private static function randomReferenceSuffix(): string
+    {
+        $alphabet = self::REFERENCE_ALPHABET;
+        $max = strlen($alphabet) - 1;
+        $suffix = '';
+        for ($i = 0; $i < self::REFERENCE_LENGTH; $i++) {
+            $suffix .= $alphabet[random_int(0, $max)];
+        }
+
+        return $suffix;
     }
 
     public function isPubliclyListed(): bool

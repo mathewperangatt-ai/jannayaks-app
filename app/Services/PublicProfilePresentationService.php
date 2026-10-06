@@ -29,7 +29,8 @@ class PublicProfilePresentationService
      *     photos: Collection,
      *     videoLinks: Collection,
      *     language: string,
-     *     activeEditorial: ?EditorialContent
+     *     activeEditorial: ?EditorialContent,
+     *     referenceCode: ?string
      * }
      */
     public function present(Profile $profile, string $language = 'en'): array
@@ -77,6 +78,9 @@ class PublicProfilePresentationService
             'videoLinks' => $this->publicVideoLinks($profile),
             'language' => $language === 'ml' && $malayalam ? 'ml' : 'en',
             'activeEditorial' => $active,
+            // Support/editorial reference only — never a routing key, never
+            // an internal database id.
+            'referenceCode' => filled($profile->reference_code) ? (string) $profile->reference_code : null,
         ];
     }
 
