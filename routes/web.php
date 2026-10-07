@@ -94,7 +94,10 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');
 
-Route::middleware(['auth'])->prefix('staff')->name('staff.')->group(function () {
+// Staff downloads/previews are non-Filament routes: re-check account status
+// (suspension) and verification on every request — a live session must not
+// outlive a suspension, mirroring the Filament panel's per-request gate.
+Route::middleware(['auth', 'verified.or.mobile'])->prefix('staff')->name('staff.')->group(function () {
     Route::get('/source-materials/{sourceMaterial}/download', SourceMaterialDownloadController::class)
         ->name('source-materials.download');
     Route::get('/profile-media/{media}/preview', ProfileMediaPreviewController::class)
@@ -108,26 +111,26 @@ Route::post('/apply/intent', [ApplicationController::class, 'storeIntent'])->mid
 Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::get('/apply/continue', [ApplicationController::class, 'continueFromIntent'])->name('apply.continue');
     Route::post('/applications', [ApplicationController::class, 'store'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:application-create')
         ->name('applications.store');
 
     Route::get('/applications/{application}', [ApplicationController::class, 'showOwn'])->name('applications.show');
     Route::get('/applications/{application}/upload', [ApplicationController::class, 'uploadsShow'])->name('applications.upload.show');
     Route::post('/applications/{application}/upload', [ApplicationController::class, 'uploadMaterial'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:source-upload')
         ->name('applications.upload.material');
 
     Route::get('/applications/{application}/interview', [OnlineInterviewController::class, 'show'])->name('online-interview.show');
     Route::match(['put', 'patch', 'post'], '/applications/{application}/interview/save', [OnlineInterviewController::class, 'save'])
-        ->middleware('throttle:60,1')
+        ->middleware('throttle:interview-save')
         ->name('online-interview.save');
     Route::post('/applications/{application}/interview/submit', [OnlineInterviewController::class, 'submit'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:interview-submit')
         ->name('online-interview.submit');
 
     Route::get('/applications/{application}/payment', [ApplicationController::class, 'showPayment'])->name('applications.payment');
     Route::post('/applications/{application}/payment/initiate', [ApplicationController::class, 'initiatePayment'])
-        ->middleware('throttle:10,1')
+        ->middleware('throttle:payment-initiate')
         ->name('applications.payment.initiate');
 
     Route::get('/applications/{application}/preview', [CustomerProfilePreviewController::class, 'show'])->name('applications.preview');

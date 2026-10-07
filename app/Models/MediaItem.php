@@ -10,6 +10,8 @@ class MediaItem extends Model
 {
     public const TYPE_PROFILE_PHOTO = 'profile_photo';
 
+    public const TYPE_PROFILE_PHOTO_ENHANCEMENT = 'profile_photo_enhancement';
+
     public const TYPE_GALLERY_IMAGE = 'gallery_image';
 
     public const TYPE_DOCUMENT = 'document';
@@ -31,6 +33,7 @@ class MediaItem extends Model
     protected $fillable = [
         'mediable_type',
         'mediable_id',
+        'enhanced_from_media_id',
         'media_type',
         'storage_path_key',
         'disk',
@@ -79,6 +82,17 @@ class MediaItem extends Model
     public function reviewedBy(): BelongsTo
     {
         return $this->belongsTo(User::class, 'reviewed_by_user_id');
+    }
+
+    /** The customer-uploaded source this AI candidate was derived from. */
+    public function enhancedFrom(): BelongsTo
+    {
+        return $this->belongsTo(self::class, 'enhanced_from_media_id');
+    }
+
+    public function isEnhancementCandidate(): bool
+    {
+        return $this->media_type === self::TYPE_PROFILE_PHOTO_ENHANCEMENT;
     }
 
     public function isApprovedForPublicDisplay(): bool

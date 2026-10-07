@@ -195,6 +195,33 @@ return [
             'included_prepublication_revision_rounds' => 2,
             // Post-publication meaningful revision uses tier_pricing.revision (₹2,000 + GST) — not in P10.
         ],
+        'image_enhancement' => [
+            // KILL SWITCH — disabled by default. When false: no candidate is
+            // created, no job is dispatched, uploads/approval/publication are
+            // completely unaffected. Enable only after output-quality review.
+            'enabled' => (bool) env('JANNAYAKS_AI_ENHANCEMENT_ENABLED', false),
+            // Independent from the editorial provider selection.
+            'provider' => env('JANNAYAKS_AI_IMAGE_PROVIDER', 'fake'), // fake | openai
+            'max_retries' => (int) env('JANNAYAKS_AI_ENHANCEMENT_MAX_RETRIES', 3),
+            'openai' => [
+                // Shares the existing OpenAI secret convention but nothing else.
+                'api_key' => env('OPENAI_API_KEY', ''),
+                'model' => env('JANNAYAKS_AI_IMAGE_MODEL', 'gpt-image-1'),
+                'endpoint' => env('JANNAYAKS_AI_IMAGE_ENDPOINT', 'https://api.openai.com/v1/images/edits'),
+                'timeout_seconds' => (int) env('JANNAYAKS_AI_IMAGE_TIMEOUT', 180),
+                'size' => env('JANNAYAKS_AI_IMAGE_SIZE', '1024x1024'),
+            ],
+            // Master enhancement direction. Identity preservation is absolute.
+            'prompt' => <<<'PROMPT'
+Create a natural, dignified professional portrait suitable for the Jannayaks public profile. Preserve the person's identity, facial structure, approximate real age, natural skin tone, distinctive features and hairstyle. Use soft natural daylight, realistic skin texture and an approachable, confident expression with a subtle natural smile — but if the person's natural expression is serious, preserve that seriousness instead of forcing a smile. Use an eye-level camera position and a slight three-quarter angle where appropriate. Frame as a head-and-shoulders or upper-torso portrait with comfortable space around the head. Use a realistic, softly blurred community, outdoor, workplace or culturally appropriate background that provides context without distracting from the person. Clothing should be simple, respectable, age-appropriate and culturally plausible. The result should look like an excellent real photograph rather than an AI fashion portrait, corporate headshot or political publicity image.
+
+Absolute rule: for real people, enhance the photograph, don't reinvent the person. The output must remain recognisably the same person.
+
+Strictly avoid: changing facial structure or apparent identity; changing approximate age; skin whitening; excessive skin smoothing or removing normal wrinkles; changing body shape; changing hairstyle unnecessarily; inventing a different person; glamour or fashion treatment; corporate executive styling; political publicity styling; dramatic or artificial cinematic lighting; exaggerated smiles or power poses; political symbols; text, logos, badges, borders or tier labels.
+
+Allowed: exposure, lighting, sharpness, noise reduction, colour balance, natural skin rendering, background distraction reduction, composition, minor photographic imperfections, professional finishing.
+PROMPT,
+        ],
     ],
 
     'security' => [

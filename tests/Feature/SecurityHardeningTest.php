@@ -23,11 +23,11 @@ class SecurityHardeningTest extends TestCase
         $routes = app('router')->getRoutes();
 
         $expected = [
-            'applications.store' => 'throttle:10,1',
-            'applications.upload.material' => 'throttle:10,1',
-            'online-interview.save' => 'throttle:60,1',
-            'online-interview.submit' => 'throttle:10,1',
-            'applications.payment.initiate' => 'throttle:10,1',
+            'applications.store' => 'throttle:application-create',
+            'applications.upload.material' => 'throttle:source-upload',
+            'online-interview.save' => 'throttle:interview-save',
+            'online-interview.submit' => 'throttle:interview-submit',
+            'applications.payment.initiate' => 'throttle:payment-initiate',
         ];
 
         foreach ($expected as $name => $middleware) {

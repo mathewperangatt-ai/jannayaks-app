@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\MediaItem;
 use App\Models\Profile;
 use App\Models\User;
+use App\Services\PhotoEnhancementService;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -94,7 +95,7 @@ class ProfileMediaService
         $processed = $this->optimizer->processAndStore($file, $disk, $objectKey);
 
         try {
-            return DB::transaction(function () use ($profile, $actor, $altText, $makePrimary, $limit, $disk, $processed): MediaItem {
+            $item = DB::transaction(function () use ($profile, $actor, $altText, $makePrimary, $limit, $disk, $processed): MediaItem {
                 $existing = MediaItem::query()
                     ->where('mediable_type', $profile->getMorphClass())
                     ->where('mediable_id', $profile->id)
@@ -171,6 +172,17 @@ class ProfileMediaService
             }
             throw $e;
         }
+
+        // Optional AI enhancement — dispatched AFTER the upload transaction
+        // has committed, and itself unable to fail the upload under any
+        // circumstance (disabled/no-candidate/no-error visible to customer).
+        try {
+            app(PhotoEnhancementService::class)->dispatchForSource($item, $actor);
+        } catch (Throwable) {
+            // Enhancement is a convenience, never a dependency.
+        }
+
+        return $item;
     }
 
     /**
