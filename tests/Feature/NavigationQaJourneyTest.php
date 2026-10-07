@@ -184,7 +184,9 @@ class NavigationQaJourneyTest extends TestCase
         $this->actingAs($app->user)
             ->get(route('applications.payment', ['application' => $app->id]))
             ->assertOk()
-            ->assertSee('Payment');
+            // The payment page renders Malayalam by default (lang switcher),
+            // so assert on the application number, which both languages show.
+            ->assertSee('#'.$app->id);
     }
 
     private function createPaymentPendingApplication(User $user): Application
