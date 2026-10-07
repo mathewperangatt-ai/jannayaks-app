@@ -25,8 +25,13 @@ class ApplicationController extends Controller
 {
     private const LIVING_TIERS = ['emerging', 'accomplished', 'distinguished'];
 
+    private const FLOW_LANGUAGE_SESSION_KEY = 'apply.language';
+
+    private const FLOW_LANGUAGES = ['ml', 'en'];
+
     public function create(Request $request): View|JsonResponse
     {
+        $language = $this->flowLanguage($request);
         $tiers = self::LIVING_TIERS;
         $sourceMethods = ['online_interview', 'direct_submission'];
         $tierLabels = \App\Support\TierLabels::forLivingTiers();
@@ -64,7 +69,50 @@ class ApplicationController extends Controller
             'source_methods' => $sourceMethods,
             'tier_labels' => $tierLabels,
             'guest' => ! $auth,
+            'language' => $language,
         ]);
+    }
+
+    /**
+     * Display language for the intake → payment flow: Malayalam by default,
+     * switchable via ?lang=en|ml. The choice is kept in the session because
+     * sign-in and the Razorpay callback return without the query string.
+     */
+    private function flowLanguage(Request $request): string
+    {
+        $requested = $request->query('lang');
+        if (is_string($requested) && in_array($requested, self::FLOW_LANGUAGES, true)) {
+            $request->session()->put(self::FLOW_LANGUAGE_SESSION_KEY, $requested);
+
+            return $requested;
+        }
+
+        $stored = $request->session()->get(self::FLOW_LANGUAGE_SESSION_KEY);
+
+        return is_string($stored) && in_array($stored, self::FLOW_LANGUAGES, true) ? $stored : self::FLOW_LANGUAGES[0];
+    }
+
+    /**
+     * Supplied wording for the intake form's required-field errors.
+     *
+     * @return array<string, string>
+     */
+    private function intakeValidationMessages(Request $request): array
+    {
+        if ($this->flowLanguage($request) !== 'ml') {
+            return [
+                'package_tier.required' => 'Please select a membership tier.',
+                'source_method.required' => 'Please select how you would like to submit your content.',
+            ];
+        }
+
+        return [
+            'package_tier.required' => 'ദയവായി ഒരു അംഗത്വ ശ്രേണി തിരഞ്ഞെടുക്കുക.',
+            'source_method.required' => 'നിങ്ങളുടെ ഉള്ളടക്കം എങ്ങനെ സമർപ്പിക്കണമെന്ന് ദയവായി തിരഞ്ഞെടുക്കുക.',
+            'full_name.required' => 'പൂർണ്ണനാമം നൽകേണ്ടതാണ്.',
+            'contact_email.required_without' => 'ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകിയിട്ടില്ലെങ്കിൽ ഇമെയിൽ നൽകേണ്ടതാണ്.',
+            'contact_mobile.required_without' => 'ഇമെയിൽ നൽകിയിട്ടില്ലെങ്കിൽ ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകേണ്ടതാണ്.',
+        ];
     }
 
     /**
@@ -81,7 +129,7 @@ class ApplicationController extends Controller
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
             'honey_bot' => ['nullable', 'string', 'max:0'],
-        ]);
+        ], $this->intakeValidationMessages($request));
 
         if ($validator->fails()) {
             return $this->validationErrorResponse($request, $validator);
@@ -485,6 +533,7 @@ class ApplicationController extends Controller
             'activePayment' => $activePayment,
             'settledPayment' => $settledPayment,
             'isSettled' => $settledPayment !== null,
+            'language' => $this->flowLanguage($request),
         ]);
     }
 
