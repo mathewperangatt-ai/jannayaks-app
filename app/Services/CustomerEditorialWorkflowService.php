@@ -43,6 +43,27 @@ class CustomerEditorialWorkflowService
             throw new InvalidArgumentException('In Memoriam applications are excluded from the living-profile customer preview workflow.');
         }
 
+        // Published profiles are maintained through the post-publication
+        // maintenance workflow (Pass 2). While a maintenance cycle is open,
+        // a pre-publication preview release must never interfere with it —
+        // publication of the maintenance update is a separate staff action.
+        // (Without an open cycle, releasing a new preview on a published
+        // profile remains the existing replacement-publication path.)
+        $openMaintenance = EditorialRevisionRequest::query()
+            ->where('application_id', $application->id)
+            ->where('request_type', EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE)
+            ->whereIn('status', [
+                EditorialRevisionRequest::STATUS_SUBMITTED,
+                EditorialRevisionRequest::STATUS_IN_PROGRESS,
+                EditorialRevisionRequest::STATUS_CUSTOMER_PREVIEW,
+                EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED,
+            ])
+            ->exists();
+
+        if ($openMaintenance) {
+            throw new InvalidArgumentException('An open profile-maintenance request exists. Complete it through the maintenance workflow first.');
+        }
+
         if (! $application->isPaymentSettled() && $application->source_method !== 'admin_test_demo') {
             throw new InvalidArgumentException('Payment must be settled before customer preview.');
         }

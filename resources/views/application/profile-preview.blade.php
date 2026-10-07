@@ -49,7 +49,46 @@
         <a class="btn" href="{{ route('applications.show', $application) }}">← Back to application</a>
     </div>
 
-    @if($canApprove)
+    @php($maintenanceActive = isset($maintenanceRequest) && $maintenanceRequest !== null && $maintenanceRequest->request_type === \App\Models\EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE)
+
+    @if($maintenanceActive && isset($canApproveMaintenance) && $canApproveMaintenance)
+        <div class="divider"></div>
+        <h3 style="font-size:15px;margin:0">Your updated profile is ready for approval</h3>
+        <p class="sub" style="margin:0">The editorial team has prepared your updated profile. Review it above, then approve it, or request minor corrections. It becomes public only after Jannayaks publishes it.</p>
+
+        <form method="POST" action="{{ route('applications.maintenance.approve', $application) }}" class="stack" onsubmit="return confirm('Approve this updated profile? Jannayaks will then complete the publication.');">
+            @csrf
+            <input type="hidden" name="english_editorial_content_id" value="{{ $english->id }}">
+            @error('maintenance_approval')
+                <div class="missbox" role="alert" style="margin:0">{{ $message }}</div>
+            @enderror
+            <label class="field" style="display:flex;gap:10px;align-items:flex-start">
+                <input type="checkbox" name="confirm_approval" value="1" required style="margin-top:4px">
+                <span>I have reviewed this updated profile and I approve it.</span>
+            </label>
+            <button class="btn primary" type="submit">Approve Profile</button>
+        </form>
+
+        <form method="POST" action="{{ route('applications.maintenance.correction', $application) }}" class="stack">
+            @csrf
+            <h3 style="font-size:15px;margin:12px 0 0">Request minor corrections</h3>
+            <label class="field">
+                <span>Your corrections (the editorial team reviews and applies appropriate changes)</span>
+                <textarea name="correction_text" rows="4" maxlength="5000" required placeholder='Example: "Please change Director to Chairman." or "Please change 2024 to 2025."'>{{ old('correction_text') }}</textarea>
+            </label>
+            @error('correction_text')
+                <div class="missbox" role="alert" style="margin:0">{{ $message }}</div>
+            @enderror
+            <button class="btn" type="submit">Request Minor Corrections</button>
+            <p class="sub" style="margin:0">Corrections are part of this same maintenance update — they do not use another complimentary update or create a new charge.</p>
+        </form>
+    @elseif($maintenanceActive && isset($maintenanceCorrectionPending) && $maintenanceCorrectionPending)
+        <div class="warnbox" role="status">Your correction request is with the editorial team. The corrected profile will return here for your approval.</div>
+    @elseif($maintenanceActive && isset($maintenanceApproved) && $maintenanceApproved)
+        <div class="warnbox" role="status" style="border-color:#d4e8da;background:#eef7f1;color:var(--ok)">
+            <b>Customer approved — ready for final Jannayaks publication.</b> Your updated profile was approved{{ $application->customer_approved_at ? ' on '.$application->customer_approved_at->format('d M Y') : '' }}. Jannayaks staff completes the publication.
+        </div>
+    @elseif($canApprove)
         <div class="divider"></div>
         <h3 style="font-size:15px;margin:0">Approve for publication</h3>
         <p class="sub" style="margin:0">By approving, you consent to this editorially prepared profile being published on Jannayaks. Approval does not publish it by itself — Jannayaks staff completes publication.</p>

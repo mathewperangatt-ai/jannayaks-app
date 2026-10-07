@@ -355,6 +355,10 @@
     @endif
 
     <p style="margin-top:56px"><a href="{{ $listingUrl }}" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a></p>
+
+    @if(filled($referenceCode ?? null))
+        <p style="margin:14px 0 0;font:500 10px var(--jk-ui);letter-spacing:.18em;text-transform:uppercase;color:#82907f">Profile reference · {{ $referenceCode }}</p>
+    @endif
 </div>
 </div>
 

@@ -6,6 +6,7 @@ use App\Http\Controllers\Auth\LoginController;
 use App\Http\Controllers\Auth\MobileOtpController;
 use App\Http\Controllers\CustomerProfilePreviewController;
 use App\Http\Controllers\DemoProfilesController;
+use App\Http\Controllers\ProfileMaintenanceController;
 use App\Http\Controllers\FaqChargesController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InMemoriamLandingController;
@@ -136,6 +137,19 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::post('/applications/{application}/preview/approve', [CustomerProfilePreviewController::class, 'approve'])
         ->middleware('throttle:10,1')
         ->name('applications.preview.approve');
+
+    // Post-publication profile maintenance (published profiles only).
+    Route::get('/applications/{application}/maintenance', [ProfileMaintenanceController::class, 'show'])
+        ->name('applications.maintenance.show');
+    Route::post('/applications/{application}/maintenance', [ProfileMaintenanceController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('applications.maintenance.store');
+    Route::post('/applications/{application}/maintenance/approve', [ProfileMaintenanceController::class, 'approve'])
+        ->middleware('throttle:10,1')
+        ->name('applications.maintenance.approve');
+    Route::post('/applications/{application}/maintenance/correction', [ProfileMaintenanceController::class, 'correction'])
+        ->middleware('throttle:10,1')
+        ->name('applications.maintenance.correction');
 
     Route::get('/applications/{application}/profile-url', [ProfileUrlController::class, 'show'])
         ->name('applications.profile-url');

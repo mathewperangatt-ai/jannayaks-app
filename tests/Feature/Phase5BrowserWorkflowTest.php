@@ -86,7 +86,7 @@ class Phase5BrowserWorkflowTest extends TestCase
 
         $ok = $this->actingAs($u1)->get(route('applications.show', $app));
         $ok->assertOk();
-        $ok->assertSee('APPLICATION DASHBOARD', false);
+        $ok->assertSee('Profile status', false);
         $ok->assertSee(e($app->full_name), false);
         $ok->assertSee(route('online-interview.show', $app), false);
 
