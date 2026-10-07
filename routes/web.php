@@ -3,7 +3,9 @@
 use App\Http\Controllers\ApplicationController;
 use App\Http\Controllers\Auth\GoogleController;
 use App\Http\Controllers\Auth\LoginController;
-use App\Http\Controllers\Auth\MobileOtpController;
+use App\Http\Controllers\Auth\NewPasswordController;
+use App\Http\Controllers\Auth\PasswordResetLinkController;
+use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\CustomerProfilePreviewController;
 use App\Http\Controllers\DemoProfilesController;
 use App\Http\Controllers\ProfileMaintenanceController;
@@ -81,15 +83,23 @@ Route::get('/p/{profile}/photo/{media}', [PublicProfileMediaController::class, '
     ->name('profiles.public.photo');
 
 Route::middleware('guest')->group(function () {
+    // Username + password customer authentication (primary).
     Route::get('/login', [LoginController::class, 'show'])->name('login');
+    Route::post('/login', [LoginController::class, 'authenticate'])->middleware('throttle:5,1')->name('login.attempt');
+
+    // Registration.
+    Route::get('/register', [RegisteredUserController::class, 'create'])->name('register');
+    Route::post('/register', [RegisteredUserController::class, 'store'])->middleware('throttle:10,1')->name('register.store');
+
+    // Email-based password reset.
+    Route::get('/forgot-password', [PasswordResetLinkController::class, 'create'])->name('password.request');
+    Route::post('/forgot-password', [PasswordResetLinkController::class, 'store'])->middleware('throttle:5,1')->name('password.email');
+    Route::get('/reset-password/{token}', [NewPasswordController::class, 'create'])->name('password.reset');
+    Route::post('/reset-password', [NewPasswordController::class, 'store'])->middleware('throttle:5,1')->name('password.update');
+
+    // Google OAuth — optional convenience login, never required.
     Route::get('/auth/google', [GoogleController::class, 'redirect'])->name('auth.google');
     Route::get('/auth/google/callback', [GoogleController::class, 'callback'])->name('auth.google.callback');
-
-    // Indian mobile OTP via the MSG91 widget: GET renders the widget page;
-    // POST /auth/otp/verify receives the widget's access token and performs
-    // the server-side MSG91 verification before any authentication.
-    Route::get('/auth/otp', [MobileOtpController::class, 'showWidget'])->name('auth.otp.request.show');
-    Route::post('/auth/otp/verify', [MobileOtpController::class, 'verify'])->middleware('throttle:10,1')->name('auth.otp.verify');
 });
 
 Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');

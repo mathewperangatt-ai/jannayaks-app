@@ -94,6 +94,13 @@ class OnlineInterviewController extends Controller
             return $this->forbid($request, 'This application is not an Online Interview intake.');
         }
 
+        // A4 — autosaves use their OWN budget. Sharing the submit limiter key
+        // let an autosave consume the submit duplicate-suppression window.
+        $rateKey = 'ol-save:user:'.(int) Auth::id();
+        if (! RateLimiter::attempt($rateKey, 30, fn () => true, 60)) {
+            return $this->validationFail($request, ['save' => ['Too many autosaves. Please wait a moment.']]);
+        }
+
         $answers = $request->input('answers', []);
         $singletonQid = $request->input('question_id');
         $singletonVal = $request->input('answer');
@@ -163,19 +170,26 @@ class OnlineInterviewController extends Controller
             return $this->forbid($request, 'This application is not an Online Interview intake.');
         }
 
-        $rateKey = 'ol-submit:user:'.(int) Auth::id();
-        if (! RateLimiter::attempt($rateKey, 1, fn () => true, (int) config('online_interview.submission.prevent_duplicate_within_seconds', 30))) {
-            if ($request->expectsJson()) {
-                return response()->json([
-                    'ok' => false,
-                    'error' => 'Please wait before submitting again.',
-                    'retry_in_seconds' => (int) config('online_interview.submission.prevent_duplicate_within_seconds', 30),
-                ], 429);
+        // A4 — persist any answers the browser submitted along with the
+        // submit request (autosave may not have flushed the latest
+        // keystrokes), using the same sanitization as save().
+        $submittedAnswers = [];
+        $rawAnswers = $request->input('answers', []);
+        if (is_array($rawAnswers)) {
+            foreach ($rawAnswers as $qid => $value) {
+                $qid = (string) $qid;
+                if (! preg_match('/^[A-Za-z0-9_.-]+$/', $qid)) {
+                    continue;
+                }
+                $submittedAnswers[$qid] = is_scalar($value) ? (string) $value : '';
             }
-
-            return back()->withErrors(['submit' => 'Please wait before submitting again.']);
+            if ($submittedAnswers !== []) {
+                $this->interview->saveAnswers($application, $submittedAnswers);
+            }
         }
 
+        // Validation BEFORE rate limiting: a failed validation must not
+        // consume the submit budget, so a corrected resubmission is possible.
         $answers = $this->interview->loadAnswersMap($application);
         $progress = OnlineInterviewCatalog::progress($application->package_tier, $answers);
         if ($progress['missing_required'] !== []) {
@@ -193,6 +207,19 @@ class OnlineInterviewController extends Controller
                 ->withErrors([
                     'submit' => 'Please complete all required questions before submitting. Missing: '.count($progress['missing_required']).'.',
                 ]);
+        }
+
+        $rateKey = 'ol-submit:user:'.(int) Auth::id();
+        if (! RateLimiter::attempt($rateKey, 1, fn () => true, (int) config('online_interview.submission.prevent_duplicate_within_seconds', 30))) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'Please wait before submitting again.',
+                    'retry_in_seconds' => (int) config('online_interview.submission.prevent_duplicate_within_seconds', 30),
+                ], 429);
+            }
+
+            return back()->withErrors(['submit' => 'Please wait before submitting again.']);
         }
 
         app(ApplicationWorkflowService::class)->markInterviewSubmitted($application, $request->user());

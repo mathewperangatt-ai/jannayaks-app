@@ -24,6 +24,11 @@
         <div class="grid tiers" role="radiogroup" aria-label="Package tier selection">
             @php
                 $packages = config('jannayaks.tier_pricing.packages', []);
+                $tierNamesMl = [
+                    'emerging' => 'ജനകീയർ',
+                    'accomplished' => 'ജനസമ്മതർ',
+                    'distinguished' => 'പ്രമുഖർ',
+                ];
                 $tiers = ['emerging' => [
                     'title' => \App\Support\TierLabels::label('emerging'),
                     'sections' => ['Full Online Interview — all questions', 'Concise but complete editorial portrait (EN + ML)', '1 photo slot', 'Human editorial review before publication'],
@@ -44,6 +49,7 @@
                     <input type="radio" name="package_tier" value="{{ $tier }}" @if(old('package_tier')===$tier) checked @endif required>
                     <h3>
                         <span>{{ $meta['title'] }}</span>
+                        <span class="tier-name-ml" style="display:block;font-size:12px;font-weight:500;color:var(--ink-soft)">{{ $tierNamesMl[$tier] }}</span>
                     </h3>
                     <div class="price">₹{{ $amt }}<span style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-left:6px">+ GST / year</span></div>
                     <ul>

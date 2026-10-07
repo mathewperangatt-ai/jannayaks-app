@@ -33,7 +33,10 @@ class Phase7AuthJourneyTest extends TestCase
         $this->get(route('login'))
             ->assertOk()
             ->assertSee('Continue with Google', false)
-            ->assertSee('Indian mobile OTP', false);
+            ->assertSee('Username', false)
+            ->assertSee('Forgot password', false)
+            ->assertSee('Create an account', false)
+            ->assertDontSee('Indian mobile OTP', false);
     }
 
     public function test_google_callback_creates_verified_member_and_logs_in(): void
@@ -131,91 +134,11 @@ class Phase7AuthJourneyTest extends TestCase
             ->assertRedirect(route('apply'));
     }
 
-    public function test_india_otp_login_rejects_non_india_numbers(): void
-    {
-        // MSG91 verified response carries a non-Indian number -> fail closed.
-        Http::fake(['control.msg91.com/api/v5/widget/verifyAccessToken' => Http::response([
-            'type' => 'success',
-            'mobile' => '+1 4155552671',
-        ])]);
-
-        $this->post(route('auth.otp.verify'), ['access_token' => 'jwt'])
-            ->assertSessionHasErrors('otp');
-        $this->assertGuest();
-    }
-
-    public function test_india_otp_request_and_verify_logs_in_member(): void
-    {
-        Http::fake(['control.msg91.com/api/v5/widget/verifyAccessToken' => Http::response([
-            'type' => 'success',
-            'mobile' => IndiaMobile::normalize('9876543210'),
-        ])]);
-
-        $this->get(route('auth.otp.request.show'))->assertOk();
-        $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt'])
-            ->assertRedirect(route('apply'));
-
-        $this->assertAuthenticated();
-        $user = User::query()->where('mobile', IndiaMobile::normalize('9876543210'))->first();
-        $this->assertNotNull($user);
-        $this->assertNotNull($user->mobile_verified_at);
-    }
-
-    public function test_otp_login_regenerates_session(): void
-    {
-        $this->startSession();
-        $before = session()->getId();
-
-        Http::fake(['control.msg91.com/api/v5/widget/verifyAccessToken' => Http::response([
-            'type' => 'success',
-            'mobile' => '919876500001',
-        ])]);
-
-        $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt'])
-            ->assertRedirect(route('apply'));
-
-        $this->assertAuthenticated();
-        $this->assertNotSame($before, session()->getId());
-    }
-
-    public function test_otp_cannot_be_reused(): void
-    {
-        // Token replay is rejected by MSG91 server-side; our side fails closed.
-        Http::fake([
-            'control.msg91.com/api/v5/widget/verifyAccessToken' => Http::sequence()
-                ->push(['type' => 'success', 'mobile' => '919876500002'])
-                ->push(['type' => 'error', 'message' => 'Token already consumed'], 401),
-        ]);
-
-        $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt'])
-            ->assertRedirect(route('apply'));
-
-        Auth::logout();
-        $this->flushSession();
-
-        $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt'])
-            ->assertSessionHasErrors('otp');
-
-        $this->assertGuest();
-    }
-
-    public function test_otp_verification_has_per_ip_rate_limiting(): void
-    {
-        // Failing verifications still exercise the route; the 10/min throttle
-        // must bound repeated attempts.
-        Http::fake(['control.msg91.com/api/v5/widget/verifyAccessToken' => Http::response([
-            'type' => 'error',
-            'message' => 'Invalid token',
-        ], 401)]);
-
-        $response = null;
-        for ($i = 0; $i < 11; $i++) {
-            $response = $this->post(route('auth.otp.verify'), ['access_token' => 'widget-jwt']);
-        }
-
-        $this->assertSame(429, $response->getStatusCode());
-        $this->assertGuest();
-    }
+    // OTP authentication was removed: username+password (primary), Google
+    // (convenience), and email-based password reset are the sign-in paths.
+    // The former OTP regression coverage (suspension, session regeneration,
+    // replay rejection, throttling) is preserved in SecurityS1AuthorizationTest
+    // and the auth/session tests that supersede it.
 
     public function test_member_cannot_access_filament_admin_panel(): void
     {

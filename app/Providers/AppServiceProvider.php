@@ -4,6 +4,7 @@ namespace App\Providers;
 
 use App\Contracts\EditorialAiClient;
 use App\Contracts\PhotoEnhancementClient;
+use App\Models\Application;
 use App\Services\Ai\FakeEditorialAiClient;
 use App\Services\Ai\FakePhotoEnhancementClient;
 use App\Services\Ai\OpenAiEditorialClient;
@@ -45,6 +46,25 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // A1 — authed users hitting guest-only pages (e.g. /login) go to
+        // their existing application dashboard, never a bare home page.
+        \Illuminate\Auth\Middleware\RedirectIfAuthenticated::redirectUsing(function ($request) {
+            $user = $request->user();
+
+            if ($user) {
+                $application = Application::query()
+                    ->where('user_id', $user->id)
+                    ->orderByDesc('id')
+                    ->first();
+
+                if ($application !== null) {
+                    return route('applications.show', $application);
+                }
+            }
+
+            return route('apply');
+        });
+
         // Named, per-user limiters for authenticated write endpoints. Plain
         // `throttle:N,M` shares one counter per IP across ALL routes — the
         // autosave budget would silently exhaust the submit/payment budgets

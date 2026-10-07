@@ -103,11 +103,10 @@ class PostPublicationUpdateService
                     throw new InvalidArgumentException('Post-publication updates are only available for published profiles.');
                 }
 
-                $openExists = EditorialRevisionRequest::query()
-                    ->where('application_id', $locked->id)
-                    ->where('request_type', EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE)
-                    ->whereIn('status', [EditorialRevisionRequest::STATUS_SUBMITTED, EditorialRevisionRequest::STATUS_IN_PROGRESS])
-                    ->exists();
+                // A6 — use the SAME open-status set as openRequestFor so a
+                // request in customer_preview/customer_approved also blocks a
+                // second submission (which would orphan the first).
+                $openExists = $this->openRequestFor($locked) !== null;
                 if ($openExists) {
                     throw new InvalidArgumentException('You already have an open update request. Please wait for the editorial team to respond.');
                 }
@@ -404,6 +403,18 @@ class PostPublicationUpdateService
                 $malayalam = $locked->preview_malayalam_editorial_content_id !== null
                     ? EditorialContent::query()->find($locked->preview_malayalam_editorial_content_id)
                     : null;
+
+                // A5 — one active approval per application: invalidate any
+                // earlier active approval record before recording this one,
+                // exactly as the pre-publication approval flow does.
+                \App\Models\EditorialCustomerApproval::query()
+                    ->where('application_id', $locked->id)
+                    ->whereNull('invalidated_at')
+                    ->update([
+                        'invalidated_at' => now(),
+                        'invalidation_reason' => 'Superseded by a newer maintenance-update approval.',
+                        'updated_at' => now(),
+                    ]);
 
                 \App\Models\EditorialCustomerApproval::query()->create([
                     'application_id' => $locked->id,

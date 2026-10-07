@@ -246,6 +246,47 @@ class PostPublicationMaintenanceProcessingTest extends TestCase
         $this->assertSame(Application::STATUS_PUBLISHED, $this->application->fresh()->status);
     }
 
+    /** A5 — approving a maintenance update with an EARLIER active approval
+     * present must invalidate the old approval record, never stack two. */
+    public function test_customer_approval_invalidates_any_earlier_active_approval(): void
+    {
+        $this->prepareAiDraft();
+        $this->editorApprovesDraft("He served as Chairman of ABC Foundation from 2019 to 2026.\n\nHe was known for civic dialogue.");
+        $this->maintenance->releaseMaintenancePreview($this->application, $this->admin);
+
+        // Seed a stale ACTIVE approval from an earlier cycle (the scenario
+        // that previously caused the double-active-approval defect).
+        \App\Models\EditorialCustomerApproval::query()->create([
+            'application_id' => $this->application->id,
+            'profile_id' => $this->application->profile_id,
+            'approved_by_user_id' => $this->member->id,
+            'english_editorial_content_id' => $this->application->published_english_editorial_content_id,
+            'approved_at' => now()->subDays(30),
+        ]);
+
+        $preparedId = (int) $this->application->fresh()->preview_english_editorial_content_id;
+        $this->maintenance->approveMaintenancePreview($this->application, $this->member, $preparedId);
+
+        $active = \App\Models\EditorialCustomerApproval::query()
+            ->where('application_id', $this->application->id)
+            ->whereNull('invalidated_at')
+            ->get();
+
+        // Exactly one active approval remains, and it points at the newly
+        // approved maintenance version.
+        $this->assertSame(1, $active->count());
+        $this->assertSame($preparedId, (int) $active[0]->english_editorial_content_id);
+
+        // All earlier records are invalidated, not deleted (history intact).
+        $this->assertTrue(
+            \App\Models\EditorialCustomerApproval::query()
+                ->where('application_id', $this->application->id)
+                ->whereNotNull('invalidated_at')
+                ->where('english_editorial_content_id', (int) $this->application->published_english_editorial_content_id)
+                ->exists()
+        );
+    }
+
     public function test_customer_minor_correction_stays_in_the_same_maintenance_cycle(): void
     {
         $this->prepareAiDraft();

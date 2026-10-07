@@ -262,7 +262,7 @@
                     <p class="jk-privacy">Your name and broad location may be visible to the profile owner. Your phone number and email are never shared because of a reaction.</p>
                 @else
                     <a class="jk-react-login" href="{{ route('login', ['return' => url()->current()]) }}">Sign in to Like or Applaud →</a>
-                    <p class="jk-privacy">A lightweight sign-in (Google or mobile OTP) is required, so profile owners see genuine well-wishers only.</p>
+                    <p class="jk-privacy">A lightweight sign-in (Jannayaks account or Google) is required, so profile owners see genuine well-wishers only.</p>
                 @endif
             </div>
         </aside>

@@ -270,30 +270,6 @@ PROMPT,
         ],
     ],
 
-    'otp' => [
-        // Kill switch: set JANNAYAKS_OTP_LOGIN_ENABLED=false to hide and disable
-        // the OTP entry point entirely (preserved from the pre-MSG91 era).
-        'login_enabled' => env('JANNAYAKS_OTP_LOGIN_ENABLED', true),
-
-        /*
-        | MSG91 OTP Widget (Jannayaks-specific integration).
-        | - auth_key: SERVER-ONLY secret (Railway env MSG91_AUTHKEY). Never
-        |   exposed to the browser, tests, logs, or source.
-        | - widget_id / widget_token: NON-secret client-side widget values from
-        |   the MSG91 dashboard (SecureOTPWidgetYLBE). Safe to render in HTML.
-        | - The widget sends/verifies the OTP client-side and returns a JWT
-        |   access token; this server verifies that token with MSG91
-        |   (verifyAccessToken) and trusts ONLY the mobile number in MSG91's
-        |   verified response. Fail-closed on every anomaly.
-        */
-        'msg91' => [
-            'auth_key' => env('MSG91_AUTHKEY', ''),
-            'widget_id' => env('MSG91_WIDGET_ID', ''),
-            'widget_token' => env('MSG91_WIDGET_TOKEN', ''),
-            'verify_url' => env('MSG91_VERIFY_URL', 'https://control.msg91.com/api/v5/widget/verifyAccessToken'),
-            'timeout_seconds' => (int) env('MSG91_TIMEOUT_SECONDS', 15),
-        ],
-    ],
 
     /*
     | Profile media (Phase 14). Public photographs vs private source materials stay separate.

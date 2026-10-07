@@ -94,7 +94,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 
   <div class="card gold">
     <div class="tier-name">Distinguished</div>
-    <span class="tier-name-ml">പ്രശസ്തർ</span>
+    <span class="tier-name-ml">പ്രമുഖർ</span>
     <div class="price">{{ $distinguished['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
     <div class="price-sub">
       + GST (added at payment) · renews annually at the same tier price ·

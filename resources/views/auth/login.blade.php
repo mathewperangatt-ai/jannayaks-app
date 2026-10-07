@@ -10,23 +10,28 @@
         .card{background:#fff;border:1px solid #e7e5df;border-radius:14px;padding:24px}
         h1{font-size:22px;margin:0 0 8px}
         .sub{color:#4b4b48;font-size:14px;margin-bottom:18px}
-        .btn{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:12px 16px;border-radius:10px;border:1px solid #e7e5df;background:#fff;font-weight:600;text-decoration:none;color:#1B1B18;margin-top:10px;box-sizing:border-box}
+        label{display:block;font-size:13px;font-weight:600;margin:12px 0 4px}
+        input[type=text],input[type=password],input[type=email]{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #e7e5df;border-radius:10px;font-size:14px}
+        .btn{display:flex;width:100%;align-items:center;justify-content:center;gap:8px;min-height:44px;padding:12px 16px;border-radius:10px;border:1px solid #e7e5df;background:#fff;font-weight:600;text-decoration:none;color:#1B1B18;margin-top:10px;box-sizing:border-box;cursor:pointer;font-size:14px}
         .btn.primary{background:linear-gradient(180deg,#C4202A,#8A1A1A);border-color:transparent;color:#fff}
-        .errors{background:#fbe9e9;border-left:4px solid #7a1414;padding:10px 12px;margin-bottom:14px;font-size:14px}
         .divider{text-align:center;color:#4b4b48;font-size:13px;margin:16px 0}
+        .errors{background:#fbe9e9;border-left:4px solid #7a1414;padding:10px 12px;margin-bottom:14px;font-size:14px}
+        .status{background:#eef7f1;border-left:4px solid #3a7d44;padding:10px 12px;margin-bottom:14px;font-size:14px}
+        .forgot{font-size:13px;margin-top:10px;text-align:right}
+        .forgot a{color:#1B1B18}
+        .register{font-size:14px;text-align:center;margin-top:16px}
+        .register a{font-weight:600;color:#1B1B18}
     </style>
 </head>
 <body>
 <div class="wrap">
     <div class="card">
         <h1>Sign in to Jannayaks</h1>
-        <p class="sub">
-            @if (config('jannayaks.otp.login_enabled', true))
-                Google is the primary sign-in. Indian members may use mobile OTP as a fallback.
-            @else
-                Google is the sign-in method for Jannayaks.
-            @endif
-        </p>
+        <p class="sub">Use your Jannayaks username and password.</p>
+
+        @if (session('status'))
+            <div class="status">{{ session('status') }}</div>
+        @endif
 
         @if ($errors->any())
             <div class="errors">
@@ -36,11 +41,23 @@
             </div>
         @endif
 
-        <a class="btn primary" href="{{ route('auth.google') }}">Continue with Google</a>
-        @if (config('jannayaks.otp.login_enabled', true))
-            <div class="divider">or</div>
-            <a class="btn" href="{{ route('auth.otp.request.show') }}">Sign in with Indian mobile OTP</a>
-        @endif
+        <form method="POST" action="{{ route('login') }}">
+            @csrf
+            <label for="username">Username</label>
+            <input id="username" type="text" name="username" value="{{ old('username') }}" required autofocus autocomplete="username">
+            <label for="password">Password</label>
+            <input id="password" type="password" name="password" required autocomplete="current-password">
+            <div class="forgot"><a href="{{ route('password.request') }}">Forgot password?</a></div>
+            <button type="submit" class="btn primary">Login</button>
+            <label style="display:flex;gap:8px;align-items:center;font-weight:400;margin-top:10px">
+                <input type="checkbox" name="remember" value="1" style="min-height:0;width:auto"> Remember me
+            </label>
+        </form>
+
+        <div class="divider">or</div>
+        <a class="btn" href="{{ route('auth.google') }}">Continue with Google</a>
+
+        <div class="register">New to Jannayaks? <a href="{{ route('register') }}">Create an account</a></div>
     </div>
 </div>
 </body>

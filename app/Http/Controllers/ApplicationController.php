@@ -154,6 +154,32 @@ class ApplicationController extends Controller
             return $this->unauthorizedResponse($request, 'You must log in before creating an application.');
         }
 
+        // A2 — one active application workflow per customer. A second
+        // application would dead-end at payment (the first holds the
+        // one-to-one profile link).
+        $existingApplication = Application::query()
+            ->where('user_id', Auth::id())
+            ->whereIn('status', [
+                Application::STATUS_PAYMENT_PENDING,
+                Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW,
+                Application::STATUS_INTAKE_IN_PROGRESS,
+                Application::STATUS_INTERVIEW_IN_PROGRESS,
+                Application::STATUS_INTERVIEW_SUBMITTED,
+                Application::STATUS_DIRECT_SUBMITTED,
+                Application::STATUS_AWAITING_EDITORIAL_REVIEW,
+                Application::STATUS_IN_EDITORIAL_REVIEW,
+                Application::STATUS_EDITORIAL_APPROVED,
+                Application::STATUS_EDITORIAL_REVISION_REQUESTED,
+                Application::STATUS_AWAITING_PUBLICATION,
+                Application::STATUS_PUBLISHED,
+            ])
+            ->orderByDesc('id')
+            ->first();
+
+        if ($existingApplication !== null) {
+            return $this->redirectHomeWithExisting($request, $existingApplication);
+        }
+
         $validator = Validator::make($request->all(), [
             'package_tier' => ['required', 'string', 'in:emerging,accomplished,distinguished'],
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
@@ -560,9 +586,27 @@ class ApplicationController extends Controller
         if ($request->expectsJson()) {
             return response()->json(['ok' => false, 'error' => $message], 401);
         }
-        $loginRoute = app('router')->has('filament.admin.auth.login') ? 'filament.admin.auth.login' : 'home';
 
-        return redirect()->route($loginRoute)->withErrors(['auth' => $message]);
+        return redirect()->route('login')->withErrors(['auth' => $message]);
+    }
+
+    /**
+     * A2 — an existing active application wins: the customer is returned to
+     * it instead of being allowed to create a dead-end second application.
+     */
+    private function redirectHomeWithExisting(Request $request, Application $application): JsonResponse|RedirectResponse
+    {
+        $message = 'You already have an active Jannayaks application. Continuing with it.';
+
+        if ($request->expectsJson()) {
+            return response()->json([
+                'ok' => false,
+                'error' => $message,
+                'application_id' => $application->id,
+            ], 409);
+        }
+
+        return redirect()->route('applications.show', $application)->with('info', $message);
     }
 
     private function forbiddenResponse(Request $request, string $message): JsonResponse|RedirectResponse

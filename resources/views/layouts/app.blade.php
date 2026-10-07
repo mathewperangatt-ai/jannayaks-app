@@ -133,8 +133,8 @@
                 </form>
             @endauth
             @guest
-                <a class="topbar-link" href="{{ route('filament.admin.auth.login') }}">Log in</a>
-                <a class="topbar-link" href="{{ route('filament.admin.auth.login') }}">Register</a>
+                <a class="topbar-link" href="{{ route('login') }}">Log in</a>
+                <a class="topbar-link" href="{{ route('register') }}">Register</a>
             @endguest
         </div>
     </div>
