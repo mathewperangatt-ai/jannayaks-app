@@ -178,13 +178,15 @@
             <div style="margin-top:4px;font-size:13px;color:#7a5100">{{ $ml ? 'താഴെയുള്ള ലിങ്ക് ഉപയോഗിച്ച് ഇടപാട് പൂർത്തിയാക്കുക. നിങ്ങൾ ഇതിനകം പണമടച്ചിട്ടുണ്ടെങ്കിൽ, സ്ഥിരീകരണം പുരോഗമിക്കുകയാണ്.' : 'Complete the transaction using the link below. If you already paid, verification is in progress.' }}</div>
         </div>
         <div class="actions">
-            <a class="btn primary block" target="_blank" rel="noopener" href="{{ $activePayment->razorpay_link_url }}">
+            {{-- Razorpay launch: live payment temporarily unavailable. --}}
+            <button class="btn primary block" type="button" disabled aria-disabled="true">
                 {{ $ml ? 'പേയ്‌മെൻ്റ് തുടരുക' : 'Continue Payment' }}
-            </a>
+            </button>
             <form id="pay-initiate-form" method="POST" action="{{ route('applications.payment.initiate', ['application' => $application->id]) }}" style="flex:1 1 260px;margin:0">
                 @csrf
-                <button class="btn block" type="submit">{{ $ml ? 'വീണ്ടും ശ്രമിക്കുക / പുതിയ ലിങ്ക്' : 'Retry / New Link' }}</button>
+                <button class="btn block" type="submit" disabled aria-disabled="true">{{ $ml ? 'വീണ്ടും ശ്രമിക്കുക / പുതിയ ലിങ്ക്' : 'Retry / New Link' }}</button>
             </form>
+            <div class="sub" style="flex:1 1 100%">{{ $ml ? 'ഓൺലൈൻ പേയ്‌മെൻ്റ് ഉടൻ ലഭ്യമാകും.' : 'Online payment will be available shortly.' }}</div>
         </div>
     @else
         @if ($activePayment && !$activePayment->razorpay_link_url)
@@ -195,9 +197,10 @@
             <div class="sub">{{ $ml ? 'എഡിറ്റോറിയൽ അവലോകനത്തിന് പോകാൻ പേയ്‌മെൻ്റ് പൂർത്തിയാക്കുക.' : 'Complete payment to proceed to editorial review.' }}</div>
         @endif
         <div class="actions" style="margin-top:16px">
+            {{-- Razorpay launch: live payment temporarily unavailable. --}}
             <form id="pay-initiate-form" method="POST" action="{{ route('applications.payment.initiate', ['application' => $application->id]) }}" style="flex:1 1 100%;margin:0">
                 @csrf
-                <button class="btn primary block" type="submit">
+                <button class="btn primary block" type="submit" disabled aria-disabled="true">
                     @if ($activePayment)
                         {{ $ml ? 'പേയ്‌മെൻ്റ് വീണ്ടും ആരംഭിക്കുക' : 'Retry Payment' }}
                     @else
@@ -205,6 +208,7 @@
                     @endif
                 </button>
             </form>
+            <div class="sub" style="flex:1 1 100%">{{ $ml ? 'ഓൺലൈൻ പേയ്‌മെൻ്റ് ഉടൻ ലഭ്യമാകും.' : 'Online payment will be available shortly.' }}</div>
         </div>
     @endif
 </div>

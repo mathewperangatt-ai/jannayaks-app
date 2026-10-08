@@ -44,20 +44,25 @@ The policy was derived from what the templates actually load:
   X-Frame-Options), `form-action 'self'` (payments redirect to hosted Razorpay
   links; no cross-origin form posts exist).
 
-### Why not enforced (yet)
+### Enforcement (S2, current state)
 
-An enforced policy today would break real functionality unless one of these is
-done first:
+The policy is now ENFORCED by default (`Content-Security-Policy` header).
+Findings that made enforcement safe without a nonce refactor:
 
-1. Move the five inline `<script>` blocks to hashed/nonced external files
-   (preferred), and/or add per-request nonces to every inline script/style —
-   including those injected by Filament/Livewire in `/admin`.
-2. Decide the product future of the Google Translate widget (replacement or
-   removal is a UI decision, deliberately out of scope).
-3. Collect production reports: point `report-to`/`report-uri` at a collector or
-   watch browser consoles during a staging pass, and only then set
-   `JANNAYAKS_CSP_ENFORCE=true`.
+- Public/member pages use no Livewire and no Alpine; every inline `<script>` /
+  `<style>` block is allowed by `'unsafe-inline'`, and all external resources
+  (Google Fonts stylesheet + font files, homepage Google Translate widget) are
+  in the allowlist derived from actual template usage.
+- The Filament admin panel (Livewire + Alpine) needs one additional directive:
+  Alpine evaluates expressions through the `Function` constructor, which an
+  enforced CSP blocks unless `script-src` gains `'unsafe-eval'`. The admin
+  policy (`security.headers.csp_admin`) is identical to the member policy
+  except for that token; `SetSecurityHeaders` selects it by request path
+  (`admin`, `admin/*`).
+- MSG91/OTP hosts (`verify.msg91.com`) were removed from every directive when
+  OTP authentication was retired; the widget is no longer loaded anywhere.
 
-Until enforcement flips, the header name is
-`Content-Security-Policy-Report-Only`, so browsers log violations without
-blocking anything.
+`JANNAYAKS_CSP_ENFORCE=false` still switches the header back to
+`Content-Security-Policy-Report-Only` (debugging escape hatch, not the
+production default). If a real violation surfaces (e.g. a future embed), fix
+the policy — do not silently widen `default-src`.

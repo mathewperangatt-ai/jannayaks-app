@@ -7,10 +7,15 @@ use PHPUnit\Framework\TestCase;
 
 class TrustedProxiesConfigTest extends TestCase
 {
-    public function test_empty_value_falls_back_to_trust_all(): void
+    public function test_empty_value_falls_back_to_tight_default(): void
     {
-        $this->assertSame('*', TrustedProxiesConfig::parse(''));
-        $this->assertSame('*', TrustedProxiesConfig::parse('   '));
+        foreach (['', '   '] as $blank) {
+            $default = TrustedProxiesConfig::parse($blank);
+            $this->assertIsArray($default);
+            $this->assertNotSame('*', $default, 'Blank TRUSTED_PROXIES must not mean trust-all.');
+            $this->assertContains('173.245.48.0/20', $default, 'Cloudflare ranges must be in the default.');
+            $this->assertContains('10.0.0.0/8', $default, 'Private platform ranges must be in the default.');
+        }
     }
 
     public function test_star_means_trust_all(): void
@@ -45,8 +50,10 @@ class TrustedProxiesConfigTest extends TestCase
         $this->assertSame('*', TrustedProxiesConfig::parse('10.0.0.1,*,10.0.0.2'));
     }
 
-    public function test_only_blanks_and_commas_falls_back_to_trust_all(): void
+    public function test_only_blanks_and_commas_falls_back_to_tight_default(): void
     {
-        $this->assertSame('*', TrustedProxiesConfig::parse(',,,'));
+        $default = TrustedProxiesConfig::parse(',,,');
+        $this->assertIsArray($default);
+        $this->assertNotSame('*', $default);
     }
 }

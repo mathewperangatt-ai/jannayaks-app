@@ -9,13 +9,14 @@ use Symfony\Component\HttpFoundation\Response;
 /**
  * Global security response headers.
  *
- * - CSP ships in Report-Only mode by default because the codebase currently
- *   relies on inline <script> blocks (home, tier-select, upload, interview,
- *   profile-url), the Google Translate widget (homepage), and Filament's
- *   dynamically injected scripts/styles in the admin panel. Enforcing without
- *   nonce/hash refactoring would break legitimate functionality. Flip
- *   JANNAYAKS_CSP_ENFORCE=true only after production violation reports are
- *   clean — see docs/security-headers-csp.md.
+ * - CSP is ENFORCED by default. The member policy covers everything the
+ *   public/member pages actually load (self-hosted assets, Google Fonts, the
+ *   homepage Google Translate widget, pervasive inline scripts/styles via
+ *   'unsafe-inline'). The Filament admin panel gets a dedicated policy that
+ *   additionally allows 'unsafe-eval' because Alpine evaluates expressions
+ *   through the Function constructor. Set JANNAYAKS_CSP_ENFORCE=false to fall
+ *   back to Report-Only while investigating a violation — see
+ *   docs/security-headers-csp.md.
  * - X-Powered-By is removed at the application layer because expose_php is a
  *   PHP_INI_SYSTEM setting that cannot be changed at runtime.
  */
@@ -36,9 +37,9 @@ class SetSecurityHeaders
             'camera=(), microphone=(), geolocation=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), interest-cohort=()'
         );
 
-        $csp = (string) config('jannayaks.security.headers.csp', '');
+        $csp = $this->policyFor($request);
         if ($csp !== '') {
-            if ((bool) config('jannayaks.security.headers.csp_enforce', false)) {
+            if ((bool) config('jannayaks.security.headers.csp_enforce', true)) {
                 $response->headers->set('Content-Security-Policy', $csp);
             } else {
                 $response->headers->set('Content-Security-Policy-Report-Only', $csp);
@@ -46,5 +47,18 @@ class SetSecurityHeaders
         }
 
         return $response;
+    }
+
+    /**
+     * Admin pages use the Filament policy (adds 'unsafe-eval' for Alpine);
+     * everything else uses the stricter member policy.
+     */
+    private function policyFor(Request $request): string
+    {
+        $key = ($request->is('admin') || $request->is('admin/*'))
+            ? 'jannayaks.security.headers.csp_admin'
+            : 'jannayaks.security.headers.csp';
+
+        return (string) config($key, '');
     }
 }

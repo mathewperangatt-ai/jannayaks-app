@@ -20,6 +20,8 @@ class RazorpayPaymentService
 
     public const TEST_KEY_PREFIX = 'rzp_test_';
 
+    public const LIVE_KEY_PREFIX = 'rzp_live_';
+
     public function createApplicationPaymentLink(Application $application): Payment
     {
         if (! in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
@@ -367,7 +369,19 @@ class RazorpayPaymentService
         if (($config['key_secret'] ?? '') === '') {
             throw new RuntimeException('Razorpay key_secret is not configured.');
         }
-        if (! empty($config['require_test_prefix']) && stripos((string) $config['mode'], 'test') !== false) {
+
+        $mode = strtolower((string) ($config['mode'] ?? 'test'));
+        if ($mode === 'live') {
+            // S2 — live mode must never run on test keys: charges would be
+            // created against a test account while records claim live money.
+            if (strncmp((string) $config['key_id'], self::LIVE_KEY_PREFIX, strlen(self::LIVE_KEY_PREFIX)) !== 0) {
+                throw new RuntimeException('Razorpay live mode requires key_id starting with "'.self::LIVE_KEY_PREFIX.'".');
+            }
+
+            return;
+        }
+
+        if (! empty($config['require_test_prefix']) && str_contains($mode, 'test')) {
             if (strncmp((string) $config['key_id'], self::TEST_KEY_PREFIX, strlen(self::TEST_KEY_PREFIX)) !== 0) {
                 throw new RuntimeException('Razorpay test mode requires key_id starting with "'.self::TEST_KEY_PREFIX.'".');
             }

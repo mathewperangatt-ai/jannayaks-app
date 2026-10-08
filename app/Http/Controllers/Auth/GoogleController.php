@@ -14,7 +14,25 @@ class GoogleController extends Controller
 {
     public function redirect(): RedirectResponse|\Symfony\Component\HttpFoundation\RedirectResponse
     {
+        // Fail safe: without client credentials the authorize URL would point
+        // at Google with an empty client_id and strand the member on a Google
+        // error page. Google is an OPTIONAL convenience login, so a
+        // misconfiguration must send members back to username/password login.
+        if (! $this->googleConfigured()) {
+            report(new \RuntimeException('Google OAuth is not configured (missing client id/secret); sign-in attempt rejected.'));
+
+            return redirect()->route('login')->withErrors([
+                'google' => 'Google sign-in is not available right now. Please sign in with your username and password.',
+            ]);
+        }
+
         return Socialite::driver('google')->redirect();
+    }
+
+    private function googleConfigured(): bool
+    {
+        return (string) config('services.google.client_id', '') !== ''
+            && (string) config('services.google.client_secret', '') !== '';
     }
 
     public function callback(): RedirectResponse

@@ -246,26 +246,45 @@ PROMPT,
         /*
         | HTTP response security headers (app/Http/Middleware/SetSecurityHeaders.php).
         | The CSP below is derived from the resources the application actually loads:
-        | self-hosted assets, Google Fonts stylesheets + gstatic font files, the
-        | Google Translate widget on the homepage, and pervasive inline
-        | scripts/styles (see docs/security-headers-csp.md for the report-only
-        | rationale and the enforcement path). 'unsafe-eval' is deliberately absent.
+        | self-hosted assets, Google Fonts stylesheets + gstatic font files, and the
+        | Google Translate widget on the homepage (see docs/security-headers-csp.md).
+        | 'unsafe-eval' is deliberately absent from the member policy; the admin
+        | policy adds it because Filament's Alpine build evaluates expressions via
+        | the Function constructor, which an enforced CSP blocks without it.
+        | MSG91/OTP hosts were removed along with the OTP authentication retirement.
         */
         'headers' => [
-            // Report-Only until production reports are clean; then set true.
-            'csp_enforce' => env('JANNAYAKS_CSP_ENFORCE', false),
+            // Enforced by default with the member-safe policy; set to false to
+            // fall back to Report-Only while debugging a violation report.
+            'csp_enforce' => env('JANNAYAKS_CSP_ENFORCE', true),
             'csp' => implode('; ', [
                 "default-src 'self'",
                 "base-uri 'self'",
                 "object-src 'none'",
                 "frame-ancestors 'none'",
                 "form-action 'self'",
-                "img-src 'self' data: https://verify.msg91.com",
-                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://verify.msg91.com",
+                "img-src 'self' data:",
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
                 "font-src 'self' https://fonts.gstatic.com",
-                "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://verify.msg91.com",
-                "connect-src 'self' https://translate.googleapis.com https://verify.msg91.com",
-                "frame-src https://translate.googleapis.com https://verify.msg91.com",
+                "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com",
+                "connect-src 'self' https://translate.googleapis.com",
+                "frame-src https://translate.googleapis.com",
+            ]),
+            // Filament admin panel (Livewire + Alpine): identical to the member
+            // policy except script-src gains 'unsafe-eval', which Alpine's
+            // expression evaluation requires under an enforced CSP.
+            'csp_admin' => implode('; ', [
+                "default-src 'self'",
+                "base-uri 'self'",
+                "object-src 'none'",
+                "frame-ancestors 'none'",
+                "form-action 'self'",
+                "img-src 'self' data:",
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+                "font-src 'self' https://fonts.gstatic.com",
+                "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://translate.google.com https://translate.googleapis.com",
+                "connect-src 'self' https://translate.googleapis.com",
+                "frame-src https://translate.googleapis.com",
             ]),
         ],
     ],

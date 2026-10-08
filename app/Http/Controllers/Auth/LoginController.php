@@ -9,6 +9,7 @@ use App\Support\SafeInternalUrl;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
+use Illuminate\Support\Facades\RateLimiter;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
 
@@ -39,6 +40,18 @@ class LoginController extends Controller
             'password' => ['required', 'string'],
         ]);
 
+        // S2 — per-credential throttle: bounds distributed attempts against a
+        // single username even when the attacker rotates source IPs. Generous
+        // window; cleared on successful login.
+        $usernameKey = 'login-username:'.strtolower(trim((string) $credentials['username']));
+        if (! RateLimiter::tooManyAttempts($usernameKey, 30)) {
+            RateLimiter::hit($usernameKey, 60);
+        } else {
+            throw ValidationException::withMessages([
+                'username' => 'Too many sign-in attempts. Please wait a minute and try again.',
+            ]);
+        }
+
         $remember = (bool) $request->boolean('remember');
 
         if (! Auth::attempt([
@@ -64,6 +77,8 @@ class LoginController extends Controller
         }
 
         $request->session()->regenerate();
+
+        RateLimiter::clear($usernameKey);
 
         // A guest who picked a tier before signing in continues straight
         // into application creation (payment next). Do not rely on

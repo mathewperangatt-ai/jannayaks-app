@@ -85,5 +85,15 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Support\Facades\RateLimiter::for('payment-initiate', function ($request) {
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('pay-init:'.$request->user()?->id ?: $request->ip());
         });
+
+        // S2 — password strength baseline. Password::defaults() was never
+        // configured, so registration and reset accepted any non-empty
+        // password. Length + letters + numbers keeps friction low for the
+        // member demographic; no HIBP network dependency. (The per-username
+        // login throttle lives in LoginController::authenticate — it must
+        // count FAILED attempts per credential, which middleware cannot do.)
+        \Illuminate\Validation\Rules\Password::defaults(function () {
+            return \Illuminate\Validation\Rules\Password::min(10)->letters()->numbers();
+        });
     }
 }
