@@ -1,7 +1,7 @@
 {{-- Shared public footer — Jannayaks.
      Typographic, no logo block; grouped Platform/About/Support/Legal columns.
-     Platform links are live routes. ABOUT/SUPPORT/LEGAL destinations beyond
-     Contact Us are pending their own pages (kept per the approved footer
+     Platform and legal links are live routes. ABOUT destinations and Help
+     Centre are pending their own pages (kept per the approved footer
      structure; wire them when those pages exist). --}}
 <footer class="jf-footer">
 <style>
@@ -56,16 +56,16 @@
             <ul class="jf-links">
                 <li><a href="mailto:{{ config('jannayaks.contact.public_email') }}">Contact Us</a></li>
                 <li><a href="#">Help Centre</a></li>
-                <li><a href="#">Privacy Policy</a></li>
-                <li><a href="#">Terms &amp; Conditions</a></li>
-                <li><a href="#">Grievance Redressal</a></li>
+                <li><a href="{{ route('legal.privacy') }}">Privacy Policy</a></li>
+                <li><a href="{{ route('legal.terms') }}">Terms &amp; Conditions</a></li>
+                <li><a href="{{ route('legal.grievance') }}">Grievance Redressal</a></li>
             </ul>
         </div>
         <div class="jf-col" role="navigation" aria-label="Legal">
             <h3 class="jf-title">Legal</h3>
             <ul class="jf-links">
-                <li><a href="#">Refund &amp; Cancellation</a></li>
-                <li><a href="#">Disclaimer</a></li>
+                <li><a href="{{ route('legal.refund') }}">Refund &amp; Cancellation</a></li>
+                <li><a href="{{ route('legal.disclaimer') }}">Disclaimer</a></li>
             </ul>
         </div>
     </div>

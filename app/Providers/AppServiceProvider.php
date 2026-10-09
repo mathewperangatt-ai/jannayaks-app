@@ -95,5 +95,16 @@ class AppServiceProvider extends ServiceProvider
         \Illuminate\Validation\Rules\Password::defaults(function () {
             return \Illuminate\Validation\Rules\Password::min(10)->letters()->numbers();
         });
+
+        // Legal pages render inside their own @section blocks, so the
+        // operator contact details must reach each page view directly.
+        \Illuminate\Support\Facades\View::composer('legal.*', function ($view) {
+            $view->with([
+                'legalAddress' => (string) config('jannayaks.contact.legal_address'),
+                'contactEmail' => (string) config('jannayaks.contact.public_email'),
+                'contactPhone' => (string) config('jannayaks.contact.public_phone'),
+                'contactTel' => (string) config('jannayaks.contact.public_phone_tel'),
+            ]);
+        });
     }
 }

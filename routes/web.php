@@ -37,6 +37,11 @@ use Illuminate\Support\Facades\Route;
 
 Route::get('/', HomeController::class)->name('home');
 Route::get('/faq-charges', FaqChargesController::class)->name('faq-charges');
+Route::view('/privacy', 'legal.privacy')->name('legal.privacy');
+Route::view('/terms', 'legal.terms')->name('legal.terms');
+Route::view('/refund-policy', 'legal.refund')->name('legal.refund');
+Route::view('/grievance', 'legal.grievance')->name('legal.grievance');
+Route::view('/disclaimer', 'legal.disclaimer')->name('legal.disclaimer');
 
 // Isolated design exploration only — not a production surface, no data reads.
 // Compare visually against the live profile design; remove with the controller + view.

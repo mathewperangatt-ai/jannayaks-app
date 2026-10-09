@@ -189,7 +189,7 @@ class PersonalProfileUrlSystemTest extends TestCase
             ->assertSee('hello@jannayaks.in', false)
             ->assertDontSee('hello@jannayaks.com', false)
             ->assertDontSee('94 95 94 93 99', false)
-            ->assertDontSee('3/532, Trivandrum 695573', false);
+            ->assertDontSee('3/352, Trivandrum, Kerala 695573', false);
     }
 
     /**

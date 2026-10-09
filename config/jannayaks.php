@@ -153,9 +153,11 @@ return [
             'contact',
             'dashboard',
             'demo-profiles',
+            'disclaimer',
             'faq-charges',
             'filament',
             'gallery',
+            'grievance',
             'home',
             'in-memoriam',
             'invoice',
@@ -170,6 +172,7 @@ return [
             'profile',
             'profiles',
             'receipt',
+            'refund-policy',
             'register',
             'renewal',
             'search',
@@ -192,7 +195,7 @@ return [
         'public_email' => env('JANNAYAKS_PUBLIC_EMAIL', 'hello@jannayaks.in'),
         'public_phone' => env('JANNAYAKS_PUBLIC_PHONE', '94 95 94 93 99'),
         'public_phone_tel' => env('JANNAYAKS_PUBLIC_PHONE_TEL', '+919495949399'),
-        'legal_address' => env('JANNAYAKS_LEGAL_ADDRESS', '3/532, Trivandrum 695573'),
+        'legal_address' => env('JANNAYAKS_LEGAL_ADDRESS', '3/352, Trivandrum, Kerala 695573'),
     ],
 
     'geography' => [
