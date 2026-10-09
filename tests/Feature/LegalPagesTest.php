@@ -55,18 +55,23 @@ class LegalPagesTest extends TestCase
         $this->get('/grievance')
             ->assertOk()
             ->assertSee('3/532 A, Trivandrum 695573', false)
-            ->assertSee('[to be named before launch]', false);
+            ->assertSee('Name: Mathew', false);
     }
 
-    public function test_legal_pages_omit_retired_and_unconfirmed_providers(): void
+    public function test_legal_pages_omit_retired_providers_and_draft_markers(): void
     {
         foreach (self::legalPages() as [, $path]) {
             $this->get($path)
                 ->assertOk()
+                ->assertSee('Last revised: 9 October 2026', false)
                 ->assertDontSee('Razorpay', false)
                 ->assertDontSee('MSG91', false)
                 ->assertDontSee('one-time password', false)
-                ->assertDontSee('overseas', false);
+                ->assertDontSee('overseas', false)
+                ->assertDontSee('legal-pending', false)
+                ->assertDontSee('PENDING CONFIRMATION', false)
+                ->assertDontSee('to be named before launch', false)
+                ->assertDontSee('Working draft', false);
         }
     }
 
@@ -77,15 +82,19 @@ class LegalPagesTest extends TestCase
         $this->get('/refund-policy')
             ->assertOk()
             ->assertSee('refund of 45% of the fee you paid', false)
-            ->assertDontSee('full refund</strong> of what you paid', false);
+            ->assertDontSee('full refund</strong> of what you paid', false)
+            ->assertSee('Refunds are not processed automatically.', false)
+            ->assertSee('A renewal fee, once paid, is not refundable.', false)
+            ->assertDontSee('for the period it is offline', false);
     }
 
-    public function test_terms_mark_gst_as_pending_and_state_memorial_hosting_period(): void
+    public function test_terms_make_no_gst_status_claim_and_state_memorial_hosting_period(): void
     {
         $this->get('/terms')
             ->assertOk()
-            ->assertSee('GST — PENDING CONFIRMATION', false)
+            ->assertSee('including any applicable tax, is shown before you pay', false)
             ->assertDontSee('does not charge GST', false)
+            ->assertDontSee('registered for GST', false)
             ->assertSee('hosted for three years from the date it is published', false);
     }
 

@@ -10,7 +10,7 @@
 <h2>Grievance Officer</h2>
 <address class="legal-box">
     <strong class="legal-box-title">Contact the Grievance Officer</strong>
-    Name: <span class="legal-pending">[to be named before launch]</span><br>
+    Name: Mathew<br>
     Aurex Network, operator of Jannayaks<br>
     {{ $legalAddress }}<br>
     Email: <a href="mailto:{{ $contactEmail }}">{{ $contactEmail }}</a><br>

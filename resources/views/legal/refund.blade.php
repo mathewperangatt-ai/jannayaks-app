@@ -19,7 +19,7 @@
 <p>Once your profile or memorial has been published, the fee is <strong>not refundable</strong>, except in the cases listed in section 3. This is the case even if you later ask us to take it offline, or your membership ends.</p>
 
 <h2>3. When we will refund you anyway</h2>
-<p>Whatever the stage, we will refund you in full, or in the part that is fair, if:</p>
+<p>Whatever the stage of your application, we will refund you in full, or in the part that is fair, if:</p>
 <ul>
     <li>we decline to publish your profile or memorial after you have paid;</li>
     <li>you were charged twice, or charged an amount different from the one shown to you;</li>
@@ -28,7 +28,7 @@
 </ul>
 
 <h2>4. Renewals</h2>
-<p>Renewal is not automatic: you are charged only if you choose to pay for a renewal. A renewal fee, once paid, is not refundable for the year that has begun, except in the cases in section 3. If you do not renew, a profile stays online until the end of the period you have paid for, plus a short grace period, and is then taken offline.</p>
+<p>Renewal is not automatic: you are charged only if you choose to pay for a renewal. A renewal fee, once paid, is not refundable. If you do not renew, a profile stays online until the end of the period you have paid for, plus a short grace period, and is then taken offline.</p>
 
 <h2>5. In Memoriam pages</h2>
 <p>The same rules apply: a refund of {{ $refundPercent }}% if you cancel before the memorial is published, and no refund after that except in the cases in section 3. An In Memoriam page is hosted for three years from the date it is published.</p>
@@ -37,7 +37,7 @@
 <p>Email <a href="mailto:{{ $contactEmail }}">{{ $contactEmail }}</a> or call <a href="tel:{{ $contactTel }}">{{ $contactPhone }}</a>. Please give your name, your username, the date and amount of the payment, and the reason. We will reply within two working days.</p>
 
 <h2>7. How refunds are paid</h2>
-<p>Approved refunds go back to the same payment method you used, through our payment gateway. We start the refund within seven working days of approving it. After that, your bank or card issuer may take a few more days to show it. We issue a credit note for every refund.</p>
+<p>Refunds are not processed automatically. When we approve a refund, we record it and issue a credit note. Our team then initiates the refund to the payment method you used, through our payment gateway, within seven working days of approving it. Initiating a refund is not the same as the money reaching you: once initiated, the time it takes to reach your account depends on the payment gateway and your bank or card issuer.</p>
 
 <h2>8. Your other rights</h2>
 <p>Nothing on this page limits any right you have under Indian consumer protection law. If you are not satisfied with how we have handled a refund request, please use our <a href="{{ route('legal.grievance') }}">Grievance Redressal</a> process.</p>

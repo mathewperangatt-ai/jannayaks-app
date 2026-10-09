@@ -19,7 +19,6 @@
     .legal-box{display:block;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:16px 18px;margin:0 0 18px;font-style:normal;font-size:14.5px;line-height:1.75}
     .legal-box p:last-child{margin-bottom:0}
     .legal-box-title{display:block;color:var(--navy);font-size:13px;letter-spacing:.04em;margin:0 0 6px}
-    .legal-pending{background:#FFFBEB;color:#92400E;border:1px dashed #D97706;border-radius:4px;padding:0 6px;font-weight:600}
     @media(max-width:640px){.legal h1{font-size:28px}.legal h2{font-size:19px}}
 </style>
 @endpush
@@ -40,7 +39,7 @@
 
     <p class="eyebrow">Legal</p>
     <h1>@yield('legal_heading')</h1>
-    <p class="legal-updated">Working draft, last revised 9 October 2026. Not yet finalised or legally reviewed.</p>
+    <p class="legal-updated">Last revised: 9 October 2026</p>
     <p class="lede">@yield('legal_intro')</p>
 
     @yield('legal_body')
