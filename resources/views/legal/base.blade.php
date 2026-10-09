@@ -40,7 +40,7 @@
 
     <p class="eyebrow">Legal</p>
     <h1>@yield('legal_heading')</h1>
-    <p class="legal-updated">Last updated: 9 October 2026</p>
+    <p class="legal-updated">Working draft, last revised 9 October 2026. Not yet finalised or legally reviewed.</p>
     <p class="lede">@yield('legal_intro')</p>
 
     @yield('legal_body')

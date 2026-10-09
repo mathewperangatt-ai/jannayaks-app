@@ -104,6 +104,7 @@ class AppServiceProvider extends ServiceProvider
                 'contactEmail' => (string) config('jannayaks.contact.public_email'),
                 'contactPhone' => (string) config('jannayaks.contact.public_phone'),
                 'contactTel' => (string) config('jannayaks.contact.public_phone_tel'),
+                'refundPercent' => app(\App\Services\RefundService::class)->refundBasisConfigPercent(),
             ]);
         });
     }

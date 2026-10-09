@@ -44,16 +44,49 @@ class LegalPagesTest extends TestCase
         );
     }
 
-    public function test_legal_pages_show_the_corrected_legal_address(): void
+    public function test_legal_pages_show_the_confirmed_contact_details(): void
     {
         $this->get('/privacy')
             ->assertOk()
-            ->assertSee('3/352, Trivandrum, Kerala 695573', false)
-            ->assertDontSee('3/532', false);
+            ->assertSee('3/532 A, Trivandrum 695573', false)
+            ->assertSee('Name of the person who answers: Mathew', false)
+            ->assertSee('tel:+919495949399', false);
 
         $this->get('/grievance')
             ->assertOk()
-            ->assertSee('3/352, Trivandrum, Kerala 695573', false);
+            ->assertSee('3/532 A, Trivandrum 695573', false)
+            ->assertSee('[to be named before launch]', false);
+    }
+
+    public function test_legal_pages_omit_retired_and_unconfirmed_providers(): void
+    {
+        foreach (self::legalPages() as [, $path]) {
+            $this->get($path)
+                ->assertOk()
+                ->assertDontSee('Razorpay', false)
+                ->assertDontSee('MSG91', false)
+                ->assertDontSee('one-time password', false)
+                ->assertDontSee('overseas', false);
+        }
+    }
+
+    public function test_refund_page_states_the_configured_before_publication_percent(): void
+    {
+        config(['jannayaks.refund.before_publication_percent' => 45]);
+
+        $this->get('/refund-policy')
+            ->assertOk()
+            ->assertSee('refund of 45% of the fee you paid', false)
+            ->assertDontSee('full refund</strong> of what you paid', false);
+    }
+
+    public function test_terms_mark_gst_as_pending_and_state_memorial_hosting_period(): void
+    {
+        $this->get('/terms')
+            ->assertOk()
+            ->assertSee('GST — PENDING CONFIRMATION', false)
+            ->assertDontSee('does not charge GST', false)
+            ->assertSee('hosted for three years from the date it is published', false);
     }
 
     public function test_footer_links_point_to_every_legal_page(): void

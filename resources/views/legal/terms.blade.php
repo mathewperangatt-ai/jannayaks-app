@@ -25,7 +25,7 @@
 <p>If we find that information is false or that you are not who you claim to be, we may refuse, suspend or remove a profile.</p>
 
 <h2>5. Identity verification</h2>
-<p>Before a living profile is published we verify identity. For residents of India this is a manual check against the public Voter ID (EPIC) records of the Election Commission of India; for people living overseas it is an identity document. Verification confirms identity only. It is not a certificate of character, and it does not mean Jannayaks endorses you.</p>
+<p>Before a living profile is published we verify identity by a manual check against the public Voter ID (EPIC) records of the Election Commission of India. Verification confirms identity only. It is not a certificate of character, and it does not mean Jannayaks endorses you.</p>
 
 <h2>6. How profiles are prepared</h2>
 <p>Your write-up is prepared by our editorial team, with the help of artificial intelligence, before publication. Our human editors review every write-up. Nothing is published until you have approved your preview and our staff has completed publication. Each package includes two rounds of changes before publication. Later changes to a published profile are handled as described on the <a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a> page.</p>
@@ -34,16 +34,16 @@
 <p>Paying a fee does not buy a particular wording, a favourable tone or a guarantee of publication. Jannayaks is politically neutral. We do not endorse, rank or campaign for any person, party or organisation, and a profile is not a political advertisement. Our editors decide what is included and how it is written. We may decline to publish a profile, or edit, correct or remove published content, if it is inaccurate, cannot be verified, is defamatory, is hateful or unlawful, or does not meet our standards.</p>
 
 <h2>8. In Memoriam pages</h2>
-<p>The person requesting a memorial confirms that they are authorised to do so and that the details given are accurate. We may ask for proof of the relationship or of the person's passing. If a family member or other lawful representative objects to a memorial, we will look into it under our <a href="{{ route('legal.grievance') }}">Grievance Redressal</a> process and may unpublish the page while we do.</p>
+<p>An In Memoriam page is hosted for three years from the date it is published. The person requesting a memorial confirms that they are authorised to do so and that the details given are accurate. We may ask for proof of the relationship or of the person's passing. If a family member or other lawful representative objects to a memorial, we will look into it under our <a href="{{ route('legal.grievance') }}">Grievance Redressal</a> process and may unpublish the page while we do.</p>
 
 <h2>9. Permission to publish</h2>
 <p>You keep ownership of the photographs and material you provide. You give Aurex Network a non-exclusive licence to use, edit for clarity and presentation, translate, store and publish that material, and the write-up prepared from it, on Jannayaks for as long as your profile is published and for the retention period in our Privacy Policy. Jannayaks keeps the rights in its own editorial writing, design and software, and you may not copy or reuse them without our written permission.</p>
 
 <h2>10. Fees and payment</h2>
-<p>The fee for each package, and for renewals and revisions, is shown on the <a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a> page and again before you pay. Payments are made online through Razorpay. Aurex Network is not currently registered for GST and does not charge GST. If it becomes registered, GST will be added from the date of registration, shown before you pay, and applied to payments made after that date. Refunds are governed by the <a href="{{ route('legal.refund') }}">Refund &amp; Cancellation</a> page.</p>
+<p>The fee for each package, and for renewals and revisions, is shown on the <a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a> page and again before you pay. Payments are made online through our payment gateway. <span class="legal-pending">GST — PENDING CONFIRMATION</span> Aurex Network's GST registration status and the tax treatment of these fees have not yet been confirmed. The amount you will pay, including any tax, is always shown before you pay. Refunds are governed by the <a href="{{ route('legal.refund') }}">Refund &amp; Cancellation</a> page.</p>
 
 <h2>11. Membership, renewal and expiry</h2>
-<p>A profile stays public while your membership is active. Membership runs for one year from publication and renews each year at the price shown for your package. We send reminders before expiry. If you do not renew, the profile stays online for a short grace period after the end date and is then taken offline. We keep your records for a limited time after that so that you can still renew, as set out in the Privacy Policy.</p>
+<p>This section applies to living profiles; In Memoriam pages are covered in section 8. A profile stays public while your membership is active. Membership runs for one year from publication and can be renewed each year at the price shown for your package. Renewal is not automatic: you are charged only if you choose to pay for a renewal. We send reminders before expiry. If you do not renew, the profile stays online for a short grace period after the end date and is then taken offline. We keep your records for a limited time after that so that you can still renew, as set out in the Privacy Policy.</p>
 
 <h2>12. What you must not do</h2>
 <ul>
@@ -55,7 +55,7 @@
 </ul>
 
 <h2>13. Third-party services and links</h2>
-<p>The site uses third-party services such as Razorpay, Google sign-in and the Google translation widget. Their own terms apply to them. Machine translation into other languages is automatic and may contain mistakes. The Malayalam and English versions prepared by our editors are the reference versions. We are not responsible for external websites that a profile may link to.</p>
+<p>The site uses third-party services such as our payment gateway, Google sign-in and the Google translation widget. Their own terms apply to them. Machine translation into other languages is automatic and may contain mistakes. The Malayalam and English versions prepared by our editors are the reference versions. We are not responsible for external websites that a profile may link to.</p>
 
 <h2>14. Availability and changes to the service</h2>
 <p>We aim to keep Jannayaks available, but we do not promise that it will always be uninterrupted or free from errors. We may change, pause or discontinue features. If we discontinue the service as a whole, we will tell members in advance and deal fairly with fees paid for any period we can no longer provide.</p>
