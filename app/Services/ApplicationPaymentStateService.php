@@ -9,6 +9,18 @@ use Illuminate\Support\Facades\DB;
 
 class ApplicationPaymentStateService
 {
+    /**
+     * TEMPORARY pre-gateway-launch testing mode. While active the payment
+     * requirement is suspended for every application (no fake settlements are
+     * recorded; applications simply stay in their pre-payment state) and
+     * payment initiation endpoints are refused. Controlled solely by
+     * jannayaks.payments.testing_mode (JANNAYAKS_PAYMENTS_TESTING_MODE).
+     */
+    public static function testingModeActive(): bool
+    {
+        return (bool) config('jannayaks.payments.testing_mode', false);
+    }
+
     public function afterSettled(Payment $payment): Application
     {
         $application = $payment->application;
@@ -72,6 +84,14 @@ class ApplicationPaymentStateService
      */
     public function unlocksInterviewOrUploads(Application $application): bool
     {
+        // TEMPORARY testing mode: the payment requirement is suspended, so
+        // testers reach the interview and uploads without any payment record.
+        // Genuine settlements, staff waivers and admin_test_demo keep their
+        // existing meaning (they remain the unlock path once testing ends).
+        if (self::testingModeActive()) {
+            return true;
+        }
+
         if ($application->source_method === 'admin_test_demo') {
             return true;
         }

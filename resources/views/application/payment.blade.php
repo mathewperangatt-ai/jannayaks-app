@@ -186,7 +186,13 @@
                 @csrf
                 <button class="btn block" type="submit" disabled aria-disabled="true">{{ $ml ? 'വീണ്ടും ശ്രമിക്കുക / പുതിയ ലിങ്ക്' : 'Retry / New Link' }}</button>
             </form>
-            <div class="sub" style="flex:1 1 100%">{{ $ml ? 'ഓൺലൈൻ പേയ്‌മെൻ്റ് ഉടൻ ലഭ്യമാകും.' : 'Online payment will be available shortly.' }}</div>
+            <div class="sub" style="flex:1 1 100%">
+                @if (!empty($paymentsTestingMode))
+                    {{ $ml ? 'ടെസ്റ്റിംഗ് കാലത്ത് ഓൺലൈൻ പേയ്‌മെൻ്റ് താൽക്കാലികമായി ലഭ്യമല്ല.' : 'Online payments are temporarily unavailable during testing.' }}
+                @else
+                    {{ $ml ? 'ഓൺലൈൻ പേയ്‌മെൻ്റ് ഉടൻ ലഭ്യമാകും.' : 'Online payment will be available shortly.' }}
+                @endif
+            </div>
         </div>
     @else
         @if ($activePayment && !$activePayment->razorpay_link_url)
@@ -208,7 +214,13 @@
                     @endif
                 </button>
             </form>
-            <div class="sub" style="flex:1 1 100%">{{ $ml ? 'ഓൺലൈൻ പേയ്‌മെൻ്റ് ഉടൻ ലഭ്യമാകും.' : 'Online payment will be available shortly.' }}</div>
+            <div class="sub" style="flex:1 1 100%">
+                @if (!empty($paymentsTestingMode))
+                    {{ $ml ? 'ടെസ്റ്റിംഗ് കാലത്ത് ഓൺലൈൻ പേയ്‌മെൻ്റ് താൽക്കാലികമായി ലഭ്യമല്ല. പേയ്‌മെൻ്റ് ഇല്ലാതെ തന്നെ അപേക്ഷയുടെ എല്ലാ ഘട്ടങ്ങളും നിങ്ങൾക്ക് പരീക്ഷിക്കാം.' : 'Online payments are temporarily unavailable during testing. You can complete every application step without payment.' }}
+                @else
+                    {{ $ml ? 'ഓൺലൈൻ പേയ്‌മെൻ്റ് ഉടൻ ലഭ്യമാകും.' : 'Online payment will be available shortly.' }}
+                @endif
+            </div>
         </div>
     @endif
 </div>

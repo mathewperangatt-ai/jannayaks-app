@@ -51,6 +51,13 @@ class MembershipController extends Controller
         $membership = $profile->membership;
         abort_if($membership === null, 404);
 
+        // Payments testing mode — initiation is refused while testing runs.
+        if (\App\Services\ApplicationPaymentStateService::testingModeActive()) {
+            return redirect()
+                ->route('membership.show', $profile)
+                ->withErrors(['renewal' => 'Online payments are temporarily unavailable during testing.']);
+        }
+
         try {
             $payment = $this->razorpay->createMembershipRenewalPaymentLink($membership, $user);
         } catch (InvalidArgumentException $e) {

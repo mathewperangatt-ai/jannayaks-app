@@ -365,6 +365,7 @@ class ApplicationController extends Controller
             'publicProfileUrl' => $publicProfileUrl,
             'publicProfilePath' => $publicProfilePath,
             'identityPhoto' => $identityPhoto,
+            'paymentsTestingMode' => \App\Services\ApplicationPaymentStateService::testingModeActive(),
         ]);
     }
 
@@ -560,6 +561,7 @@ class ApplicationController extends Controller
             'settledPayment' => $settledPayment,
             'isSettled' => $settledPayment !== null,
             'language' => $this->flowLanguage($request),
+            'paymentsTestingMode' => \App\Services\ApplicationPaymentStateService::testingModeActive(),
         ]);
     }
 
@@ -589,6 +591,18 @@ class ApplicationController extends Controller
             return redirect()
                 ->route('applications.payment', ['application' => $application->id])
                 ->withErrors(['payment' => 'Payment for this application has already been settled.']);
+        }
+
+        // Payments testing mode — initiation is refused while testing runs.
+        if (\App\Services\ApplicationPaymentStateService::testingModeActive()) {
+            $message = $this->flowLanguage($request) === 'ml'
+                ? 'ടെസ്റ്റിംഗ് കാലത്ത് ഓൺലൈൻ പേയ്‌മെൻ്റ് താൽക്കാലികമായി നിർത്തിവെച്ചിരിക്കുകയാണ്.'
+                : 'Online payments are temporarily unavailable during testing.';
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'error' => $message], 503);
+            }
+
+            return back()->withErrors(['payment' => $message]);
         }
 
         try {

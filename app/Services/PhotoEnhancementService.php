@@ -36,7 +36,15 @@ class PhotoEnhancementService
 
     public function enabled(): bool
     {
-        return (bool) config('jannayaks.ai.image_enhancement.enabled', false);
+        // Explicit kill switch (env value / runtime Config::set) always wins.
+        // When unset (null), enhancement follows the TEMPORARY testing mode so
+        // testers can exercise the complete workflow — and it auto-disables
+        // when testing mode ends.
+        $configured = config('jannayaks.ai.image_enhancement.enabled');
+
+        return $configured !== null
+            ? (bool) $configured
+            : ApplicationPaymentStateService::testingModeActive();
     }
 
     public function client(): PhotoEnhancementClient

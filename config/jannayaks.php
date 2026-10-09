@@ -1,6 +1,26 @@
 <?php
 
 return [
+    /*
+    | Payments testing mode (TEMPORARY — pre-gateway-launch).
+    | While true, the payment requirement is suspended for everyone: new
+    | testers can complete the whole workflow (interview, uploads) without
+    | paying, payment initiation endpoints are refused, and the payment page
+    | explains the suspension. Nothing records a fake settlement —
+    | applications simply stay in their pre-payment state. The genuine
+    | settlement path (webhook → markPaidOrCaptured → afterSettled), the
+    | allowlisted payments:simulate-test-payment command, and all payment
+    | models/records are untouched.
+    | Restore the normal payment-required workflow by setting
+    | JANNAYAKS_PAYMENTS_TESTING_MODE=false (or removing the variable) — no
+    | database reset or migration involved. Enabling real payments ALSO
+    | requires services.razorpay.enabled=true with authorized credentials;
+    | this flag alone never activates the gateway.
+    */
+    'payments' => [
+        'testing_mode' => env('JANNAYAKS_PAYMENTS_TESTING_MODE', false),
+    ],
+
     'tier_pricing' => [
         'currency' => 'INR',
         'gst_percent' => 18,
@@ -199,7 +219,11 @@ return [
             // KILL SWITCH — disabled by default. When false: no candidate is
             // created, no job is dispatched, uploads/approval/publication are
             // completely unaffected. Enable only after output-quality review.
-            'enabled' => (bool) env('JANNAYAKS_AI_ENHANCEMENT_ENABLED', false),
+            // NULL (env unset) means "follow payments.testing_mode" — during
+            // the temporary testing period the feature is on so testers can
+            // exercise the full workflow, and it auto-disables when testing
+            // mode ends. An explicit env value always wins.
+            'enabled' => env('JANNAYAKS_AI_ENHANCEMENT_ENABLED'),
             // Independent from the editorial provider selection.
             'provider' => env('JANNAYAKS_AI_IMAGE_PROVIDER', 'fake'), // fake | openai
             'max_retries' => (int) env('JANNAYAKS_AI_ENHANCEMENT_MAX_RETRIES', 3),

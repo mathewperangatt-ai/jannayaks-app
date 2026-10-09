@@ -173,7 +173,13 @@
 
         <div class="dash-actions">
             <a class="btn primary" href="{{ route('applications.payment', $application) }}">
-                {{ $application->isPaymentSettled() ? 'View payment / receipt' : 'Pay to unlock interview →' }}
+                @if ($application->isPaymentSettled())
+                    View payment / receipt
+                @elseif (!empty($paymentsTestingMode))
+                    Payments unavailable (testing)
+                @else
+                    Pay to unlock interview →
+                @endif
             </a>
             @if($unlocked && $application->source_method === 'online_interview')
                 <a class="btn" href="{{ route('online-interview.show', $application) }}">{{ $application->isInterviewSubmitted() ? 'View submitted answers' : 'Continue Online Interview →' }}</a>
