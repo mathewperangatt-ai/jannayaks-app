@@ -40,7 +40,7 @@
                 $tierNamesMl = [
                     'emerging' => 'ജനകീയർ',
                     'accomplished' => 'ജനസമ്മതർ',
-                    'distinguished' => 'പ്രമുഖർ',
+                    'distinguished' => 'പ്രഗൽഭർ',
                 ];
                 $tiers = ['emerging' => [
                     'title' => \App\Support\TierLabels::label('emerging'),

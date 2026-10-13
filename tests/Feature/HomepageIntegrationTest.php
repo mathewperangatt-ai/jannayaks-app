@@ -33,6 +33,22 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee('nav-menu-btn', false);
         $response->assertSee('Open menu', false);
         $response->assertSee('branding/jannayaks-logo.jpg', false);
+        $html = $response->getContent();
+        $malayalamHeading = strpos($html, 'വിവിധ മേഖലകളിലെ ജനനായകരുടെ ഡിജിറ്റൽ ഗാലറി.');
+        $englishSubtitle = strpos($html, 'A digital gallery of leaders among the people.');
+        $banner = strpos($html, 'class="hero-banner"');
+        $search = strpos($html, 'id="search"');
+        $this->assertNotFalse($malayalamHeading);
+        $this->assertNotFalse($englishSubtitle);
+        $this->assertNotFalse($banner);
+        $this->assertNotFalse($search);
+        $this->assertTrue($malayalamHeading < $englishSubtitle && $englishSubtitle < $banner && $banner < $search);
+        $response->assertDontSee("A digital gallery of people's leaders.", false);
+        $response->assertSee('images/jannayaks-hero.jpeg', false);
+        $response->assertSee('width="1672"', false);
+        $response->assertSee('height="506"', false);
+        $response->assertSee('fetchpriority="high"', false);
+        $response->assertDontSee('loading="lazy"', false);
         // Shared footer partial (footer pass 1) replaced the old logo block.
         $response->assertSee('jf-footer', false);
         $response->assertDontSee('brightness(0) invert(1)', false);
@@ -74,6 +90,9 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee($distinguished['base_formatted'], false);
         $response->assertSee($inMemoriam['base_formatted'], false);
         $response->assertSee('3 years', false);
+        $response->assertSee('പ്രഗൽഭർ', false);
+        $response->assertDontSee('പ്രമുഖർ', false);
+        $response->assertDontSee('പ്രശസ്തർ', false);
         $response->assertDontSee('₹29,500', false);
         $response->assertSee('+ GST', false);
         $response->assertSee(route('in-memoriam.index', absolute: false), false);

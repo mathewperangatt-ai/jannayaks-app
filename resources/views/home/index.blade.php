@@ -8,6 +8,7 @@
 <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('branding/favicon-16.png') }}">
 <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('branding/favicon-180.png') }}">
 <link rel="icon" href="{{ asset('branding/favicon.ico') }}">
+<link rel="preload" as="image" href="{{ asset('images/jannayaks-hero.jpeg') }}" fetchpriority="high">
 <title>Jannayaks™ — Kerala's Public Presence Platform</title>
 @php($schemaJson = app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->websiteGraph(
     'Jannayaks is a digital biographical archive — verified profiles and In Memoriam records documenting the lives, work and public contribution of people’s leaders.',
@@ -65,11 +66,13 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .hero::after{display:none;}
 .hero-main-heading{text-align:center;max-width:900px;margin:0 auto 30px;position:relative;}
 /* Kerala launch is Malayalam-first: Malayalam is the primary hero heading. */
-.hero-main-heading h1.hero-ml-primary{font-family:var(--fm);font-size:clamp(36px,6.4vw,64px);line-height:1.32;font-weight:700;color:var(--navy);margin:0 0 14px;overflow-wrap:anywhere;}
+.hero-main-heading h1.hero-ml-primary{font-family:var(--fm);font-size:clamp(35px,calc(6.4vw - 1px),63px);line-height:1.32;font-weight:700;color:var(--navy);margin:0 0 14px;overflow-wrap:anywhere;}
 .hero-en-secondary{display:block;font-family:var(--fd);font-size:clamp(17px,2.3vw,25px);line-height:1.4;font-weight:400;color:#52758a;margin:0;overflow-wrap:anywhere;}
 .hero-intro{max-width:760px;margin:0 auto 0;position:relative;}
 .hero-intro p{font-size:17px;line-height:1.65;font-weight:300;color:var(--charcoal);}
 .hero-intro .hero-ml{font-family:var(--fm);font-size:14px;line-height:1.7;color:var(--gray);margin-top:8px;display:block;}
+.hero-banner{position:relative;z-index:1;max-width:720px;margin:0 auto;}
+.hero-banner img{display:block;width:100%;height:auto;aspect-ratio:1672/506;}
 /* SEARCH BOX */
 .search-section{background:transparent;padding:56px 22px;border-bottom:1px solid var(--border);}
 .search-box{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:32px;max-width:740px;margin:0 auto;box-shadow:0 4px 24px rgba(0,0,0,.05);}
@@ -202,6 +205,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .nav-login,.nav-cta{padding:8px 12px;font-size:12px;}
   .hero{padding:48px 16px 52px;}
   .hero-main-heading{margin-bottom:0;}
+  .hero-banner{margin-top:24px;}
   .hero-main-heading h1{font-size:clamp(26px,7.2vw,38px);line-height:1.2;}
   .hero-main-heading .hero-ml{font-size:clamp(16px,4.6vw,22px);line-height:1.4;margin-top:10px;}
   .search-section{padding:36px 16px 40px;}
@@ -332,7 +336,10 @@ function setLang(lang){
 <section class="hero">
   <div class="hero-main-heading">
     <h1 class="hero-ml-primary" lang="ml">വിവിധ മേഖലകളിലെ ജനനായകരുടെ ഡിജിറ്റൽ ഗാലറി.</h1>
-    <span class="hero-en-secondary">A digital gallery of people's leaders.</span>
+    <span class="hero-en-secondary">A digital gallery of leaders among the people.</span>
+  </div>
+  <div class="hero-banner">
+    <img src="{{ asset('images/jannayaks-hero.jpeg') }}" width="1672" height="506" alt="നിങ്ങളുടെ നേട്ടങ്ങൾ, ലോകമറിയട്ടെ. Celebrate your work. Herald it. Portrait of an Indian professional against a soft green background." fetchpriority="high">
   </div>
 </section>
 <!-- SEARCH -->
