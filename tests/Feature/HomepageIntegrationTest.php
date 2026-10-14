@@ -28,8 +28,10 @@ class HomepageIntegrationTest extends TestCase
         // The Editorial Preparation block was removed by the final frontend pass.
         $response->assertDontSee('Editorial Preparation');
         $response->assertDontSee('human editors', false);
-        $response->assertSee('href="'.route('demo-profiles.index').'">View Demo Profiles <span lang="ml">· ഡെമോ പ്രൊഫൈലുകൾ</span> →</a>', false);
-        $response->assertSee('FAQ &amp; Charges →', false);
+        $response->assertSee('href="'.route('faq-charges').'">Tariff Plans →</a>', false);
+        $response->assertSee('href="'.route('demo-profiles.index').'">Demo Profiles →</a>', false);
+        $response->assertDontSee('FAQ &amp; Charges →', false);
+        $response->assertDontSee('View Demo Profiles <span lang="ml">', false);
         $response->assertSee('nav-menu-btn', false);
         $response->assertSee('Open menu', false);
         $response->assertSee('branding/jannayaks-logo.jpg', false);
@@ -43,10 +45,35 @@ class HomepageIntegrationTest extends TestCase
         $this->assertNotFalse($banner);
         $this->assertNotFalse($search);
         $this->assertTrue($malayalamHeading < $englishSubtitle && $englishSubtitle < $banner && $banner < $search);
+        $intro = strpos($html, 'class="intro-section"');
+        $recommend = strpos($html, 'class="recommend-strip"');
+        $howItWorks = strpos($html, 'id="hiw"');
+        $memoriam = strpos($html, 'id="memoriam"');
+        $this->assertNotFalse($intro);
+        $this->assertNotFalse($recommend);
+        $this->assertNotFalse($howItWorks);
+        $this->assertNotFalse($memoriam);
+        $this->assertTrue($banner < $intro && $intro < $recommend && $recommend < $howItWorks && $howItWorks < $search && $search < $memoriam);
+        $malayalamBlock = strpos($html, 'class="intro-block intro-block-ml" lang="ml"');
+        $englishBlock = strpos($html, 'class="intro-block intro-block-en" lang="en"');
+        $this->assertNotFalse($malayalamBlock);
+        $this->assertNotFalse($englishBlock);
+        $this->assertTrue($intro < $malayalamBlock && $malayalamBlock < $englishBlock && $englishBlock < $recommend);
+        $response->assertSeeInOrder([
+            'എന്താണ് Jannayaks?',
+            'എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?',
+            'ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു.',
+            'What is Jannayaks?',
+            'How does it work?',
+            'Every profile is personally reviewed before publication.',
+            'Tariff Plans →',
+            'Demo Profiles →',
+        ], false);
+        $this->assertStringNotContainsStringIgnoringCase('every application', $html);
         $response->assertDontSee("A digital gallery of people's leaders.", false);
         $response->assertSee('images/jannayaks-hero.jpeg', false);
-        $response->assertSee('width="1672"', false);
-        $response->assertSee('height="506"', false);
+        $response->assertSee('width="1600"', false);
+        $response->assertSee('height="697"', false);
         $response->assertSee('fetchpriority="high"', false);
         $response->assertDontSee('loading="lazy"', false);
         // Shared footer partial (footer pass 1) replaced the old logo block.
@@ -70,6 +97,40 @@ class HomepageIntegrationTest extends TestCase
         $response->assertDontSee('>Directories<', false);
         $response->assertSee("setLang('en')", false);
         $response->assertSee("'en,ml,hi,ta,kn,te,bn,gu,mr'", false);
+    }
+
+    public function test_google_translate_control_renders_once_with_https_loader_on_public_pages(): void
+    {
+        $loader = '<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>';
+
+        foreach ([route('home'), route('faq-charges'), route('search.index')] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+
+            $this->assertSame(1, substr_count($html, 'class="translate-wrap"'), $url);
+            $this->assertSame(1, substr_count($html, 'class="translate-btn"'), $url);
+            $this->assertSame(1, substr_count($html, 'id="google_translate_element"'), $url);
+            $this->assertSame(1, substr_count($html, 'translate_a/element.js'), $url);
+            $this->assertSame(1, substr_count($html, $loader), $url);
+            $this->assertSame(1, substr_count($html, 'function googleTranslateElementInit()'), $url);
+            $this->assertStringNotContainsString('src="//translate.google.com', $html, $url);
+            foreach (['en', 'ml', 'hi', 'ta'] as $lang) {
+                $this->assertStringContainsString("setLang('{$lang}')", $html, $url);
+            }
+        }
+
+        $public = $this->get(route('search.index'))->getContent();
+        $this->assertStringContainsString('aria-label="Open menu">☰</button>', $public);
+        $this->assertStringNotContainsString('aria-label="Open menu">?</button>', $public);
+    }
+
+    public function test_homepage_intro_links_resolve(): void
+    {
+        $html = $this->get(route('home'))->assertOk()->getContent();
+
+        $this->assertSame(1, substr_count($html, 'href="'.route('faq-charges').'">Tariff Plans →</a>'));
+        $this->assertSame(1, substr_count($html, 'href="'.route('demo-profiles.index').'">Demo Profiles →</a>'));
+        $this->get(route('faq-charges'))->assertOk();
+        $this->get(route('demo-profiles.index'))->assertOk();
     }
 
     public function test_faq_charges_uses_authoritative_pricing(): void

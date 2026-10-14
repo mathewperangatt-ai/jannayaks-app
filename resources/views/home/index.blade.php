@@ -61,20 +61,32 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .nav-cta{background:var(--saffron);color:white;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:background .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
 .nav-cta:hover{background:#9d5e22;}
 /* HERO */
-.hero{background:var(--off);padding:80px 22px 88px;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
+.hero{background:var(--off);padding:56px 22px 48px;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
 .hero::before{display:none;}
 .hero::after{display:none;}
-.hero-main-heading{text-align:center;max-width:900px;margin:0 auto 30px;position:relative;}
+.hero-main-heading{text-align:center;max-width:900px;margin:0 auto 28px;position:relative;}
 /* Kerala launch is Malayalam-first: Malayalam is the primary hero heading. */
 .hero-main-heading h1.hero-ml-primary{font-family:var(--fm);font-size:clamp(35px,calc(6.4vw - 1px),63px);line-height:1.32;font-weight:700;color:var(--navy);margin:0 0 14px;overflow-wrap:anywhere;}
 .hero-en-secondary{display:block;font-family:var(--fd);font-size:clamp(17px,2.3vw,25px);line-height:1.4;font-weight:400;color:#52758a;margin:0;overflow-wrap:anywhere;}
 .hero-intro{max-width:760px;margin:0 auto 0;position:relative;}
 .hero-intro p{font-size:17px;line-height:1.65;font-weight:300;color:var(--charcoal);}
 .hero-intro .hero-ml{font-family:var(--fm);font-size:14px;line-height:1.7;color:var(--gray);margin-top:8px;display:block;}
-.hero-banner{position:relative;z-index:1;max-width:720px;margin:0 auto;}
-.hero-banner img{display:block;width:100%;height:auto;aspect-ratio:1672/506;}
+.hero-banner{position:relative;z-index:1;max-width:800px;margin:0 auto;}
+.hero-banner img{display:block;width:100%;height:auto;aspect-ratio:1600/697;}
+/* BILINGUAL INTRO — complete Malayalam text first, then complete English text */
+.intro-section{padding:44px 22px 40px;background:transparent;}
+.intro-blocks{max-width:680px;margin:0 auto;}
+.intro-block{min-width:0;}
+.intro-block-en{margin-top:32px;padding-top:32px;border-top:1px solid var(--border);}
+.intro-hd{font-family:var(--fd);font-size:clamp(22px,3vw,26px);font-weight:700;color:var(--navy);line-height:1.3;margin:0 0 14px;}
+.intro-block p{font-size:16px;line-height:1.75;color:var(--charcoal);margin:0 0 14px;overflow-wrap:anywhere;}
+.intro-block p:last-child{margin-bottom:0;}
+.intro-block p + .intro-hd{margin-top:28px;}
+.intro-block-ml .intro-hd{font-family:var(--fm);font-size:clamp(20px,2.7vw,24px);line-height:1.5;}
+.intro-block-ml p{font-family:var(--fm);font-size:16px;line-height:1.9;}
+.intro-section .home-actions{margin-top:32px;}
 /* SEARCH BOX */
-.search-section{background:transparent;padding:56px 22px;border-bottom:1px solid var(--border);}
+.search-section{background:transparent;padding:48px 22px;}
 .search-box{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:32px;max-width:740px;margin:0 auto;box-shadow:0 4px 24px rgba(0,0,0,.05);}
 .search-title{font-family:var(--fd);font-size:22px;font-weight:700;color:var(--navy);margin-bottom:4px;}
 .search-title-ml{font-family:var(--fm);font-size:14px;color:var(--gray);display:block;margin-bottom:22px;}
@@ -96,8 +108,8 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .search-btn:hover{background:var(--saffron);}
 .search-note{font-size:11px;color:var(--gray);text-align:center;margin-top:12px;font-style:italic;line-height:1.5;}
 /* HOW IT WORKS */
-.hiw{padding:80px 22px;background:transparent;}
-.section-hd{text-align:center;margin-bottom:52px;}
+.hiw{padding:60px 22px;background:transparent;}
+.section-hd{text-align:center;margin-bottom:40px;}
 .section-eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--saffron);font-weight:600;margin-bottom:10px;display:block;}
 .section-title{font-family:var(--fd);font-size:clamp(28px,5vw,44px);font-weight:700;color:var(--navy);line-height:1.2;letter-spacing:-.01em;}
 .section-title-ml{font-family:var(--fm);font-size:clamp(16px,3vw,24px);color:var(--navy);opacity:.6;display:block;margin-top:4px;}
@@ -143,7 +155,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .tbtn-e{background:transparent;color:var(--navy);border:1.5px solid var(--navy);}
 .tbtn-e:hover{background:var(--navy);color:white;}
 /* URL SECTION */
-.url-section{padding:68px 22px;background:transparent;border-top:1px solid var(--border);}
+.url-section{padding:56px 22px;background:transparent;border-top:1px solid var(--border);}
 .url-box{background:white;border:1.5px solid var(--border);border-radius:12px;padding:32px;max-width:680px;margin:0 auto;}
 .url-title{font-family:var(--fd);font-size:22px;font-weight:700;color:var(--navy);margin-bottom:4px;}
 .url-title-ml{font-family:var(--fm);font-size:14px;color:var(--gray);display:block;margin-bottom:20px;}
@@ -166,14 +178,14 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .ww-text-ml{font-family:var(--fm);font-size:12px;color:var(--gray);line-height:1.75;display:block;margin-bottom:24px;}
 .ww-btn{background:transparent;border:1.5px solid var(--saffron);color:var(--saffron);padding:12px 28px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;}
 .ww-btn:hover{background:var(--saffron);color:white;}
-/* Recommend Someone — quiet secondary action above In Memoriam */
-.recommend-strip{padding:44px 22px;text-align:center;background:var(--off);}
+/* Recommend Someone — quiet secondary action below the introduction */
+.recommend-strip{padding:32px 22px;text-align:center;background:var(--off);}
 .recommend-strip a{color:var(--navy);text-decoration:none;}
 .recommend-strip a:hover{color:var(--saffron);}
 .recommend-strip strong{display:inline-block;font-size:15px;font-weight:600;border-bottom:1px dotted var(--navy);padding-bottom:2px;}
 .recommend-strip a:hover strong{border-color:var(--saffron);}
 .recommend-strip span{display:block;font-size:12.5px;color:var(--gray);margin-top:6px;}
-.mem-section{padding:64px 22px;background:var(--light);border-top:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;}
+.mem-section{padding:56px 22px;background:var(--light);border-top:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;}
 .mem-title{font-family:var(--fd);font-size:26px;font-weight:600;color:var(--navy);margin-bottom:4px;}
 .mem-title-ml{font-family:var(--fm);font-size:16px;color:var(--gray);display:block;margin-bottom:14px;}
 .mem-text{font-size:14px;color:#46554d;line-height:1.75;max-width:560px;margin:0 auto 6px;overflow-wrap:anywhere;}
@@ -202,30 +214,34 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .nav-links a{display:flex;align-items:center;min-height:44px;padding:10px 4px;font-size:14px;color:var(--navy);}
   .translate-label{display:none;}
   .translate-btn{padding:8px 10px;min-width:44px;justify-content:center;}
+  /* Translated labels can push the button to the row's left edge; open rightwards so the menu stays on screen. */
+  .translate-dropdown{right:auto;left:0;}
   .nav-login,.nav-cta{padding:8px 12px;font-size:12px;}
-  .hero{padding:48px 16px 52px;}
+  .hero{padding:36px 16px 36px;}
   .hero-main-heading{margin-bottom:0;}
-  .hero-banner{margin-top:24px;}
+  .hero-banner{margin-top:22px;}
+  .intro-section{padding:32px 16px 32px;}
+  .intro-block-en{margin-top:28px;padding-top:28px;}
   .hero-main-heading h1{font-size:clamp(26px,7.2vw,38px);line-height:1.2;}
   .hero-main-heading .hero-ml{font-size:clamp(16px,4.6vw,22px);line-height:1.4;margin-top:10px;}
-  .search-section{padding:36px 16px 40px;}
+  .search-section{padding:36px 16px;}
   .search-box{padding:20px 16px;}
   .search-tabs{flex-direction:column;gap:6px;padding:6px;}
   .search-tab{flex:none;width:100%;text-align:left;padding:12px 14px;font-size:13px;min-height:48px;}
   .home-actions{flex-direction:column;align-items:stretch;gap:12px;margin-top:20px;max-width:740px;margin-left:auto;margin-right:auto;}
   .home-action{display:flex;align-items:center;justify-content:center;min-height:48px;padding:14px 16px;border:1.5px solid var(--navy);border-radius:8px;border-bottom:1.5px solid var(--navy);font-size:15px;background:white;}
   .home-action:hover{color:white;background:var(--navy);border-color:var(--navy);}
-  .hiw{padding:56px 16px;}
+  .hiw{padding:44px 16px;}
   .section-hd{margin-bottom:32px;}
   .step{gap:14px;padding:18px 0;}
   .step-title{font-size:16px;}
   .step-title-ml{font-size:13px;}
   .step-text{font-size:14px;line-height:1.7;}
   .ep-section{padding:36px 16px 12px;}
-  .url-section{padding:48px 16px;}
+  .url-section{padding:40px 16px;}
   .url-box{padding:22px 16px;}
   .url-example{font-size:12px;padding:12px 14px;}
-  .mem-section{padding:52px 16px;}
+  .mem-section{padding:44px 16px;}
   .mem-title{font-size:clamp(22px,6vw,26px);}
   .mem-text,.mem-text-ml{font-size:14px;}
   .mem-text-ml{font-size:13px;}
@@ -258,19 +274,8 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 </head>
 <body>
 <!-- GOOGLE TRANSLATE (hidden, triggered by button) -->
-<div id="google_translate_element" style="display:none;"></div>
+@include('partials.google-translate')
 <script>
-function googleTranslateElementInit(){
-  new google.translate.TranslateElement({
-    pageLanguage:'en',
-    includedLanguages:'en,ml,hi,ta,kn,te,bn,gu,mr',
-    layout:google.translate.TranslateElement.InlineLayout.SIMPLE,
-    autoDisplay:false
-  },'google_translate_element');
-}
-function toggleTranslate(){
-  document.querySelector('.translate-dropdown').classList.toggle('open');
-}
 function toggleNavMenu(){
   var nav=document.getElementById('site-nav');
   var btn=document.getElementById('nav-menu-btn');
@@ -290,18 +295,10 @@ function closeNavMenu(){
   }
 }
 document.addEventListener('click',function(e){
-  if(!e.target.closest('.translate-wrap'))
-    document.querySelector('.translate-dropdown').classList.remove('open');
   if(!e.target.closest('#site-nav'))
     closeNavMenu();
 });
-function setLang(lang){
-  document.cookie='googtrans=; expires=Thu, 01 Jan 1970 00:00:00 UTC; path=/;';
-  document.cookie='googtrans=/en/'+lang+'; path=/;';
-  location.reload();
-}
 </script>
-<script src="//translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>
 <!-- NAV -->
 <nav id="site-nav">
   <div class="nav-inner">
@@ -318,15 +315,7 @@ function setLang(lang){
       <li><a class="nav-login-mobile" href="{{ route('login') }}">Sign In</a></li>
     </ul>
     <div class="nav-right">
-      <div class="translate-wrap">
-        <button type="button" class="translate-btn" onclick="toggleTranslate()" aria-label="Translate">🌐 <span class="translate-label">Translate ▾</span></button>
-        <div class="translate-dropdown">
-          <a href="#" onclick="setLang('en');return false;">English</a>
-          <a href="#" onclick="setLang('ml');return false;">മലയാളം</a>
-          <a href="#" onclick="setLang('hi');return false;">हिन्दी</a>
-          <a href="#" onclick="setLang('ta');return false;">தமிழ்</a>
-        </div>
-      </div>
+      @include('partials.translate-control')
       <a class="nav-login" href="{{ route('login') }}">Sign In</a>
       <a class="nav-cta" href="{{ route('apply') }}">Create Profile</a>
     </div>
@@ -339,54 +328,46 @@ function setLang(lang){
     <span class="hero-en-secondary">A digital gallery of leaders among the people.</span>
   </div>
   <div class="hero-banner">
-    <img src="{{ asset('images/jannayaks-hero.jpeg') }}" width="1672" height="506" alt="നിങ്ങളുടെ നേട്ടങ്ങൾ, ലോകമറിയട്ടെ. Celebrate your work. Herald it. Portrait of an Indian professional against a soft green background." fetchpriority="high">
+    <img src="{{ asset('images/jannayaks-hero.jpeg') }}" width="1600" height="697" alt="നിങ്ങളുടെ നേട്ടങ്ങൾ, ലോകമറിയട്ടെ. Celebrate your work, herald it. Men and women from Kerala public life against a Kerala landscape with palm trees and traditional buildings." fetchpriority="high">
   </div>
 </section>
-<!-- SEARCH -->
-<section class="search-section" id="search">
-  <div class="search-box">
-    <div class="search-title">Search</div>
-    <span class="search-title-ml">കണ്ടെത്തൂ</span>
-    <div class="search-tabs">
-      <button class="search-tab active" onclick="switchTab(this,'name')">🔍 By Name / പേര്</button>
-      <button class="search-tab" onclick="switchTab(this,'area')">📍 By Area / പ്രദേശം</button>
-      <button class="search-tab" onclick="switchTab(this,'pin')">📮 By Pin Code / പിൻകോഡ്</button>
-      <button class="search-tab" onclick="switchTab(this,'text')">🔎 Text Search</button>
+<!-- INTRO -->
+<section class="intro-section">
+  <div class="intro-blocks">
+    <div class="intro-block intro-block-ml" lang="ml">
+      <h2 class="intro-hd">എന്താണ് Jannayaks?</h2>
+      <p>വ്യക്തികളുടെ സംഭാവനകളും നേട്ടങ്ങളും രേഖപ്പെടുത്തുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയാണ് Jannayaks. ഒരു മാഗസിനിൽ പ്രസിദ്ധീകരിക്കുന്ന വ്യക്തിവിവരണങ്ങളോട് സാമ്യമുള്ളതാണ് ഇതിന്റെ ഉള്ളടക്കം.</p>
+      <p>സ്വന്തം നേട്ടങ്ങൾ പൊതുവേദികളിൽ അവതരിപ്പിക്കാൻ അധികം അവസരങ്ങൾ ലഭിക്കാത്ത മേഖലകളിൽ പ്രവർത്തിക്കുന്നവരുടെ സംഭാവനകൾക്ക് അർഹമായ ഇടം നൽകുകയാണ് ഞങ്ങളുടെ ലക്ഷ്യം. നിശ്ശബ്ദമായി നേടിയെടുത്ത നേട്ടങ്ങൾ പോലും സോഷ്യൽ മീഡിയയിലെ ഒരു പോസ്റ്റിൽ ഒതുങ്ങി മാഞ്ഞുപോകേണ്ടതില്ല. അവ കൂടുതൽ കാലം നിലനിൽക്കുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയിൽ രേഖപ്പെടുത്തൂ.</p>
+      <h2 class="intro-hd">എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?</h2>
+      <p>ഒരു മാഗസിനിൽ വ്യക്തിവിവരണം തയ്യാറാക്കുന്നതുപോലെ, ഒരു ഓൺലൈൻ അഭിമുഖത്തിലൂടെയാണ് നിങ്ങളുടെ വ്യക്തിവിവരണത്തിന് ഞങ്ങൾ രൂപം നൽകുന്നത്.</p>
+      <p>നിങ്ങളുടെ ജീവിതയാത്രയും നേട്ടങ്ങളും സംഭാവനകളും ഉൾക്കൊള്ളുന്ന ഒരു വ്യക്തിവിവരണം എ.ഐ.യുടെ സഹായത്തോടെ തയ്യാറാക്കുന്നു. ഒരു ബയോഡാറ്റയിൽ ഒതുങ്ങാത്ത നിങ്ങളുടെ അനുഭവങ്ങളും പ്രവർത്തനങ്ങളുമെല്ലാം അതിൽ ഉൾപ്പെടുത്താൻ ശ്രമിക്കുന്നു. ഞങ്ങളുടെ എഡിറ്റോറിയൽ ടീം ഇത് പരിശോധിക്കുകയും നിങ്ങളുടെ അംഗീകാരം നേടുകയും ചെയ്തശേഷമാണ് പ്രസിദ്ധീകരിക്കുന്നത്.</p>
+      <p>"jannayaks.in/your.name" എന്നതുപോലുള്ള ഒരു പ്രത്യേക ലിങ്ക് സഹിതമാണ് നിങ്ങളുടെ പ്രൊഫൈൽ പ്രസിദ്ധീകരിക്കുന്നത്. ഈ ലിങ്ക് വാട്സ്ആപ്പിലൂടെയും സോഷ്യൽ മീഡിയയിലൂടെയും പങ്കുവയ്ക്കാം. നിങ്ങളുടെ വിസിറ്റിംഗ് കാർഡിലും ഉൾപ്പെടുത്താം.</p>
+      <p>അച്ചടിച്ച ഒരു പേജിൽനിന്ന് വ്യത്യസ്തമായി, നിശ്ചിത വ്യവസ്ഥകൾക്കനുസരിച്ച് Payment പുതുക്കിക്കൊണ്ട് നിങ്ങളുടെ പ്രൊഫൈൽ ഓൺലൈനിൽ നിലനിർത്താം. നിങ്ങളുടെ പ്രവർത്തനങ്ങളിലും നേട്ടങ്ങളിലും പുതിയ അധ്യായങ്ങൾ കൂട്ടിച്ചേർക്കുമ്പോൾ പ്രൊഫൈൽ പുതുക്കുകയും ചെയ്യാം.</p>
+      <p>ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു. AI യുടെ സഹായത്തോടെ ആർക്കും ഒരു ജീവചരിത്രം തയ്യാറാക്കാം. എന്നാൽ Jannayaks അതിൽനിന്ന് വ്യത്യസ്തമാണ് — സ്ഥിരമായ എഡിറ്റോറിയൽ നിലവാരം, സൂക്ഷ്മമായ പരിശോധന, നിങ്ങളുടെ അംഗീകാരത്തോടെയുള്ള പ്രസിദ്ധീകരണം, കാലത്തിനനുസരിച്ച് പുതുക്കാവുന്ന ഒരു ഡിജിറ്റൽ രേഖ.</p>
     </div>
-    <div id="tab-name">
-      <form method="get" action="{{ route('search.index') }}" id="home-search-form">
-        <div class="search-input-wrap">
-          <span class="search-icon">🔍</span>
-          <input class="search-input" type="search" name="q" id="home-q" placeholder="Type name, ward, panchayat... / പേര്, വാർഡ്, പഞ്ചായത്ത്..." maxlength="200">
-        </div>
-      </form>
+    <div class="intro-block intro-block-en" lang="en">
+      <h2 class="intro-hd">What is Jannayaks?</h2>
+      <p>Jannayaks is a digital gallery that documents the contributions and achievements of individuals. Its content is similar to the personal profiles published in a magazine.</p>
+      <p>Our aim is to give due recognition to the contributions of people working in fields where opportunities to present their achievements publicly may be limited. Even achievements quietly accomplished should not simply fade away as another social media post. They deserve to be documented in a digital gallery where they can remain accessible for much longer.</p>
+      <h2 class="intro-hd">How does it work?</h2>
+      <p>Much like a personal profile prepared for a magazine, we develop your profile through an online interview.</p>
+      <p>With the assistance of AI, we prepare a profile covering your life journey, achievements and contributions. We seek to include your experiences and work that a conventional résumé may not fully convey. Our editorial team reviews the profile and obtains your approval before publication.</p>
+      <p>Your profile is published with a dedicated link, such as "jannayaks.in/your.name". You can share this link through WhatsApp and social media, or include it on your visiting card.</p>
+      <p>Unlike a printed page, your profile can remain online through payment renewals, subject to the applicable terms. You can also update it as new chapters unfold in your work, achievements and contributions.</p>
+      <p>Every profile is personally reviewed before publication. Anyone can use AI to prepare a biography. Jannayaks offers something different: consistent editorial standards, careful review, publication with your approval, and a digital record that can be updated over time.</p>
     </div>
-    <div id="tab-area" style="display:none;">
-      <div class="cascade-row">
-        <select class="cascade-select"><option>{{ config('jannayaks.geography.current_state_name') }} ▾</option></select>
-        <select class="cascade-select"><option>Select District ▾</option><option>Thiruvananthapuram</option><option>Kollam</option><option>Pathanamthitta</option><option>Alappuzha</option><option>Kottayam</option><option>Idukki</option><option>Ernakulam</option><option>Thrissur</option><option>Palakkad</option><option>Malappuram</option><option>Kozhikode</option><option>Wayanad</option><option>Kannur</option><option>Kasaragod</option></select>
-        <select class="cascade-select"><option>Local Body ▾</option></select>
-      </div>
-      <select class="cascade-select" style="width:100%;margin-bottom:16px;"><option>Select Ward ▾</option></select>
-    </div>
-    <div id="tab-pin" style="display:none;">
-      <div class="pincode-row">
-        <input class="pincode-input" type="text" placeholder="Enter 6-digit pin code..." maxlength="6">
-      </div>
-    </div>
-    <div id="tab-text" style="display:none;">
-      <div class="search-input-wrap">
-        <span class="search-icon">🔎</span>
-        <input class="search-input" type="search" name="q" id="home-text-q" placeholder="Search by name, profession, organisation or place…" maxlength="200" form="home-search-form" disabled>
-      </div>
-    </div>
-    <button type="submit" form="home-search-form" class="search-btn">Search — ലോകത്തെവിടെ നിന്നും തിരയൂ 🌍</button>
-    <p class="search-note">Search is open worldwide. / ലോകത്തെവിടെ നിന്നും തിരയാവുന്നതാണ്.</p>
   </div>
-  <div class="home-actions" aria-label="Quick links">
-    <a class="home-action" href="{{ route('demo-profiles.index') }}">View Demo Profiles <span lang="ml">· ഡെമോ പ്രൊഫൈലുകൾ</span> →</a>
-    <a class="home-action" href="{{ route('faq-charges') }}">FAQ &amp; Charges →</a>
+  <div class="home-actions">
+    <a class="home-action" href="{{ route('faq-charges') }}">Tariff Plans →</a>
+    <a class="home-action" href="{{ route('demo-profiles.index') }}">Demo Profiles →</a>
   </div>
+</section>
+<!-- RECOMMEND SOMEONE -->
+<section class="recommend-strip">
+  <a href="{{ route('recommend.show') }}">
+    <strong>Recommend Someone You May Know</strong>
+    <span>Know someone whose life or contribution deserves to be recorded?</span>
+  </a>
 </section>
 <!-- HOW IT WORKS -->
 <section class="hiw" id="hiw">
@@ -438,6 +419,48 @@ function setLang(lang){
     </div>
   </div>
 </section>
+<!-- SEARCH -->
+<section class="search-section" id="search">
+  <div class="search-box">
+    <div class="search-title">Search</div>
+    <span class="search-title-ml">കണ്ടെത്തൂ</span>
+    <div class="search-tabs">
+      <button class="search-tab active" onclick="switchTab(this,'name')">🔍 By Name / പേര്</button>
+      <button class="search-tab" onclick="switchTab(this,'area')">📍 By Area / പ്രദേശം</button>
+      <button class="search-tab" onclick="switchTab(this,'pin')">📮 By Pin Code / പിൻകോഡ്</button>
+      <button class="search-tab" onclick="switchTab(this,'text')">🔎 Text Search</button>
+    </div>
+    <div id="tab-name">
+      <form method="get" action="{{ route('search.index') }}" id="home-search-form">
+        <div class="search-input-wrap">
+          <span class="search-icon">🔍</span>
+          <input class="search-input" type="search" name="q" id="home-q" placeholder="Type name, ward, panchayat... / പേര്, വാർഡ്, പഞ്ചായത്ത്..." maxlength="200">
+        </div>
+      </form>
+    </div>
+    <div id="tab-area" style="display:none;">
+      <div class="cascade-row">
+        <select class="cascade-select"><option>{{ config('jannayaks.geography.current_state_name') }} ▾</option></select>
+        <select class="cascade-select"><option>Select District ▾</option><option>Thiruvananthapuram</option><option>Kollam</option><option>Pathanamthitta</option><option>Alappuzha</option><option>Kottayam</option><option>Idukki</option><option>Ernakulam</option><option>Thrissur</option><option>Palakkad</option><option>Malappuram</option><option>Kozhikode</option><option>Wayanad</option><option>Kannur</option><option>Kasaragod</option></select>
+        <select class="cascade-select"><option>Local Body ▾</option></select>
+      </div>
+      <select class="cascade-select" style="width:100%;margin-bottom:16px;"><option>Select Ward ▾</option></select>
+    </div>
+    <div id="tab-pin" style="display:none;">
+      <div class="pincode-row">
+        <input class="pincode-input" type="text" placeholder="Enter 6-digit pin code..." maxlength="6">
+      </div>
+    </div>
+    <div id="tab-text" style="display:none;">
+      <div class="search-input-wrap">
+        <span class="search-icon">🔎</span>
+        <input class="search-input" type="search" name="q" id="home-text-q" placeholder="Search by name, profession, organisation or place…" maxlength="200" form="home-search-form" disabled>
+      </div>
+    </div>
+    <button type="submit" form="home-search-form" class="search-btn">Search — ലോകത്തെവിടെ നിന്നും തിരയൂ 🌍</button>
+    <p class="search-note">Search is open worldwide. / ലോകത്തെവിടെ നിന്നും തിരയാവുന്നതാണ്.</p>
+  </div>
+</section>
 <!-- URL NAMING -->
 <section class="url-section">
   <div class="url-box">
@@ -469,13 +492,6 @@ function setLang(lang){
       </div>
     </div>
   </div>
-</section>
-<!-- RECOMMEND SOMEONE (secondary action, above In Memoriam) -->
-<section class="recommend-strip">
-  <a href="{{ route('recommend.show') }}">
-    <strong>Recommend Someone You May Know</strong>
-    <span>Know someone whose life or contribution deserves to be recorded?</span>
-  </a>
 </section>
 <!-- IN MEMORIAM -->
 <section class="mem-section" id="memoriam">

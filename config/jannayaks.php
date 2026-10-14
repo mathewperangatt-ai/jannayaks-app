@@ -290,16 +290,20 @@ PROMPT,
                 "object-src 'none'",
                 "frame-ancestors 'none'",
                 "form-action 'self'",
-                "img-src 'self' data:",
-                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com",
+                // Google Translate (public pages): translate-pa serves the translation
+                // script + translateHtml requests; gstatic/google hosts style and
+                // decorate Google's "Translated into…" bar.
+                "img-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com https://www.google.com https://translate.googleapis.com https://translate.google.com",
+                "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com",
                 "font-src 'self' https://fonts.gstatic.com",
-                "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com",
-                "connect-src 'self' https://translate.googleapis.com",
+                "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com",
+                "connect-src 'self' https://translate.googleapis.com https://translate-pa.googleapis.com",
                 "frame-src https://translate.googleapis.com",
             ]),
-            // Filament admin panel (Livewire + Alpine): identical to the member
-            // policy except script-src gains 'unsafe-eval', which Alpine's
-            // expression evaluation requires under an enforced CSP.
+            // Filament admin panel (Livewire + Alpine): script-src gains
+            // 'unsafe-eval', which Alpine's expression evaluation requires under
+            // an enforced CSP. The admin panel does not load Google Translate, so
+            // it keeps the original, narrower Translate allowances.
             'csp_admin' => implode('; ', [
                 "default-src 'self'",
                 "base-uri 'self'",

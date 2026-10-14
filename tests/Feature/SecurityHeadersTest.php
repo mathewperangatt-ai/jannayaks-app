@@ -54,6 +54,32 @@ class SecurityHeadersTest extends TestCase
         $this->assertStringNotContainsString('unsafe-eval', $csp);
     }
 
+    public function test_member_csp_allows_only_the_google_translate_hosts_it_needs(): void
+    {
+        config(['jannayaks.security.headers.csp_enforce' => true]);
+        $csp = (string) $this->get(route('home'))->assertOk()->headers->get('Content-Security-Policy');
+        $directives = collect(explode(';', $csp))
+            ->map(fn (string $d) => preg_split('/\s+/', trim($d)))
+            ->mapWithKeys(fn (array $parts) => [array_shift($parts) => $parts]);
+
+        $this->assertContains('https://translate-pa.googleapis.com', $directives['script-src']);
+        $this->assertContains('https://translate-pa.googleapis.com', $directives['connect-src']);
+        $this->assertContains('https://www.gstatic.com', $directives['style-src']);
+        $this->assertContains('https://www.gstatic.com', $directives['img-src']);
+        $this->assertSame(["'self'"], $directives['default-src']);
+        $this->assertSame(['https://translate.googleapis.com'], $directives['frame-src']);
+        $this->assertSame(["'none'"], $directives['frame-ancestors']);
+        $this->assertNotContains("'unsafe-eval'", $directives['script-src']);
+        foreach ($directives as $sources) {
+            $this->assertNotContains('*', $sources);
+            $this->assertNotContains('https:', $sources);
+        }
+
+        $admin = (string) config('jannayaks.security.headers.csp_admin');
+        $this->assertStringNotContainsString('translate-pa.googleapis.com', $admin);
+        $this->assertStringContainsString("'unsafe-eval'", $admin);
+    }
+
     public function test_csp_can_be_enforced_via_config(): void
     {
         config(['jannayaks.security.headers.csp_enforce' => true]);

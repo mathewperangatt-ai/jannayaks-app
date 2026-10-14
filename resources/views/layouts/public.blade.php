@@ -53,6 +53,15 @@
         .nav-cta{background:var(--saffron);color:#fff;padding:8px 16px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none}
         .nav-cta:hover{background:var(--brand-dark);color:#fff}
         .nav-menu-btn{display:none;border:1.5px solid var(--navy);background:#fff;color:var(--navy);border-radius:4px;font-size:17px;line-height:1;padding:9px 12px;cursor:pointer}
+        .translate-wrap{position:relative}
+        .translate-btn{background:transparent;border:1px solid var(--border);color:var(--gray);padding:6px 12px;border-radius:4px;font-size:12px;font-family:var(--sans);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;min-height:40px}
+        .translate-btn:hover{border-color:var(--navy);color:var(--navy)}
+        .translate-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:#fff;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.1);min-width:160px;z-index:200}
+        .translate-dropdown.open{display:block}
+        .translate-dropdown a{display:block;padding:12px 16px;font-size:13px;color:var(--charcoal);text-decoration:none;transition:background .15s;min-height:44px}
+        .translate-dropdown a:hover{background:var(--light);color:var(--charcoal)}
+        .translate-dropdown a:first-child{border-radius:8px 8px 0 0}
+        .translate-dropdown a:last-child{border-radius:0 0 8px 8px}
         .site{max-width:1100px;margin:0 auto;padding:28px 22px 56px}
         .eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--saffron);font-weight:600;margin:0 0 10px}
         .lede{font-size:15px;color:var(--gray);margin:0 0 22px;max-width:42rem;line-height:1.7}
@@ -86,6 +95,8 @@
         @media (max-width:899px){
             .nav-menu-btn{display:inline-flex;align-items:center}
             .nav-right .nav-login{display:none}
+            .translate-label{display:none}
+            .translate-btn{padding:8px 10px;min-width:44px;justify-content:center}
             .nav-links{display:none;position:absolute;top:100%;left:0;right:0;background:#fff;border-bottom:2px solid var(--saffron);flex-direction:column;gap:0;padding:8px 0;margin:0;box-shadow:0 12px 24px rgba(0,0,0,.08)}
             .nav-links.open{display:flex}
             .nav-links li{list-style:none;width:100%}
@@ -105,7 +116,7 @@
             <a class="nav-logo" href="{{ route('home') }}">
                 <img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks.in">
             </a>
-            <button type="button" class="nav-menu-btn" id="publicNavBtn" aria-expanded="false" aria-controls="publicNavLinks" aria-label="Open menu">?</button>
+            <button type="button" class="nav-menu-btn" id="publicNavBtn" aria-expanded="false" aria-controls="publicNavLinks" aria-label="Open menu">☰</button>
             <ul class="nav-links" id="publicNavLinks">
                 <li><a href="{{ route('home') }}#search" data-nav-close>Search</a></li>
                 <li><a href="{{ route('home') }}#hiw" data-nav-close>How It Works</a></li>
@@ -116,6 +127,7 @@
                 <li><a href="{{ route('login') }}" data-nav-close>Sign In</a></li>
             </ul>
             <div class="nav-right">
+                @include('partials.translate-control')
                 <a class="nav-login" href="{{ route('login') }}">Sign In</a>
                 <a class="nav-cta" href="{{ route('apply') }}">Create Profile</a>
             </div>
@@ -126,7 +138,9 @@
             @yield('content')
         </main>
     </div>
-    @include('partials.public-footer')    <script>
+    @include('partials.public-footer')
+    @include('partials.google-translate')
+    <script>
     (function(){
         var btn = document.getElementById('publicNavBtn');
         var links = document.getElementById('publicNavLinks');

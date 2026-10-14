@@ -38,6 +38,15 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .nav-right{display:flex;align-items:center;gap:10px;}
 .nav-login{background:transparent;border:1.5px solid var(--navy);color:var(--navy);padding:7px 16px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;font-family:var(--fb);}
 .nav-cta{background:var(--saffron);color:white;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;font-family:var(--fb);}
+.translate-wrap{position:relative;}
+.translate-btn{background:transparent;border:1px solid var(--border);color:var(--gray);padding:6px 12px;border-radius:4px;font-size:12px;font-family:var(--fb);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;min-height:40px;}
+.translate-btn:hover{border-color:var(--navy);color:var(--navy);}
+.translate-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.1);min-width:160px;z-index:200;}
+.translate-dropdown.open{display:block;}
+.translate-dropdown a{display:block;padding:12px 16px;font-size:13px;color:var(--charcoal);text-decoration:none;transition:background .15s;min-height:44px;}
+.translate-dropdown a:hover{background:var(--light);}
+.translate-dropdown a:first-child{border-radius:8px 8px 0 0;}
+.translate-dropdown a:last-child{border-radius:0 0 8px 8px;}
 .wrap{max-width:900px;margin:0 auto;padding:48px 22px 72px;}
 .eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--saffron);font-weight:600;margin-bottom:10px;display:block;}
 h1{font-family:var(--fd);font-size:clamp(28px,5vw,44px);color:var(--navy);line-height:1.2;margin-bottom:10px;}
@@ -61,6 +70,10 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 .back{margin-top:28px;font-size:13px;}
 .back a{color:var(--navy);font-weight:600;}
 @media(min-width:900px){.nav-links{display:flex;}}
+@media(max-width:899px){
+  .translate-label{display:none;}
+  .translate-btn{padding:8px 10px;min-width:44px;justify-content:center;}
+}
 </style>
 </head>
 <body>
@@ -77,6 +90,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
       <li><a href="{{ route('demo-profiles.index') }}">View Demo Profiles</a></li>
     </ul>
     <div class="nav-right">
+      @include('partials.translate-control')
       <a class="nav-login" href="{{ route('login') }}">Sign In</a>
       <a class="nav-cta" href="{{ route('apply') }}">Create Profile</a>
     </div>
@@ -210,5 +224,6 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 </main>
 
 @include('partials.public-footer')
+@include('partials.google-translate')
 </body>
 </html>
