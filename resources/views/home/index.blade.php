@@ -77,7 +77,12 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .intro-section{padding:44px 22px 40px;background:transparent;}
 .intro-blocks{max-width:680px;margin:0 auto;}
 .intro-block{min-width:0;}
-.intro-block-en{margin-top:32px;padding-top:32px;border-top:1px solid var(--border);}
+.intro-tabs{display:flex;width:max-content;max-width:100%;gap:4px;background:var(--light);padding:4px;border-radius:8px;margin:0 auto 28px;}
+.intro-tab{min-width:120px;min-height:40px;padding:8px 18px;border:none;background:transparent;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--fb);color:var(--gray);transition:all .2s;line-height:1.35;}
+.intro-tab[lang="ml"]{font-family:var(--fm);}
+.intro-tab:hover{color:var(--navy);}
+.intro-tab[aria-selected="true"]{background:white;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.1);}
+.intro-block[hidden]{display:none;}
 .intro-hd{font-family:var(--fd);font-size:clamp(22px,3vw,26px);font-weight:700;color:var(--navy);line-height:1.3;margin:0 0 14px;}
 .intro-block p{font-size:16px;line-height:1.75;color:var(--charcoal);margin:0 0 14px;overflow-wrap:anywhere;}
 .intro-block p:last-child{margin-bottom:0;}
@@ -221,7 +226,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .hero-main-heading{margin-bottom:0;}
   .hero-banner{margin-top:22px;}
   .intro-section{padding:32px 16px 32px;}
-  .intro-block-en{margin-top:28px;padding-top:28px;}
+  .intro-tabs{margin-bottom:22px;}
   .hero-main-heading h1{font-size:clamp(26px,7.2vw,38px);line-height:1.2;}
   .hero-main-heading .hero-ml{font-size:clamp(16px,4.6vw,22px);line-height:1.4;margin-top:10px;}
   .search-section{padding:36px 16px;}
@@ -271,6 +276,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .step-num{margin-bottom:14px;}
 }
 </style>
+<noscript><style>.intro-tabs{display:none;}.intro-block[hidden]{display:block;margin-top:32px;}</style></noscript>
 </head>
 <body>
 <!-- GOOGLE TRANSLATE (hidden, triggered by button) -->
@@ -334,7 +340,11 @@ document.addEventListener('click',function(e){
 <!-- INTRO -->
 <section class="intro-section">
   <div class="intro-blocks">
-    <div class="intro-block intro-block-ml" lang="ml">
+    <div class="intro-tabs" role="tablist" aria-label="Language / ഭാഷ">
+      <button type="button" class="intro-tab" role="tab" id="intro-tab-ml" lang="ml" aria-selected="true" aria-controls="intro-panel-ml" onclick="switchIntroLang('ml')">മലയാളം</button>
+      <button type="button" class="intro-tab" role="tab" id="intro-tab-en" lang="en" aria-selected="false" aria-controls="intro-panel-en" tabindex="-1" onclick="switchIntroLang('en')">English</button>
+    </div>
+    <div class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml">
       <h2 class="intro-hd">എന്താണ് Jannayaks?</h2>
       <p>വ്യക്തികളുടെ സംഭാവനകളും നേട്ടങ്ങളും രേഖപ്പെടുത്തുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയാണ് Jannayaks. ഒരു മാഗസിനിൽ പ്രസിദ്ധീകരിക്കുന്ന വ്യക്തിവിവരണങ്ങളോട് സാമ്യമുള്ളതാണ് ഇതിന്റെ ഉള്ളടക്കം.</p>
       <p>സ്വന്തം നേട്ടങ്ങൾ പൊതുവേദികളിൽ അവതരിപ്പിക്കാൻ അധികം അവസരങ്ങൾ ലഭിക്കാത്ത മേഖലകളിൽ പ്രവർത്തിക്കുന്നവരുടെ സംഭാവനകൾക്ക് അർഹമായ ഇടം നൽകുകയാണ് ഞങ്ങളുടെ ലക്ഷ്യം. നിശ്ശബ്ദമായി നേടിയെടുത്ത നേട്ടങ്ങൾ പോലും സോഷ്യൽ മീഡിയയിലെ ഒരു പോസ്റ്റിൽ ഒതുങ്ങി മാഞ്ഞുപോകേണ്ടതില്ല. അവ കൂടുതൽ കാലം നിലനിൽക്കുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയിൽ രേഖപ്പെടുത്തൂ.</p>
@@ -345,7 +355,7 @@ document.addEventListener('click',function(e){
       <p>അച്ചടിച്ച ഒരു പേജിൽനിന്ന് വ്യത്യസ്തമായി, നിശ്ചിത വ്യവസ്ഥകൾക്കനുസരിച്ച് Payment പുതുക്കിക്കൊണ്ട് നിങ്ങളുടെ പ്രൊഫൈൽ ഓൺലൈനിൽ നിലനിർത്താം. നിങ്ങളുടെ പ്രവർത്തനങ്ങളിലും നേട്ടങ്ങളിലും പുതിയ അധ്യായങ്ങൾ കൂട്ടിച്ചേർക്കുമ്പോൾ പ്രൊഫൈൽ പുതുക്കുകയും ചെയ്യാം.</p>
       <p>ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു. AI യുടെ സഹായത്തോടെ ആർക്കും ഒരു ജീവചരിത്രം തയ്യാറാക്കാം. എന്നാൽ Jannayaks അതിൽനിന്ന് വ്യത്യസ്തമാണ് — സ്ഥിരമായ എഡിറ്റോറിയൽ നിലവാരം, സൂക്ഷ്മമായ പരിശോധന, നിങ്ങളുടെ അംഗീകാരത്തോടെയുള്ള പ്രസിദ്ധീകരണം, കാലത്തിനനുസരിച്ച് പുതുക്കാവുന്ന ഒരു ഡിജിറ്റൽ രേഖ.</p>
     </div>
-    <div class="intro-block intro-block-en" lang="en">
+    <div class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en" hidden>
       <h2 class="intro-hd">What is Jannayaks?</h2>
       <p>Jannayaks is a digital gallery that documents the contributions and achievements of individuals. Its content is similar to the personal profiles published in a magazine.</p>
       <p>Our aim is to give due recognition to the contributions of people working in fields where opportunities to present their achievements publicly may be limited. Even achievements quietly accomplished should not simply fade away as another social media post. They deserve to be documented in a digital gallery where they can remain accessible for much longer.</p>
@@ -515,6 +525,20 @@ function switchTab(btn,tab){
   var nq=document.getElementById('home-q'); if(nq) nq.disabled = (tab!=='name');
   var tq=document.getElementById('home-text-q'); if(tq) tq.disabled = (tab!=='text');
 }
+function switchIntroLang(lang){
+  ['ml','en'].forEach(function(l){
+    var on=l===lang, tab=document.getElementById('intro-tab-'+l);
+    tab.setAttribute('aria-selected',on?'true':'false');
+    tab.tabIndex=on?0:-1;
+    document.getElementById('intro-panel-'+l).hidden=!on;
+  });
+}
+document.querySelector('.intro-tabs').addEventListener('keydown',function(e){
+  if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;
+  var next=document.getElementById('intro-tab-ml').getAttribute('aria-selected')==='true'?'en':'ml';
+  switchIntroLang(next);
+  document.getElementById('intro-tab-'+next).focus();
+});
 </script>
 </body>
 </html>

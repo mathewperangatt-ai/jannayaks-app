@@ -59,6 +59,15 @@ class HomepageIntegrationTest extends TestCase
         $this->assertNotFalse($malayalamBlock);
         $this->assertNotFalse($englishBlock);
         $this->assertTrue($intro < $malayalamBlock && $malayalamBlock < $englishBlock && $englishBlock < $recommend);
+        // Intro language tabs: Malayalam selected by default, English panel rendered but hidden.
+        $tabs = strpos($html, 'class="intro-tabs" role="tablist"');
+        $this->assertNotFalse($tabs);
+        $this->assertTrue($intro < $tabs && $tabs < $malayalamBlock);
+        $response->assertSee('id="intro-tab-ml" lang="ml" aria-selected="true" aria-controls="intro-panel-ml"', false);
+        $response->assertSee('id="intro-tab-en" lang="en" aria-selected="false" aria-controls="intro-panel-en"', false);
+        $response->assertSee('class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml">', false);
+        $response->assertSee('class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en" hidden>', false);
+        $this->assertSame(1, substr_count($html, 'role="tablist"'));
         $response->assertSeeInOrder([
             'എന്താണ് Jannayaks?',
             'എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?',
