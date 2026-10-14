@@ -29,9 +29,14 @@
     <h2 id="im-records" style="letter-spacing:.22em">ഓർമ്മയ്ക്കായി · In Memoriam records</h2>
     <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px;margin-top:14px">
         @foreach($memorials as $memorial)
+            @php($memorialPhoto = $memorialPhotos[$memorial->id] ?? null)
             <a href="{{ route('in-memoriam.show', $memorial->slug) }}" style="display:block;background:#fafaf8;border:1px solid #d8d8d4;text-decoration:none;color:inherit">
                 <div style="aspect-ratio:4/3;display:flex;align-items:center;justify-content:center;background:linear-gradient(165deg,#ececEA,#e2e2de);font:500 34px var(--serif, serif);color:#b0b0ac;filter:grayscale(1)">
-                    {{ mb_strtoupper(mb_substr($memorial->deceased_display_name ?: $memorial->deceased_full_name, 0, 1)) }}
+                    @if($memorialPhoto)
+                        <img src="{{ route('in-memoriam.photo', ['slug' => $memorial->slug, 'media' => $memorialPhoto]) }}" alt="{{ $memorialPhoto->alt_text ?: ('Portrait of '.($memorial->deceased_display_name ?: $memorial->deceased_full_name)) }}" width="480" height="360" loading="lazy" style="display:block;width:100%;height:100%;object-fit:cover">
+                    @else
+                        {{ mb_strtoupper(mb_substr($memorial->deceased_display_name ?: $memorial->deceased_full_name, 0, 1)) }}
+                    @endif
                 </div>
                 <div style="padding:14px 16px">
                     <strong style="display:block;font-family:var(--serif, serif);font-size:16px;color:#3c3c42">{{ $memorial->deceased_display_name ?: $memorial->deceased_full_name }}</strong>

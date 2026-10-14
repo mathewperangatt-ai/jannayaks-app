@@ -4,12 +4,16 @@ namespace App\Http\Controllers;
 
 use App\Models\InMemoriamProfile;
 use App\Services\InMemoriamLifecycleService;
+use App\Services\InMemoriamMediaService;
 use App\Support\PricingAmounts;
 use Illuminate\View\View;
 
 class InMemoriamLandingController extends Controller
 {
-    public function __construct(private InMemoriamLifecycleService $lifecycle) {}
+    public function __construct(
+        private InMemoriamLifecycleService $lifecycle,
+        private InMemoriamMediaService $media,
+    ) {}
 
     public function __invoke(): View
     {
@@ -32,6 +36,9 @@ class InMemoriamLandingController extends Controller
                 config('jannayaks.contact.public_email', 'hello@jannayaks.in')
             ),
             'memorials' => $memorials,
+            'memorialPhotos' => $memorials->mapWithKeys(fn (InMemoriamProfile $profile): array => [
+                $profile->id => $this->media->primaryApprovedPhotograph($profile),
+            ]),
         ]);
     }
 }

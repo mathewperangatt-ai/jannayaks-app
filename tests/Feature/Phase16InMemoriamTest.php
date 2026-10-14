@@ -397,4 +397,51 @@ class Phase16InMemoriamTest extends TestCase
         $this->assertSame(MediaItem::PRIVACY_PUBLIC, $approved->privacy);
         $this->get($photoUrl)->assertOk();
     }
+
+    public function test_landing_cards_show_approved_photograph_or_initial_placeholder(): void
+    {
+        Storage::fake('public');
+
+        $admin = User::factory()->admin()->create();
+        $editor = User::factory()->editor()->create();
+        $reviewer = User::factory()->editor()->create();
+        $lifecycle = app(InMemoriamLifecycleService::class);
+        $mediaService = app(InMemoriamMediaService::class);
+
+        $withPhoto = InMemoriamProfile::factory()->paid()->create([
+            'slug' => 'landing-with-photo',
+            'deceased_full_name' => 'Photographed Memorial',
+            'deceased_display_name' => 'Photographed Memorial',
+            'status' => InMemoriamProfile::STATUS_UNDER_EDITORIAL_REVIEW,
+        ]);
+        $photo = $mediaService->approve(
+            $mediaService->uploadPhotograph($withPhoto, UploadedFile::fake()->image('portrait.jpg', 400, 500), $editor),
+            $reviewer,
+        );
+        $lifecycle->publish($withPhoto->fresh(), $admin);
+
+        $withoutPhoto = InMemoriamProfile::factory()->paid()->create([
+            'slug' => 'landing-without-photo',
+            'deceased_full_name' => 'Quiet Memorial',
+            'deceased_display_name' => 'Quiet Memorial',
+            'status' => InMemoriamProfile::STATUS_UNDER_EDITORIAL_REVIEW,
+        ]);
+        $lifecycle->publish($withoutPhoto->fresh(), $admin);
+
+        $photoUrl = route('in-memoriam.photo', ['slug' => 'landing-with-photo', 'media' => $photo]);
+
+        $response = $this->get(route('in-memoriam.index'))
+            ->assertOk()
+            ->assertSee('Photographed Memorial', false)
+            ->assertSee('Quiet Memorial', false)
+            ->assertSee('<img src="'.$photoUrl.'"', false)
+            ->assertDontSee('/in-memoriam/landing-without-photo/photo/', false);
+
+        $this->assertMatchesRegularExpression(
+            '/<a href="[^"]*\/in-memoriam\/landing-without-photo"[^>]*>\s*<div[^>]*>\s*Q\s*<\/div>/',
+            $response->getContent(),
+        );
+
+        $this->get($photoUrl)->assertOk();
+    }
 }
