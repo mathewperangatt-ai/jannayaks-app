@@ -167,7 +167,6 @@
                 @else
                     <div class="jk-portrait-mono" aria-hidden="true">{{ mb_strtoupper(mb_substr(trim($nameLast !== '' ? $nameLast : $displayName), 0, 1)) }}</div>
                 @endif
-                @include('public.partials.tier-mark', ['tier' => $profile->application?->package_tier])
             </div>
             <figcaption class="jk-caption">
                 <span>{{ $locationLabel ? 'KERALAM · INDIA' : 'PUBLIC LIFE' }}</span>
@@ -327,9 +326,12 @@
             </div>
             <div class="jk-gallery">
                 @foreach($photos->skip(1) as $galleryPhoto)
-                    <a href="{{ route('profiles.public.photo', [$profile, $galleryPhoto]) }}">
-                        <img src="{{ route('profiles.public.photo', [$profile, $galleryPhoto]) }}" alt="{{ $galleryPhoto->alt_text ?: ($displayName.' photograph') }}" loading="lazy">
-                    </a>
+                    <figure>
+                        <a href="{{ route('profiles.public.photo', [$profile, $galleryPhoto]) }}">
+                            <img src="{{ route('profiles.public.photo', [$profile, $galleryPhoto]) }}" alt="{{ $galleryPhoto->alt_text ?: ($displayName.' documentary photograph') }}" loading="lazy">
+                        </a>
+                        <figcaption class="jk-figcap">{{ $galleryPhoto->alt_text ?: 'Documentary photograph' }}</figcaption>
+                    </figure>
                 @endforeach
             </div>
             <p class="jk-note" style="margin-top:16px">Photographs are held as documentary records — captioned and preserved alongside the written record.</p>

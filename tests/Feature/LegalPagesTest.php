@@ -77,13 +77,13 @@ class LegalPagesTest extends TestCase
 
     public function test_refund_page_states_the_configured_before_publication_percent(): void
     {
-        config(['jannayaks.refund.before_publication_percent' => 45]);
+        config(['jannayaks.refund.before_dashboard_delivery_percent' => 45]);
 
         $this->get('/refund-policy')
             ->assertOk()
             ->assertSee('refund of 45% of the fee you paid', false)
             ->assertDontSee('full refund</strong> of what you paid', false)
-            ->assertSee('Refunds are not processed automatically.', false)
+            ->assertSee('That record is not itself a payment-gateway refund.', false)
             ->assertSee('A renewal fee, once paid, is not refundable.', false)
             ->assertDontSee('for the period it is offline', false);
     }

@@ -104,9 +104,12 @@ class ProfileStateAttributeTest extends TestCase
 
     public function test_public_state_surfaces_use_keralam_and_not_a_url_prefix(): void
     {
-        $this->get('/')->assertOk()->assertSee('Keralam ▾', false);
-        $this->get(route('gallery.index'))->assertOk()->assertSee('Keralam', false);
-        $this->get(route('search.index'))->assertOk()->assertSee('Keralam', false);
+        foreach (['/', route('gallery.index'), route('search.index')] as $url) {
+            $html = $this->get($url)->assertOk()->getContent();
+            $this->assertStringNotContainsString('Keralam ▾', $html, $url);
+            $this->assertStringNotContainsString('/keralam/', $html, $url);
+            $this->assertSame(0, substr_count($html, '<select'), $url);
+        }
     }
 
     /**

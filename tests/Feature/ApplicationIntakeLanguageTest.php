@@ -120,7 +120,7 @@ class ApplicationIntakeLanguageTest extends TestCase
         ]));
 
         $application = Application::query()->where('user_id', $user->id)->sole();
-        $this->assertSame('accomplished', $application->package_tier);
+        $this->assertSame('distinguished', $application->package_tier);
         $this->assertSame('Arun Kumar', $application->full_name);
         $this->assertSame('arun.kumar@example.test', $application->preferred_contact_email);
         $this->assertNotNull($application->preferred_contact_mobile);
@@ -131,23 +131,20 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertSee('നേരിട്ടുള്ള സമർപ്പണം');
     }
 
-    public function test_missing_tier_shows_an_error_keeps_input_and_creates_no_application(): void
+    public function test_omitted_tier_still_creates_the_standard_profile(): void
     {
         $user = $this->verifiedUser();
 
-        $response = $this->actingAs($user)
-            ->from(route('apply'))
-            ->followingRedirects()
+        $this->actingAs($user)
             ->post(route('apply.intent'), $this->intake([
                 'package_tier' => '',
                 'source_method' => 'direct_submission',
             ]))
-            ->assertOk()
-            ->assertSee('ദയവായി ഒരു അംഗത്വ ശ്രേണി തിരഞ്ഞെടുക്കുക.')
-            ->assertSee('value="Arun Kumar"', false);
+            ->assertRedirect();
 
-        $this->assertMatchesRegularExpression('/value="direct_submission"\s+checked/', $response->getContent());
-        $this->assertSame(0, Application::query()->where('user_id', $user->id)->count());
+        $application = Application::query()->where('user_id', $user->id)->sole();
+        $this->assertSame('distinguished', $application->package_tier);
+        $this->assertSame('direct_submission', $application->source_method);
     }
 
     public function test_required_field_messages_use_the_supplied_malayalam(): void
@@ -162,7 +159,6 @@ class ApplicationIntakeLanguageTest extends TestCase
                 'contact_mobile' => '',
             ]))
             ->assertSessionHasErrors([
-                'package_tier' => 'ദയവായി ഒരു അംഗത്വ ശ്രേണി തിരഞ്ഞെടുക്കുക.',
                 'source_method' => 'നിങ്ങളുടെ ഉള്ളടക്കം എങ്ങനെ സമർപ്പിക്കണമെന്ന് ദയവായി തിരഞ്ഞെടുക്കുക.',
                 'full_name' => 'പൂർണ്ണനാമം നൽകേണ്ടതാണ്.',
                 'contact_email' => 'ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകിയിട്ടില്ലെങ്കിൽ ഇമെയിൽ നൽകേണ്ടതാണ്.',
@@ -182,7 +178,6 @@ class ApplicationIntakeLanguageTest extends TestCase
                 'source_method' => '',
             ]))
             ->assertSessionHasErrors([
-                'package_tier' => 'Please select a membership tier.',
                 'source_method' => 'Please select how you would like to submit your content.',
             ]);
     }

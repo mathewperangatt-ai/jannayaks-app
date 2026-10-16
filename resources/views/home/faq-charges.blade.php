@@ -13,7 +13,7 @@
 @include('partials.schema-ld', ['json' => $schemaJson])
 @include('partials.seo-meta', [
     'title' => 'FAQ &amp; Charges — Jannayaks™',
-    'description' => 'Jannayaks membership charges for the Recognised, Acclaimed and Distinguished tiers, In Memoriam hosting, and answers to common questions.',
+    'description' => 'Jannayaks profile charges, renewal, edits, refunds, and answers to common questions.',
     'canonical' => route('faq-charges'),
 ])
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -99,101 +99,66 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 
 <main class="wrap">
   <span class="eyebrow">FAQ &amp; Charges / ചോദ്യങ്ങളും നിരക്കുകളും</span>
-  <h1>Membership charges and common questions</h1>
+  <h1>Charges and common questions</h1>
   <p class="lede">
-    The charges shown below are exclusive of GST. GST ({{ number_format($gstPercent, 0) }}%)
-    will be added to the applicable amount at checkout. Payment is completed through the
-    application journey after you create a profile.
+    One standard profile. India prices are in rupees. The launch price is shown with the ordinary price crossed out while that launch price is in effect. GST treatment for invoices still needs professional confirmation; the figures below are the prices the application charges.
   </p>
 
-  <div class="card gold">
-    <div class="tier-name">Distinguished</div>
-    <span class="tier-name-ml">പ്രഗൽഭർ</span>
-    <div class="price">{{ $distinguished['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">
-      + GST (added at payment) · renews annually at the same tier price ·
-      post-publication revision {{ $revision['base_formatted'] }} + GST
-    </div>
-    <div class="who">
-      Senior political leaders, state-level office-bearers, and the most established names in community and cultural leadership
-      <span class="who-ml">മുതിർന്ന രാഷ്ട്രീയ നേതാക്കൾ, സംസ്ഥാനതല ഭാരവാഹികൾ, സാമൂഹിക-സാംസ്കാരിക രംഗത്തെ പ്രഗത്ഭർ</span>
-    </div>
-    <ul class="features">
-      <li>Verified profile — Gold badge</li>
-      <li>Artificial Intelligence–assisted biography — deeply developed long-form profile (EN + ML)</li>
-      <li>Personal URL — jannayaks.in/name</li>
-      <li>Portrait photograph plus up to 5 gallery photographs</li>
-      <li>External video link on the profile</li>
-    </ul>
-  </div>
-
-  <div class="card navy">
-    <div class="tier-name">{{ \App\Support\TierLabels::label('accomplished') }}</div>
-    <span class="tier-name-ml">ജനസമ്മതർ</span>
-    <div class="price">{{ $accomplished['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">
-      + GST (added at payment) · renews annually at the same tier price ·
-      post-publication revision {{ $revision['base_formatted'] }} + GST
-    </div>
-    <div class="who">
-      Elected and former representatives, and established leaders of organisations, institutions, and community bodies
-      <span class="who-ml">തിരഞ്ഞെടുക്കപ്പെട്ടവരും മുൻ ജനപ്രതിനിധികളും, സംഘടനകളുടെയും സ്ഥാപനങ്ങളുടെയും നേതാക്കളും</span>
-    </div>
-    <ul class="features">
-      <li>Verified profile — Verified badge</li>
-      <li>Artificial Intelligence–assisted biography — substantially developed feature (EN + ML)</li>
-      <li>Personal URL — jannayaks.in/name</li>
-      <li>Portrait photograph plus up to 3 gallery photographs</li>
-      <li>External video link on the profile</li>
-    </ul>
-  </div>
-
   <div class="card">
-    <div class="tier-name">{{ \App\Support\TierLabels::label('emerging') }}</div>
-    <span class="tier-name-ml">ജനകീയർ</span>
-    <div class="price">{{ $emerging['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">
-      + GST (added at payment) · renews annually at the same tier price ·
-      post-publication revision {{ $revision['base_formatted'] }} + GST
+    <div class="tier-name">Jannayaks profile</div>
+    <div class="price">
+      @if($profile['compare_at_base_formatted'])
+        <s style="color:var(--gray);font-size:22px;margin-right:8px">{{ $profile['compare_at_base_formatted'] }}</s>
+      @endif
+      {{ $profile['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span>
     </div>
-    <div class="who">
-      Local body members, active workers, and rising figures in community or cultural life
-      <span class="who-ml">തദ്ദേശസ്വയംഭരണ സ്ഥാപന അംഗങ്ങൾ, സജീവ പ്രവർത്തകർ, സാമൂഹിക-സാംസ്കാരിക രംഗത്തെ പ്രവർത്തകർ</span>
-    </div>
+    <div class="price-sub">Includes profile creation and the first year of publication and hosting. Launch price until the owner withdraws it. No automatic expiry.</div>
     <ul class="features">
-      <li>Verified profile</li>
-      <li>Artificial Intelligence–assisted biography — concise but complete portrait (EN + ML)</li>
-      <li>Personal URL — jannayaks.in/name</li>
-      <li>Portrait photograph</li>
+      <li>Personal URL you can share</li>
+      <li>One primary photograph and three documentary photographs</li>
+      <li>Questionnaire, AI-assisted draft, human review, your approval, then publication</li>
+      <li>Two consolidated edit requests each year after publication</li>
+      <li>Annual renewal {{ $renewal['amount_incl_formatted'] }}, inclusive of applicable GST</li>
+      <li>Full rewrite {{ $rewrite['base_formatted'] }} + GST</li>
     </ul>
   </div>
 
   <div class="card">
     <div class="tier-name">In Memoriam</div>
     <span class="tier-name-ml">ഓർമ്മയ്ക്കായി</span>
-    <div class="price">{{ $inMemoriam['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">
-      {{ $hostingYears }} years hosting · arranged offline with Jannayaks · see
-      <a href="{{ route('in-memoriam.index') }}">/in-memoriam</a>
-    </div>
-    <div class="who">
-      A dignified memorial page prepared with editorial care for the agreed hosting period. There is no online memorial application.
-    </div>
+    <div class="price">Starting at {{ $inMemoriam['base_formatted'] }}</div>
+    <div class="price-sub">For three years, with GST additional. Arranged by contact. There is no online memorial application.</div>
   </div>
 
   <h2>Frequently asked questions</h2>
 
   <div class="faq">
+    <strong>Can I have a Jannayaks profile if I do not speak Malayalam?</strong>
+    <p>Yes. Jannayaks welcomes people irrespective of their preferred language. Profiles are currently prepared in English, with Malayalam available for those who need it. Every profile has its own personal URL that you can share with others.</p>
+  </div>
+  <div class="faq">
+    <strong>How is a profile prepared?</strong>
+    <p>You answer the questionnaire and may provide source material. Jannayaks prepares an AI-assisted editorial draft. A member of staff reviews it. The completed profile is then released to your dashboard for your review and approval. It is published only after that approval and after payment is settled. The website’s translation control changes the interface language. It does not mean a profile is professionally prepared in every language.</p>
+  </div>
+  <div class="faq">
     <strong>How do I create a profile?</strong>
-    <p>Use Create Profile to begin the application journey. You sign in, choose a package, complete payment in the application, then continue with the interview and editorial process.</p>
+    <p>Use Create Profile, sign in with your username and password or with Google, and continue to payment. There is no package to choose and no SMS one-time password.</p>
   </div>
   <div class="faq">
     <strong>When is payment taken?</strong>
-    <p>Package payment is collected through the application payment step (Razorpay). Amounts shown here are the same server-side prices used by the application.</p>
+    <p>The profile fee is collected in the application before the interview and uploads. The amount is calculated on the server. International charges in US dollars are not available yet, because billing country, gateway currency and tax treatment are not confirmed. Customers outside India should write to us before paying.</p>
   </div>
   <div class="faq">
-    <strong>How does the profile differ between membership tiers?</strong>
-    <p>The tiers differ primarily in the depth, scope and editorial treatment of the profile. Recognised provides a concise but complete portrait, Acclaimed provides a substantially developed feature, and Distinguished provides a deeply developed long-form profile.</p>
+    <strong>What does renewal cost?</strong>
+    <p>After the first year, renewal is {{ $renewal['amount_incl_formatted'] }}, inclusive of applicable GST. The first payment already includes the first year.</p>
+  </div>
+  <div class="faq">
+    <strong>Can I edit my profile after it is published?</strong>
+    <p>You can submit two consolidated edit requests in each year counted from publication. Jannayaks reviews each request, and you approve the result before it replaces anything. The published profile stays as it is until that approval. A substantial restructuring or replacement is a full rewrite at {{ $rewrite['base_formatted'] }} plus GST. You cannot publish changes yourself.</p>
+  </div>
+  <div class="faq">
+    <strong>When can I get a refund?</strong>
+    <p>You can receive a full refund of the fee you paid before the completed profile is delivered to your dashboard. After that delivery there is no routine refund. A refund recorded by Jannayaks is a credit note until our team initiates it with the payment gateway. See the <a href="{{ route('legal.refund') }}">refund page</a>.</p>
   </div>
   <div class="faq">
     <strong>Is a direct personal interview available?</strong>
@@ -202,14 +167,6 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <div class="faq">
     <strong>Are photography or reel production services available?</strong>
     <p>Jannayaks does not itself provide photography or reel production. If required, we can try to arrange suitable external agencies for professional photography and/or reel production at an additional cost, subject to availability.</p>
-  </div>
-  <div class="faq">
-    <strong>What is annual membership?</strong>
-    <p>After publication, membership renews on the annual cycle configured in the application. The current annual renewal is your tier's annual price plus GST: {{ $renewals['emerging']['base_formatted'] }} ({{ \App\Support\TierLabels::label('emerging') }}), {{ $renewals['accomplished']['base_formatted'] }} ({{ \App\Support\TierLabels::label('accomplished') }}), {{ $renewals['distinguished']['base_formatted'] }} ({{ \App\Support\TierLabels::label('distinguished') }}) — each + GST.</p>
-  </div>
-  <div class="faq">
-    <strong>What about profile revisions after publication?</strong>
-    <p>Meaningful post-publication revisions use the configured revision charge of {{ $revision['base_formatted'] }} + GST. Routine factual or typographical corrections follow the editorial process.</p>
   </div>
   <div class="faq">
     <strong>Is there an online In Memoriam checkout?</strong>

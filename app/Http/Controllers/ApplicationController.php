@@ -19,7 +19,9 @@ use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
+use Illuminate\Support\Str;
 use Illuminate\View\View;
+use League\Flysystem\UnableToWriteFile;
 
 class ApplicationController extends Controller
 {
@@ -58,9 +60,8 @@ class ApplicationController extends Controller
             return response()->json([
                 'ok' => true,
                 'login_required' => ! $auth,
-                'tiers' => $tiers,
+                'offering' => 'standard_profile',
                 'source_methods' => $sourceMethods,
-                'tier_labels' => $tierLabels,
             ]);
         }
 
@@ -101,13 +102,11 @@ class ApplicationController extends Controller
     {
         if ($this->flowLanguage($request) !== 'ml') {
             return [
-                'package_tier.required' => 'Please select a membership tier.',
                 'source_method.required' => 'Please select how you would like to submit your content.',
             ];
         }
 
         return [
-            'package_tier.required' => 'ദയവായി ഒരു അംഗത്വ ശ്രേണി തിരഞ്ഞെടുക്കുക.',
             'source_method.required' => 'നിങ്ങളുടെ ഉള്ളടക്കം എങ്ങനെ സമർപ്പിക്കണമെന്ന് ദയവായി തിരഞ്ഞെടുക്കുക.',
             'full_name.required' => 'പൂർണ്ണനാമം നൽകേണ്ടതാണ്.',
             'contact_email.required_without' => 'ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകിയിട്ടില്ലെങ്കിൽ ഇമെയിൽ നൽകേണ്ടതാണ്.',
@@ -121,7 +120,6 @@ class ApplicationController extends Controller
     public function storeIntent(Request $request): JsonResponse|RedirectResponse
     {
         $validator = Validator::make($request->all(), [
-            'package_tier' => ['required', 'string', 'in:emerging,accomplished,distinguished'],
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
             'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$/'],
@@ -140,7 +138,7 @@ class ApplicationController extends Controller
 
         $validated = $validator->safe()->all();
         $intent = [
-            'package_tier' => (string) $validated['package_tier'],
+            'package_tier' => PricingAmounts::STANDARD_INTERNAL_TIER,
             'source_method' => (string) $validated['source_method'],
             'full_name' => (string) $validated['full_name'],
             'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
@@ -176,17 +174,17 @@ class ApplicationController extends Controller
         $intent = $request->session()->get('apply.intent');
         if (! is_array($intent)) {
             if ($request->expectsJson()) {
-                return response()->json(['ok' => false, 'error' => 'No application intent found. Choose a tier first.'], 422);
+                return response()->json(['ok' => false, 'error' => 'No application intent found. Start your profile application first.'], 422);
             }
 
             return redirect()->route('apply', ['step' => 'tiers'])
-                ->withErrors(['apply' => 'Choose a profile tier to continue.']);
+                ->withErrors(['apply' => 'Start your profile application to continue.']);
         }
 
         $request->session()->forget('apply.intent');
 
         $merged = array_merge($intent, [
-            'package_tier' => $intent['package_tier'] ?? 'emerging',
+            'package_tier' => PricingAmounts::STANDARD_INTERNAL_TIER,
             'source_method' => $intent['source_method'] ?? 'online_interview',
             'full_name' => $intent['full_name'] ?? (Auth::user()->name ?? 'Member'),
         ]);
@@ -229,7 +227,6 @@ class ApplicationController extends Controller
         }
 
         $validator = Validator::make($request->all(), [
-            'package_tier' => ['required', 'string', 'in:emerging,accomplished,distinguished'],
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
             'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$/'],
@@ -256,7 +253,7 @@ class ApplicationController extends Controller
             $application->forceFill([
                 'user_id' => $user->id,
                 'source_method' => (string) $validated['source_method'],
-                'package_tier' => (string) $validated['package_tier'],
+                'package_tier' => PricingAmounts::STANDARD_INTERNAL_TIER,
                 'full_name' => (string) $validated['full_name'],
                 'preferred_display_name' => (string) $validated['full_name'],
                 'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
@@ -454,15 +451,20 @@ class ApplicationController extends Controller
 
         $diskName = (string) config('online_interview.uploads.disk', 'private_uploads');
         $prefix = (string) config('online_interview.uploads.storage_prefix', 'source-materials/applications');
-        $storedPath = $uploaded->store($prefix.'/'.$application->id, $diskName);
+        try {
+            $storedPath = $uploaded->store($prefix.'/'.$application->id, $diskName);
+        } catch (UnableToWriteFile) {
+            $storedPath = false;
+        }
         if ($storedPath === false) {
             return $this->serverErrorResponse($request, 'Failed to store the uploaded file.');
         }
 
         $sanitizeOrig = (bool) config('online_interview.uploads.sanitize_original_name', true);
+        $clientName = (string) $uploaded->getClientOriginalName();
         $originalName = $sanitizeOrig
-            ? preg_replace('/[^A-Za-z0-9._-]/', '_', (string) $uploaded->getClientOriginalName())
-            : (string) $uploaded->getClientOriginalName();
+            ? preg_replace('/[^A-Za-z0-9._-]/', '_', Str::ascii($clientName))
+            : $clientName;
 
         $material = SourceMaterial::query()->create([
             'application_id' => $application->id,

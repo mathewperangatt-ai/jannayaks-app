@@ -1,7 +1,7 @@
 @extends('layouts.public')
 
 @section('title', ($q !== '' ? 'Search: '.$q.' — ' : '').'Search — Jannayaks')
-@section('seoDescription', 'Search published Jannayaks profiles by name, area or PIN code.')
+@section('seoDescription', 'Search published Jannayaks profiles by name, profession, field of work, or place.')
 @section('seoCanonical', route('search.index'))
 
 @section('content')
@@ -13,26 +13,8 @@
     <form method="get" action="{{ route('search.index') }}" role="search">
         <label for="q">Search</label>
         <div class="search-row">
-            <input id="q" name="q" type="search" value="{{ $q }}" placeholder="e.g. doctor {{ config('jannayaks.geography.current_state_name') }}, artist Trivandrum, Wyoming" maxlength="200" autocomplete="off" autofocus>
+            <input id="q" name="q" type="search" value="{{ $q }}" placeholder="Name, profession, field of work, or place" maxlength="200" autocomplete="off" autofocus>
             <button type="submit">Search</button>
-        </div>
-        <div class="filters" aria-label="Optional filters">
-            <label class="visually-hidden" for="district_id">{{ config('jannayaks.geography.current_state_name') }} district</label>
-            <select id="district_id" name="district_id">
-                <option value="">All districts</option>
-                @foreach($districts as $district)
-                    <option value="{{ $district['id'] }}" @selected((int)($filters['district_id'] ?? 0) === (int)$district['id'])>{{ $district['name'] }}</option>
-                @endforeach
-            </select>
-            <label class="visually-hidden" for="state">State / UT</label>
-            <select id="state" name="state">
-                <option value="">All states</option>
-                @foreach($states as $state)
-                    <option value="{{ $state['name'] }}" @selected(($filters['state'] ?? '') === $state['name'])>{{ $state['name'] }}</option>
-                @endforeach
-            </select>
-            <label class="visually-hidden" for="country">Country</label>
-            <input id="country" name="country" type="text" value="{{ $filters['country'] ?? '' }}" placeholder="Country (optional)" maxlength="64" style="min-height:40px;padding:8px 12px;border:1px solid var(--line);border-radius:10px;background:#fff;font:inherit;font-size:14px;min-width:140px">
         </div>
     </form>
 </section>
@@ -51,5 +33,4 @@
     </div>
     <div class="pager">{{ $profiles->links() }}</div>
 @endif
-<style>.visually-hidden{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}</style>
 @endsection

@@ -43,7 +43,7 @@
                 <a class="list-pill" style="text-decoration:none" href="{{ request()->fullUrlWithQuery(['lang' => 'ml']) }}" lang="ml">മലയാളം</a>
             @endif
         </span>
-        <span class="{{ $tierBadgeColor }}">{{ $package['label'] ?? strtoupper($tier) }}</span>
+        <span class="tag">{{ $package['label'] ?? 'Jannayaks profile' }}</span>
     </div>
 
     @if (session('payment_callback_message_en'))

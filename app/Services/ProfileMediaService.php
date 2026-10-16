@@ -28,6 +28,10 @@ class ProfileMediaService
 
     public function photoSlotLimitForTier(string $tier): int
     {
+        if (in_array($tier, ['emerging', 'accomplished', 'distinguished'], true)) {
+            return max(0, (int) config('jannayaks.tier_pricing.standard_profile.photo_slots', 4));
+        }
+
         $packages = (array) config('jannayaks.tier_pricing.packages', []);
         $slots = (int) data_get($packages, $tier.'.photo_slots', 0);
 
@@ -92,7 +96,17 @@ class ProfileMediaService
         $objectKey = $this->makeObjectKey($profile, 'jpg');
 
         // Optimize outside the DB transaction (CPU-bound); store only processed bytes.
-        $processed = $this->optimizer->processAndStore($file, $disk, $objectKey);
+        try {
+            $processed = $this->optimizer->processAndStore($file, $disk, $objectKey);
+        } catch (\RuntimeException $e) {
+            if ($e->getMessage() !== 'Failed to store the optimized photograph.') {
+                throw $e;
+            }
+
+            throw ValidationException::withMessages([
+                'photo' => 'The photograph could not be stored. Please try again.',
+            ]);
+        }
 
         try {
             $item = DB::transaction(function () use ($profile, $actor, $altText, $makePrimary, $limit, $disk, $processed): MediaItem {

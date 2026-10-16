@@ -75,7 +75,76 @@ class ApplicationPaymentStateService
 
     public function isPaymentSettled(Application $application): bool
     {
-        return $this->hasSettledPaymentRecord($application);
+        return $this->hasSettledPaymentRecord($application)
+            || $this->hasTrustedStaffWaiver($application);
+    }
+
+    /**
+     * Record an audited staff waiver. Does not create a payment, a discount,
+     * or a gateway event. Publication and interview unlock both honour the
+     * same trusted-waiver check.
+     */
+    public function grantStaffWaiver(Application $application, User $actor, string $reason): Application
+    {
+        if (! $actor->canManageFinance()) {
+            throw new \InvalidArgumentException('Only an active admin may waive payment.');
+        }
+
+        $reason = trim($reason);
+        if (mb_strlen($reason) < 8) {
+            throw new \InvalidArgumentException('A waiver reason is required.');
+        }
+
+        if ($application->package_tier === 'in_memoriam') {
+            throw new \InvalidArgumentException('In Memoriam payment is arranged outside this waiver.');
+        }
+
+        if ($this->hasSettledPaymentRecord($application)) {
+            throw new \InvalidArgumentException('This application already has a settled payment.');
+        }
+
+        return DB::transaction(function () use ($application, $actor, $reason) {
+            /** @var Application $locked */
+            $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+
+            if ($this->hasSettledPaymentRecord($locked)) {
+                throw new \InvalidArgumentException('This application already has a settled payment.');
+            }
+
+            $before = [
+                'payment_status' => $locked->payment_status,
+                'status' => $locked->status,
+                'waived_by_user_id' => $locked->waived_by_user_id,
+            ];
+
+            $cols = [
+                'payment_status' => Application::PAYMENT_STATUS_WAIVED,
+                'waived_by_user_id' => $actor->id,
+                'payment_settled_at' => $locked->payment_settled_at ?? now(),
+            ];
+
+            $next = $this->nextWorkflowStateAfterPayment($locked);
+            if ($next !== null) {
+                $cols['status'] = $next;
+            }
+
+            $locked->forceFill($cols)->save();
+
+            app(StaffAuditLogger::class)->log(
+                action: 'application.payment_waived',
+                subject: $locked,
+                before: $before,
+                after: [
+                    'payment_status' => $locked->payment_status,
+                    'status' => $locked->status,
+                    'waived_by_user_id' => $actor->id,
+                    'reason' => mb_substr($reason, 0, 500),
+                ],
+                actor: $actor,
+            );
+
+            return $locked->fresh() ?? $locked;
+        });
     }
 
     /**

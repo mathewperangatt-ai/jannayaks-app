@@ -55,45 +55,38 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         $this->assertSame(MediaItem::REVIEW_PENDING, $first->review_status);
         $this->assertSame(MediaItem::PRIVACY_PRIVATE, $first->privacy);
 
+        for ($i = 1; $i < 4; $i++) {
+            $service->uploadProfilePhoto($profile, $this->jpegUpload("a{$i}.jpg"), $member);
+        }
+
         try {
             $service->uploadProfilePhoto($profile, $this->jpegUpload('b.jpg'), $member);
-            $this->fail('Second Emerging photo should be rejected.');
+            $this->fail('Fifth photograph should be rejected.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('photo', $e->errors());
         }
 
-        $this->assertSame(1, $service->profilePhotoCount($profile));
+        $this->assertSame(4, $service->profilePhotoCount($profile));
     }
 
     public function test_accomplished_and_distinguished_photo_limits(): void
     {
         $service = app(ProfileMediaService::class);
 
-        [, , $accomplished] = $this->makeReadyApplication('accomplished');
-        $ownerA = User::query()->findOrFail($accomplished->user_id);
-        for ($i = 0; $i < 3; $i++) {
-            $service->uploadProfilePhoto($accomplished, $this->jpegUpload("a{$i}.jpg"), $ownerA);
+        foreach (['accomplished', 'distinguished'] as $tier) {
+            [, , $profile] = $this->makeReadyApplication($tier);
+            $owner = User::query()->findOrFail($profile->user_id);
+            for ($i = 0; $i < 4; $i++) {
+                $service->uploadProfilePhoto($profile, $this->jpegUpload("{$tier}{$i}.jpg"), $owner);
+            }
+            try {
+                $service->uploadProfilePhoto($profile, $this->jpegUpload("{$tier}-extra.jpg"), $owner);
+                $this->fail('Fifth '.$tier.' photograph should be rejected.');
+            } catch (ValidationException) {
+                $this->assertTrue(true);
+            }
+            $this->assertSame(4, $service->profilePhotoCount($profile));
         }
-        try {
-            $service->uploadProfilePhoto($accomplished, $this->jpegUpload('a3.jpg'), $ownerA);
-            $this->fail('Fourth Accomplished photo should be rejected.');
-        } catch (ValidationException) {
-            $this->assertTrue(true);
-        }
-        $this->assertSame(3, $service->profilePhotoCount($accomplished));
-
-        [, , $distinguished] = $this->makeReadyApplication('distinguished');
-        $ownerD = User::query()->findOrFail($distinguished->user_id);
-        for ($i = 0; $i < 5; $i++) {
-            $service->uploadProfilePhoto($distinguished, $this->jpegUpload("d{$i}.jpg"), $ownerD);
-        }
-        try {
-            $service->uploadProfilePhoto($distinguished, $this->jpegUpload('d5.jpg'), $ownerD);
-            $this->fail('Sixth Distinguished photo should be rejected.');
-        } catch (ValidationException) {
-            $this->assertTrue(true);
-        }
-        $this->assertSame(5, $service->profilePhotoCount($distinguished));
     }
 
     public function test_member_cannot_manage_another_members_media(): void
@@ -315,19 +308,16 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         }
     }
 
-    public function test_emerging_cannot_submit_video_links(): void
+    public function test_standard_profile_can_submit_a_video_link(): void
     {
         [$member, , $profile] = $this->makeReadyApplication('emerging');
-        try {
-            app(ExternalVideoLinkService::class)->submit(
-                $profile,
-                $member,
-                'https://www.youtube.com/watch?v=abc123',
-            );
-            $this->fail('Emerging should not get video links.');
-        } catch (ValidationException $e) {
-            $this->assertArrayHasKey('url', $e->errors());
-        }
+        $link = app(ExternalVideoLinkService::class)->submit(
+            $profile,
+            $member,
+            'https://www.youtube.com/watch?v=abc123',
+        );
+
+        $this->assertSame($profile->id, $link->profile_id);
     }
 
     public function test_post_publication_video_change_requires_approval(): void

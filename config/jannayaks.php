@@ -25,33 +25,60 @@ return [
         'currency' => 'INR',
         'gst_percent' => 18,
         /*
-        | Commercial model (Master Editorial Specification §12, confirmed):
-        | Internal storage keys are retained (emerging/accomplished/distinguished);
-        | customer-facing tier names come from these labels / App\Support\TierLabels.
-        | base_amount is EXCLUSIVE of GST — the customer pays base + GST at checkout.
-        | Annual membership renewal is tier-priced (same annual tier price).
+        | One standard living-profile offering. Historical storage keys
+        | (emerging/accomplished/distinguished) stay for existing records.
+        | New applications are stored as internal_tier (distinguished depth).
+        | Customer-facing screens must not offer a tier choice.
+        |
+        | Launch price has no automatic expiry. Withdraw it only by setting
+        | standard_profile.launch_active to false after an explicit owner decision.
+        | The crossed-out standard price is shown only while launch_active is true
+        | and the standard amount is higher than the launch amount.
+        |
+        | International USD amounts are recorded for the owner. They are not
+        | charged: there is no verified billing-country field, and the gateway
+        | path asserts INR only.
         */
+        'standard_profile' => [
+            'internal_tier' => 'distinguished',
+            'label' => 'Jannayaks profile',
+            'description' => 'Profile creation and the first year of publication and hosting.',
+            'launch_active' => true,
+            'launch_base_amount' => 4000,
+            'standard_base_amount' => 6000,
+            'photo_slots' => 4,
+            'primary_photos' => 1,
+            'documentary_photos' => 3,
+            'international_reference' => [
+                'currency' => 'USD',
+                'chargeable' => false,
+                'launch_amount' => 45,
+                'standard_amount' => 65,
+                'renewal_amount' => 30,
+                'rewrite_amount' => 35,
+            ],
+        ],
         'packages' => [
             'emerging' => [
                 'label' => 'Recognised',
-                'base_amount' => 3000,
-                'description' => 'Annual profile package.',
-                'photo_slots' => 1,
-                'includes_video_link' => false,
+                'base_amount' => 4000,
+                'description' => 'Historical internal key. Charged at the standard profile price.',
+                'photo_slots' => 4,
+                'includes_video_link' => true,
             ],
             'accomplished' => [
                 'label' => 'Acclaimed',
-                'base_amount' => 6000,
-                'description' => 'Annual profile package.',
-                'photo_slots' => 3,
+                'base_amount' => 4000,
+                'description' => 'Historical internal key. Charged at the standard profile price.',
+                'photo_slots' => 4,
                 'includes_video_link' => true,
             ],
             'distinguished' => [
                 'label' => 'Distinguished',
-                'base_amount' => 9000,
-                'description' => 'Annual profile package.',
+                'base_amount' => 4000,
+                'description' => 'Editorial-depth key for the standard profile.',
                 'includes_video_link' => true,
-                'photo_slots' => 5,
+                'photo_slots' => 4,
             ],
         ],
         // Seller/legal fields for GST tax invoices. Leave blank until registration is confirmed.
@@ -76,19 +103,25 @@ return [
                 env('JANNAYAKS_BILLING_SUPPORT_EMAIL', 'hello@jannayaks.in')
             ),
         ],
-        /*
-        | Flat-rate 'membership' block removed: annual membership renewal is now
-        | tier-priced at the member's applicable annual tier price (see
-        | PricingAmounts::forTierRenewal()). Cycle length remains 1 year.
-        */
         'membership' => [
             'label' => 'Annual Membership',
             'cycle_years' => 1,
         ],
+        /*
+        | Annual renewal is a single inclusive amount for every living profile.
+        | Invoice GST is split from this inclusive total at the configured rate.
+        | That split is an accounting presentation, not confirmed tax advice.
+        */
+        'renewal' => [
+            'label' => 'Annual renewal',
+            'amount_incl_rupees' => 2400,
+            'gst_inclusive' => true,
+            'description' => 'Annual renewal of publication and hosting, inclusive of applicable GST.',
+        ],
         'revision' => [
-            'label' => 'Profile Revision / Update',
-            'base_amount' => 2000,
-            'description' => 'Interim profile revision or content update.',
+            'label' => 'Full profile rewrite',
+            'base_amount' => 3000,
+            'description' => 'Substantial restructuring or replacement of a published profile. Two consolidated edit requests each year are not charged.',
         ],
     ],
 
@@ -104,9 +137,15 @@ return [
     ],
 
     'refund' => [
-        // Working assumption only — reconfirm before production. Not an immutable business rule.
-        'before_publication_percent' => (int) env('JANNAYAKS_REFUND_BEFORE_PUBLICATION_PERCENT', 60),
-        'refundable_statuses' => ['pending', 'success'],
+        /*
+        | Routine refund is the full amount paid, including GST, before the
+        | completed profile is released to the customer dashboard
+        | (applications.customer_preview_released_at). Profile creation and a
+        | linked profile id are not that event. After dashboard delivery there
+        | is no routine refund. Recording a refund issues a credit note only;
+        | it does not call the payment gateway.
+        */
+        'before_dashboard_delivery_percent' => (int) env('JANNAYAKS_REFUND_BEFORE_DASHBOARD_DELIVERY_PERCENT', 100),
     ],
 
     'renewal' => [
@@ -216,7 +255,8 @@ return [
         'editorial' => [
             // Two included pre-publication revision rounds are part of initial prep (P11). Not paid.
             'included_prepublication_revision_rounds' => 2,
-            // Post-publication meaningful revision uses tier_pricing.revision (₹2,000 + GST) — not in P10.
+            // Post-publication full rewrite uses tier_pricing.revision (₹3,000 + GST).
+            // Two consolidated edit requests per publication year are not charged.
         ],
         'image_enhancement' => [
             // KILL SWITCH — disabled by default. When false: no candidate is

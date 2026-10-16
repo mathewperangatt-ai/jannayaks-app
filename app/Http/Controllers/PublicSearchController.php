@@ -19,23 +19,14 @@ class PublicSearchController extends Controller
         $q = trim((string) $request->query('q', ''));
         $q = mb_substr($q, 0, 200);
 
-        $filters = [
-            'district_id' => $request->integer('district_id') ?: null,
-            'state' => ($s = trim((string) $request->query('state', ''))) !== '' ? mb_substr($s, 0, 128) : null,
-            'country' => ($c = trim((string) $request->query('country', ''))) !== '' ? mb_substr($c, 0, 64) : null,
-        ];
-
         $profiles = $q === ''
-            ? $this->search->gallery($filters)
-            : $this->search->search($q, $filters);
+            ? $this->search->gallery()
+            : $this->search->search($q);
 
         return view('public.search', [
             'profiles' => $profiles,
             'presentation' => $this->presentation,
             'q' => $q,
-            'filters' => $filters,
-            'districts' => $this->search->districtOptions(),
-            'states' => $this->search->stateOptions(),
             'mode' => 'search',
             'nav' => 'search',
         ]);

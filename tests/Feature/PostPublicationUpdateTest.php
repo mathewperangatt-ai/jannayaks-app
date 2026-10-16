@@ -58,7 +58,7 @@ class PostPublicationUpdateTest extends TestCase
         $this->assertSame(EditorialRevisionRequest::BILLING_COMPLIMENTARY, $request->billing_classification);
         $this->assertSame(EditorialRevisionRequest::STATUS_SUBMITTED, $request->status);
         $this->assertSame('2026-05-01', $request->eligibility_published_on->toDateString());
-        $this->assertSame('2026-08-01', $request->next_eligible_on->toDateString());
+        $this->assertSame('2027-05-01', $request->next_eligible_on->toDateString());
         $this->assertSame($member->id, (int) $request->requested_by_user_id);
     }
 
@@ -105,12 +105,23 @@ class PostPublicationUpdateTest extends TestCase
             'request_type' => EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE,
             'billing_classification' => EditorialRevisionRequest::BILLING_COMPLIMENTARY,
             'status' => EditorialRevisionRequest::STATUS_COMPLETED,
-            'request_text' => 'First complimentary update of the January cycle.',
+            'request_text' => 'First complimentary update of the publication year.',
         ]);
-        EditorialRevisionRequest::query()->whereKey($used->id)->update(['created_at' => '2026-07-05 09:00:00']);
+        EditorialRevisionRequest::query()->whereKey($used->id)->update(['created_at' => '2026-02-05 09:00:00']);
+        $second = EditorialRevisionRequest::query()->create([
+            'application_id' => $application->id,
+            'profile_id' => $application->profile_id,
+            'requested_by_user_id' => $member->id,
+            'round_number' => null,
+            'request_type' => EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE,
+            'billing_classification' => EditorialRevisionRequest::BILLING_COMPLIMENTARY,
+            'status' => EditorialRevisionRequest::STATUS_COMPLETED,
+            'request_text' => 'Second complimentary update of the publication year.',
+        ]);
+        EditorialRevisionRequest::query()->whereKey($second->id)->update(['created_at' => '2026-03-05 09:00:00']);
 
         $this->actingAs($member)->post(route('applications.maintenance.store', $application), [
-            'request_text' => 'A second change within the same cycle should be classified as paid.',
+            'request_text' => 'A third change within the same publication year is a full rewrite.',
         ])->assertRedirect();
 
         $request = EditorialRevisionRequest::query()
@@ -118,7 +129,7 @@ class PostPublicationUpdateTest extends TestCase
             ->where('status', EditorialRevisionRequest::STATUS_SUBMITTED)
             ->sole();
         $this->assertSame(EditorialRevisionRequest::BILLING_PAID, $request->billing_classification);
-        $this->assertSame('2026-10-01', $request->next_eligible_on->toDateString());
+        $this->assertSame('2027-01-01', $request->next_eligible_on->toDateString());
     }
 
     public function test_eligibility_follows_the_publication_date_not_the_calendar(): void
@@ -134,7 +145,7 @@ class PostPublicationUpdateTest extends TestCase
         $request = EditorialRevisionRequest::query()->sole();
         $this->assertSame(EditorialRevisionRequest::BILLING_COMPLIMENTARY, $request->billing_classification);
         $this->assertSame('2026-02-01', $request->eligibility_published_on->toDateString());
-        $this->assertSame('2026-08-01', $request->next_eligible_on->toDateString());
+        $this->assertSame('2027-02-01', $request->next_eligible_on->toDateString());
     }
 
     public function test_eligibility_recurs_every_three_months_from_publication_date(): void

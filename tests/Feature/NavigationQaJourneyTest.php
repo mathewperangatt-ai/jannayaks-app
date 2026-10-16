@@ -146,22 +146,19 @@ class NavigationQaJourneyTest extends TestCase
         $this->assertSame(1, Application::query()->where('user_id', $user->id)->count());
     }
 
-    /* H — Approved Malayalam tier names, exactly. */
-    public function test_h_tier_page_uses_approved_malayalam_names_only(): void
+    /* H — Customer pages no longer present tier names. */
+    public function test_h_customer_pages_do_not_present_tier_names(): void
     {
         $tiersPage = $this->get(route('apply', ['step' => 'tiers']))->assertOk();
-
-        foreach (['ജനകീയർ', 'ജനസമ്മതർ', 'പ്രഗൽഭർ'] as $approved) {
-            $tiersPage->assertSee($approved, false);
-        }
-        foreach (['അംഗീകരിക്കപ്പെട്ടവർ', 'പ്രശസ്തർ', 'വിശിഷ്ടർ', 'പ്രമുഖർ'] as $banned) {
-            $tiersPage->assertDontSee($banned, false);
-        }
-
         $faq = $this->get(route('faq-charges'))->assertOk();
-        $faq->assertSee('പ്രഗൽഭർ', false);
-        $faq->assertDontSee('പ്രമുഖർ', false);
-        $faq->assertDontSee('പ്രശസ്തർ', false);
+
+        foreach (['ജനകീയർ', 'ജനസമ്മതർ', 'പ്രഗൽഭർ', 'പ്രമുഖർ', 'Recognised', 'Acclaimed', 'Distinguished'] as $label) {
+            $tiersPage->assertDontSee($label, false);
+            $faq->assertDontSee($label, false);
+        }
+
+        $tiersPage->assertSee('₹4,000.00', false);
+        $faq->assertSee('Can I have a Jannayaks profile if I do not speak Malayalam?', false);
     }
 
     /* Login (existing account) also continues the pending intent. */

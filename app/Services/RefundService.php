@@ -13,7 +13,7 @@ class RefundService
 
     public function refundBasisConfigPercent(): int
     {
-        $cfg = config('jannayaks.refund.before_publication_percent', 60);
+        $cfg = config('jannayaks.refund.before_dashboard_delivery_percent', 100);
         $pct = (int) $cfg;
         if ($pct < 0) {
             $pct = 0;
@@ -39,15 +39,22 @@ class RefundService
             return false;
         }
 
-        $notYetPublished = $application->profile_id === null
-            && $application->converted_to_profile_at === null;
-        if (! $notYetPublished) {
-            $statuses = (array) config('jannayaks.refund.refundable_statuses', ['pending', 'success']);
+        return ! $this->routineRefundWindowClosed($application);
+    }
 
-            return in_array((string) $application->status, $statuses, true);
+    /**
+     * Living profiles close the routine refund when the completed profile is
+     * released onto the customer dashboard. A linked profile id is not that
+     * event. In Memoriam has no customer dashboard, so publication remains
+     * the equivalent point.
+     */
+    public function routineRefundWindowClosed(Application $application): bool
+    {
+        if ($application->package_tier === 'in_memoriam') {
+            return $application->status === Application::STATUS_PUBLISHED;
         }
 
-        return true;
+        return $application->customer_preview_released_at !== null;
     }
 
     public function calculateRefundAmountPaise(Payment $payment, ?int $overridePercent = null): ?int
@@ -78,11 +85,20 @@ class RefundService
      * Record a refund locally and issue a credit note.
      * Does NOT call Razorpay (or any gateway) refund APIs.
      */
+    /**
+     * Record a local refund and credit note.
+     *
+     * $exceptionalAfterDelivery lets finance record a non-routine refund after
+     * dashboard delivery (or memorial publication). It still does not call
+     * the payment gateway. Passing a gateway id only stores the reference the
+     * operator already obtained; this method never creates one.
+     */
     public function initiateRefund(
         Payment $payment,
         string $note,
         ?int $overridePercent = null,
         ?string $refundGatewayId = null,
+        bool $exceptionalAfterDelivery = false,
     ): ?Payment {
         if ($payment->isRefunded()) {
             if ($payment->credit_note_number === null || $payment->credit_note_number === '') {
@@ -92,7 +108,9 @@ class RefundService
             return $payment->fresh() ?? $payment;
         }
 
-        $refundPaise = $this->calculateRefundAmountPaise($payment, $overridePercent);
+        $refundPaise = $exceptionalAfterDelivery
+            ? $this->exceptionalRefundAmountPaise($payment, $overridePercent)
+            : $this->calculateRefundAmountPaise($payment, $overridePercent);
         if ($refundPaise === null || $refundPaise <= 0) {
             return null;
         }
@@ -127,6 +145,7 @@ class RefundService
         $percent = $this->refundBasisConfigPercent();
         $refundPaise = $eligible ? $this->calculateRefundAmountPaise($payment) : null;
         $totalPaise = $payment->totalPaise();
+        $application = $payment->application;
 
         return [
             'eligible' => $eligible,
@@ -141,6 +160,29 @@ class RefundService
             'refund_note' => $payment->refund_note,
             'credit_note_number' => $payment->credit_note_number,
             'gateway_refund_executed' => false,
+            'gateway_refund_note' => 'This application records a credit note only. It does not issue the refund at the payment gateway.',
+            'dashboard_delivered' => $application instanceof Application && $this->routineRefundWindowClosed($application),
         ];
+    }
+
+    private function exceptionalRefundAmountPaise(Payment $payment, ?int $overridePercent): ?int
+    {
+        if (! $payment->isPaidOrBetter() || $payment->isRefunded()) {
+            return null;
+        }
+
+        $pct = $overridePercent ?? 100;
+        if ($pct < 0 || $pct > 100) {
+            throw new InvalidArgumentException('Refund percent must be between 0 and 100.');
+        }
+
+        $totalPaise = $payment->totalPaise();
+        if ($totalPaise <= 0) {
+            return null;
+        }
+
+        $refundPaise = (int) round($totalPaise * ($pct / 100));
+
+        return min($refundPaise, $totalPaise);
     }
 }

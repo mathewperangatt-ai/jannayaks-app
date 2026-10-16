@@ -63,7 +63,7 @@ class PhotoEnhancementTest extends TestCase
         ]);
     }
 
-    private function uploadSource(): MediaItem
+    private function uploadSource(bool $makePrimary = false): MediaItem
     {
         $file = UploadedFile::fake()->image('portrait.jpg', 900, 1200);
 
@@ -72,6 +72,7 @@ class PhotoEnhancementTest extends TestCase
             file: $file,
             actor: $this->member,
             altText: 'Portrait of Photo Person',
+            makePrimary: $makePrimary,
         );
     }
 
@@ -178,8 +179,12 @@ class PhotoEnhancementTest extends TestCase
 
         $this->enable();
         Queue::fake();
-        $this->uploadSource();
+        $this->uploadSource(makePrimary: true);
         Queue::assertPushed(EnhanceProfilePhoto::class);
+
+        Queue::fake();
+        $this->uploadSource();
+        Queue::assertNotPushed(EnhanceProfilePhoto::class);
     }
 
     public function test_job_does_nothing_when_source_deleted(): void
@@ -232,7 +237,7 @@ class PhotoEnhancementTest extends TestCase
 
         // Failed provider leaves source untouched.
         app()->instance(PhotoEnhancementClient::class, tap(new FakePhotoEnhancementClient, fn ($c) => $c->failNext = true));
-        $source2 = $this->uploadSource();
+        $source2 = $this->uploadSource(makePrimary: true);
         $failed = PhotoEnhancementRun::query()->where('source_media_id', $source2->id)->sole();
         $this->assertSame(PhotoEnhancementRun::STATUS_FAILED, $failed->status);
         $this->assertStringContainsString('Simulated', $failed->error_message);

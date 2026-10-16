@@ -10,35 +10,61 @@ class PricingAmounts
 
     public const PAISE_PER_RUPEE = 100;
 
-    public static function forTier(string $tierKey): array
+    /** Editorial-depth key stored on newly created living applications. */
+    public const STANDARD_INTERNAL_TIER = 'distinguished';
+
+    /**
+     * @return list<string>
+     */
+    public static function livingTierKeys(): array
     {
-        $packages = (array) config('jannayaks.tier_pricing.packages', []);
-        if (! isset($packages[$tierKey])) {
-            throw new InvalidArgumentException('Unknown package tier: '.$tierKey);
-        }
-        $pkg = $packages[$tierKey];
+        return ['emerging', 'accomplished', 'distinguished'];
+    }
 
-        $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
-
-        // Confirmed commercial model: tier prices are GST-EXCLUSIVE.
-        // base_amount is the annual tier price; the customer pays base + GST.
-        return self::buildPlusGst(
-            baseRupees: (int) $pkg['base_amount'],
-            gstRate: $gstRate,
-            label: (string) $pkg['label'],
-            description: (string) ($pkg['description'] ?? 'Profile package'),
-            itemKey: $tierKey,
-        );
+    public static function isLivingTier(?string $tierKey): bool
+    {
+        return in_array((string) $tierKey, self::livingTierKeys(), true);
     }
 
     /**
-     * Tier-priced annual membership renewal (replaces the former flat ₹2,000 renewal).
-     * Renewal costs the member's applicable annual tier price + GST.
+     * Current standard-profile charge. Historical tier keys resolve here so
+     * checkout cannot keep a hidden tier price.
      *
      * @return array<string, mixed>
      */
-    public static function forTierRenewal(string $tierKey): array
+    public static function forStandardProfile(): array
     {
+        $cfg = (array) config('jannayaks.tier_pricing.standard_profile', []);
+        $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
+        $launchActive = (bool) ($cfg['launch_active'] ?? true);
+        $launchBase = (int) ($cfg['launch_base_amount'] ?? 0);
+        $standardBase = (int) ($cfg['standard_base_amount'] ?? 0);
+        $chargeBase = ($launchActive && $launchBase > 0) ? $launchBase : $standardBase;
+
+        $quote = self::buildPlusGst(
+            baseRupees: $chargeBase,
+            gstRate: $gstRate,
+            label: (string) ($cfg['label'] ?? 'Jannayaks profile'),
+            description: (string) ($cfg['description'] ?? 'Profile creation and the first year of publication and hosting.'),
+            itemKey: self::STANDARD_INTERNAL_TIER,
+        );
+
+        $showCompare = $launchActive && $standardBase > $chargeBase;
+        $quote['launch_active'] = $launchActive;
+        $quote['compare_at_base_rupees'] = $showCompare ? $standardBase : null;
+        $quote['compare_at_base_formatted'] = $showCompare
+            ? self::formatMoneyInr(self::rupeesToPaise($standardBase))
+            : null;
+
+        return $quote;
+    }
+
+    public static function forTier(string $tierKey): array
+    {
+        if (self::isLivingTier($tierKey)) {
+            return self::forStandardProfile();
+        }
+
         $packages = (array) config('jannayaks.tier_pricing.packages', []);
         if (! isset($packages[$tierKey])) {
             throw new InvalidArgumentException('Unknown package tier: '.$tierKey);
@@ -48,10 +74,58 @@ class PricingAmounts
         return self::buildPlusGst(
             baseRupees: (int) $pkg['base_amount'],
             gstRate: (float) config('jannayaks.tier_pricing.gst_percent', 18),
-            label: (string) $pkg['label'].' — Annual Membership Renewal',
-            description: 'Annual membership renewal at the applicable annual tier price.',
-            itemKey: 'membership_renewal_'.$tierKey,
+            label: (string) $pkg['label'],
+            description: (string) ($pkg['description'] ?? 'Profile package'),
+            itemKey: $tierKey,
         );
+    }
+
+    /**
+     * Single annual renewal for every living profile. The configured amount
+     * is inclusive of applicable GST.
+     *
+     * @return array<string, mixed>
+     */
+    public static function forTierRenewal(string $tierKey): array
+    {
+        if (! self::isLivingTier($tierKey)) {
+            throw new InvalidArgumentException('Unknown package tier: '.$tierKey);
+        }
+
+        $cfg = (array) config('jannayaks.tier_pricing.renewal', []);
+        $inclusiveRupees = (int) ($cfg['amount_incl_rupees'] ?? 0);
+        if ($inclusiveRupees <= 0) {
+            throw new InvalidArgumentException('Invalid renewal amount.');
+        }
+
+        $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
+        $inclusivePaise = self::rupeesToPaise($inclusiveRupees);
+        $split = self::splitInclusiveTotal($inclusivePaise, $gstRate);
+        $cgst = intdiv($split['gst_paise'], 2);
+        $sgst = $split['gst_paise'] - $cgst;
+        $label = (string) ($cfg['label'] ?? 'Annual renewal');
+
+        return [
+            'currency' => self::CURRENCY,
+            'tier_key' => 'membership_renewal',
+            'label' => $label,
+            'description' => (string) ($cfg['description'] ?? 'Annual renewal of publication and hosting, inclusive of applicable GST.'),
+            'gst_inclusive' => true,
+            'gst_rate_percent' => $gstRate,
+            'amount_incl_paise' => $inclusivePaise,
+            'amount_incl_rupees' => $inclusiveRupees,
+            'base_paise' => $split['base_paise'],
+            'gst_paise' => $split['gst_paise'],
+            'cgst_paise' => $cgst,
+            'sgst_paise' => $sgst,
+            'igst_paise' => null,
+            'amount_incl_formatted' => self::formatMoneyInr($inclusivePaise),
+            'base_formatted' => self::formatMoneyInr($split['base_paise']),
+            'gst_formatted' => self::formatMoneyInr($split['gst_paise']),
+            'cgst_formatted' => self::formatMoneyInr($cgst),
+            'sgst_formatted' => self::formatMoneyInr($sgst),
+            'igst_formatted' => null,
+        ];
     }
 
     /**
@@ -63,7 +137,11 @@ class PricingAmounts
      */
     public static function forApplicationPackage(string $tierKey): array
     {
-        return self::forTier($tierKey);
+        if (! self::isLivingTier($tierKey)) {
+            throw new InvalidArgumentException('Unknown package tier: '.$tierKey);
+        }
+
+        return self::forStandardProfile();
     }
 
     /**

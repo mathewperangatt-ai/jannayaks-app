@@ -8,7 +8,7 @@
 
 @section('legal_body')
 <h2>Editorial profiles, not endorsements</h2>
-<p>Jannayaks publishes biographical profiles and memorial pages prepared with the people they describe, or with their families. A profile is not an endorsement, recommendation or ranking by Jannayaks or Aurex Network. The three tiers describe the kind of profile a person has chosen, not our opinion of their worth. We are politically neutral and are not connected with any political party or government.</p>
+<p>Jannayaks publishes biographical profiles and memorial pages prepared with the people they describe, or with their families. A profile is not an endorsement, recommendation or ranking by Jannayaks or Aurex Network. We are politically neutral and are not connected with any political party or government.</p>
 
 <h2>How write-ups are prepared</h2>
 <p>Write-ups are prepared by our editorial team, with the help of artificial intelligence, from information supplied by the person or their family. Our human editors review each one, and the person approves it before it is published. We take care over accuracy, but we cannot independently verify every statement. The facts and views in a profile are those supplied by the subject or their family.</p>

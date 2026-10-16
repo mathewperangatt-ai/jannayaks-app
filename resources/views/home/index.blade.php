@@ -8,16 +8,16 @@
 <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('branding/favicon-16.png') }}">
 <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('branding/favicon-180.png') }}">
 <link rel="icon" href="{{ asset('branding/favicon.ico') }}">
-<link rel="preload" as="image" href="{{ asset('images/jannayaks-hero.jpeg') }}" fetchpriority="high">
+<link rel="preload" as="image" type="image/webp" href="{{ asset('images/jannayaks-hero-2.webp') }}" imagesrcset="{{ asset('images/jannayaks-hero-2-800.webp') }} 800w, {{ asset('images/jannayaks-hero-2.webp') }} 1600w" imagesizes="(max-width: 899px) 100vw, 800px" fetchpriority="high">
 <title>Jannayaks™ — Kerala's Public Presence Platform</title>
 @php($schemaJson = app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->websiteGraph(
-    'Jannayaks is a digital biographical archive — verified profiles and In Memoriam records documenting the lives, work and public contribution of people’s leaders.',
+    'Jannayaks is a digital biographical archive of profiles and In Memoriam records. Profiles are prepared in English, with Malayalam available for those who need it.',
     url('/search'),
 )))
 @include('partials.schema-ld', ['json' => $schemaJson])
 @include('partials.seo-meta', [
     'title' => 'Jannayaks™ — A Digital Gallery of People’s Leaders',
-    'description' => 'Jannayaks is a digital biographical archive — verified profiles and In Memoriam records documenting the lives, work and public contribution of people’s leaders.',
+    'description' => 'Jannayaks is a digital biographical archive of profiles and In Memoriam records. Profiles are prepared in English, with Malayalam available for those who need it.',
     'canonical' => url('/'),
 ])
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -72,7 +72,8 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .hero-intro p{font-size:17px;line-height:1.65;font-weight:300;color:var(--charcoal);}
 .hero-intro .hero-ml{font-family:var(--fm);font-size:14px;line-height:1.7;color:var(--gray);margin-top:8px;display:block;}
 .hero-banner{position:relative;z-index:1;max-width:800px;margin:0 auto;}
-.hero-banner img{display:block;width:100%;height:auto;aspect-ratio:1600/697;}
+.hero-banner picture{display:block;}
+.hero-banner img{display:block;width:100%;height:auto;aspect-ratio:1600/697;object-fit:contain;}
 /* BILINGUAL INTRO — complete Malayalam text first, then complete English text */
 .intro-section{padding:44px 22px 40px;background:transparent;}
 .intro-blocks{max-width:680px;margin:0 auto;}
@@ -334,28 +335,20 @@ document.addEventListener('click',function(e){
     <span class="hero-en-secondary">A digital gallery of leaders among the people.</span>
   </div>
   <div class="hero-banner">
-    <img src="{{ asset('images/jannayaks-hero.jpeg') }}" width="1600" height="697" alt="നിങ്ങളുടെ നേട്ടങ്ങൾ, ലോകമറിയട്ടെ. Celebrate your work, herald it. Men and women from Kerala public life against a Kerala landscape with palm trees and traditional buildings." fetchpriority="high">
+    <picture>
+      <source type="image/webp" srcset="{{ asset('images/jannayaks-hero-2-800.webp') }} 800w, {{ asset('images/jannayaks-hero-2.webp') }} 1600w" sizes="(max-width: 899px) 100vw, 800px">
+      <img src="{{ asset('images/jannayaks-hero-2-source.jpeg') }}" width="1600" height="697" alt="നിങ്ങളുടെ നേട്ടങ്ങൾ, ലോകമറിയട്ടെ. Celebrate your work, herald it. Men and women from Kerala public life against a Kerala landscape with palm trees and traditional buildings." fetchpriority="high" decoding="async">
+    </picture>
   </div>
 </section>
 <!-- INTRO -->
 <section class="intro-section">
   <div class="intro-blocks">
     <div class="intro-tabs" role="tablist" aria-label="Language / ഭാഷ">
-      <button type="button" class="intro-tab" role="tab" id="intro-tab-ml" lang="ml" aria-selected="true" aria-controls="intro-panel-ml" onclick="switchIntroLang('ml')">മലയാളം</button>
-      <button type="button" class="intro-tab" role="tab" id="intro-tab-en" lang="en" aria-selected="false" aria-controls="intro-panel-en" tabindex="-1" onclick="switchIntroLang('en')">English</button>
+      <button type="button" class="intro-tab" role="tab" id="intro-tab-en" lang="en" aria-selected="true" aria-controls="intro-panel-en" onclick="switchIntroLang('en')">English</button>
+      <button type="button" class="intro-tab" role="tab" id="intro-tab-ml" lang="ml" aria-selected="false" aria-controls="intro-panel-ml" tabindex="-1" onclick="switchIntroLang('ml')">മലയാളം</button>
     </div>
-    <div class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml">
-      <h2 class="intro-hd">എന്താണ് Jannayaks?</h2>
-      <p>വ്യക്തികളുടെ സംഭാവനകളും നേട്ടങ്ങളും രേഖപ്പെടുത്തുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയാണ് Jannayaks. ഒരു മാഗസിനിൽ പ്രസിദ്ധീകരിക്കുന്ന വ്യക്തിവിവരണങ്ങളോട് സാമ്യമുള്ളതാണ് ഇതിന്റെ ഉള്ളടക്കം.</p>
-      <p>സ്വന്തം നേട്ടങ്ങൾ പൊതുവേദികളിൽ അവതരിപ്പിക്കാൻ അധികം അവസരങ്ങൾ ലഭിക്കാത്ത മേഖലകളിൽ പ്രവർത്തിക്കുന്നവരുടെ സംഭാവനകൾക്ക് അർഹമായ ഇടം നൽകുകയാണ് ഞങ്ങളുടെ ലക്ഷ്യം. നിശ്ശബ്ദമായി നേടിയെടുത്ത നേട്ടങ്ങൾ പോലും സോഷ്യൽ മീഡിയയിലെ ഒരു പോസ്റ്റിൽ ഒതുങ്ങി മാഞ്ഞുപോകേണ്ടതില്ല. അവ കൂടുതൽ കാലം നിലനിൽക്കുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയിൽ രേഖപ്പെടുത്തൂ.</p>
-      <h2 class="intro-hd">എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?</h2>
-      <p>ഒരു മാഗസിനിൽ വ്യക്തിവിവരണം തയ്യാറാക്കുന്നതുപോലെ, ഒരു ഓൺലൈൻ അഭിമുഖത്തിലൂടെയാണ് നിങ്ങളുടെ വ്യക്തിവിവരണത്തിന് ഞങ്ങൾ രൂപം നൽകുന്നത്.</p>
-      <p>നിങ്ങളുടെ ജീവിതയാത്രയും നേട്ടങ്ങളും സംഭാവനകളും ഉൾക്കൊള്ളുന്ന ഒരു വ്യക്തിവിവരണം എ.ഐ.യുടെ സഹായത്തോടെ തയ്യാറാക്കുന്നു. ഒരു ബയോഡാറ്റയിൽ ഒതുങ്ങാത്ത നിങ്ങളുടെ അനുഭവങ്ങളും പ്രവർത്തനങ്ങളുമെല്ലാം അതിൽ ഉൾപ്പെടുത്താൻ ശ്രമിക്കുന്നു. ഞങ്ങളുടെ എഡിറ്റോറിയൽ ടീം ഇത് പരിശോധിക്കുകയും നിങ്ങളുടെ അംഗീകാരം നേടുകയും ചെയ്തശേഷമാണ് പ്രസിദ്ധീകരിക്കുന്നത്.</p>
-      <p>"jannayaks.in/your.name" എന്നതുപോലുള്ള ഒരു പ്രത്യേക ലിങ്ക് സഹിതമാണ് നിങ്ങളുടെ പ്രൊഫൈൽ പ്രസിദ്ധീകരിക്കുന്നത്. ഈ ലിങ്ക് വാട്സ്ആപ്പിലൂടെയും സോഷ്യൽ മീഡിയയിലൂടെയും പങ്കുവയ്ക്കാം. നിങ്ങളുടെ വിസിറ്റിംഗ് കാർഡിലും ഉൾപ്പെടുത്താം.</p>
-      <p>അച്ചടിച്ച ഒരു പേജിൽനിന്ന് വ്യത്യസ്തമായി, നിശ്ചിത വ്യവസ്ഥകൾക്കനുസരിച്ച് Payment പുതുക്കിക്കൊണ്ട് നിങ്ങളുടെ പ്രൊഫൈൽ ഓൺലൈനിൽ നിലനിർത്താം. നിങ്ങളുടെ പ്രവർത്തനങ്ങളിലും നേട്ടങ്ങളിലും പുതിയ അധ്യായങ്ങൾ കൂട്ടിച്ചേർക്കുമ്പോൾ പ്രൊഫൈൽ പുതുക്കുകയും ചെയ്യാം.</p>
-      <p>ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു. AI യുടെ സഹായത്തോടെ ആർക്കും ഒരു ജീവചരിത്രം തയ്യാറാക്കാം. എന്നാൽ Jannayaks അതിൽനിന്ന് വ്യത്യസ്തമാണ് — സ്ഥിരമായ എഡിറ്റോറിയൽ നിലവാരം, സൂക്ഷ്മമായ പരിശോധന, നിങ്ങളുടെ അംഗീകാരത്തോടെയുള്ള പ്രസിദ്ധീകരണം, കാലത്തിനനുസരിച്ച് പുതുക്കാവുന്ന ഒരു ഡിജിറ്റൽ രേഖ.</p>
-    </div>
-    <div class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en" hidden>
+    <div class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en">
       <h2 class="intro-hd">What is Jannayaks?</h2>
       <p>Jannayaks is a digital gallery that documents the contributions and achievements of individuals. Its content is similar to the personal profiles published in a magazine.</p>
       <p>Our aim is to give due recognition to the contributions of people working in fields where opportunities to present their achievements publicly may be limited. Even achievements quietly accomplished should not simply fade away as another social media post. They deserve to be documented in a digital gallery where they can remain accessible for much longer.</p>
@@ -365,6 +358,18 @@ document.addEventListener('click',function(e){
       <p>Your profile is published with a dedicated link, such as "jannayaks.in/your.name". You can share this link through WhatsApp and social media, or include it on your visiting card.</p>
       <p>Unlike a printed page, your profile can remain online through payment renewals, subject to the applicable terms. You can also update it as new chapters unfold in your work, achievements and contributions.</p>
       <p>Every profile is personally reviewed before publication. Anyone can use AI to prepare a biography. Jannayaks offers something different: consistent editorial standards, careful review, publication with your approval, and a digital record that can be updated over time.</p>
+      <p>Whichever field you are in, have a record of yourself which you can be proud of.</p>
+      <p>An English-only profile is also available for those who prefer it.</p>
+    </div>
+    <div class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml" hidden>
+      <h2 class="intro-hd">എന്താണ് Jannayaks?</h2>
+      <p>വ്യക്തികളുടെ സംഭാവനകളും നേട്ടങ്ങളും രേഖപ്പെടുത്തുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയാണ് Jannayaks. ഒരു മാഗസിനിൽ പ്രസിദ്ധീകരിക്കുന്ന വ്യക്തിവിവരണങ്ങളോട് സാമ്യമുള്ളതാണ് ഇതിന്റെ ഉള്ളടക്കം.</p>
+      <p>സ്വന്തം നേട്ടങ്ങൾ പൊതുവേദികളിൽ അവതരിപ്പിക്കാൻ അധികം അവസരങ്ങൾ ലഭിക്കാത്ത മേഖലകളിൽ പ്രവർത്തിക്കുന്നവരുടെ സംഭാവനകൾക്ക് അർഹമായ ഇടം നൽകുകയാണ് ഞങ്ങളുടെ ലക്ഷ്യം. നിശ്ശബ്ദമായി നേടിയെടുത്ത നേട്ടങ്ങൾ പോലും സോഷ്യൽ മീഡിയയിലെ ഒരു പോസ്റ്റിൽ ഒതുങ്ങി മാഞ്ഞുപോകേണ്ടതില്ല. അവ കൂടുതൽ കാലം നിലനിൽക്കുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയിൽ രേഖപ്പെടുത്തൂ.</p>
+      <h2 class="intro-hd">എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?</h2>
+      <p>ഒരു മാഗസിനിൽ വ്യക്തിവിവരണം തയ്യാറാക്കുന്നതുപോലെ, ഒരു ഓൺലൈൻ അഭിമുഖത്തിലൂടെയാണ് നിങ്ങളുടെ വ്യക്തിവിവരണത്തിന് ഞങ്ങൾ രൂപം നൽകുന്നത്.</p>
+      <p>നിങ്ങളുടെ ജീവിതയാത്രയും നേട്ടങ്ങളും സംഭാവനകളും ഉൾക്കൊള്ളുന്ന ഒരു വ്യക്തിവിവരണം എ.ഐ.യുടെ സഹായത്തോടെ തയ്യാറാക്കുന്നു. ഒരു ബയോഡാറ്റയിൽ ഒതുങ്ങാത്ത നിങ്ങളുടെ അനുഭവങ്ങളും പ്രവർത്തനങ്ങളുമെല്ലാം അതിൽ ഉൾപ്പെടുത്താൻ ശ്രമിക്കുന്നു. ഞങ്ങളുടെ എഡിറ്റോറിയൽ ടീം ഇത് പരിശോധിക്കുകയും നിങ്ങളുടെ അംഗീകാരം നേടുകയും ചെയ്തശേഷമാണ് പ്രസിദ്ധീകരിക്കുന്നത്.</p>
+      <p>"jannayaks.in/your.name" എന്നതുപോലുള്ള ഒരു പ്രത്യേക ലിങ്ക് സഹിതമാണ് നിങ്ങളുടെ പ്രൊഫൈൽ പ്രസിദ്ധീകരിക്കുന്നത്. ഈ ലിങ്ക് വാട്സ്ആപ്പിലൂടെയും സോഷ്യൽ മീഡിയയിലൂടെയും പങ്കുവയ്ക്കാം. നിങ്ങളുടെ വിസിറ്റിംഗ് കാർഡിലും ഉൾപ്പെടുത്താം.</p>
+      <p>അച്ചടിച്ച ഒരു പേജിൽനിന്ന് വ്യത്യസ്തമായി, നിശ്ചിത വ്യവസ്ഥകൾക്കനുസരിച്ച് Payment പുതുക്കിക്കൊണ്ട് നിങ്ങളുടെ പ്രൊഫൈൽ ഓൺലൈനിൽ നിലനിർത്താം. നിങ്ങളുടെ പ്രവർത്തനങ്ങളിലും നേട്ടങ്ങളിലും പുതിയ അധ്യായങ്ങൾ കൂട്ടിച്ചേർക്കുമ്പോൾ പ്രൊഫൈൽ പുതുക്കുകയും ചെയ്യാം.</p>
     </div>
   </div>
   <div class="home-actions">
@@ -387,16 +392,16 @@ document.addEventListener('click',function(e){
       <h2 class="section-title">From conversation to live profile
         <span class="section-title-ml">സംഭാഷണത്തിൽ നിന്ന് തത്സമയ പ്രൊഫൈലിലേക്ക്</span>
       </h2>
-      <p class="section-sub">From your answers to a live profile, reviewed by a real editor at every step.</p>
+      <p class="section-sub">From your answers to a profile you can share.</p>
     </div>
     <div class="steps">
       <div class="step">
         <div class="step-num">01</div>
         <div class="step-body">
-          <div class="step-title">Register & Verify
-            <span class="step-title-ml">രജിസ്റ്റർ ചെയ്ത് സ്ഥിരീകരിക്കുക</span>
+          <div class="step-title">Register
+            <span class="step-title-ml">രജിസ്റ്റർ ചെയ്യുക</span>
           </div>
-          <div class="step-text">Sign in with Google or WhatsApp. Choose your handle, tier, and location. Identity verification runs alongside editorial review before anything publishes.</div>
+          <div class="step-text">Sign in with your Jannayaks username and password, or with Google. Then start the standard profile and choose the personal URL you want to share.</div>
         </div>
       </div>
       <div class="step">
@@ -405,7 +410,7 @@ document.addEventListener('click',function(e){
           <div class="step-title">Answer Our Questions
             <span class="step-title-ml">ചോദ്യങ്ങൾക്ക് ഉത്തരം നൽകുക</span>
           </div>
-          <div class="step-text">Fill in our online interview — in Malayalam, English, or both. Answer at your own pace, or at a nearby service centre if typing isn't convenient.</div>
+          <div class="step-text">Answer the online interview at your own pace. Profiles are prepared in English, with Malayalam available for those who need it.</div>
         </div>
       </div>
       <div class="step">
@@ -414,7 +419,7 @@ document.addEventListener('click',function(e){
           <div class="step-title">Pay & Generate
             <span class="step-title-ml">പേയ്‌മെന്റ് ചെയ്ത് ജനറേറ്റ് ചെയ്യുക</span>
           </div>
-          <div class="step-text">Pay via UPI or card. Our editorial team drafts your biography in English, then in Malayalam — reviewed by a human at every stage, not machine-published.</div>
+          <div class="step-text">Pay the published fee. It includes profile creation and the first year. A person reviews the draft before you see it on your dashboard.</div>
         </div>
       </div>
       <div class="step">
@@ -423,7 +428,7 @@ document.addEventListener('click',function(e){
           <div class="step-title">Go Live
             <span class="step-title-ml">തത്സമയമാക്കുക</span>
           </div>
-          <div class="step-text">Approve your profile. jannayaks.in/yourname goes live in both languages — side by side on desktop, stacked on mobile. Public visibility follows an active membership.</div>
+          <div class="step-text">Approve the profile on your dashboard before it can be published. Your personal URL can then be shared. Public visibility follows an active membership.</div>
         </div>
       </div>
     </div>
@@ -434,40 +439,13 @@ document.addEventListener('click',function(e){
   <div class="search-box">
     <div class="search-title">Search</div>
     <span class="search-title-ml">കണ്ടെത്തൂ</span>
-    <div class="search-tabs">
-      <button class="search-tab active" onclick="switchTab(this,'name')">🔍 By Name / പേര്</button>
-      <button class="search-tab" onclick="switchTab(this,'area')">📍 By Area / പ്രദേശം</button>
-      <button class="search-tab" onclick="switchTab(this,'pin')">📮 By Pin Code / പിൻകോഡ്</button>
-      <button class="search-tab" onclick="switchTab(this,'text')">🔎 Text Search</button>
-    </div>
-    <div id="tab-name">
-      <form method="get" action="{{ route('search.index') }}" id="home-search-form">
-        <div class="search-input-wrap">
-          <span class="search-icon">🔍</span>
-          <input class="search-input" type="search" name="q" id="home-q" placeholder="Type name, ward, panchayat... / പേര്, വാർഡ്, പഞ്ചായത്ത്..." maxlength="200">
-        </div>
-      </form>
-    </div>
-    <div id="tab-area" style="display:none;">
-      <div class="cascade-row">
-        <select class="cascade-select"><option>{{ config('jannayaks.geography.current_state_name') }} ▾</option></select>
-        <select class="cascade-select"><option>Select District ▾</option><option>Thiruvananthapuram</option><option>Kollam</option><option>Pathanamthitta</option><option>Alappuzha</option><option>Kottayam</option><option>Idukki</option><option>Ernakulam</option><option>Thrissur</option><option>Palakkad</option><option>Malappuram</option><option>Kozhikode</option><option>Wayanad</option><option>Kannur</option><option>Kasaragod</option></select>
-        <select class="cascade-select"><option>Local Body ▾</option></select>
-      </div>
-      <select class="cascade-select" style="width:100%;margin-bottom:16px;"><option>Select Ward ▾</option></select>
-    </div>
-    <div id="tab-pin" style="display:none;">
-      <div class="pincode-row">
-        <input class="pincode-input" type="text" placeholder="Enter 6-digit pin code..." maxlength="6">
-      </div>
-    </div>
-    <div id="tab-text" style="display:none;">
+    <form method="get" action="{{ route('search.index') }}" id="home-search-form">
       <div class="search-input-wrap">
-        <span class="search-icon">🔎</span>
-        <input class="search-input" type="search" name="q" id="home-text-q" placeholder="Search by name, profession, organisation or place…" maxlength="200" form="home-search-form" disabled>
+        <span class="search-icon">🔍</span>
+        <input class="search-input" type="search" name="q" id="home-q" placeholder="Name, profession, field of work, or place" maxlength="200">
       </div>
-    </div>
-    <button type="submit" form="home-search-form" class="search-btn">Search — ലോകത്തെവിടെ നിന്നും തിരയൂ 🌍</button>
+      <button type="submit" class="search-btn">Search</button>
+    </form>
     <p class="search-note">Search is open worldwide. / ലോകത്തെവിടെ നിന്നും തിരയാവുന്നതാണ്.</p>
   </div>
 </section>
@@ -510,21 +488,12 @@ document.addEventListener('click',function(e){
   <p class="mem-text">A special section is provided for popular personalities who have passed away. A dignified memorial page for someone who has passed — open to anyone, prepared with the same editorial care as a living profile. For details, write to founder@jannayaks.in.</p>
   <span class="mem-text-ml">യശശരീരുടെ ഓർമക്കായ്‌ ഒരു സ്ഥിരവും അന്തസ്സുള്ളതുമായ അനുസ്മരണ താൾ — ജീവിച്ചിരിക്കുന്ന പ്രൊഫൈലിന്റെ അതേ എഡിറ്റോറിയൽ ശ്രദ്ധയോടെ തയ്യാറാക്കുന്നത്.</span>
   <div>
-    <a class="mem-btn" href="{{ route('in-memoriam.index') }}">Create a Memorial</a>
+    <a class="mem-btn" href="{{ route('in-memoriam.index') }}">In Memoriam</a>
   </div>
 </section>
 <!-- FOOTER -->
 @include('partials.public-footer')
 <script>
-function switchTab(btn,tab){
-  document.querySelectorAll('.search-tab').forEach(b=>b.classList.remove('active'));
-  btn.classList.add('active');
-  ['name','area','pin','text'].forEach(t=>{
-    document.getElementById('tab-'+t).style.display = t===tab ? 'block' : 'none';
-  });
-  var nq=document.getElementById('home-q'); if(nq) nq.disabled = (tab!=='name');
-  var tq=document.getElementById('home-text-q'); if(tq) tq.disabled = (tab!=='text');
-}
 function switchIntroLang(lang){
   ['ml','en'].forEach(function(l){
     var on=l===lang, tab=document.getElementById('intro-tab-'+l);
@@ -535,7 +504,7 @@ function switchIntroLang(lang){
 }
 document.querySelector('.intro-tabs').addEventListener('keydown',function(e){
   if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;
-  var next=document.getElementById('intro-tab-ml').getAttribute('aria-selected')==='true'?'en':'ml';
+  var next=document.getElementById('intro-tab-en').getAttribute('aria-selected')==='true'?'ml':'en';
   switchIntroLang(next);
   document.getElementById('intro-tab-'+next).focus();
 });

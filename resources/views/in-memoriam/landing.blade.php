@@ -82,9 +82,7 @@
     <p>Memorial biographies are human-authored. Jannayaks does not generate In Memoriam narratives with AI.</p>
     @if($pricingLabel)
         <p>
-            Current offering: <strong>{{ $pricingLabel }}</strong>
-            for {{ $hostingYears }} {{ $hostingYears === 1 ? 'year' : 'years' }} of hosting
-            (exclusive of GST; GST is added as applicable).
+            <strong>Starting at ₹24,000 for three years</strong>, with GST additional.
         </p>
     @endif
     <a class="im-cta" href="mailto:{{ $contactEmail }}?subject={{ rawurlencode('In Memoriam enquiry') }}">

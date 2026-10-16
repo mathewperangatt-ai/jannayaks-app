@@ -8,8 +8,10 @@ use App\Models\User;
 use App\Services\ApplicationWorkflowService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
+use App\Services\ApplicationPaymentStateService;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
@@ -88,6 +90,41 @@ class ViewApplication extends ViewRecord
                         Notification::make()->title('Customer preview released')->success()->send();
                     } catch (InvalidArgumentException $e) {
                         Notification::make()->title('Cannot release preview')->body($e->getMessage())->danger()->send();
+                    }
+                }),
+            Action::make('waivePayment')
+                ->label('Waive payment')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Waive this application payment')
+                ->modalDescription('Records an audited staff waiver. It does not create a payment, a discount code, or a gateway refund. Publication uses the same waiver check as the interview unlock.')
+                ->visible(fn (): bool => (auth()->user()?->canManageFinance() ?? false)
+                    && $this->getRecord() instanceof Application
+                    && ! $this->getRecord()->isPaymentSettled())
+                ->form([
+                    Textarea::make('reason')
+                        ->label('Reason')
+                        ->required()
+                        ->minLength(8)
+                        ->maxLength(500),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User) {
+                        abort(403);
+                    }
+
+                    try {
+                        /** @var Application $application */
+                        $application = $this->getRecord();
+                        app(ApplicationPaymentStateService::class)->grantStaffWaiver(
+                            $application,
+                            $actor,
+                            (string) ($data['reason'] ?? ''),
+                        );
+                        Notification::make()->title('Payment waived')->success()->send();
+                    } catch (\InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot waive payment')->body($e->getMessage())->danger()->send();
                     }
                 }),
             Action::make('publishApplication')

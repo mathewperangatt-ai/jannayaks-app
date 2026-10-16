@@ -16,19 +16,21 @@ use InvalidArgumentException;
 /**
  * Post-publication profile maintenance (Pass 1 foundation).
  *
- * A published living profile entitles the customer to ONE complimentary
- * bundled profile update per 3-month cycle. The cycle is anchored to the
- * profile's actual publication date and recurs every 3 calendar months
- * (published 1 January → eligible 1 January, 1 April, 1 July, 1 October…).
- * Using an update never moves the anchor. A request submitted outside an
- * unused complimentary window is classified as a paid-update opportunity.
+ * A published living profile includes two complimentary consolidated edit
+ * requests in each year counted from the publication date. Using a request
+ * never moves that anniversary. A third request in the same year, or a
+ * request that replaces the profile, is classified as a paid full rewrite.
+ * The published profile stays unchanged until staff review and customer
+ * approval.
  *
  * Classification is snapshotted onto the request at submission so historical
  * records never change meaning as the calendar advances.
  */
 class PostPublicationUpdateService
 {
-    private const CYCLE_MONTHS = 3;
+    private const CYCLE_MONTHS = 12;
+
+    private const COMPLIMENTARY_PER_CYCLE = 2;
 
     public function __construct(
         private StaffAuditLogger $auditLogger,
@@ -38,7 +40,7 @@ class PostPublicationUpdateService
     /**
      * Eligibility state for a published profile as of $now.
      *
-     * @return array{eligible: bool, cycle_start: CarbonInterface, cycle_end: CarbonInterface, next_eligible_on: CarbonInterface, reason: string}
+     * @return array{eligible: bool, remaining: int, allowance: int, cycle_start: CarbonInterface, cycle_end: CarbonInterface, next_eligible_on: CarbonInterface, reason: string}
      */
     public function eligibilityFor(Profile $profile, ?CarbonInterface $now = null): array
     {
@@ -56,16 +58,20 @@ class PostPublicationUpdateService
             ->where('billing_classification', EditorialRevisionRequest::BILLING_COMPLIMENTARY)
             ->where('created_at', '>=', $cycleStart)
             ->where('created_at', '<', $cycleEnd)
-            ->exists();
+            ->count();
+
+        $remaining = max(0, self::COMPLIMENTARY_PER_CYCLE - $used);
 
         return [
-            'eligible' => ! $used,
+            'eligible' => $remaining > 0,
+            'remaining' => $remaining,
+            'allowance' => self::COMPLIMENTARY_PER_CYCLE,
             'cycle_start' => $cycleStart,
             'cycle_end' => $cycleEnd,
             'next_eligible_on' => $cycleEnd->copy()->startOfDay(),
-            'reason' => $used
-                ? 'The complimentary update for this cycle has already been used.'
-                : 'Complimentary window currently open.',
+            'reason' => $remaining > 0
+                ? 'Complimentary edit requests remain in this publication year.'
+                : 'Both complimentary edit requests for this publication year have been used.',
         ];
     }
 

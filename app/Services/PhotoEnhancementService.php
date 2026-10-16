@@ -92,7 +92,7 @@ class PhotoEnhancementService
     public function dispatchForSource(MediaItem $source, ?User $requester = null): ?PhotoEnhancementRun
     {
         try {
-            if (! $this->enabled() || ! $this->sourceEligible($source)) {
+            if (! $this->enabled() || ! $this->sourceEligible($source) || ! $source->is_primary) {
                 return null;
             }
 

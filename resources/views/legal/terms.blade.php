@@ -20,15 +20,15 @@
 <ul>
     <li>Everything you tell us is true, accurate and not misleading.</li>
     <li>You have the right to give us any photographs, documents and other material you upload, and publishing them will not infringe anyone's rights.</li>
-    <li>You are not impersonating anyone, and you will complete identity verification honestly.</li>
+    <li>You are not impersonating anyone.</li>
 </ul>
 <p>If we find that information is false or that you are not who you claim to be, we may refuse, suspend or remove a profile.</p>
 
-<h2>5. Identity verification</h2>
-<p>Before a living profile is published we verify identity by a manual check against the public Voter ID (EPIC) records of the Election Commission of India. Verification confirms identity only. It is not a certificate of character, and it does not mean Jannayaks endorses you.</p>
+<h2>5. Identity</h2>
+<p>Jannayaks does not currently verify identity through DigiLocker, PAN or a Voter ID check, and a profile does not carry a verified badge. Publication follows editorial review and your approval. A published profile is not a certificate of identity, character or endorsement.</p>
 
 <h2>6. How profiles are prepared</h2>
-<p>Your write-up is prepared by our editorial team, with the help of artificial intelligence, before publication. Our human editors review every write-up. Nothing is published until you have approved your preview and our staff has completed publication. Each package includes two rounds of changes before publication. Later changes to a published profile are handled as described on the <a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a> page.</p>
+<p>Your write-up is prepared by our editorial team, with the help of artificial intelligence, before publication. Our human editors review every write-up. Nothing is published until you have approved your preview and our staff has completed publication. Preparation includes two rounds of changes before publication. Later changes to a published profile are handled as described on the <a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a> page.</p>
 
 <h2>7. Editorial independence</h2>
 <p>Paying a fee does not buy a particular wording, a favourable tone or a guarantee of publication. Jannayaks is politically neutral. We do not endorse, rank or campaign for any person, party or organisation, and a profile is not a political advertisement. Our editors decide what is included and how it is written. We may decline to publish a profile, or edit, correct or remove published content, if it is inaccurate, cannot be verified, is defamatory, is hateful or unlawful, or does not meet our standards.</p>
@@ -40,10 +40,10 @@
 <p>You keep ownership of the photographs and material you provide. You give Aurex Network a non-exclusive licence to use, edit for clarity and presentation, translate, store and publish that material, and the write-up prepared from it, on Jannayaks for as long as your profile is published and for the retention period in our Privacy Policy. Jannayaks keeps the rights in its own editorial writing, design and software, and you may not copy or reuse them without our written permission.</p>
 
 <h2>10. Fees and payment</h2>
-<p>The fee for each package, and for renewals and revisions, is shown on the <a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a> page and again before you pay. Payments are made online through our payment gateway. The amount you will pay, including any applicable tax, is shown before you pay. Refunds are governed by the <a href="{{ route('legal.refund') }}">Refund &amp; Cancellation</a> page.</p>
+<p>The fee for a profile, and for renewal and a full rewrite, is shown on the <a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a> page and again before you pay. Payments are made online through our payment gateway. The amount you will pay, including any applicable tax, is shown before you pay. Refunds are governed by the <a href="{{ route('legal.refund') }}">Refund &amp; Cancellation</a> page.</p>
 
 <h2>11. Membership, renewal and expiry</h2>
-<p>This section applies to living profiles; In Memoriam pages are covered in section 8. A profile stays public while your membership is active. Membership runs for one year from publication and can be renewed each year at the price shown for your package. Renewal is not automatic: you are charged only if you choose to pay for a renewal. We send reminders before expiry. If you do not renew, the profile stays online for a short grace period after the end date and is then taken offline. We keep your records for a limited time after that so that you can still renew, as set out in the Privacy Policy.</p>
+<p>This section applies to living profiles; In Memoriam pages are covered in section 8. A profile stays public while your membership is active. Membership runs for one year from publication and can be renewed each year at the renewal price on the FAQ &amp; Charges page. Renewal is not automatic: you are charged only if you choose to pay for a renewal. We send reminders before expiry. If you do not renew, the profile stays online for a short grace period after the end date and is then taken offline. We keep your records for a limited time after that so that you can still renew, as set out in the Privacy Policy.</p>
 
 <h2>12. What you must not do</h2>
 <ul>

@@ -35,7 +35,6 @@
     <tbody>
         <tr><td>Name, username and email address; basic details from Google if you use Google sign-in</td><td>To create and secure your account and contact you about it</td><td>While your account exists, plus the retention period in section 9</td></tr>
         <tr><td>Interview answers, photographs, documents and video links you give us; the district, local body and ward you choose</td><td>To prepare your write-up with you and publish your profile</td><td>See section 9</td></tr>
-        <tr><td>Voter ID (EPIC) details</td><td>Only to confirm who you are. Never published</td><td>Only as long as needed to complete and record verification</td></tr>
         <tr><td>Payment confirmations and references (not your card or UPI details, which stay with our payment gateway); invoices we issue</td><td>To take payment, issue invoices and handle refunds and renewals</td><td>As long as tax and accounting law requires</td></tr>
         <tr><td>Messages you send through the contact box, Recommend Someone form or Request an Invitation form</td><td>To pass on or answer your message</td><td>Until the matter is closed, then deleted unless needed for a dispute</td></tr>
         <tr><td>Name and contact details of someone you recommend</td><td>Only to send that person one invitation</td><td>Only as long as needed for that invitation. Automatic deletion is not yet in place; you or they may ask us to erase these details at any time</td></tr>

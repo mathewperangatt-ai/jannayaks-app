@@ -143,7 +143,7 @@ class SeoMetadataTest extends TestCase
             '/in-memoriam' => 'In Memoriam on Jannayaks',
             '/recommend' => 'Recommend someone whose life',
             '/request-invitation' => 'Request an invitation to create a Jannayaks profile',
-            '/faq-charges' => 'Jannayaks membership charges',
+            '/faq-charges' => 'Jannayaks profile charges',
         ] as $path => $fragment) {
             $response = $this->get($path);
             $response->assertOk();
@@ -164,7 +164,7 @@ class SeoMetadataTest extends TestCase
         $response->assertOk();
         $content = $response->getContent();
 
-        $this->assertStringContainsString('name="description" content="Search published Jannayaks profiles by name, area or PIN code."', $content);
+        $this->assertStringContainsString('name="description" content="Search published Jannayaks profiles by name, profession, field of work, or place."', $content);
         $this->assertStringNotContainsString('Gopalakrishnan" name="description"', $content);
         $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
         $this->assertMatchesRegularExpression('#<title>Search: Gopalakrishnan — Search — Jannayaks</title>#i', $content);

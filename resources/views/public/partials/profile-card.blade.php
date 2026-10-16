@@ -13,7 +13,6 @@
         @else
             <span class="placeholder">{{ mb_strtoupper(mb_substr($name, 0, 1)) }}</span>
         @endif
-        @include('public.partials.tier-mark', ['tier' => $item->application?->package_tier])
     </div>
     <div class="card-body">
         <h2>{{ $name }}</h2>

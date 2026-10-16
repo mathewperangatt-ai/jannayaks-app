@@ -17,15 +17,15 @@
 
     <h2 style="margin-top:8px">How it works</h2>
     <ol class="sub" style="list-style:decimal;margin:0;padding-left:22px;color:var(--ink-soft)">
-        <li style="padding:2px 0"><b>Choose a tier</b> — unrestricted package choice.</li>
-        <li style="padding:2px 0"><b>Sign in</b> with your Jannayaks username, Google, or create an account.</li>
-        <li style="padding:2px 0"><b>Pay</b> for the selected profile package.</li>
+        <li style="padding:2px 0"><b>Start your profile</b> — one standard offering.</li>
+        <li style="padding:2px 0"><b>Sign in</b> with your Jannayaks username and password, or with Google.</li>
+        <li style="padding:2px 0"><b>Pay</b> the published profile fee. It includes the first year.</li>
         <li style="padding:2px 0"><b>Complete the Online Interview</b> (or direct submission) and upload source material.</li>
         <li style="padding:2px 0">Editorial preparation, human review, your preview and approval precede publication.</li>
     </ol>
 
     <div class="row" style="margin-top:6px;justify-content:flex-end">
-        <a class="btn primary block" href="{{ route('apply', ['step' => 'tiers']) }}">Choose a profile tier →</a>
+        <a class="btn primary block" href="{{ route('apply', ['step' => 'tiers']) }}">Start your profile →</a>
         @guest
             <a class="btn block" href="{{ route('login') }}">Already have an account? Sign in</a>
         @endguest

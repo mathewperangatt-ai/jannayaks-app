@@ -38,9 +38,9 @@ class DemoProfilesPageTest extends TestCase
             $response->assertSee($name, false);
         }
 
-        $this->assertSame(3, substr_count($content, 'tier-mark tier-mark--emerging'));
-        $this->assertSame(4, substr_count($content, 'tier-mark tier-mark--accomplished'));
-        $this->assertSame(7, substr_count($content, 'tier-mark tier-mark--distinguished'));
+        $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--emerging'));
+        $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--accomplished'));
+        $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--distinguished'));
         $this->assertSame(2, substr_count($content, 'tier-mark tier-mark--in_memoriam'));
         $this->assertStringNotContainsString('class="card-tier', $content);
         foreach (['Recognised', 'Acclaimed', 'Distinguished'] as $tierWord) {

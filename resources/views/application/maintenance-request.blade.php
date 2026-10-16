@@ -41,17 +41,18 @@
     @php($isEligible = $eligibility['eligible'])
     <div class="maint-notice {{ $isEligible ? 'maint-eligible' : '' }}">
         @if($isEligible)
-            <b>Complimentary update available now.</b> Your profile includes one complimentary
-            maintenance update every 3 months, counted from your publication date
-            ({{ $profile->published_at->format('d M Y') }}). Submitting now uses this cycle's
-            complimentary update. The next complimentary window opens
-            {{ $eligibility['next_eligible_on']->format('d M Y') }}.
+            <b>Edit request available.</b> Your profile includes two consolidated edit requests
+            in each year from {{ $profile->published_at->format('d M Y') }}.
+            {{ (int) ($eligibility['remaining'] ?? 0) }} complimentary
+            {{ ((int) ($eligibility['remaining'] ?? 0)) === 1 ? 'request remains' : 'requests remain' }}
+            before {{ $eligibility['next_eligible_on']->format('d M Y') }}.
+            Submitting now uses one of them. The published profile does not change until Jannayaks reviews the request and you approve it.
         @else
-            <b>Paid update opportunity.</b> This profile's complimentary update for the current
-            3-month cycle has already been used. You may still submit this request — it will be
-            treated as a <b>paid update opportunity</b>, and the Jannayaks team will contact you
-            about it before any work begins. The next complimentary window opens
-            {{ $eligibility['next_eligible_on']->format('d M Y') }}.
+            <b>Full rewrite.</b> Both complimentary edit requests for this publication year have been used.
+            You may still submit this request. A substantial restructuring or replacement is a full rewrite,
+            and the Jannayaks team will contact you about the charge before any work begins.
+            The next complimentary year opens {{ $eligibility['next_eligible_on']->format('d M Y') }}.
+            The published profile stays unchanged until review and your approval.
         @endif
     </div>
 

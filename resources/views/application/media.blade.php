@@ -7,8 +7,8 @@
             <span class="tag">PROFILE MEDIA</span>
             <h1 style="margin-top:8px">Photographs &amp; video</h1>
             <p class="lead" style="margin:0">
-                Package: <b>{{ ucfirst($tier) }}</b> —
                 {{ $count }} of {{ $limit }} photograph{{ $limit === 1 ? '' : 's' }} used.
+                One primary photograph and up to three documentary photographs. Only the primary photograph can enter the optional review workflow for AI enhancement, and only when that workflow is switched on.
             </p>
         </div>
         <a class="btn" href="{{ route('applications.show', $application) }}">← Application</a>

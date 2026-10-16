@@ -58,29 +58,33 @@ class HomepageIntegrationTest extends TestCase
         $englishBlock = strpos($html, 'class="intro-block intro-block-en" lang="en"');
         $this->assertNotFalse($malayalamBlock);
         $this->assertNotFalse($englishBlock);
-        $this->assertTrue($intro < $malayalamBlock && $malayalamBlock < $englishBlock && $englishBlock < $recommend);
-        // Intro language tabs: Malayalam selected by default, English panel rendered but hidden.
+        $this->assertTrue($intro < $englishBlock && $englishBlock < $malayalamBlock && $malayalamBlock < $recommend);
         $tabs = strpos($html, 'class="intro-tabs" role="tablist"');
         $this->assertNotFalse($tabs);
-        $this->assertTrue($intro < $tabs && $tabs < $malayalamBlock);
-        $response->assertSee('id="intro-tab-ml" lang="ml" aria-selected="true" aria-controls="intro-panel-ml"', false);
-        $response->assertSee('id="intro-tab-en" lang="en" aria-selected="false" aria-controls="intro-panel-en"', false);
-        $response->assertSee('class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml">', false);
-        $response->assertSee('class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en" hidden>', false);
+        $this->assertTrue($intro < $tabs && $tabs < $englishBlock);
+        $response->assertSee('id="intro-tab-en" lang="en" aria-selected="true" aria-controls="intro-panel-en"', false);
+        $response->assertSee('id="intro-tab-ml" lang="ml" aria-selected="false" aria-controls="intro-panel-ml"', false);
+        $response->assertSee('class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en">', false);
+        $response->assertSee('class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml" hidden>', false);
         $this->assertSame(1, substr_count($html, 'role="tablist"'));
         $response->assertSeeInOrder([
+            'Jannayaks is a digital gallery that documents the contributions and achievements of individuals. Its content is similar to the personal profiles published in a magazine.',
+            'How does it work?',
+            'Every profile is personally reviewed before publication. Anyone can use AI to prepare a biography. Jannayaks offers something different: consistent editorial standards, careful review, publication with your approval, and a digital record that can be updated over time.',
+            'Whichever field you are in, have a record of yourself which you can be proud of.',
+            'An English-only profile is also available for those who prefer it.',
             'എന്താണ് Jannayaks?',
             'എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?',
-            'ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു.',
-            'What is Jannayaks?',
-            'How does it work?',
-            'Every profile is personally reviewed before publication.',
             'Tariff Plans →',
             'Demo Profiles →',
         ], false);
+        $response->assertDontSee('Sign in with Google or WhatsApp', false);
+        $response->assertDontSee('ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു.', false);
         $this->assertStringNotContainsStringIgnoringCase('every application', $html);
         $response->assertDontSee("A digital gallery of people's leaders.", false);
-        $response->assertSee('images/jannayaks-hero.jpeg', false);
+        $response->assertSee('images/jannayaks-hero-2.webp', false);
+        $response->assertSee('images/jannayaks-hero-2-800.webp', false);
+        $response->assertDontSee('images/jannayaks-hero.jpeg', false);
         $response->assertSee('width="1600"', false);
         $response->assertSee('height="697"', false);
         $response->assertSee('fetchpriority="high"', false);
@@ -144,23 +148,20 @@ class HomepageIntegrationTest extends TestCase
 
     public function test_faq_charges_uses_authoritative_pricing(): void
     {
-        $emerging = PricingAmounts::forTier('emerging');
-        $accomplished = PricingAmounts::forTier('accomplished');
-        $distinguished = PricingAmounts::forTier('distinguished');
+        $profile = PricingAmounts::forStandardProfile();
         $inMemoriam = PricingAmounts::forInMemoriam5yr();
 
         $response = $this->get(route('faq-charges'));
 
         $response->assertOk();
         $response->assertSee('noindex, nofollow', false);
-        // Under Construction banner removed globally (footer pass 2).
         $response->assertDontSee('Under Construction', false);
-        $response->assertSee($emerging['base_formatted'], false);
-        $response->assertSee($accomplished['base_formatted'], false);
-        $response->assertSee($distinguished['base_formatted'], false);
+        $response->assertSee($profile['base_formatted'], false);
+        $response->assertSee($profile['compare_at_base_formatted'], false);
         $response->assertSee($inMemoriam['base_formatted'], false);
-        $response->assertSee('3 years', false);
-        $response->assertSee('പ്രഗൽഭർ', false);
+        $response->assertSee('Can I have a Jannayaks profile if I do not speak Malayalam?', false);
+        $response->assertDontSee('പ്രഗൽഭർ', false);
+        $response->assertDontSee('Verified profile', false);
         $response->assertDontSee('പ്രമുഖർ', false);
         $response->assertDontSee('പ്രശസ്തർ', false);
         $response->assertDontSee('₹29,500', false);
@@ -173,7 +174,7 @@ class HomepageIntegrationTest extends TestCase
         $response->assertDontSee('directories', false);
         $response->assertDontSee('Directories', false);
         $response->assertDontSee('Optional add-on', false);
-        $response->assertSee('The charges shown below are exclusive of GST', false);
+        $response->assertSee('One standard profile.', false);
     }
 
     public function test_demo_links_open_the_demo_collection_and_gallery_stays_in_navigation(): void
@@ -198,8 +199,8 @@ class HomepageIntegrationTest extends TestCase
         $this->get(route('search.index'))->assertOk();
         $this->get(route('in-memoriam.index'))
             ->assertOk()
-            ->assertSee('₹24,000', false)
-            ->assertSee('3 years', false)
+            ->assertSee('Starting at ₹24,000 for three years', false)
+            ->assertSee('GST additional', false)
             ->assertDontSee('₹29,500', false);
         $this->get(route('login'))->assertOk();
         $this->get(route('apply'))->assertOk();

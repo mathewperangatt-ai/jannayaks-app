@@ -31,11 +31,11 @@ class Phase4ApplicationIntakeTest extends TestCase
             'contact_email'  => 'alice@example.com',
         ]);
 
-        $res->assertCreated()->assertJson(['ok' => true, 'package_tier' => 'accomplished']);
+        $res->assertCreated()->assertJson(['ok' => true, 'package_tier' => 'distinguished']);
         $this->assertStringContainsString('/payment', (string) $res->json('redirect_to'));
         $this->assertDatabaseHas('applications', [
             'user_id'        => $user->id,
-            'package_tier'   => 'accomplished',
+            'package_tier'   => 'distinguished',
             'source_method'  => 'online_interview',
             'full_name'      => 'Alice Example',
         ]);
@@ -55,7 +55,7 @@ class Phase4ApplicationIntakeTest extends TestCase
                 'full_name'      => $tier.' Person',
                 'contact_email'  => $tier.'@example.com',
             ])->assertCreated();
-            $this->assertSame($tier, (string) Application::query()->latest('id')->first()->package_tier);
+            $this->assertSame('distinguished', (string) Application::query()->latest('id')->first()->package_tier);
         }
     }
 

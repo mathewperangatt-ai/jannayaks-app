@@ -8,7 +8,7 @@
 <section class="card stack">
     <div>
         <span class="tag">STEP 1 OF 3</span>
-        <span class="list-pill">Select package tier</span>
+        <span class="list-pill">{{ $ml ? 'പ്രൊഫൈൽ' : 'Standard profile' }}</span>
         <span style="float:right" role="navigation" aria-label="Language">
             @if($ml)
                 <a class="list-pill" style="text-decoration:none" href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" lang="en">English</a>
@@ -19,63 +19,31 @@
             @endif
         </span>
     </div>
-    <h1>Choose how deep we go.</h1>
+    @php($quote = \App\Support\PricingAmounts::forStandardProfile())
+    <h1>{{ $ml ? 'നിങ്ങളുടെ പ്രൊഫൈൽ' : 'Your Jannayaks profile' }}</h1>
     <p class="sub">
-        Tier selection is <b>unrestricted</b>. Jannayaks does not check profession, public-office status, age, geography or achievements to decide your eligibility.
-        Every tier answers the same complete Online Interview; your choice controls the editorial depth and treatment.
+        {{ $ml ? 'ഒരു സ്റ്റാൻഡേർഡ് പ്രൊഫൈൽ. തിരഞ്ഞെടുക്കാനുള്ള പാക്കേജ് ശ്രേണികളില്ല.' : 'One standard profile. There is no package tier to choose.' }}
+        {{ $ml ? 'പ്രൊഫൈൽ തയ്യാറാക്കലും ആദ്യ വർഷത്തെ പ്രസിദ്ധീകരണവും ഈ തുകയിൽ ഉൾപ്പെടുന്നു.' : 'This payment includes profile creation and the first year of publication and hosting.' }}
     </p>
 
     <div class="warnbox" role="note" aria-label="Pricing note">
-        After you choose a tier and sign in, <b>payment comes next</b>. The Online Interview and source-material uploads unlock after payment is settled.
-        The prices below are exclusive of GST; 18% GST is added at payment. Tiers renew annually at the same tier price.
+        <div class="price" style="font-size:22px">
+            @if($quote['compare_at_base_formatted'])
+                <s style="color:var(--ink-soft);font-weight:500;margin-right:8px">{{ $quote['compare_at_base_formatted'] }}</s>
+            @endif
+            {{ $quote['base_formatted'] }}
+            <span style="font-size:13px;font-weight:600">+ GST</span>
+        </div>
+        <p style="margin:8px 0 0">
+            {{ $ml ? 'പേയ്‌മെന്റ് അടുത്ത ഘട്ടമാണ്. ഓൺലൈൻ അഭിമുഖവും രേഖകളും പണമടച്ച ശേഷം തുറക്കും.' : 'Payment comes next. The Online Interview and source-material uploads unlock after payment is settled.' }}
+            {{ $ml ? 'വാർഷിക പുതുക്കൽ' : 'Annual renewal is' }} {{ \App\Support\PricingAmounts::forTierRenewal(\App\Support\PricingAmounts::STANDARD_INTERNAL_TIER)['amount_incl_formatted'] }}
+            {{ $ml ? '(ബാധകമായ GST ഉൾപ്പെടെ).' : 'inclusive of applicable GST.' }}
+        </p>
     </div>
 
     <form method="POST" action="{{ route('apply.intent') }}" novalidate>
         @csrf
         <input type="hidden" name="honey_bot" value="" maxlength="0" autocomplete="off" tabindex="-1" aria-hidden="true">
-
-        <div class="grid tiers" role="radiogroup" aria-label="Package tier selection">
-            @php
-                $packages = config('jannayaks.tier_pricing.packages', []);
-                $tierNamesMl = [
-                    'emerging' => 'ജനകീയർ',
-                    'accomplished' => 'ജനസമ്മതർ',
-                    'distinguished' => 'പ്രഗൽഭർ',
-                ];
-                $tiers = ['emerging' => [
-                    'title' => \App\Support\TierLabels::label('emerging'),
-                    'sections' => ['Full Online Interview — all questions', 'Concise but complete editorial portrait (EN + ML)', '1 photo slot', 'Human editorial review before publication'],
-                    'include' => ['Same complete Online Interview as every tier', '1 photo slot', 'Documentary editorial treatment', 'Review + approval before publication'],
-                ], 'accomplished' => [
-                    'title' => \App\Support\TierLabels::label('accomplished'),
-                    'sections' => ['Full Online Interview — all questions', 'Substantially developed editorial feature (EN + ML)', '3 photo slots', 'Video link'],
-                    'include' => ['Same complete Online Interview as every tier', '3 photo slots', 'Video link', 'Expanded contribution editorial'],
-                ], 'distinguished' => [
-                    'title' => \App\Support\TierLabels::label('distinguished'),
-                    'sections' => ['Full Online Interview — all questions', 'Deeply developed long-form editorial profile (EN + ML)', '5 photo slots', 'Optional direct personal interview via external professional service (add-on)'],
-                    'include' => ['Same complete Online Interview as every tier', '5 photo slots', 'Video link'],
-                ]];
-            @endphp
-            @foreach (['emerging', 'accomplished', 'distinguished'] as $tier)
-                @php $pkg = $packages[$tier] ?? []; $meta = $tiers[$tier]; $amt = number_format((int)($pkg['base_amount'] ?? 0)); @endphp
-                <label class="tier">
-                    <input type="radio" name="package_tier" value="{{ $tier }}" @if(old('package_tier')===$tier) checked @endif required>
-                    <h3>
-                        <span>{{ $meta['title'] }}</span>
-                        <span class="tier-name-ml" style="display:block;font-size:12px;font-weight:500;color:var(--ink-soft)">{{ $tierNamesMl[$tier] }}</span>
-                    </h3>
-                    <div class="price">₹{{ $amt }}<span style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-left:6px">+ GST / year</span></div>
-                    <ul>
-                        @foreach ($meta['sections'] as $s)
-                            <li>{{ $s }}</li>
-                        @endforeach
-                    </ul>
-                </label>
-            @endforeach
-        </div>
-        @error('package_tier')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
-
-        <div class="divider"></div>
 
         <h2 style="font-size:16px">{{ $ml ? 'ഉള്ളടക്കം സമർപ്പിക്കുന്ന രീതി' : 'Intake source' }}</h2>
         <p class="sub">{{ $ml ? 'ഈ അപേക്ഷയ്ക്കുള്ള ഉള്ളടക്കം എങ്ങനെ ഞങ്ങൾക്ക് ലഭ്യമാക്കണമെന്ന് തിരഞ്ഞെടുക്കുക.' : 'Choose how we will receive the content for this application.' }}</p>
@@ -105,7 +73,7 @@
             <div class="field">
                 <label for="preferred_slug">{{ $ml ? 'ആഗ്രഹിക്കുന്ന വ്യക്തിഗത URL (ഓപ്ഷണൽ നിർദ്ദേശം)' : 'Preferred personal URL (optional hint)' }}</label>
                 <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
-                <div class="hint">{{ $ml ? 'ഇത് ഓപ്ഷണലാണ്. നിങ്ങളുടെ സ്ഥിരീകരിച്ച പേര് രേഖപ്പെടുത്തിയ ശേഷം, arun.kumar പോലുള്ള ലഭ്യമായ പേരിനെ അടിസ്ഥാനമാക്കിയുള്ള URL-കൾ Jannayaks നിർദ്ദേശിക്കും. നിങ്ങൾ സ്വയം ഒരു username സൃഷ്ടിക്കേണ്ടതില്ല.' : 'Optional. After your verified name is on file, Jannayaks will suggest available name-based URLs such as arun.kumar. You do not invent a username.' }}</div>
+                <div class="hint">{{ $ml ? 'ഇത് ഓപ്ഷണലാണ്. നിങ്ങളുടെ പേര് രേഖപ്പെടുത്തിയ ശേഷം, arun.kumar പോലുള്ള ലഭ്യമായ പേരിനെ അടിസ്ഥാനമാക്കിയുള്ള URL-കൾ Jannayaks നിർദ്ദേശിക്കും. നിങ്ങൾ സ്വയം ഒരു username സൃഷ്ടിക്കേണ്ടതില്ല.' : 'Optional. After your name is on file, Jannayaks will suggest available name-based URLs such as arun.kumar. You do not invent a username.' }}</div>
                 @error('preferred_slug')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
             <div class="field">

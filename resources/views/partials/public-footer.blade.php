@@ -48,7 +48,6 @@
             <ul class="jf-links">
                 <li><a href="#">About Jannayaks</a></li>
                 <li><a href="#">Political Neutrality</a></li>
-                <li><a href="#">Identity Verification</a></li>
             </ul>
         </div>
         <div class="jf-col" role="navigation" aria-label="Support">

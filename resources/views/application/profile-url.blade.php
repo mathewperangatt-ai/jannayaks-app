@@ -11,7 +11,6 @@
 
     <h1>Your Jannayaks URL</h1>
     <p class="lead" style="margin:0">
-        Tier: <b>{{ ucfirst($tier) }}</b>.
         @if($isPublished)
             Your public profile URL is active.
         @else
@@ -42,7 +41,7 @@
     @if($canSelectPersonal)
         <h2 style="margin-top:14px;font-size:16px">Choose your Jannayaks URL</h2>
         <p class="sub" style="margin:0">
-            Verified name: <b>{{ $verifiedName }}</b>.
+            Name on file: <b>{{ $verifiedName }}</b>.
             These suggestions are derived from that name. Arbitrary usernames are not allowed.
         </p>
         @if($personalSlugLocked)
@@ -81,7 +80,7 @@
     @else
         <h2 style="margin-top:14px;font-size:16px">System-assigned URL</h2>
         <p class="lead" style="margin:0">
-            {{ \App\Support\TierLabels::label('emerging') }} profiles use a six-character system URL. A personal name-based URL is not available on this tier.
+            This existing record uses a six-character system URL. A personal name-based URL is not available for it.
         </p>
     @endif
 

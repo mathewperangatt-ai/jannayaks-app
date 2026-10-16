@@ -284,7 +284,7 @@ class DemoPopulationTest extends TestCase
             ->assertSee($entry['en']['summary'], false)
             ->assertSee($lastParagraph($entry['en']['body']), false)
             ->assertSee('Fictional demonstration profile', false)
-            ->assertSee('tier-mark tier-mark--accomplished', false)
+            ->assertDontSee('tier-mark tier-mark--accomplished', false)
             ->assertSee('jk-portrait jk-portrait--whole', false);
         $this->assertNoTierWordsOrDefaultLocation($en->getContent(), '/k.shafiq.rahman?lang=en');
 
@@ -296,12 +296,12 @@ class DemoPopulationTest extends TestCase
         // Recognised system slug renders with the Recognised marker.
         $slug = Profile::query()->where('full_name', 'Fr. Joseph Mathew')->value('slug');
         $joseph = $this->get('/'.$slug);
-        $joseph->assertOk()->assertSee('Fr. Joseph Mathew', false)->assertSee('tier-mark tier-mark--emerging', false);
+        $joseph->assertOk()->assertSee('Fr. Joseph Mathew', false)->assertDontSee('tier-mark tier-mark--emerging', false);
         $this->assertNoTierWordsOrDefaultLocation($joseph->getContent(), '/'.$slug);
 
         foreach (['t.gopalakrishnan', 'arjun.menon', 'nanditha.das', 'fahim.yousuf', 'meera.krishnan'] as $distinguishedSlug) {
             $distinguished = $this->get('/'.$distinguishedSlug.'?lang=en');
-            $distinguished->assertOk()->assertSee('tier-mark tier-mark--distinguished', false);
+            $distinguished->assertOk()->assertDontSee('tier-mark tier-mark--distinguished', false);
             $this->assertNoTierWordsOrDefaultLocation($distinguished->getContent(), '/'.$distinguishedSlug);
         }
 
@@ -312,9 +312,9 @@ class DemoPopulationTest extends TestCase
         foreach (array_merge(...array_values(self::LIVING_BY_TIER)) as $name) {
             $this->assertStringContainsString($name, $galleryContent);
         }
-        $this->assertSame(3, substr_count($galleryContent, 'tier-mark--emerging'));
-        $this->assertSame(4, substr_count($galleryContent, 'tier-mark--accomplished'));
-        $this->assertSame(7, substr_count($galleryContent, 'tier-mark--distinguished'));
+        $this->assertSame(0, substr_count($galleryContent, 'tier-mark--emerging'));
+        $this->assertSame(0, substr_count($galleryContent, 'tier-mark--accomplished'));
+        $this->assertSame(0, substr_count($galleryContent, 'tier-mark--distinguished'));
         foreach (['Recognised', 'Acclaimed', 'Distinguished', 'class="card-tier'] as $word) {
             $this->assertStringNotContainsString($word, $galleryContent, '/gallery must not render '.$word);
         }
@@ -363,7 +363,7 @@ class DemoPopulationTest extends TestCase
         $this->get('/k.shafiq.rahman')
             ->assertOk()
             ->assertSee('<p class="jk-location">Keralam</p>', false)
-            ->assertSee('tier-mark tier-mark--accomplished', false)
+            ->assertDontSee('tier-mark tier-mark--accomplished', false)
             ->assertDontSee('Fictional demonstration profile', false)
             ->assertDontSee('jk-portrait jk-portrait--whole', false);
 

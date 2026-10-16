@@ -61,19 +61,15 @@
             </p>
             <h1 class="dash-name">{{ $application->full_name }}</h1>
             <div class="dash-meta">
-                @php
-                    $tierMap = ['emerging' => \App\Support\TierLabels::label('emerging'),'accomplished' => \App\Support\TierLabels::label('accomplished'),'distinguished' => \App\Support\TierLabels::label('distinguished')];
-                    $priceMap = [];
-                    foreach (['emerging', 'accomplished', 'distinguished'] as $tierKey) {
-                        $base = (int) config('jannayaks.tier_pricing.packages.'.$tierKey.'.base_amount', 0);
-                        $priceMap[$tierKey] = '₹'.number_format($base).' + GST';
-                    }
-                @endphp
                 @if($application->profile?->reference_code)
                     <span class="dash-pill dash-ref">Ref&nbsp;<b>{{ $application->profile->reference_code }}</b></span>
                 @endif
-                <span class="dash-pill">Tier:&nbsp;<b>{{ $tierMap[(string)$application->package_tier] ?? ucfirst($application->package_tier) }}</b></span>
-                <span class="dash-pill">{{ $priceMap[(string)$application->package_tier] ?? '—' }}</span>
+                @if(\App\Support\PricingAmounts::isLivingTier($application->package_tier) && ! $application->isPaymentSettled())
+                    @php
+                        $standardQuote = \App\Support\PricingAmounts::forStandardProfile();
+                    @endphp
+                    <span class="dash-pill">{{ $standardQuote['base_formatted'] }} + GST</span>
+                @endif
                 <span class="dash-pill">Started {{ $application->intake_started_at ? $application->intake_started_at->format('d M Y') : '—' }}</span>
                 @if($application->online_interview_completed_at)
                     <span class="dash-pill">Submitted {{ $application->online_interview_completed_at->format('d M Y · H:i') }}</span>
@@ -239,7 +235,7 @@
                 @if($application->status === \App\Models\Application::STATUS_PUBLISHED && $linkedProfile)
                     <a class="dash-manage-card" href="{{ route('applications.maintenance.show', $application) }}">
                         <span class="dmc-label">Request profile update <span class="dmc-arrow">→</span></span>
-                        <span class="dmc-sub">One complimentary maintenance every 3 months · photograph replacement included</span>
+                        <span class="dmc-sub">Two edit requests a year · the published profile stays unchanged until approval</span>
                     </a>
                 @endif
             </div>
