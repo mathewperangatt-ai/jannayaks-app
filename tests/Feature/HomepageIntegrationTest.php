@@ -58,29 +58,33 @@ class HomepageIntegrationTest extends TestCase
         $englishBlock = strpos($html, 'class="intro-block intro-block-en" lang="en"');
         $this->assertNotFalse($malayalamBlock);
         $this->assertNotFalse($englishBlock);
-        $this->assertTrue($intro < $malayalamBlock && $malayalamBlock < $englishBlock && $englishBlock < $recommend);
-        // Intro language tabs: Malayalam selected by default, English panel rendered but hidden.
+        $this->assertTrue($intro < $englishBlock && $englishBlock < $malayalamBlock && $malayalamBlock < $recommend);
         $tabs = strpos($html, 'class="intro-tabs" role="tablist"');
         $this->assertNotFalse($tabs);
-        $this->assertTrue($intro < $tabs && $tabs < $malayalamBlock);
-        $response->assertSee('id="intro-tab-ml" lang="ml" aria-selected="true" aria-controls="intro-panel-ml"', false);
-        $response->assertSee('id="intro-tab-en" lang="en" aria-selected="false" aria-controls="intro-panel-en"', false);
-        $response->assertSee('class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml">', false);
-        $response->assertSee('class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en" hidden>', false);
+        $this->assertTrue($intro < $tabs && $tabs < $englishBlock);
+        $response->assertSee('id="intro-tab-en" lang="en" aria-selected="true" aria-controls="intro-panel-en"', false);
+        $response->assertSee('id="intro-tab-ml" lang="ml" aria-selected="false" aria-controls="intro-panel-ml"', false);
+        $response->assertSee('class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en">', false);
+        $response->assertSee('class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml" hidden>', false);
         $this->assertSame(1, substr_count($html, 'role="tablist"'));
         $response->assertSeeInOrder([
+            'Jannayaks is a digital gallery that documents the contributions and achievements of individuals. Its content is similar to the personal profiles published in a magazine.',
+            'How does it work?',
+            'Every profile is personally reviewed before publication. Anyone can use AI to prepare a biography. Jannayaks offers something different: consistent editorial standards, careful review, publication with your approval, and a digital record that can be updated over time.',
+            'Whichever field you are in, have a record of yourself which you can be proud of.',
+            'An English-only profile is also available for those who prefer it.',
             'എന്താണ് Jannayaks?',
             'എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?',
-            'ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു.',
-            'What is Jannayaks?',
-            'How does it work?',
-            'Every profile is personally reviewed before publication.',
             'Tariff Plans →',
             'Demo Profiles →',
         ], false);
+        $response->assertDontSee('ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു.', false);
+        $response->assertDontSee('Sign in with Google or WhatsApp', false);
         $this->assertStringNotContainsStringIgnoringCase('every application', $html);
         $response->assertDontSee("A digital gallery of people's leaders.", false);
-        $response->assertSee('images/jannayaks-hero.jpeg', false);
+        $response->assertSee('images/jannayaks-hero-2.webp', false);
+        $response->assertSee('images/jannayaks-hero-2-800.webp', false);
+        $response->assertDontSee('images/jannayaks-hero.jpeg', false);
         $response->assertSee('width="1600"', false);
         $response->assertSee('height="697"', false);
         $response->assertSee('fetchpriority="high"', false);
