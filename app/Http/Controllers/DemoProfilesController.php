@@ -19,7 +19,8 @@ use Illuminate\View\View;
  */
 class DemoProfilesController extends Controller
 {
-    private const TIER_ORDER = ['emerging' => 0, 'accomplished' => 1, 'distinguished' => 2];
+    /** Sort key for any remaining living demo tiers (Standard Profile demos use distinguished). */
+    private const TIER_ORDER = ['distinguished' => 0, 'accomplished' => 1, 'emerging' => 2];
 
     public function __construct(
         private PublicProfileSearchService $search,
