@@ -39,25 +39,25 @@ class Phase6PaymentSecurityTest extends TestCase
     public function test_pricing_acclaimed_amount_6000_plus_gst(): void
     {
         $amt = PricingAmounts::forTier('accomplished');
-        $this->assertSame(8000 * 100, $amt['base_paise']);
-        $this->assertSame(144000, $amt['gst_paise']);
-        $this->assertSame(944000, $amt['amount_incl_paise']);
+        $this->assertSame(6000 * 100, $amt['base_paise']);
+        $this->assertSame(108000, $amt['gst_paise']);
+        $this->assertSame(708000, $amt['amount_incl_paise']);
         $this->assertFalse($amt['gst_inclusive']);
     }
 
     public function test_pricing_distinguished_amount_9000_plus_gst(): void
     {
         $amt = PricingAmounts::forTier('distinguished');
-        $this->assertSame(25000 * 100, $amt['base_paise']);
-        $this->assertSame(450000, $amt['gst_paise']);
-        $this->assertSame(2950000, $amt['amount_incl_paise']);
+        $this->assertSame(9000 * 100, $amt['base_paise']);
+        $this->assertSame(162000, $amt['gst_paise']);
+        $this->assertSame(1062000, $amt['amount_incl_paise']);
         $this->assertFalse($amt['gst_inclusive']);
     }
 
     /* 4. Correct GST-exclusive calculation (18% added on top of base). */
     public function test_gst_exclusive_calculation_base_plus_gst_equals_total_exactly(): void
     {
-        foreach (['emerging' => 3000, 'accomplished' => 8000, 'distinguished' => 25000] as $tier => $rupees) {
+        foreach (['emerging' => 3000, 'accomplished' => 6000, 'distinguished' => 9000] as $tier => $rupees) {
             $amt = PricingAmounts::forTier($tier);
             $totalPaise = (int) $amt['amount_incl_paise'];
             $basePaise = (int) $amt['base_paise'];
@@ -66,15 +66,15 @@ class Phase6PaymentSecurityTest extends TestCase
             $this->assertSame($totalPaise, $basePaise + $gstPaise, "Tier $tier base+gst must equal total.");
 
             $this->assertSame((int) round($basePaise * 0.18), $gstPaise, 'GST must be 18% added on top of the base.');
-
-            if ($amt['cgst_paise'] !== null && $amt['sgst_paise'] !== null) {
-                $this->assertSame($gstPaise, (int) $amt['cgst_paise'] + (int) $amt['sgst_paise']);
-            }
+            $this->assertSame('unclassified', $amt['gst_classification']);
+            $this->assertNull($amt['cgst_paise']);
+            $this->assertNull($amt['igst_paise']);
         }
 
         $standard = PricingAmounts::forStandardProfile();
         $this->assertSame(472000, $standard['amount_incl_paise']);
-        $this->assertSame((int) $standard['gst_paise'], (int) $standard['cgst_paise'] + (int) $standard['sgst_paise']);
+        $this->assertSame(72000, $standard['gst_paise']);
+        $this->assertSame('unclassified', $standard['gst_classification']);
     }
 
     /* 5. Client cannot override amount — payment initiation uses server authoritative amount. */

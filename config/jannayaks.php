@@ -51,14 +51,16 @@ return [
             ],
             'accomplished' => [
                 'label' => 'Acclaimed',
-                'base_amount' => 8000,
+                // Historical amount from PR base f8eef32 (pre-Standard Profile).
+                'base_amount' => 6000,
                 'description' => 'Historical Acclaimed package (pre-Standard Profile).',
                 'photo_slots' => 3,
                 'includes_video_link' => true,
             ],
             'distinguished' => [
                 'label' => 'Distinguished',
-                'base_amount' => 25000,
+                // Historical amount from PR base f8eef32 (pre-Standard Profile).
+                'base_amount' => 9000,
                 'description' => 'Historical Distinguished package (pre-Standard Profile). New Standard Profile apps use standard_profile pricing via pricing_generation.',
                 'includes_video_link' => true,
                 'photo_slots' => 5,

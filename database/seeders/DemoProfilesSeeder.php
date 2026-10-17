@@ -87,41 +87,12 @@ class DemoProfilesSeeder extends Seeder
             $this->seedLivingDemo($slug, $entry);
         }
 
-        $this->retireObsoleteLivingDemos(array_keys($living));
+        $result = app(\App\Services\ObsoleteLivingDemoRetirementService::class)->retire(false);
+        foreach ($result['retired'] as $row) {
+            $this->command?->info('Retired obsolete living demo: '.$row['full_name']);
+        }
         $this->seedMemorials();
         $this->seedTestAccounts();
-    }
-
-    /**
-     * Unpublish retired short-profile demos so they leave public listings.
-     * Only touches @jannayaks.internal demo.* owners — never real members.
-     *
-     * @param  list<string>  $keepSlugs
-     */
-    private function retireObsoleteLivingDemos(array $keepSlugs): void
-    {
-        $keepEmails = array_map(
-            static fn (string $slug): string => 'demo.'.$slug.'@jannayaks.internal',
-            $keepSlugs,
-        );
-
-        $obsolete = Profile::query()
-            ->where('status', 'published')
-            ->whereNull('unpublished_at')
-            ->whereHas('user', function ($query) use ($keepEmails): void {
-                $query->where('email', 'like', 'demo.%@jannayaks.internal')
-                    ->whereNotIn('email', $keepEmails);
-            })
-            ->get();
-
-        foreach ($obsolete as $profile) {
-            $profile->forceFill([
-                'status' => 'inactive',
-                'unpublished_at' => $profile->unpublished_at ?? now(),
-            ])->save();
-
-            $this->command?->info('Retired obsolete living demo: '.$profile->full_name);
-        }
     }
 
     /* -----------------------------------------------------------------

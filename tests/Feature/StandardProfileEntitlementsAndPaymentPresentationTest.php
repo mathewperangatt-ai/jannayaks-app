@@ -110,33 +110,34 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
             'full_name' => 'GST Payer',
         ]);
 
-        $quote = PricingAmounts::forApplication($app);
+        Config::set('jannayaks.tier_pricing.billing.state', 'Kerala');
+        $quote = PricingAmounts::forApplication($app, 'Kerala');
         $this->assertSame(400000, $quote['base_paise']);
         $this->assertSame(36000, $quote['cgst_paise']);
         $this->assertSame(36000, $quote['sgst_paise']);
         $this->assertSame(72000, $quote['gst_paise']);
         $this->assertSame(472000, $quote['amount_incl_paise']);
+        $this->assertSame('intra_state', $quote['gst_classification']);
         $this->assertSame(
             $quote['amount_incl_paise'],
             $quote['base_paise'] + $quote['cgst_paise'] + $quote['sgst_paise'],
         );
 
+        // Payment page has no collected place of supply yet: exclusive base + unclassified GST total.
         $html = $this->actingAs($user)
             ->get(route('applications.payment', ['application' => $app, 'lang' => 'en']))
             ->assertOk()
             ->assertSee('Package Price Breakdown', false)
             ->assertSee('₹4,000.00', false)
-            ->assertSee('CGST (added)', false)
-            ->assertSee('₹360.00', false)
-            ->assertSee('SGST (added)', false)
+            ->assertSee('GST (added)', false)
+            ->assertSee('₹720.00', false)
             ->assertSee('Total (incl. GST)', false)
             ->assertSee('₹4,720.00', false)
+            ->assertDontSee('CGST (added)', false)
             ->getContent();
 
-        // The package line must show the exclusive base, not the GST-inclusive total twice.
         $this->assertSame(1, substr_count($html, '₹4,720.00'));
         $this->assertGreaterThanOrEqual(1, substr_count($html, '₹4,000.00'));
-        $this->assertGreaterThanOrEqual(2, substr_count($html, '₹360.00'));
     }
 
     public function test_new_standard_profile_payment_initiation_uses_standard_amount(): void
@@ -152,8 +153,10 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
 
         $this->assertSame(472000, $payment->totalPaise());
         $this->assertSame('4000.00', (string) $payment->base_amount);
-        $this->assertSame('360.00', (string) $payment->cgst_amount);
-        $this->assertSame('360.00', (string) $payment->sgst_amount);
+        // Place of supply is not collected yet — tax is stored unclassified (total GST only).
+        $this->assertNull($payment->cgst_amount);
+        $this->assertNull($payment->sgst_amount);
+        $this->assertNull($payment->igst_amount);
     }
 
     public function test_historical_unpaid_application_keeps_legacy_amount_and_does_not_replace_matching_link(): void
@@ -165,13 +168,13 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
         ]);
 
         $first = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
-        $this->assertSame(2950000, $first->totalPaise());
-        $this->assertSame('25000.00', (string) $first->base_amount);
+        $this->assertSame(1062000, $first->totalPaise());
+        $this->assertSame('9000.00', (string) $first->base_amount);
 
         $second = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app->fresh());
         $this->assertSame($first->id, $second->id);
         $this->assertSame(1, Payment::query()->where('application_id', $app->id)->count());
-        $this->assertSame(2950000, $second->totalPaise());
+        $this->assertSame(1062000, $second->totalPaise());
     }
 
     /**

@@ -93,7 +93,7 @@
             <div class="note-safe">{{ $ml ? 'ഐജിഎസ്ടി (ചേർത്തത്)' : 'IGST (added)' }}</div>
             <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['igst_formatted'] }}</div>
         </div>
-        @else
+        @elseif (is_string($package['cgst_formatted'] ?? null) || is_string($package['sgst_formatted'] ?? null))
             @if (is_string($package['cgst_formatted'] ?? null))
             <div class="row" style="justify-content:space-between">
                 <div class="note-safe">{{ $ml ? 'സിജിഎസ്ടി (ചേർത്തത്)' : 'CGST (added)' }}</div>
@@ -107,6 +107,11 @@
                 <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['sgst_formatted'] }}</div>
             </div>
             @endif
+        @elseif (is_string($package['gst_formatted'] ?? null) && (int) ($package['gst_paise'] ?? 0) > 0)
+        <div class="row" style="justify-content:space-between">
+            <div class="note-safe">{{ $ml ? 'ജിഎസ്ടി (ചേർത്തത്)' : 'GST (added)' }}</div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['gst_formatted'] }}</div>
+        </div>
         @endif
 
         <div class="divider"></div>

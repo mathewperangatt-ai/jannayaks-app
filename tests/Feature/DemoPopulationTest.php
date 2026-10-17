@@ -192,7 +192,7 @@ class DemoPopulationTest extends TestCase
         $retired->refresh();
         $this->assertSame('inactive', $retired->status);
         $this->assertNotNull($retired->unpublished_at);
-        $this->assertSame(7, Profile::query()->where('status', 'published')->count());
+        $this->assertSame(7, Profile::query()->where('status', 'published')->whereNull('unpublished_at')->count());
         $this->assertTrue(Profile::query()->where('full_name', 'T. Gopalakrishnan')->where('status', 'published')->exists());
         $this->get(route('demo-profiles.index'))->assertOk()->assertDontSee('Fr. Joseph Mathew', false);
     }

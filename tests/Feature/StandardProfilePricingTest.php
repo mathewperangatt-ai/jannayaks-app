@@ -18,8 +18,9 @@ class StandardProfilePricingTest extends TestCase
         $this->assertSame(472000, $profile['amount_incl_paise']);
         $this->assertSame('₹4,000.00', $profile['base_formatted']);
         $this->assertSame('₹4,720.00', $profile['amount_incl_formatted']);
-        $this->assertSame('₹360.00', $profile['cgst_formatted']);
-        $this->assertSame('₹360.00', $profile['sgst_formatted']);
+        $this->assertSame('unclassified', $profile['gst_classification']);
+        $this->assertNull($profile['cgst_formatted']);
+        $this->assertNull($profile['sgst_formatted']);
         $this->assertNull($profile['igst_formatted']);
         $this->assertFalse($profile['gst_inclusive']);
         $this->assertArrayNotHasKey('compare_at', $profile);
@@ -48,23 +49,35 @@ class StandardProfilePricingTest extends TestCase
         $this->assertFalse($rewrite['gst_inclusive']);
     }
 
-    public function test_historical_package_amounts_match_main_and_are_not_silently_repriced(): void
+    public function test_historical_package_amounts_match_pr_base_f8eef32_and_are_not_silently_repriced(): void
     {
+        // Historical living tiers from PR base commit f8eef3295a405c5d872a163e678bf9c1d0566d7f.
         $this->assertSame(300000, PricingAmounts::forTier('emerging')['base_paise']);
         $this->assertSame(354000, PricingAmounts::forTier('emerging')['amount_incl_paise']);
-        $this->assertSame(800000, PricingAmounts::forTier('accomplished')['base_paise']);
-        $this->assertSame(944000, PricingAmounts::forTier('accomplished')['amount_incl_paise']);
-        $this->assertSame(2500000, PricingAmounts::forTier('distinguished')['base_paise']);
-        $this->assertSame(2950000, PricingAmounts::forTier('distinguished')['amount_incl_paise']);
+        $this->assertSame(600000, PricingAmounts::forTier('accomplished')['base_paise']);
+        $this->assertSame(708000, PricingAmounts::forTier('accomplished')['amount_incl_paise']);
+        $this->assertSame(900000, PricingAmounts::forTier('distinguished')['base_paise']);
+        $this->assertSame(1062000, PricingAmounts::forTier('distinguished')['amount_incl_paise']);
 
-        $historical = new Application([
+        foreach (['emerging' => 354000, 'accomplished' => 708000, 'distinguished' => 1062000] as $tier => $total) {
+            $historical = new Application([
+                'package_tier' => $tier,
+                'pricing_generation' => null,
+            ]);
+            $this->assertSame($total, PricingAmounts::forApplication($historical)['amount_incl_paise'], $tier);
+        }
+
+        $standard = new Application([
             'package_tier' => 'distinguished',
-            'pricing_generation' => null,
+            'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
         ]);
-        $this->assertSame(2950000, PricingAmounts::forApplication($historical)['amount_incl_paise']);
+        $this->assertSame(472000, PricingAmounts::forApplication($standard)['amount_incl_paise']);
         $this->assertNotSame(
             PricingAmounts::forStandardProfile()['amount_incl_paise'],
-            PricingAmounts::forApplication($historical)['amount_incl_paise'],
+            PricingAmounts::forApplication(new Application([
+                'package_tier' => 'distinguished',
+                'pricing_generation' => null,
+            ]))['amount_incl_paise'],
         );
     }
 
