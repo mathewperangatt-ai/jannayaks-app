@@ -82,7 +82,7 @@
         <div class="row" style="justify-content:space-between">
             <div>
                 <div style="font-weight:600">{{ $package['addon']['label'] }}</div>
-                <span class="note-safe">{{ $ml ? 'ഓപ്ഷണൽ അധിക സേവനം (അടിസ്ഥാന Distinguished പാക്കേജിന്റെ ഭാഗമല്ല)' : 'Optional add-on (not part of base Distinguished package)' }}</span>
+                <span class="note-safe">{{ $ml ? 'ഓപ്ഷണൽ അധിക സേവനം (അടിസ്ഥാന പ്രൊഫൈൽ ഫീസിന്റെ ഭാഗമല്ല)' : 'Optional add-on (not part of the Standard Profile fee)' }}</span>
             </div>
             <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ $package['addon']['amount_incl_formatted'] }}</div>
         </div>

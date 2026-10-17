@@ -33,7 +33,7 @@
         <div class="maint-status">
             <b>Update request submitted</b> — it is with the editorial team
             (submitted {{ $openRequest->created_at->format('d M Y') }},
-            {{ $openRequest->billing_classification === \App\Models\EditorialRevisionRequest::BILLING_COMPLIMENTARY ? 'Complimentary update' : 'Paid update request' }}).
+            {{ $openRequest->billing_classification === \App\Models\EditorialRevisionRequest::BILLING_COMPLIMENTARY ? 'Complimentary update' : 'Recorded for a separately arranged rewrite — this page does not collect payment' }}).
             You will be able to request a further update once this one has been processed. No publication date is promised here.
         </div>
     @endif
@@ -47,10 +47,11 @@
             complimentary update. The next complimentary window opens
             {{ $eligibility['next_eligible_on']->format('d M Y') }}.
         @else
-            <b>Paid update opportunity.</b> This profile's complimentary update for the current
-            3-month cycle has already been used. You may still submit this request — it will be
-            treated as a <b>paid update opportunity</b>, and the Jannayaks team will contact you
-            about it before any work begins. The next complimentary window opens
+            <b>Paid rewrite is arranged separately.</b> This profile's complimentary update for the current
+            3-month cycle has already been used. You may still submit this request. This form does not
+            collect payment. If a full profile rewrite is agreed, the price is
+            <b>{{ \App\Support\PricingAmounts::forRevisionUpdate()['base_formatted'] }} + GST</b>,
+            and the Jannayaks team will contact you before any work begins. The next complimentary window opens
             {{ $eligibility['next_eligible_on']->format('d M Y') }}.
         @endif
     </div>

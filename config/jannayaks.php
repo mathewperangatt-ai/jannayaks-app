@@ -25,31 +25,37 @@ return [
         'currency' => 'INR',
         'gst_percent' => 18,
         /*
-        | Commercial model (Master Editorial Specification §12, confirmed):
-        | Internal storage keys are retained (emerging/accomplished/distinguished);
-        | customer-facing tier names come from these labels / App\Support\TierLabels.
-        | base_amount is EXCLUSIVE of GST — the customer pays base + GST at checkout.
-        | Annual membership renewal is tier-priced (same annual tier price).
+        | One public Standard Profile. Living charges are GST-exclusive.
+        | New applications are stored as standard_profile.internal_tier.
+        | Historical emerging/accomplished/distinguished rows keep their keys.
+        | Photo slots and video flags below stay with those historical keys.
+        | There is no launch discount and no crossed-out comparison price.
         */
+        'standard_profile' => [
+            'internal_tier' => 'distinguished',
+            'label' => 'Standard Profile',
+            'base_amount' => 4000,
+            'description' => 'Standard Profile fee, exclusive of GST.',
+        ],
         'packages' => [
             'emerging' => [
                 'label' => 'Recognised',
-                'base_amount' => 3000,
-                'description' => 'Annual profile package.',
+                'base_amount' => 4000,
+                'description' => 'Historical internal key. Charged at the Standard Profile price.',
                 'photo_slots' => 1,
                 'includes_video_link' => false,
             ],
             'accomplished' => [
                 'label' => 'Acclaimed',
-                'base_amount' => 6000,
-                'description' => 'Annual profile package.',
+                'base_amount' => 4000,
+                'description' => 'Historical internal key. Charged at the Standard Profile price.',
                 'photo_slots' => 3,
                 'includes_video_link' => true,
             ],
             'distinguished' => [
                 'label' => 'Distinguished',
-                'base_amount' => 9000,
-                'description' => 'Annual profile package.',
+                'base_amount' => 4000,
+                'description' => 'Internal key used for new Standard Profile applications.',
                 'includes_video_link' => true,
                 'photo_slots' => 5,
             ],
@@ -76,19 +82,20 @@ return [
                 env('JANNAYAKS_BILLING_SUPPORT_EMAIL', 'hello@jannayaks.in')
             ),
         ],
-        /*
-        | Flat-rate 'membership' block removed: annual membership renewal is now
-        | tier-priced at the member's applicable annual tier price (see
-        | PricingAmounts::forTierRenewal()). Cycle length remains 1 year.
-        */
         'membership' => [
             'label' => 'Annual Membership',
             'cycle_years' => 1,
         ],
+        'renewal' => [
+            'label' => 'Annual renewal',
+            'base_amount' => 1800,
+            'gst_inclusive' => false,
+            'description' => 'Annual renewal of publication and hosting, exclusive of GST.',
+        ],
         'revision' => [
-            'label' => 'Profile Revision / Update',
-            'base_amount' => 2000,
-            'description' => 'Interim profile revision or content update.',
+            'label' => 'Full profile rewrite',
+            'base_amount' => 3000,
+            'description' => 'Full profile rewrite, exclusive of GST. A maintenance request does not collect this payment.',
         ],
     ],
 
@@ -216,7 +223,7 @@ return [
         'editorial' => [
             // Two included pre-publication revision rounds are part of initial prep (P11). Not paid.
             'included_prepublication_revision_rounds' => 2,
-            // Post-publication meaningful revision uses tier_pricing.revision (₹2,000 + GST) — not in P10.
+            // A full profile rewrite is priced at tier_pricing.revision (₹3,000 + GST). A maintenance request does not collect it.
         ],
         'image_enhancement' => [
             // KILL SWITCH — disabled by default. When false: no candidate is

@@ -151,15 +151,15 @@ class NavigationQaJourneyTest extends TestCase
     {
         $tiersPage = $this->get(route('apply', ['step' => 'tiers']))->assertOk();
 
-        foreach (['ജനകീയർ', 'ജനസമ്മതർ', 'പ്രഗൽഭർ'] as $approved) {
-            $tiersPage->assertSee($approved, false);
-        }
-        foreach (['അംഗീകരിക്കപ്പെട്ടവർ', 'പ്രശസ്തർ', 'വിശിഷ്ടർ', 'പ്രമുഖർ'] as $banned) {
-            $tiersPage->assertDontSee($banned, false);
+        $tiersPage->assertSee('Standard Profile', false);
+        $tiersPage->assertSee('₹4,000.00', false);
+        foreach (['ജനകീയർ', 'ജനസമ്മതർ', 'പ്രഗൽഭർ', 'അംഗീകരിക്കപ്പെട്ടവർ', 'പ്രശസ്തർ', 'വിശിഷ്ടർ', 'പ്രമുഖർ'] as $removed) {
+            $tiersPage->assertDontSee($removed, false);
         }
 
         $faq = $this->get(route('faq-charges'))->assertOk();
-        $faq->assertSee('പ്രഗൽഭർ', false);
+        $faq->assertSee('Standard Profile', false);
+        $faq->assertDontSee('പ്രഗൽഭർ', false);
         $faq->assertDontSee('പ്രമുഖർ', false);
         $faq->assertDontSee('പ്രശസ്തർ', false);
     }

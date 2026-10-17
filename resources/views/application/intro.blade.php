@@ -17,7 +17,7 @@
 
     <h2 style="margin-top:8px">How it works</h2>
     <ol class="sub" style="list-style:decimal;margin:0;padding-left:22px;color:var(--ink-soft)">
-        <li style="padding:2px 0"><b>Choose a tier</b> — unrestricted package choice.</li>
+        <li style="padding:2px 0"><b>Begin your profile application</b> — one Standard Profile.</li>
         <li style="padding:2px 0"><b>Sign in</b> with your Jannayaks username, Google, or create an account.</li>
         <li style="padding:2px 0"><b>Pay</b> for the selected profile package.</li>
         <li style="padding:2px 0"><b>Complete the Online Interview</b> (or direct submission) and upload source material.</li>
@@ -25,7 +25,7 @@
     </ol>
 
     <div class="row" style="margin-top:6px;justify-content:flex-end">
-        <a class="btn primary block" href="{{ route('apply', ['step' => 'tiers']) }}">Choose a profile tier →</a>
+        <a class="btn primary block" href="{{ route('apply', ['step' => 'tiers']) }}">Begin your profile application →</a>
         @guest
             <a class="btn block" href="{{ route('login') }}">Already have an account? Sign in</a>
         @endguest

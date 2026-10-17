@@ -11,7 +11,7 @@
 
     <h1>Your Jannayaks URL</h1>
     <p class="lead" style="margin:0">
-        Tier: <b>{{ ucfirst($tier) }}</b>.
+        {{ \App\Support\PricingAmounts::isLivingTier((string) $tier) ? 'Standard Profile' : ucfirst((string) $tier) }}.
         @if($isPublished)
             Your public profile URL is active.
         @else

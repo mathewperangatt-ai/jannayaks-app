@@ -21,7 +21,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     {
         $res = $this->get(route('apply'));
         $res->assertOk();
-        $res->assertSee('Choose a profile tier', false);
+        $res->assertSee('Begin your profile application', false);
         $res->assertSee(route('login'), false);
     }
 
@@ -31,20 +31,19 @@ class Phase5BrowserWorkflowTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
         $res = $this->actingAs($user)->get(route('apply'));
         $res->assertOk();
-        $res->assertSee('Recognised', false);
-        $res->assertSee('Acclaimed', false);
-        $res->assertSee('Distinguished', false);
+        $res->assertSee('Standard Profile', false);
+        $res->assertSee('₹4,000.00', false);
+        $res->assertDontSee('Recognised', false);
         $res->assertSee(route('apply.intent'), false);
     }
 
     /** @test §21-3 Each of 3 tiers is selectable and POST creates application via form */
     public function test_all_three_tiers_selectable_via_form(): void
     {
-        $prices = ['emerging' => '₹3,000', 'accomplished' => '₹6,000', 'distinguished' => '₹9,000'];
         foreach (['emerging', 'accomplished', 'distinguished'] as $tier) {
             $user = User::factory()->create(['email_verified_at' => now()]);
             $create = $this->actingAs($user)->get(route('apply'));
-            $create->assertSee($prices[$tier], false);
+            $create->assertSee('₹4,000.00', false);
 
             $res = $this->actingAs($user)->postJson(route('applications.store'), [
                 'package_tier'   => $tier,
@@ -55,7 +54,7 @@ class Phase5BrowserWorkflowTest extends TestCase
             $res->assertCreated();
             $app = Application::query()->latest('id')->first();
             $this->assertNotNull($app);
-            $this->assertSame($tier, (string) $app->package_tier);
+            $this->assertSame('distinguished', (string) $app->package_tier);
 
             $show = $this->actingAs($user)->get(route('applications.show', $app));
             $show->assertOk();
@@ -356,9 +355,11 @@ class Phase5BrowserWorkflowTest extends TestCase
         $this->assertArrayHasKey('important_facts', config('online_interview.sections', []));
 
         $this->assertSame(18, (int) config('jannayaks.tier_pricing.gst_percent'));
-        $this->assertSame(3000, (int) config('jannayaks.tier_pricing.packages.emerging.base_amount'));
-        $this->assertSame(6000, (int) config('jannayaks.tier_pricing.packages.accomplished.base_amount'));
-        $this->assertSame(9000, (int) config('jannayaks.tier_pricing.packages.distinguished.base_amount'));
+        $this->assertSame(4000, (int) config('jannayaks.tier_pricing.packages.emerging.base_amount'));
+        $this->assertSame(4000, (int) config('jannayaks.tier_pricing.packages.accomplished.base_amount'));
+        $this->assertSame(4000, (int) config('jannayaks.tier_pricing.packages.distinguished.base_amount'));
+        $this->assertSame(1800, (int) config('jannayaks.tier_pricing.renewal.base_amount'));
+        $this->assertSame(3000, (int) config('jannayaks.tier_pricing.revision.base_amount'));
         $qids = array_map(static fn(array $q): string => (string) ($q['id'] ?? ''), (array) config('online_interview.questions', []));
         $this->assertContains('q22', $qids);
         $this->assertCount(22, $qids);

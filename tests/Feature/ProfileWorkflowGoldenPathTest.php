@@ -111,7 +111,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
         $application = Application::query()->where('user_id', $customer->id)->sole();
 
         $this->assertSame($customer->id, $application->user_id);
-        $this->assertSame('emerging', $application->package_tier);
+        $this->assertSame('distinguished', $application->package_tier);
         $this->assertSame(Application::PAYMENT_STATUS_PENDING, $application->payment_status);
         $this->assertSame(Application::STATUS_PAYMENT_PENDING, $application->status);
         $this->assertNull($application->profile_id, 'no profile exists before the editorial pipeline creates one');
@@ -132,7 +132,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
                     'entity' => [
                         'id' => 'pay_golden_path_1',
                         'order_id' => null,
-                        'amount' => 354000, // Recognised ₹3,000 + 18% GST, server-authoritative
+                        'amount' => 472000, // Standard Profile ₹4,000 + 18% GST, server-authoritative
                         'currency' => 'INR',
                         'notes' => [
                             'payment_id' => (string) $payment->id,

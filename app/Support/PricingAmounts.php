@@ -10,8 +10,46 @@ class PricingAmounts
 
     public const PAISE_PER_RUPEE = 100;
 
+    public const STANDARD_INTERNAL_TIER = 'distinguished';
+
+    /**
+     * @return list<string>
+     */
+    public static function livingTierKeys(): array
+    {
+        return ['emerging', 'accomplished', 'distinguished'];
+    }
+
+    public static function isLivingTier(string $tierKey): bool
+    {
+        return in_array($tierKey, self::livingTierKeys(), true);
+    }
+
+    /**
+     * The single public Standard Profile price. GST is added at payment.
+     * There is no comparison or launch price.
+     *
+     * @return array<string, mixed>
+     */
+    public static function forStandardProfile(): array
+    {
+        $cfg = (array) config('jannayaks.tier_pricing.standard_profile', []);
+
+        return self::buildPlusGst(
+            baseRupees: (int) ($cfg['base_amount'] ?? 0),
+            gstRate: (float) config('jannayaks.tier_pricing.gst_percent', 18),
+            label: (string) ($cfg['label'] ?? 'Standard Profile'),
+            description: (string) ($cfg['description'] ?? 'Standard Profile fee, exclusive of GST.'),
+            itemKey: 'standard_profile',
+        );
+    }
+
     public static function forTier(string $tierKey): array
     {
+        if (self::isLivingTier($tierKey)) {
+            return self::forStandardProfile();
+        }
+
         $packages = (array) config('jannayaks.tier_pricing.packages', []);
         if (! isset($packages[$tierKey])) {
             throw new InvalidArgumentException('Unknown package tier: '.$tierKey);
@@ -20,8 +58,6 @@ class PricingAmounts
 
         $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
 
-        // Confirmed commercial model: tier prices are GST-EXCLUSIVE.
-        // base_amount is the annual tier price; the customer pays base + GST.
         return self::buildPlusGst(
             baseRupees: (int) $pkg['base_amount'],
             gstRate: $gstRate,
@@ -32,25 +68,24 @@ class PricingAmounts
     }
 
     /**
-     * Tier-priced annual membership renewal (replaces the former flat ₹2,000 renewal).
-     * Renewal costs the member's applicable annual tier price + GST.
+     * One annual renewal price for every living profile. GST is added at payment.
      *
      * @return array<string, mixed>
      */
     public static function forTierRenewal(string $tierKey): array
     {
-        $packages = (array) config('jannayaks.tier_pricing.packages', []);
-        if (! isset($packages[$tierKey])) {
+        if (! self::isLivingTier($tierKey)) {
             throw new InvalidArgumentException('Unknown package tier: '.$tierKey);
         }
-        $pkg = $packages[$tierKey];
+
+        $cfg = (array) config('jannayaks.tier_pricing.renewal', []);
 
         return self::buildPlusGst(
-            baseRupees: (int) $pkg['base_amount'],
+            baseRupees: (int) ($cfg['base_amount'] ?? 0),
             gstRate: (float) config('jannayaks.tier_pricing.gst_percent', 18),
-            label: (string) $pkg['label'].' — Annual Membership Renewal',
-            description: 'Annual membership renewal at the applicable annual tier price.',
-            itemKey: 'membership_renewal_'.$tierKey,
+            label: (string) ($cfg['label'] ?? 'Annual renewal'),
+            description: (string) ($cfg['description'] ?? 'Annual renewal of publication and hosting, exclusive of GST.'),
+            itemKey: 'membership_renewal',
         );
     }
 

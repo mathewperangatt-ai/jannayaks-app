@@ -150,36 +150,33 @@ class HomepageIntegrationTest extends TestCase
 
     public function test_faq_charges_uses_authoritative_pricing(): void
     {
-        $emerging = PricingAmounts::forTier('emerging');
-        $accomplished = PricingAmounts::forTier('accomplished');
-        $distinguished = PricingAmounts::forTier('distinguished');
+        $profile = PricingAmounts::forStandardProfile();
+        $renewal = PricingAmounts::forTierRenewal(PricingAmounts::STANDARD_INTERNAL_TIER);
+        $rewrite = PricingAmounts::forRevisionUpdate();
         $inMemoriam = PricingAmounts::forInMemoriam5yr();
 
         $response = $this->get(route('faq-charges'));
 
         $response->assertOk();
         $response->assertSee('noindex, nofollow', false);
-        // Under Construction banner removed globally (footer pass 2).
         $response->assertDontSee('Under Construction', false);
-        $response->assertSee($emerging['base_formatted'], false);
-        $response->assertSee($accomplished['base_formatted'], false);
-        $response->assertSee($distinguished['base_formatted'], false);
+        $response->assertSee($profile['base_formatted'], false);
+        $response->assertSee($renewal['base_formatted'], false);
+        $response->assertSee($rewrite['base_formatted'], false);
         $response->assertSee($inMemoriam['base_formatted'], false);
         $response->assertSee('3 years', false);
-        $response->assertSee('പ്രഗൽഭർ', false);
-        $response->assertDontSee('പ്രമുഖർ', false);
-        $response->assertDontSee('പ്രശസ്തർ', false);
-        $response->assertDontSee('₹29,500', false);
+        $response->assertDontSee('പ്രഗൽഭർ', false);
+        $response->assertDontSee('₹6,000', false);
+        $response->assertDontSee('₹2,400', false);
         $response->assertSee('+ GST', false);
         $response->assertSee(route('in-memoriam.index', absolute: false), false);
         $response->assertSee(route('gallery.index', absolute: false), false);
-        // Final frontend pass removals: QR, directory claims, interview add-on.
         $response->assertDontSee('QR', false);
         $response->assertDontSee('visiting card', false);
         $response->assertDontSee('directories', false);
         $response->assertDontSee('Directories', false);
         $response->assertDontSee('Optional add-on', false);
-        $response->assertSee('The charges shown below are exclusive of GST', false);
+        $response->assertSee('One Standard Profile', false);
     }
 
     public function test_demo_links_open_the_demo_collection_and_gallery_stays_in_navigation(): void
