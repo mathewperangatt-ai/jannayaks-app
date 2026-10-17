@@ -108,6 +108,7 @@ class Phase8PaymentDocumentsTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_phase8_1',
+                        'status' => 'captured',
                         'amount' => 354000,
                         'currency' => 'INR',
                         'order_id' => null,
@@ -299,6 +300,7 @@ class Phase8PaymentDocumentsTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_super_old',
+                        'status' => 'captured',
                         'amount' => 472000,
                         'currency' => 'INR',
                         'notes' => [

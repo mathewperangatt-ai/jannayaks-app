@@ -273,6 +273,35 @@ class Payment extends Model
         return $this;
     }
 
+    /**
+     * Record a gateway authorization without treating it as captured.
+     * Status, invoices, and workflow stay unchanged. The schema has no
+     * authorized status, so an in-progress attempt remains initiated or pending.
+     */
+    public function rememberGatewayAuthorization(?string $gatewayPaymentId, ?string $gatewayEventId): self
+    {
+        if ($this->isPaidOrBetter() || $this->isRefunded()) {
+            return $this;
+        }
+
+        $dirty = false;
+        if (is_string($gatewayPaymentId) && $gatewayPaymentId !== ''
+            && ($this->gateway_payment_id === null || $this->gateway_payment_id === '')) {
+            $this->gateway_payment_id = $gatewayPaymentId;
+            $dirty = true;
+        }
+        if (is_string($gatewayEventId) && $gatewayEventId !== ''
+            && ($this->gateway_event_id === null || $this->gateway_event_id === '')) {
+            $this->gateway_event_id = $gatewayEventId;
+            $dirty = true;
+        }
+        if ($dirty) {
+            $this->save();
+        }
+
+        return $this;
+    }
+
     public function markPaidOrCaptured(
         string $targetStatus,
         ?string $gatewayPaymentId = null,

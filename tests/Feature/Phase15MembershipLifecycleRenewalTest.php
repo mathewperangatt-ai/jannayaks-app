@@ -633,6 +633,7 @@ class Phase15MembershipLifecycleRenewalTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_p15_'.$payment->id,
+                        'status' => 'captured',
                         'order_id' => null,
                         'amount' => $amountPaise,
                         'currency' => $currency,

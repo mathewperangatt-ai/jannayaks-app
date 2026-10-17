@@ -606,7 +606,7 @@ class RazorpayPaymentService
         if ($detailCurrency === null || strtoupper($detailCurrency) !== PricingAmounts::CURRENCY) {
             return false;
         }
-        if (! in_array($detailStatus, ['captured', 'authorized'], true)) {
+        if ($detailStatus !== 'captured') {
             return false;
         }
 
@@ -634,6 +634,128 @@ class RazorpayPaymentService
     }
 
     /**
+     * Confirm a settlement webhook that did not itself prove capture.
+     * Returns the captured gateway payment id, or null when the gateway is
+     * unavailable or the identifiers, amount, currency, or status do not match.
+     * A missing payment id is resolved from the authenticated payment link.
+     */
+    public function captureIsConfirmedByGateway(Payment $payment, ?string $gatewayPaymentId, ?string $gatewayLinkId): ?string
+    {
+        if (! $this->config()['enabled']) {
+            return null;
+        }
+
+        $linkId = trim((string) ($gatewayLinkId !== null && $gatewayLinkId !== '' ? $gatewayLinkId : $payment->razorpay_link_id));
+        $storedLinkId = trim((string) $payment->razorpay_link_id);
+        if ($linkId === '' || ($storedLinkId !== '' && $storedLinkId !== $linkId)) {
+            return null;
+        }
+
+        $link = $this->fetchPaymentLink($linkId);
+        if ($link === null) {
+            return null;
+        }
+
+        $linkAmount = isset($link['amount']) ? (int) $link['amount'] : null;
+        if ($linkAmount !== null && abs($linkAmount - $payment->totalPaise()) > 1) {
+            return null;
+        }
+
+        $webhookNamedPayment = $this->isPlausibleGatewayPaymentId($gatewayPaymentId);
+        $candidateIds = $webhookNamedPayment
+            ? [(string) $gatewayPaymentId]
+            : $this->plausiblePaymentIdsOnLink($link);
+
+        foreach ($candidateIds as $candidateId) {
+            if (! $this->linkListsPaymentId($link, $candidateId)) {
+                return null;
+            }
+
+            $details = $this->fetchGatewayPayment($candidateId);
+            if ($details === null) {
+                return null;
+            }
+            if ($this->gatewayPaymentDetailsMatchCapture($payment, $candidateId, $details)) {
+                return $candidateId;
+            }
+            if ($webhookNamedPayment) {
+                return null;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $link
+     * @return list<string>
+     */
+    private function plausiblePaymentIdsOnLink(array $link): array
+    {
+        $payments = $link['payments'] ?? null;
+        if (! is_array($payments)) {
+            return [];
+        }
+
+        $ids = [];
+        foreach ($payments as $entry) {
+            $candidate = null;
+            if (is_string($entry)) {
+                $candidate = $entry;
+            } elseif (is_array($entry) && isset($entry['id'])) {
+                $candidate = (string) $entry['id'];
+            }
+            if ($this->isPlausibleGatewayPaymentId($candidate) && ! in_array($candidate, $ids, true)) {
+                $ids[] = $candidate;
+            }
+        }
+
+        return $ids;
+    }
+
+    /**
+     * @param  array<string, mixed>  $details
+     */
+    private function gatewayPaymentDetailsMatchCapture(Payment $payment, string $gatewayPaymentId, array $details): bool
+    {
+        if ((string) ($details['id'] ?? '') !== $gatewayPaymentId) {
+            return false;
+        }
+
+        $amount = isset($details['amount']) ? (int) $details['amount'] : null;
+        $currency = isset($details['currency']) ? strtoupper((string) $details['currency']) : null;
+        $status = strtolower((string) ($details['status'] ?? ''));
+
+        return $amount !== null
+            && abs($amount - $payment->totalPaise()) <= 1
+            && $currency === PricingAmounts::CURRENCY
+            && $payment->currencyIsInr()
+            && $status === 'captured';
+    }
+
+    /**
+     * @param  array<string, mixed>  $link
+     */
+    private function linkListsPaymentId(array $link, string $gatewayPaymentId): bool
+    {
+        $payments = $link['payments'] ?? null;
+        if (! is_array($payments)) {
+            return false;
+        }
+
+        foreach ($payments as $entry) {
+            if (is_string($entry) && $entry === $gatewayPaymentId) {
+                return true;
+            }
+            if (is_array($entry) && (string) ($entry['id'] ?? '') === $gatewayPaymentId) {
+                return true;
+            }
+        }
+
+        return false;
+    }
+
+    /**
      * @param  array<string, mixed>  $link
      */
     private function paymentIdFromLink(array $link): ?string
@@ -654,7 +776,7 @@ class RazorpayPaymentService
         return null;
     }
 
-    private function isPlausibleGatewayPaymentId(?string $id): bool
+    public function isPlausibleGatewayPaymentId(?string $id): bool
     {
         return is_string($id) && preg_match('/^pay_[A-Za-z0-9_]{3,64}$/', $id) === 1;
     }

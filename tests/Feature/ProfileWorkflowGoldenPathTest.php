@@ -131,6 +131,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_golden_path_1',
+                        'status' => 'captured',
                         'order_id' => null,
                         'amount' => 472000, // Standard Profile ₹4,000 + 18% GST, server-authoritative
                         'currency' => 'INR',

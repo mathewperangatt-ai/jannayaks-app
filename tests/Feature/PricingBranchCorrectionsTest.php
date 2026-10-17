@@ -138,6 +138,374 @@ class PricingBranchCorrectionsTest extends TestCase
         Http::assertNotSent(fn ($request): bool => $request->method() === 'POST' && str_ends_with($request->url(), '/payment_links'));
     }
 
+    public function test_authorized_gateway_payment_stays_uncertain_until_captured(): void
+    {
+        $app = $this->application();
+        $stale = $this->staleAttempt($app);
+
+        $this->enableGateway();
+        Http::fake(function ($request) {
+            if (str_contains($request->url(), '/payments/pay_old_authorized')) {
+                return Http::response([
+                    'id' => 'pay_old_authorized',
+                    'amount' => 354000,
+                    'currency' => 'INR',
+                    'status' => 'authorized',
+                ], 200);
+            }
+
+            return Http::response([
+                'id' => 'plink_old',
+                'status' => 'paid',
+                'amount' => 354000,
+                'currency' => 'INR',
+                'payments' => ['pay_old_authorized'],
+            ], 200);
+        });
+
+        try {
+            app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+            $this->fail('An authorized payment must not settle or be replaced.');
+        } catch (PaymentLinkStateUncertainException) {
+        }
+
+        $stale->refresh();
+        $this->assertSame(Payment::STATUS_INITIATED, $stale->status);
+        $this->assertFalse($stale->isPaidOrBetter());
+        $this->assertFalse($app->fresh()->isPaymentSettled());
+        $this->assertSame(1, Payment::query()->where('application_id', $app->id)->count());
+    }
+
+    public function test_ordinary_authorization_does_not_settle_until_a_verified_capture(): void
+    {
+        Config::set('services.razorpay.enabled', false);
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+        $payment->forceFill([
+            'razorpay_link_id' => 'plink_current',
+            'razorpay_link_url' => 'https://rzp.io/i/current',
+            'status' => Payment::STATUS_INITIATED,
+        ])->save();
+
+        $this->postWebhook($payment, 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_name_only', 'payment.captured', '')
+            ->assertStatus(503)
+            ->assertJson(['paid' => false, 'capture_confirmed' => false, 'retryable' => true]);
+
+        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_auth', 'payment.authorized', 'authorized')
+            ->assertOk()
+            ->assertJson(['authorized' => true, 'paid' => false]);
+        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_auth', 'payment.authorized', 'authorized')
+            ->assertOk()
+            ->assertJson(['ok' => true, 'idempotent' => true]);
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_INITIATED, $payment->status);
+        $this->assertSame('pay_current_auth', $payment->gateway_payment_id);
+        $this->assertNull($payment->invoice_number);
+        $this->assertNull($payment->captured_at);
+        $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+
+        $this->postWebhook($payment, 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_captured', 'payment.captured', 'captured')
+            ->assertOk()
+            ->assertJson(['paid' => true]);
+        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_captured', 'payment.captured', 'captured')
+            ->assertOk()
+            ->assertJson(['ok' => true, 'idempotent' => true]);
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_CAPTURED, $payment->status);
+        $this->assertNotNull($payment->invoice_number);
+        $this->assertSame(1, Payment::query()->whereNotNull('invoice_number')->count());
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
+    public function test_missing_status_capture_settles_only_when_gateway_confirms_it(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+        $payment->forceFill([
+            'razorpay_link_id' => 'plink_recovered',
+            'status' => Payment::STATUS_INITIATED,
+        ])->save();
+
+        $this->enableGateway();
+        Http::fake(function ($request) {
+            $url = $request->url();
+            if (str_contains($url, '/payments/pay_recovered')) {
+                return Http::response([
+                    'id' => 'pay_recovered',
+                    'amount' => 472000,
+                    'currency' => 'INR',
+                    'status' => 'captured',
+                ], 200);
+            }
+            if (str_contains($url, '/payment_links/plink_recovered')) {
+                return Http::response([
+                    'id' => 'plink_recovered',
+                    'status' => 'paid',
+                    'amount' => 472000,
+                    'currency' => 'INR',
+                    'payments' => [['id' => 'pay_recovered', 'amount' => 472000, 'status' => 'captured']],
+                ], 200);
+            }
+
+            return Http::response(['error' => 'unexpected'], 500);
+        });
+
+        $this->postWebhook($payment, 472000, 'INR', 'plink_recovered', 'pay_recovered', 'evt_recovered', 'payment.captured', '')
+            ->assertOk()
+            ->assertJson(['paid' => true]);
+        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_recovered', 'pay_recovered', 'evt_recovered', 'payment.captured', '')
+            ->assertOk()
+            ->assertJson(['idempotent' => true]);
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_CAPTURED, $payment->status);
+        $this->assertSame('pay_recovered', $payment->gateway_payment_id);
+        $this->assertSame(1, Payment::query()->whereNotNull('invoice_number')->count());
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
+    public function test_missing_status_capture_stays_unpaid_when_gateway_verification_fails(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+        $payment->forceFill([
+            'razorpay_link_id' => 'plink_unconfirmed',
+            'status' => Payment::STATUS_INITIATED,
+        ])->save();
+
+        $this->enableGateway();
+        Http::fake(function () {
+            throw new \Illuminate\Http\Client\ConnectionException('timed out');
+        });
+
+        $this->postWebhook($payment, 472000, 'INR', 'plink_unconfirmed', 'pay_unconfirmed', 'evt_unconfirmed', 'payment.captured', '')
+            ->assertStatus(503)
+            ->assertJson(['paid' => false, 'capture_confirmed' => false, 'retryable' => true]);
+        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_unconfirmed', 'pay_unconfirmed', 'evt_unconfirmed', 'payment.captured', '')
+            ->assertStatus(503);
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_INITIATED, $payment->status);
+        $this->assertNull($payment->gateway_event_id);
+        $this->assertNull($payment->invoice_number);
+        $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+
+        $this->replaceHttpFake(function ($request) {
+            if (str_contains($request->url(), '/payments/pay_inconsistent')) {
+                return Http::response([
+                    'id' => 'pay_inconsistent',
+                    'amount' => 472000,
+                    'currency' => 'INR',
+                    'status' => 'authorized',
+                ], 200);
+            }
+
+            return Http::response([
+                'id' => 'plink_unconfirmed',
+                'status' => 'paid',
+                'amount' => 472000,
+                'payments' => [['id' => 'pay_inconsistent']],
+            ], 200);
+        });
+
+        $payment->forceFill(['razorpay_link_id' => 'plink_unconfirmed'])->save();
+        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_unconfirmed', 'pay_inconsistent', 'evt_inconsistent', 'payment.captured', '')
+            ->assertStatus(503)
+            ->assertJson(['retryable' => true, 'paid' => false]);
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_INITIATED, $payment->status);
+        $this->assertNull($payment->gateway_event_id);
+        $this->assertNull($payment->invoice_number);
+        $this->assertFalse($app->fresh()->isPaymentSettled());
+    }
+
+    public function test_unconfirmed_link_settlement_events_settle_when_gateway_confirms_capture(): void
+    {
+        Config::set('services.razorpay.enabled', false);
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+
+        foreach (['payment.paid' => 'payment_paid', 'payment_link.paid' => 'link_paid', 'order.paid' => 'order_paid'] as $event => $suffix) {
+            Config::set('services.razorpay.enabled', false);
+            $app = $this->application();
+            $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+            $linkId = 'plink_'.$suffix;
+            $payId = 'pay_'.$suffix;
+            $eventId = 'evt_'.$suffix;
+            $payment->forceFill([
+                'razorpay_link_id' => $linkId,
+                'status' => Payment::STATUS_INITIATED,
+            ])->save();
+
+            $this->enableGateway();
+            $this->fakeConfirmedCapture($payId, $linkId, 472000);
+            $this->postWebhook($payment, 472000, 'INR', $linkId, $payId, $eventId, $event, '')
+                ->assertOk()
+                ->assertJson(['paid' => true]);
+
+            $this->replaceHttpFake(function () {
+                throw new \Illuminate\Http\Client\ConnectionException('gateway down on retry');
+            });
+            $this->postWebhook($payment->fresh(), 472000, 'INR', $linkId, $payId, $eventId, $event, '')
+                ->assertOk()
+                ->assertJson(['idempotent' => true]);
+
+            $payment->refresh();
+            $this->assertSame(Payment::STATUS_PAID, $payment->status);
+            $this->assertSame($payId, $payment->gateway_payment_id);
+            $this->assertSame(1, Payment::query()->where('application_id', $app->id)->whereNotNull('invoice_number')->count());
+            $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+        }
+    }
+
+    public function test_unconfirmed_link_settlement_events_stay_unpaid_when_gateway_verification_fails(): void
+    {
+        Config::set('services.razorpay.enabled', false);
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+
+        foreach (['payment.paid' => 'payment_paid', 'payment_link.paid' => 'link_paid', 'order.paid' => 'order_paid'] as $event => $suffix) {
+            Config::set('services.razorpay.enabled', false);
+            $app = $this->application();
+            $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+            $linkId = 'plink_fail_'.$suffix;
+            $payment->forceFill([
+                'razorpay_link_id' => $linkId,
+                'status' => Payment::STATUS_INITIATED,
+            ])->save();
+
+            $this->enableGateway();
+            $this->replaceHttpFake(function () {
+                throw new \Illuminate\Http\Client\ConnectionException('timed out');
+            });
+            $this->postWebhook($payment, 472000, 'INR', $linkId, 'pay_fail_'.$suffix, 'evt_fail_'.$suffix, $event, '')
+                ->assertStatus(503)
+                ->assertJson(['paid' => false, 'capture_confirmed' => false, 'retryable' => true]);
+            $this->postWebhook($payment->fresh(), 472000, 'INR', $linkId, 'pay_fail_'.$suffix, 'evt_fail_'.$suffix, $event, '')
+                ->assertStatus(503);
+
+            $payment->refresh();
+            $this->assertSame(Payment::STATUS_INITIATED, $payment->status);
+            $this->assertNull($payment->gateway_event_id);
+            $this->assertNull($payment->invoice_number);
+            $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+
+            $this->replaceHttpFake(function ($request) use ($suffix, $linkId) {
+                if (str_contains($request->url(), '/payments/pay_inconsistent_'.$suffix)) {
+                    return Http::response([
+                        'id' => 'pay_inconsistent_'.$suffix,
+                        'amount' => 472000,
+                        'currency' => 'INR',
+                        'status' => 'authorized',
+                    ], 200);
+                }
+
+                return Http::response([
+                    'id' => $linkId,
+                    'status' => 'paid',
+                    'amount' => 472000,
+                    'currency' => 'INR',
+                    'payments' => [['id' => 'pay_inconsistent_'.$suffix]],
+                ], 200);
+            });
+
+            $this->postWebhook($payment->fresh(), 472000, 'INR', $linkId, 'pay_inconsistent_'.$suffix, 'evt_inconsistent_'.$suffix, $event, '')
+                ->assertStatus(503)
+                ->assertJson(['retryable' => true, 'paid' => false]);
+
+            $payment->refresh();
+            $this->assertSame(Payment::STATUS_INITIATED, $payment->status);
+            $this->assertNull($payment->gateway_event_id);
+            $this->assertNull($payment->invoice_number);
+            $this->assertFalse($app->fresh()->isPaymentSettled());
+        }
+    }
+
+    public function test_payment_link_paid_without_payment_id_settles_from_the_gateway_link(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+        $payment->forceFill([
+            'razorpay_link_id' => 'plink_resolved',
+            'status' => Payment::STATUS_INITIATED,
+        ])->save();
+
+        $this->enableGateway();
+        $this->fakeConfirmedCapture('pay_resolved', 'plink_resolved', 472000);
+
+        $this->postWebhook($payment, 472000, 'INR', 'plink_resolved', '', 'evt_resolved', 'payment_link.paid', '')
+            ->assertOk()
+            ->assertJson(['paid' => true]);
+        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_resolved', '', 'evt_resolved', 'payment_link.paid', '')
+            ->assertOk()
+            ->assertJson(['idempotent' => true]);
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_PAID, $payment->status);
+        $this->assertSame('pay_resolved', $payment->gateway_payment_id);
+        $this->assertSame(1, Payment::query()->where('application_id', $app->id)->whereNotNull('invoice_number')->count());
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
+    public function test_order_paid_without_a_link_entity_uses_the_stored_link(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
+        $payment->forceFill([
+            'razorpay_link_id' => 'plink_order_stored',
+            'status' => Payment::STATUS_INITIATED,
+        ])->save();
+
+        $this->enableGateway();
+        $this->fakeConfirmedCapture('pay_order_stored', 'plink_order_stored', 472000);
+
+        $this->postWebhook($payment, 472000, 'INR', 'plink_order_stored', 'pay_order_stored', 'evt_order_stored', 'order.paid', '', false)
+            ->assertOk()
+            ->assertJson(['paid' => true]);
+        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_order_stored', 'pay_order_stored', 'evt_order_stored', 'order.paid', '', false)
+            ->assertOk()
+            ->assertJson(['idempotent' => true]);
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_PAID, $payment->status);
+        $this->assertSame('pay_order_stored', $payment->gateway_payment_id);
+        $this->assertSame(1, Payment::query()->where('application_id', $app->id)->whereNotNull('invoice_number')->count());
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
+    public function test_authorized_webhook_does_not_settle_a_withdrawn_link(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $withdrawn = $this->staleAttempt($app);
+        $withdrawn->markFailedExpiredOrCancelled(Payment::STATUS_CANCELLED, 'SUPERSEDED', 'Withdrawn after confirmation.');
+
+        $this->postWebhook($withdrawn, 354000, 'INR', 'plink_old', 'pay_auth_only', 'evt_auth_only', 'payment.authorized', 'authorized')
+            ->assertOk()
+            ->assertJson(['authorized' => true, 'paid' => false]);
+
+        $withdrawn->refresh();
+        $this->assertSame(Payment::STATUS_CANCELLED, $withdrawn->status);
+        $this->assertSame('pay_auth_only', $withdrawn->gateway_payment_id);
+        $this->assertNull($withdrawn->invoice_number);
+        $this->assertFalse($app->fresh()->isPaymentSettled());
+
+        $this->postWebhook($withdrawn, 354000, 'INR', 'plink_old', 'pay_auth_only', 'evt_auth_captured', 'payment.captured', 'captured')
+            ->assertOk()
+            ->assertJson(['paid' => true]);
+        $this->postWebhook($withdrawn->fresh(), 354000, 'INR', 'plink_old', 'pay_auth_only', 'evt_auth_captured', 'payment.captured', 'captured')
+            ->assertOk();
+        $this->assertTrue($withdrawn->fresh()->isPaidOrBetter());
+        $this->assertSame(1, Payment::query()->whereNotNull('invoice_number')->count());
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
     public function test_paid_link_with_a_mismatched_amount_is_not_settled(): void
     {
         $app = $this->application();
@@ -393,6 +761,38 @@ class PricingBranchCorrectionsTest extends TestCase
         Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
     }
 
+    private function replaceHttpFake(\Closure $callback): void
+    {
+        Http::swap(new \Illuminate\Http\Client\Factory);
+        Http::fake($callback);
+    }
+
+    private function fakeConfirmedCapture(string $payId, string $linkId, int $amountPaise): void
+    {
+        $this->replaceHttpFake(function ($request) use ($payId, $linkId, $amountPaise) {
+            $url = $request->url();
+            if (str_contains($url, '/payments/'.$payId)) {
+                return Http::response([
+                    'id' => $payId,
+                    'amount' => $amountPaise,
+                    'currency' => 'INR',
+                    'status' => 'captured',
+                ], 200);
+            }
+            if (str_contains($url, '/payment_links/'.$linkId)) {
+                return Http::response([
+                    'id' => $linkId,
+                    'status' => 'paid',
+                    'amount' => $amountPaise,
+                    'currency' => 'INR',
+                    'payments' => [['id' => $payId, 'amount' => $amountPaise, 'status' => 'captured']],
+                ], 200);
+            }
+
+            return Http::response(['error' => 'unexpected'], 500);
+        });
+    }
+
     private function postWebhook(
         Payment $payment,
         int $amountPaise,
@@ -400,32 +800,40 @@ class PricingBranchCorrectionsTest extends TestCase
         string $linkId,
         string $gatewayPaymentId,
         string $eventId,
+        string $event = 'payment.captured',
+        string $paymentStatus = 'captured',
+        bool $includeLink = true,
     ) {
-        $payload = json_encode([
-            'event' => 'payment.captured',
-            'event_id' => $eventId,
-            'created_at' => time(),
-            'payload' => [
-                'payment' => [
-                    'entity' => [
-                        'id' => $gatewayPaymentId,
-                        'amount' => $amountPaise,
-                        'currency' => $currency,
-                        'notes' => [
-                            'payment_id' => (string) $payment->id,
-                            'application_id' => (string) $payment->application_id,
-                        ],
-                    ],
-                ],
-                'payment_link' => [
-                    'entity' => [
-                        'id' => $linkId,
-                        'amount' => $amountPaise,
-                        'currency' => $currency,
-                        'reference_id' => $payment->transaction_reference,
+        $payloadBody = [
+            'payment' => [
+                'entity' => [
+                    'id' => $gatewayPaymentId,
+                    'status' => $paymentStatus,
+                    'amount' => $amountPaise,
+                    'currency' => $currency,
+                    'notes' => [
+                        'payment_id' => (string) $payment->id,
+                        'application_id' => (string) $payment->application_id,
                     ],
                 ],
             ],
+        ];
+        if ($includeLink) {
+            $payloadBody['payment_link'] = [
+                'entity' => [
+                    'id' => $linkId,
+                    'amount' => $amountPaise,
+                    'currency' => $currency,
+                    'reference_id' => $payment->transaction_reference,
+                ],
+            ];
+        }
+
+        $payload = json_encode([
+            'event' => $event,
+            'event_id' => $eventId,
+            'created_at' => time(),
+            'payload' => $payloadBody,
         ], JSON_THROW_ON_ERROR);
 
         $signature = hash_hmac('sha256', $payload, (string) config('services.razorpay.webhook_secret'));
