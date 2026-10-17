@@ -114,7 +114,8 @@ class ApplicationController extends Controller
     }
 
     /**
-     * Guest (or authenticated) stores tier intent, then registers/logs in before payment.
+     * Guest (or authenticated) stores Standard Profile intake intent, then
+     * registers/logs in before payment. No customer tier choice is collected.
      */
     public function storeIntent(Request $request): JsonResponse|RedirectResponse
     {
@@ -511,7 +512,7 @@ class ApplicationController extends Controller
         $package = null;
         try {
             if (in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
-                $package = PricingAmounts::forApplicationPackage($application->package_tier);
+                $package = PricingAmounts::forApplication($application);
             }
         } catch (\Throwable $e) {
             $package = null;

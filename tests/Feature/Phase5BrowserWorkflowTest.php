@@ -355,9 +355,12 @@ class Phase5BrowserWorkflowTest extends TestCase
         $this->assertArrayHasKey('important_facts', config('online_interview.sections', []));
 
         $this->assertSame(18, (int) config('jannayaks.tier_pricing.gst_percent'));
-        $this->assertSame(4000, (int) config('jannayaks.tier_pricing.packages.emerging.base_amount'));
-        $this->assertSame(4000, (int) config('jannayaks.tier_pricing.packages.accomplished.base_amount'));
-        $this->assertSame(4000, (int) config('jannayaks.tier_pricing.packages.distinguished.base_amount'));
+        $this->assertSame(4000, (int) config('jannayaks.tier_pricing.standard_profile.base_amount'));
+        $this->assertSame(3, (int) config('jannayaks.tier_pricing.standard_profile.photo_slots'));
+        $this->assertFalse((bool) config('jannayaks.tier_pricing.standard_profile.includes_video_link'));
+        $this->assertSame(3000, (int) config('jannayaks.tier_pricing.packages.emerging.base_amount'));
+        $this->assertSame(8000, (int) config('jannayaks.tier_pricing.packages.accomplished.base_amount'));
+        $this->assertSame(25000, (int) config('jannayaks.tier_pricing.packages.distinguished.base_amount'));
         $this->assertSame(1800, (int) config('jannayaks.tier_pricing.renewal.base_amount'));
         $this->assertSame(3000, (int) config('jannayaks.tier_pricing.revision.base_amount'));
         $qids = array_map(static fn(array $q): string => (string) ($q['id'] ?? ''), (array) config('online_interview.questions', []));

@@ -71,7 +71,7 @@ class RazorpayPaymentService
             throw new InvalidArgumentException('Invalid application package tier.');
         }
 
-        $amounts = PricingAmounts::forApplicationPackage($application->package_tier);
+        $amounts = PricingAmounts::forApplication($application);
         PricingAmounts::assertInr($amounts['currency']);
 
         $totalPaise = (int) $amounts['amount_incl_paise'];

@@ -26,9 +26,11 @@ return [
         'gst_percent' => 18,
         /*
         | One public Standard Profile. Living charges are GST-exclusive.
-        | New applications are stored as standard_profile.internal_tier.
-        | Historical emerging/accomplished/distinguished rows keep their keys.
-        | Photo slots and video flags below stay with those historical keys.
+        | New applications: pricing_generation=standard_profile, internal
+        | package_tier=distinguished (editorial depth key only).
+        | Historical emerging/accomplished/distinguished rows keep null
+        | pricing_generation and their original package base amounts / media
+        | entitlements below. Do not reprice those rows from standard_profile.
         | There is no launch discount and no crossed-out comparison price.
         */
         'standard_profile' => [
@@ -36,26 +38,28 @@ return [
             'label' => 'Standard Profile',
             'base_amount' => 4000,
             'description' => 'Standard Profile fee, exclusive of GST.',
+            'photo_slots' => 3,
+            'includes_video_link' => false,
         ],
         'packages' => [
             'emerging' => [
                 'label' => 'Recognised',
-                'base_amount' => 4000,
-                'description' => 'Historical internal key. Charged at the Standard Profile price.',
+                'base_amount' => 3000,
+                'description' => 'Historical Recognised package (pre-Standard Profile).',
                 'photo_slots' => 1,
                 'includes_video_link' => false,
             ],
             'accomplished' => [
                 'label' => 'Acclaimed',
-                'base_amount' => 4000,
-                'description' => 'Historical internal key. Charged at the Standard Profile price.',
+                'base_amount' => 8000,
+                'description' => 'Historical Acclaimed package (pre-Standard Profile).',
                 'photo_slots' => 3,
                 'includes_video_link' => true,
             ],
             'distinguished' => [
                 'label' => 'Distinguished',
-                'base_amount' => 4000,
-                'description' => 'Internal key used for new Standard Profile applications.',
+                'base_amount' => 25000,
+                'description' => 'Historical Distinguished package (pre-Standard Profile). New Standard Profile apps use standard_profile pricing via pricing_generation.',
                 'includes_video_link' => true,
                 'photo_slots' => 5,
             ],

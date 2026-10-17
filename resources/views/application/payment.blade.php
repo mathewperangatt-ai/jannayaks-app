@@ -75,7 +75,7 @@
                 </div>
                 <span class="note-safe">{{ $package['description'] ?? '' }}</span>
             </div>
-            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ ($package['package']['amount_incl_formatted'] ?? null) ?: ($package['amount_incl_formatted'] ?? '') }}</div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ ($package['package']['base_formatted'] ?? null) ?: ($package['base_formatted'] ?? '') }}</div>
         </div>
 
         @if (!empty($package['addon']))
@@ -84,22 +84,29 @@
                 <div style="font-weight:600">{{ $package['addon']['label'] }}</div>
                 <span class="note-safe">{{ $ml ? 'ഓപ്ഷണൽ അധിക സേവനം (അടിസ്ഥാന പ്രൊഫൈൽ ഫീസിന്റെ ഭാഗമല്ല)' : 'Optional add-on (not part of the Standard Profile fee)' }}</span>
             </div>
-            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ $package['addon']['amount_incl_formatted'] }}</div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ $package['addon']['base_formatted'] ?? $package['addon']['amount_incl_formatted'] }}</div>
         </div>
         @endif
 
-        @if (is_string($package['cgst_formatted'] ?? null))
+        @if (is_string($package['igst_formatted'] ?? null))
         <div class="row" style="justify-content:space-between">
-            <div class="note-safe">{{ $ml ? 'സിജിഎസ്ടി (ചേർത്തത്)' : 'CGST (added)' }}</div>
-            <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['cgst_formatted'] }}</div>
+            <div class="note-safe">{{ $ml ? 'ഐജിഎസ്ടി (ചേർത്തത്)' : 'IGST (added)' }}</div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['igst_formatted'] }}</div>
         </div>
-        @endif
+        @else
+            @if (is_string($package['cgst_formatted'] ?? null))
+            <div class="row" style="justify-content:space-between">
+                <div class="note-safe">{{ $ml ? 'സിജിഎസ്ടി (ചേർത്തത്)' : 'CGST (added)' }}</div>
+                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['cgst_formatted'] }}</div>
+            </div>
+            @endif
 
-        @if (is_string($package['sgst_formatted'] ?? null))
-        <div class="row" style="justify-content:space-between">
-            <div class="note-safe">{{ $ml ? 'എസ്ജിഎസ്ടി (ചേർത്തത്)' : 'SGST (added)' }}</div>
-            <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['sgst_formatted'] }}</div>
-        </div>
+            @if (is_string($package['sgst_formatted'] ?? null))
+            <div class="row" style="justify-content:space-between">
+                <div class="note-safe">{{ $ml ? 'എസ്ജിഎസ്ടി (ചേർത്തത്)' : 'SGST (added)' }}</div>
+                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['sgst_formatted'] }}</div>
+            </div>
+            @endif
         @endif
 
         <div class="divider"></div>

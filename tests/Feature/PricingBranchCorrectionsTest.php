@@ -13,6 +13,7 @@ use App\Services\ProfileUrlService;
 use App\Services\RazorpayPaymentService;
 use App\Services\RazorpayWebhookVerifier;
 use App\Support\EditorialSystemPrompts;
+use App\Support\OnlineInterviewCatalog;
 use App\Support\TierLabels;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
@@ -857,10 +858,10 @@ class PricingBranchCorrectionsTest extends TestCase
 
     public function test_pricing_generation_marks_only_new_standard_profiles(): void
     {
-        $historical = Application::factory()->create(['package_tier' => 'distinguished']);
-        $recognised = Application::factory()->create(['package_tier' => 'emerging']);
-        $memorial = Application::factory()->create(['package_tier' => 'in_memoriam']);
-        $membership = Application::factory()->create(['package_tier' => 'membership']);
+        $historical = Application::factory()->historical('distinguished')->create();
+        $recognised = Application::factory()->historical('emerging')->create();
+        $memorial = Application::factory()->historical('in_memoriam')->create();
+        $membership = Application::factory()->historical('membership')->create();
 
         $this->assertNull($historical->pricing_generation);
         $this->assertNull($recognised->pricing_generation);
@@ -878,6 +879,117 @@ class PricingBranchCorrectionsTest extends TestCase
         $this->assertSame('distinguished', $created->package_tier);
         $this->assertSame(Application::PRICING_GENERATION_STANDARD, $created->pricing_generation);
         $this->assertSame(0, Payment::query()->where('application_id', $historical->id)->count());
+    }
+
+    public function test_apply_page_has_no_customer_tier_choice(): void
+    {
+        $this->get(route('apply', ['step' => 'tiers', 'lang' => 'en']))
+            ->assertOk()
+            ->assertSee('Standard Profile', false)
+            ->assertSee('There is one Standard Profile', false)
+            ->assertDontSee('Recognised', false)
+            ->assertDontSee('Acclaimed', false)
+            ->assertDontSee('name="package_tier"', false)
+            ->assertDontSee('Locked for this tier', false);
+    }
+
+    public function test_standard_profile_interview_exposes_all_twenty_two_bilingual_questions(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $app = Application::factory()->for($user)->paid()->create([
+            'package_tier' => 'distinguished',
+            'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
+            'source_method' => 'online_interview',
+            'full_name' => 'Standard Interviewer',
+        ]);
+
+        $expectedIds = OnlineInterviewCatalog::idsForTier('distinguished');
+        $this->assertCount(22, $expectedIds);
+        $this->assertSame(['q1'], OnlineInterviewCatalog::progress('distinguished', [])['missing_required']);
+
+        $json = $this->actingAs($user)->getJson(route('online-interview.show', $app));
+        $json->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('package_tier', 'distinguished')
+            ->assertJsonPath('allowed_qids', $expectedIds)
+            ->assertJsonPath('progress.total', 22)
+            ->assertJsonPath('progress.required_total', 1);
+
+        $html = $this->actingAs($user)->get(route('online-interview.show', $app));
+        $html->assertOk()
+            ->assertDontSee('Locked for this tier', false)
+            ->assertDontSee('Recognised', false)
+            ->assertDontSee('Acclaimed', false)
+            ->assertSee('Tell us about yourself.', false)
+            ->assertSee('നിങ്ങളെക്കുറിച്ച് പറയാമോ?', false)
+            ->assertSee('Is there anything important we should know to understand your story correctly?', false)
+            ->assertSee('നിങ്ങളുടെ കഥ ശരിയായി മനസ്സിലാക്കാൻ ഞങ്ങൾ അറിയേണ്ട മറ്റേതെങ്കിലും പ്രധാനപ്പെട്ട വിവരമുണ്ടോ?', false);
+
+        foreach ($expectedIds as $qid) {
+            $html->assertSee('data-qid="'.$qid.'"', false);
+            $html->assertSee('name="answers['.$qid.']"', false);
+        }
+    }
+
+    public function test_standard_profile_interview_save_resume_and_submit_reach_editorial(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $app = Application::factory()->for($user)->paid()->create([
+            'package_tier' => 'distinguished',
+            'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
+            'source_method' => 'online_interview',
+            'full_name' => 'Standard Flow',
+            'status' => Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW,
+        ]);
+
+        $this->actingAs($user)->patchJson(route('online-interview.save', $app), [
+            'question_id' => 'q1',
+            'answer' => 'Draft answer for the Standard Profile interview.',
+        ])->assertOk()->assertJsonPath('required_answered', 1);
+
+        $this->actingAs($user)->patchJson(route('online-interview.save', $app), [
+            'answers' => [
+                'q1' => 'Complete answer for the Standard Profile interview.',
+                'q22' => 'An optional closing fact.',
+            ],
+        ])->assertOk();
+
+        $resume = $this->actingAs($user)->getJson(route('online-interview.show', $app));
+        $resume->assertOk()
+            ->assertJsonPath('answers.q1', 'Complete answer for the Standard Profile interview.')
+            ->assertJsonPath('answers.q22', 'An optional closing fact.')
+            ->assertJsonPath('progress.answered', 2)
+            ->assertJsonPath('progress.missing_required', []);
+
+        $this->actingAs($user)->postJson(route('online-interview.submit', $app))
+            ->assertOk()
+            ->assertJsonPath('ok', true)
+            ->assertJsonPath('next_step', 'editorial_processing');
+
+        $app->refresh();
+        $this->assertTrue($app->isInterviewSubmitted());
+        $this->assertNotNull($app->online_interview_completed_at);
+        $this->assertSame(Application::PRICING_GENERATION_STANDARD, $app->pricing_generation);
+        $this->assertSame('distinguished', $app->package_tier);
+    }
+
+    public function test_historical_emerging_interview_still_uses_the_full_shared_pool(): void
+    {
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $app = Application::factory()->for($user)->historical('emerging')->paid()->create([
+            'source_method' => 'online_interview',
+            'full_name' => 'Historical Recognised',
+        ]);
+
+        $this->actingAs($user)->getJson(route('online-interview.show', $app))
+            ->assertOk()
+            ->assertJsonPath('progress.total', 22)
+            ->assertJsonPath('allowed_qids', OnlineInterviewCatalog::idsForTier('emerging'));
+
+        $this->actingAs($user)->get(route('online-interview.show', $app))
+            ->assertOk()
+            ->assertDontSee('Locked for this tier', false)
+            ->assertSee('data-qid="q22"', false);
     }
 
     public function test_staff_labels_and_editorial_instructions_distinguish_generations(): void

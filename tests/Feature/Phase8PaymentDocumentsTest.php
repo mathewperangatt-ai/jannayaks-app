@@ -29,7 +29,7 @@ class Phase8PaymentDocumentsTest extends TestCase
     {
         // The Direct Personal Interview add-on was removed as a product:
         // the package must equal the plain tier amount with no addon data.
-        $package = PricingAmounts::forApplicationPackage('distinguished');
+        $package = PricingAmounts::forStandardProfile();
 
         $this->assertSame(472000, $package['amount_incl_paise']);
         $this->assertArrayNotHasKey('includes_addon', $package);

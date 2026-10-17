@@ -100,15 +100,12 @@
                                 rows="6"
                                 maxlength="20000"
                                 data-qid="{{ $qid }}"
-                                @if($isSubmitted || !in_array($qid, $allowed_qids, true))
+                                @if($isSubmitted)
                                     disabled readonly aria-disabled="true"
                                 @endif
                             >{{ old('answers.'.$qid, $existing) }}</textarea>
                             <div class="hint bytes" data-count-for="{{ $qid }}">
                                 @if($existing !== '') {{ mb_strlen($existing) }} characters saved. @else 0 characters @endif
-                                @if(!in_array($qid, $allowed_qids, true))
-                                     · <span style="color:var(--bad);font-weight:700">Locked for this tier</span>
-                                @endif
                             </div>
                         </div>
                         @if(!$loop->last)<div class="divider"></div>@endif

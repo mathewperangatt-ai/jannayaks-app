@@ -119,7 +119,7 @@
                     <span style="width:{{ $progress['total'] ? (int)(($progress['answered']/$progress['total'])*100) : 0 }}%"></span>
                 </div>
                 <div class="progress-meta">
-                    <div>Answered <b>{{ $progress['answered'] }}</b> of {{ $progress['total'] }} unlocked</div>
+                    <div>Answered <b>{{ $progress['answered'] }}</b> of {{ $progress['total'] }} questions</div>
                     <div>Required <b>{{ $progress['required_answered'] }}</b> of {{ $progress['required_total'] }}</div>
                     @if (! empty($progress['missing_required']))
                         <div style="color:var(--bad)">Missing required: {{ count($progress['missing_required']) }}</div>

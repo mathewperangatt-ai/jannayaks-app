@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Models\Application;
 use App\Support\PricingAmounts;
 use Tests\TestCase;
 
@@ -17,17 +18,19 @@ class StandardProfilePricingTest extends TestCase
         $this->assertSame(472000, $profile['amount_incl_paise']);
         $this->assertSame('₹4,000.00', $profile['base_formatted']);
         $this->assertSame('₹4,720.00', $profile['amount_incl_formatted']);
+        $this->assertSame('₹360.00', $profile['cgst_formatted']);
+        $this->assertSame('₹360.00', $profile['sgst_formatted']);
+        $this->assertNull($profile['igst_formatted']);
         $this->assertFalse($profile['gst_inclusive']);
         $this->assertArrayNotHasKey('compare_at', $profile);
 
-        foreach (PricingAmounts::livingTierKeys() as $tier) {
-            $quote = PricingAmounts::forTier($tier);
-            $this->assertSame($profile['amount_incl_paise'], $quote['amount_incl_paise']);
-            $this->assertSame(
-                $profile['amount_incl_paise'],
-                PricingAmounts::forApplicationPackage($tier)['amount_incl_paise']
-            );
+        $standardApp = new Application([
+            'package_tier' => 'distinguished',
+            'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
+        ]);
+        $this->assertSame(472000, PricingAmounts::forApplication($standardApp)['amount_incl_paise']);
 
+        foreach (PricingAmounts::livingTierKeys() as $tier) {
             $renewal = PricingAmounts::forTierRenewal($tier);
             $this->assertSame('membership_renewal', $renewal['tier_key']);
             $this->assertSame(180000, $renewal['base_paise']);
@@ -43,6 +46,26 @@ class StandardProfilePricingTest extends TestCase
         $this->assertSame(354000, $rewrite['amount_incl_paise']);
         $this->assertSame('₹3,000.00', $rewrite['base_formatted']);
         $this->assertFalse($rewrite['gst_inclusive']);
+    }
+
+    public function test_historical_package_amounts_match_main_and_are_not_silently_repriced(): void
+    {
+        $this->assertSame(300000, PricingAmounts::forTier('emerging')['base_paise']);
+        $this->assertSame(354000, PricingAmounts::forTier('emerging')['amount_incl_paise']);
+        $this->assertSame(800000, PricingAmounts::forTier('accomplished')['base_paise']);
+        $this->assertSame(944000, PricingAmounts::forTier('accomplished')['amount_incl_paise']);
+        $this->assertSame(2500000, PricingAmounts::forTier('distinguished')['base_paise']);
+        $this->assertSame(2950000, PricingAmounts::forTier('distinguished')['amount_incl_paise']);
+
+        $historical = new Application([
+            'package_tier' => 'distinguished',
+            'pricing_generation' => null,
+        ]);
+        $this->assertSame(2950000, PricingAmounts::forApplication($historical)['amount_incl_paise']);
+        $this->assertNotSame(
+            PricingAmounts::forStandardProfile()['amount_incl_paise'],
+            PricingAmounts::forApplication($historical)['amount_incl_paise'],
+        );
     }
 
     public function test_in_memoriam_price_is_unchanged(): void

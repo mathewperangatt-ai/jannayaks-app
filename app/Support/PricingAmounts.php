@@ -2,6 +2,7 @@
 
 namespace App\Support;
 
+use App\Models\Application;
 use InvalidArgumentException;
 
 class PricingAmounts
@@ -44,12 +45,32 @@ class PricingAmounts
         );
     }
 
-    public static function forTier(string $tierKey): array
+    /**
+     * Resolve the application package quote for payment initiation and display.
+     * New Standard Profile rows use the standard_profile amount; historical
+     * rows (pricing_generation null) keep their stored package-tier amounts.
+     *
+     * @return array<string, mixed>
+     */
+    public static function forApplication(Application $application): array
     {
-        if (self::isLivingTier($tierKey)) {
+        if ($application->pricing_generation === Application::PRICING_GENERATION_STANDARD) {
             return self::forStandardProfile();
         }
 
+        return self::forTier((string) $application->package_tier);
+    }
+
+    /**
+     * Package amount for a living or other configured tier key.
+     * Living keys use the historical package table amounts — callers that
+     * need Standard Profile pricing must use forStandardProfile() or
+     * forApplication() with pricing_generation set.
+     *
+     * @return array<string, mixed>
+     */
+    public static function forTier(string $tierKey): array
+    {
         $packages = (array) config('jannayaks.tier_pricing.packages', []);
         if (! isset($packages[$tierKey])) {
             throw new InvalidArgumentException('Unknown package tier: '.$tierKey);
@@ -90,9 +111,9 @@ class PricingAmounts
     }
 
     /**
-     * Complete application package amount for a living tier.
-     * The Direct Personal Interview add-on was removed as a product; no
-     * interview add-on may be priced or charged.
+     * Complete application package amount for a living tier key.
+     * Prefer forApplication(Application) so pricing_generation is respected.
+     * The Direct Personal Interview add-on was removed as a product.
      *
      * @return array<string, mixed>
      */

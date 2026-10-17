@@ -453,9 +453,8 @@ class ProfileIntegrityMonitorTest extends TestCase
         $reviewer = User::factory()->editor()->create();
         $admin = User::factory()->admin()->create();
 
-        $application = Application::factory()->paid()->create([
+        $application = Application::factory()->historical('accomplished')->paid()->create([
             'user_id' => $member->id,
-            'package_tier' => 'accomplished',
             'source_method' => 'admin_test_demo',
             'full_name' => 'Integrity Monitor Leader',
             'preferred_display_name' => 'Integrity Monitor Leader',
@@ -515,9 +514,8 @@ class ProfileIntegrityMonitorTest extends TestCase
     private function seedPublishableApplication(): array
     {
         $member = User::factory()->create(['role' => User::ROLE_MEMBER]);
-        $application = Application::factory()->paid()->create([
+        $application = Application::factory()->historical('accomplished')->paid()->create([
             'user_id' => $member->id,
-            'package_tier' => 'accomplished',
             'status' => Application::STATUS_AWAITING_PUBLICATION,
         ]);
         $profile = Profile::query()->create([

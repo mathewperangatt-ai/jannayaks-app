@@ -7,10 +7,11 @@ use Illuminate\Support\Collection;
 class OnlineInterviewCatalog
 {
     /**
-     * All living tiers draw on the SAME comprehensive question pool
-     * (Master Editorial Specification §17). Tier controls editorial
-     * depth, never access to questions. Signatures keep the historical
-     * package-tier parameter for callers; it no longer filters.
+     * Living Standard Profile applications and historical living tiers share
+     * the same 22-question pool (Master Editorial Specification §17).
+     * package_tier / pricing_generation control editorial depth only — never
+     * which questions are shown. Method signatures keep the historical
+     * package-tier argument for callers; it does not filter.
      *
      * @return list<string>
      */
@@ -24,6 +25,9 @@ class OnlineInterviewCatalog
         return config('online_interview.questions', []);
     }
 
+    /**
+     * @return list<array<string, mixed>>
+     */
     public static function questionsForTier(?string $packageTier): array
     {
         return array_values(array_filter(
