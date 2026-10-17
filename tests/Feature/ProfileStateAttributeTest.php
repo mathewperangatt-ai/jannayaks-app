@@ -104,7 +104,7 @@ class ProfileStateAttributeTest extends TestCase
 
     public function test_public_state_surfaces_use_keralam_and_not_a_url_prefix(): void
     {
-        $this->get('/')->assertOk()->assertSee('Keralam ▾', false);
+        $this->get('/')->assertOk()->assertDontSee('Keralam ▾', false);
         $this->get(route('gallery.index'))->assertOk()->assertSee('Keralam', false);
         $this->get(route('search.index'))->assertOk()->assertSee('Keralam', false);
     }
