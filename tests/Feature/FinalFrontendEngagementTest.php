@@ -40,7 +40,7 @@ class FinalFrontendEngagementTest extends TestCase
         $this->get('/t.gopalakrishnan?lang=en')
             ->assertOk()
             ->assertSee('T. Gopalakrishnan', false)
-            ->assertSee('tier-mark tier-mark--distinguished', false)
+            ->assertDontSee('tier-mark tier-mark--distinguished', false)
             ->assertSee('Social Educator and Community Leader', false)
             ->assertSee('Fictional demonstration profile', false)
             ->assertSee('should eventually become participants in creating opportunities for others', false);
@@ -49,7 +49,7 @@ class FinalFrontendEngagementTest extends TestCase
         $this->get('/gallery')
             ->assertOk()
             ->assertSee('T. Gopalakrishnan', false)
-            ->assertSee('tier-mark--distinguished', false);
+            ->assertDontSee('tier-mark--distinguished', false);
 
         // Memorial demos render with the sombre treatment and the approved designation.
         foreach (['k.v.mathew' => 'K. V. Mathew', 'dr.saroja.nair' => 'Dr. Saroja Nair'] as $slug => $name) {

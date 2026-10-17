@@ -2,6 +2,7 @@
 
 use App\Console\Commands\FailStaleAiEditorialRunsCommand;
 use App\Console\Commands\ProcessMembershipLifecycleCommand;
+use App\Console\Commands\ReconcilePaymentCapturesCommand;
 use App\Console\Commands\VerifyProfileIntegrityCommand;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
@@ -37,6 +38,16 @@ Schedule::command(FailStaleAiEditorialRunsCommand::class)
     ->everyFifteenMinutes()
     ->withoutOverlapping(10)
     ->name('fail-stale-ai-editorial-runs');
+
+/*
+| Recover a captured Razorpay payment whose webhook retries may have stopped.
+| Reads the gateway outside any row lock. Does not cancel open links.
+| Runs on the existing scheduler service (php artisan schedule:work).
+*/
+Schedule::command(ReconcilePaymentCapturesCommand::class)
+    ->everyFifteenMinutes()
+    ->withoutOverlapping(10)
+    ->name('reconcile-payment-captures');
 
 /*
 | Published Profile Integrity Monitor (Wave 2C) — REPORT-ONLY watchdog.

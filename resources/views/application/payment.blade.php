@@ -75,30 +75,42 @@
                 </div>
                 <span class="note-safe">{{ $package['description'] ?? '' }}</span>
             </div>
-            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ ($package['package']['amount_incl_formatted'] ?? null) ?: ($package['amount_incl_formatted'] ?? '') }}</div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ ($package['package']['base_formatted'] ?? null) ?: ($package['base_formatted'] ?? '') }}</div>
         </div>
 
         @if (!empty($package['addon']))
         <div class="row" style="justify-content:space-between">
             <div>
                 <div style="font-weight:600">{{ $package['addon']['label'] }}</div>
-                <span class="note-safe">{{ $ml ? 'ഓപ്ഷണൽ അധിക സേവനം (അടിസ്ഥാന Distinguished പാക്കേജിന്റെ ഭാഗമല്ല)' : 'Optional add-on (not part of base Distinguished package)' }}</span>
+                <span class="note-safe">{{ $ml ? 'ഓപ്ഷണൽ അധിക സേവനം (അടിസ്ഥാന പ്രൊഫൈൽ ഫീസിന്റെ ഭാഗമല്ല)' : 'Optional add-on (not part of the Standard Profile fee)' }}</span>
             </div>
-            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ $package['addon']['amount_incl_formatted'] }}</div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums;font-weight:600">{{ $package['addon']['base_formatted'] ?? $package['addon']['amount_incl_formatted'] }}</div>
         </div>
         @endif
 
-        @if (is_string($package['cgst_formatted'] ?? null))
+        @if (is_string($package['igst_formatted'] ?? null))
         <div class="row" style="justify-content:space-between">
-            <div class="note-safe">{{ $ml ? 'സിജിഎസ്ടി (ചേർത്തത്)' : 'CGST (added)' }}</div>
-            <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['cgst_formatted'] }}</div>
+            <div class="note-safe">{{ $ml ? 'ഐജിഎസ്ടി (ചേർത്തത്)' : 'IGST (added)' }}</div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['igst_formatted'] }}</div>
         </div>
-        @endif
+        @elseif (is_string($package['cgst_formatted'] ?? null) || is_string($package['sgst_formatted'] ?? null))
+            @if (is_string($package['cgst_formatted'] ?? null))
+            <div class="row" style="justify-content:space-between">
+                <div class="note-safe">{{ $ml ? 'സിജിഎസ്ടി (ചേർത്തത്)' : 'CGST (added)' }}</div>
+                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['cgst_formatted'] }}</div>
+            </div>
+            @endif
 
-        @if (is_string($package['sgst_formatted'] ?? null))
+            @if (is_string($package['sgst_formatted'] ?? null))
+            <div class="row" style="justify-content:space-between">
+                <div class="note-safe">{{ $ml ? 'എസ്ജിഎസ്ടി (ചേർത്തത്)' : 'SGST (added)' }}</div>
+                <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['sgst_formatted'] }}</div>
+            </div>
+            @endif
+        @elseif (is_string($package['gst_formatted'] ?? null) && (int) ($package['gst_paise'] ?? 0) > 0)
         <div class="row" style="justify-content:space-between">
-            <div class="note-safe">{{ $ml ? 'എസ്ജിഎസ്ടി (ചേർത്തത്)' : 'SGST (added)' }}</div>
-            <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['sgst_formatted'] }}</div>
+            <div class="note-safe">{{ $ml ? 'ജിഎസ്ടി (ചേർത്തത്)' : 'GST (added)' }}</div>
+            <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['gst_formatted'] }}</div>
         </div>
         @endif
 
@@ -171,6 +183,20 @@
             <a class="btn block" href="{{ route('applications.show', ['application' => $application->id]) }}">
                 {{ $ml ? 'ഡാഷ്‌ബോർഡിലേക്ക് തിരികെ പോകുക' : 'Back to Dashboard' }}
             </a>
+        </div>
+    @elseif (!empty($quoteIsStale))
+        <div class="warnbox">
+            <div><b>{{ $ml ? 'നിലവിലെ തുക' : 'Current amount' }}: {{ $package['amount_incl_formatted'] ?? '' }}</b></div>
+            <div style="margin-top:4px;font-size:13px;color:#7a5100">{{ $ml ? 'മുമ്പത്തെ പേയ്‌മെൻ്റ് ലിങ്കിൽ പണമടയ്ക്കരുത്. അതിൽ നിങ്ങൾ ഇതിനകം പണമടച്ചിട്ടുണ്ടെങ്കിൽ ആ പേയ്‌മെൻ്റ് രേഖപ്പെടുത്തും. ആ ലിങ്ക് റദ്ദാക്കിയതോ പണമടച്ചതോ ആണെന്ന് ഉറപ്പാകും വരെ പുതിയ ലിങ്ക് തുടങ്ങില്ല.' : 'An earlier payment link must not be paid. If you already paid it, that payment will be recorded. A new link is not started until the earlier link is confirmed cancelled or paid.' }}</div>
+        </div>
+        <div class="actions">
+            <form id="pay-initiate-form" method="POST" action="{{ route('applications.payment.initiate', ['application' => $application->id]) }}" style="flex:1 1 260px;margin:0">
+                @csrf
+                <button class="btn primary block" type="submit" disabled aria-disabled="true">{{ $ml ? 'നിലവിലെ തുകയിൽ പുതിയ ലിങ്ക്' : 'Start a link at the current amount' }}</button>
+            </form>
+            <div class="sub" style="flex:1 1 100%">
+                {{ $ml ? 'ഓൺലൈൻ പേയ്‌മെൻ്റ് ഉടൻ ലഭ്യമാകും. പഴയ ലിങ്ക് ഉപയോഗിക്കരുത്.' : 'Online payment will be available shortly. Do not use the earlier link.' }}
+            </div>
         </div>
     @elseif ($activePayment && $activePayment->razorpay_link_url)
         <div class="warnbox">
@@ -252,7 +278,7 @@
                         <span class="note-safe" style="margin-top:2px;color:var(--bad)">{{ $ml ? 'കുറിപ്പ്' : 'Note' }}: {{ $p->error_message }}</span>
                     @endif
                 </div>
-                @if ($p->razorpay_link_url && $p->isActiveAttempt())
+                @if ($p->razorpay_link_url && $p->isActiveAttempt() && empty($quoteIsStale))
                     <a class="btn" style="padding:8px 12px;font-size:13px;min-height:36px" target="_blank" rel="noopener" href="{{ $p->razorpay_link_url }}">{{ $ml ? 'തുറക്കുക' : 'Open' }}</a>
                 @endif
             </div>

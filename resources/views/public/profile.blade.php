@@ -167,7 +167,9 @@
                 @else
                     <div class="jk-portrait-mono" aria-hidden="true">{{ mb_strtoupper(mb_substr(trim($nameLast !== '' ? $nameLast : $displayName), 0, 1)) }}</div>
                 @endif
-                @include('public.partials.tier-mark', ['tier' => $profile->application?->package_tier])
+                @if($profile->application?->package_tier === 'in_memoriam')
+                    @include('public.partials.tier-mark', ['tier' => 'in_memoriam'])
+                @endif
             </div>
             <figcaption class="jk-caption">
                 <span>{{ $locationLabel ? 'KERALAM · INDIA' : 'PUBLIC LIFE' }}</span>

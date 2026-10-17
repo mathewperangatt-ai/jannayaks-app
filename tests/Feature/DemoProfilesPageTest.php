@@ -27,20 +27,26 @@ class DemoProfilesPageTest extends TestCase
         $response = $this->get(route('demo-profiles.index'))->assertOk();
         $content = $response->getContent();
 
-        $living = Profile::query()->with('user')->get();
-        $this->assertCount(14, $living);
+        $living = Profile::query()->with('user')->where('status', 'published')->get();
+        $this->assertCount(7, $living);
         foreach ($living as $profile) {
             $response->assertSee('href="'.route('profiles.public', $profile->slug).'"', false);
             $response->assertSee($profile->full_name, false);
+        }
+        foreach ([
+            'Fr. Joseph Mathew', 'P. Rajeev Menon', 'S. Beena Kumari',
+            'K. Shafiq Rahman', 'R. Leelamma', 'C. Manoj Kumar', 'A. Mariamma',
+        ] as $retired) {
+            $response->assertDontSee($retired, false);
         }
         foreach (['k.v.mathew' => 'K. V. Mathew (Late)', 'dr.saroja.nair' => 'Dr. Saroja Nair (Late)'] as $slug => $name) {
             $response->assertSee('href="'.route('in-memoriam.show', $slug).'"', false);
             $response->assertSee($name, false);
         }
 
-        $this->assertSame(3, substr_count($content, 'tier-mark tier-mark--emerging'));
-        $this->assertSame(4, substr_count($content, 'tier-mark tier-mark--accomplished'));
-        $this->assertSame(7, substr_count($content, 'tier-mark tier-mark--distinguished'));
+        $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--emerging'));
+        $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--accomplished'));
+        $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--distinguished'));
         $this->assertSame(2, substr_count($content, 'tier-mark tier-mark--in_memoriam'));
         $this->assertStringNotContainsString('class="card-tier', $content);
         foreach (['Recognised', 'Acclaimed', 'Distinguished'] as $tierWord) {
@@ -54,7 +60,7 @@ class DemoProfilesPageTest extends TestCase
     public function test_malayalam_listing_links_to_malayalam_pages(): void
     {
         $this->seed(DemoProfilesSeeder::class);
-        $profile = Profile::query()->where('full_name', 'K. Shafiq Rahman')->firstOrFail();
+        $profile = Profile::query()->where('full_name', 'T. Gopalakrishnan')->firstOrFail();
 
         $this->get(route('demo-profiles.index', ['lang' => 'ml']))
             ->assertOk()
@@ -68,16 +74,16 @@ class DemoProfilesPageTest extends TestCase
     {
         $this->seed(DemoProfilesSeeder::class);
 
-        $profile = Profile::query()->where('full_name', 'K. Shafiq Rahman')->firstOrFail();
-        $profile->user->forceFill(['email' => 'shafiq.member@example.com'])->save();
+        $profile = Profile::query()->where('full_name', 'T. Gopalakrishnan')->firstOrFail();
+        $profile->user->forceFill(['email' => 'gopalakrishnan.member@example.com'])->save();
         InMemoriamProfile::query()->where('slug', 'k.v.mathew')->firstOrFail()
             ->forceFill(['commissioner_contact_email' => 'family@example.com'])->save();
 
         $this->get(route('demo-profiles.index'))
             ->assertOk()
-            ->assertDontSee('K. Shafiq Rahman', false)
+            ->assertDontSee('T. Gopalakrishnan', false)
             ->assertDontSee('K. V. Mathew', false)
-            ->assertSee('R. Leelamma', false)
+            ->assertSee('Arjun Menon', false)
             ->assertSee('Dr. Saroja Nair (Late)', false);
     }
 
@@ -113,10 +119,10 @@ class DemoProfilesPageTest extends TestCase
             $this->assertDoesNotMatchRegularExpression($galleryCurrent, $content, $path);
         }
 
-        Profile::query()->where('slug', 'r.leelamma')->firstOrFail()
-            ->user->forceFill(['email' => 'leelamma.member@example.com'])->save();
+        Profile::query()->where('slug', 'arjun.menon')->firstOrFail()
+            ->user->forceFill(['email' => 'arjun.member@example.com'])->save();
 
-        foreach (['/gallery', '/r.leelamma'] as $path) {
+        foreach (['/gallery', '/arjun.menon'] as $path) {
             $content = $this->get($path)->assertOk()->getContent();
             $this->assertMatchesRegularExpression($galleryCurrent, $content, $path);
             $this->assertDoesNotMatchRegularExpression($demoCurrent, $content, $path);
@@ -126,9 +132,9 @@ class DemoProfilesPageTest extends TestCase
     public function test_demo_profile_opens_in_malayalam_unless_english_is_requested(): void
     {
         $this->seed(DemoProfilesSeeder::class);
-        $entry = (require database_path('seeders/demo-profiles-living.php'))['k.shafiq.rahman'];
+        $entry = (require database_path('seeders/demo-profiles-living.php'))['t.gopalakrishnan'];
 
-        foreach (['/k.shafiq.rahman' => 'ml', '/k.shafiq.rahman?lang=ml' => 'ml', '/k.shafiq.rahman?lang=en' => 'en'] as $path => $language) {
+        foreach (['/t.gopalakrishnan' => 'ml', '/t.gopalakrishnan?lang=ml' => 'ml', '/t.gopalakrishnan?lang=en' => 'en'] as $path => $language) {
             $content = $this->get($path)->assertOk()->getContent();
 
             $this->assertStringContainsString('<html lang="'.$language.'">', $content, $path);
@@ -141,7 +147,7 @@ class DemoProfilesPageTest extends TestCase
     {
         $this->seed(DemoProfilesSeeder::class);
 
-        $this->get('/k.shafiq.rahman')
+        $this->get('/t.gopalakrishnan')
             ->assertOk()
             ->assertSee('>English</a>', false)
             ->assertSee('>മലയാളം</a>', false)
@@ -152,11 +158,11 @@ class DemoProfilesPageTest extends TestCase
     public function test_real_profile_still_opens_in_english_by_default(): void
     {
         $this->seed(DemoProfilesSeeder::class);
-        $entry = (require database_path('seeders/demo-profiles-living.php'))['k.shafiq.rahman'];
-        Profile::query()->where('slug', 'k.shafiq.rahman')->firstOrFail()
-            ->user->forceFill(['email' => 'shafiq.member@example.com'])->save();
+        $entry = (require database_path('seeders/demo-profiles-living.php'))['t.gopalakrishnan'];
+        Profile::query()->where('slug', 't.gopalakrishnan')->firstOrFail()
+            ->user->forceFill(['email' => 'gopalakrishnan.member@example.com'])->save();
 
-        foreach (['/k.shafiq.rahman' => 'en', '/k.shafiq.rahman?lang=en' => 'en', '/k.shafiq.rahman?lang=ml' => 'ml'] as $path => $language) {
+        foreach (['/t.gopalakrishnan' => 'en', '/t.gopalakrishnan?lang=en' => 'en', '/t.gopalakrishnan?lang=ml' => 'ml'] as $path => $language) {
             $content = $this->get($path)->assertOk()->getContent();
 
             $this->assertStringContainsString('<html lang="'.$language.'">', $content, $path);

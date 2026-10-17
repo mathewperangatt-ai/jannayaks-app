@@ -13,7 +13,7 @@
 @include('partials.schema-ld', ['json' => $schemaJson])
 @include('partials.seo-meta', [
     'title' => 'FAQ &amp; Charges — Jannayaks™',
-    'description' => 'Jannayaks membership charges for the Recognised, Acclaimed and Distinguished tiers, In Memoriam hosting, and answers to common questions.',
+    'description' => 'Jannayaks Standard Profile charges, renewal, and answers to common questions.',
     'canonical' => route('faq-charges'),
 ])
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -99,72 +99,19 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 
 <main class="wrap">
   <span class="eyebrow">FAQ &amp; Charges / ചോദ്യങ്ങളും നിരക്കുകളും</span>
-  <h1>Membership charges and common questions</h1>
+  <h1>Charges and common questions</h1>
   <p class="lede">
-    The charges shown below are exclusive of GST. GST ({{ number_format($gstPercent, 0) }}%)
-    will be added to the applicable amount at checkout. Payment is completed through the
-    application journey after you create a profile.
+    One Standard Profile. The prices below are exclusive of GST. GST ({{ number_format($gstPercent, 0) }}%)
+    is added at checkout. There is no discounted comparison price.
   </p>
 
-  <div class="card gold">
-    <div class="tier-name">Distinguished</div>
-    <span class="tier-name-ml">പ്രഗൽഭർ</span>
-    <div class="price">{{ $distinguished['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">
-      + GST (added at payment) · renews annually at the same tier price ·
-      post-publication revision {{ $revision['base_formatted'] }} + GST
-    </div>
-    <div class="who">
-      Senior political leaders, state-level office-bearers, and the most established names in community and cultural leadership
-      <span class="who-ml">മുതിർന്ന രാഷ്ട്രീയ നേതാക്കൾ, സംസ്ഥാനതല ഭാരവാഹികൾ, സാമൂഹിക-സാംസ്കാരിക രംഗത്തെ പ്രഗത്ഭർ</span>
-    </div>
-    <ul class="features">
-      <li>Verified profile — Gold badge</li>
-      <li>Artificial Intelligence–assisted biography — deeply developed long-form profile (EN + ML)</li>
-      <li>Personal URL — jannayaks.in/name</li>
-      <li>Portrait photograph plus up to 5 gallery photographs</li>
-      <li>External video link on the profile</li>
-    </ul>
-  </div>
-
-  <div class="card navy">
-    <div class="tier-name">{{ \App\Support\TierLabels::label('accomplished') }}</div>
-    <span class="tier-name-ml">ജനസമ്മതർ</span>
-    <div class="price">{{ $accomplished['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">
-      + GST (added at payment) · renews annually at the same tier price ·
-      post-publication revision {{ $revision['base_formatted'] }} + GST
-    </div>
-    <div class="who">
-      Elected and former representatives, and established leaders of organisations, institutions, and community bodies
-      <span class="who-ml">തിരഞ്ഞെടുക്കപ്പെട്ടവരും മുൻ ജനപ്രതിനിധികളും, സംഘടനകളുടെയും സ്ഥാപനങ്ങളുടെയും നേതാക്കളും</span>
-    </div>
-    <ul class="features">
-      <li>Verified profile — Verified badge</li>
-      <li>Artificial Intelligence–assisted biography — substantially developed feature (EN + ML)</li>
-      <li>Personal URL — jannayaks.in/name</li>
-      <li>Portrait photograph plus up to 3 gallery photographs</li>
-      <li>External video link on the profile</li>
-    </ul>
-  </div>
-
   <div class="card">
-    <div class="tier-name">{{ \App\Support\TierLabels::label('emerging') }}</div>
-    <span class="tier-name-ml">ജനകീയർ</span>
-    <div class="price">{{ $emerging['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">
-      + GST (added at payment) · renews annually at the same tier price ·
-      post-publication revision {{ $revision['base_formatted'] }} + GST
-    </div>
-    <div class="who">
-      Local body members, active workers, and rising figures in community or cultural life
-      <span class="who-ml">തദ്ദേശസ്വയംഭരണ സ്ഥാപന അംഗങ്ങൾ, സജീവ പ്രവർത്തകർ, സാമൂഹിക-സാംസ്കാരിക രംഗത്തെ പ്രവർത്തകർ</span>
-    </div>
+    <div class="tier-name">Standard Profile</div>
+    <div class="price">{{ $profile['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
+    <div class="price-sub">The regular profile fee. Annual renewal is {{ $renewal['base_formatted'] }} + GST.</div>
     <ul class="features">
-      <li>Verified profile</li>
-      <li>Artificial Intelligence–assisted biography — concise but complete portrait (EN + ML)</li>
-      <li>Personal URL — jannayaks.in/name</li>
-      <li>Portrait photograph</li>
+      <li>The same Online Interview for every applicant</li>
+      <li>Editorial preparation, your preview, and your approval before publication</li>
     </ul>
   </div>
 
@@ -185,15 +132,11 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 
   <div class="faq">
     <strong>How do I create a profile?</strong>
-    <p>Use Create Profile to begin the application journey. You sign in, choose a package, complete payment in the application, then continue with the interview and editorial process.</p>
+    <p>Use Create Profile, sign in with your username and password or with Google, and begin your profile application. There is no membership tier to choose. Payment uses the Standard Profile price shown above.</p>
   </div>
   <div class="faq">
     <strong>When is payment taken?</strong>
-    <p>Package payment is collected through the application payment step (Razorpay). Amounts shown here are the same server-side prices used by the application.</p>
-  </div>
-  <div class="faq">
-    <strong>How does the profile differ between membership tiers?</strong>
-    <p>The tiers differ primarily in the depth, scope and editorial treatment of the profile. Recognised provides a concise but complete portrait, Acclaimed provides a substantially developed feature, and Distinguished provides a deeply developed long-form profile.</p>
+    <p>The Standard Profile fee is collected in the application before the interview and uploads. The amount is calculated on the server.</p>
   </div>
   <div class="faq">
     <strong>Is a direct personal interview available?</strong>
@@ -205,11 +148,11 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   </div>
   <div class="faq">
     <strong>What is annual membership?</strong>
-    <p>After publication, membership renews on the annual cycle configured in the application. The current annual renewal is your tier's annual price plus GST: {{ $renewals['emerging']['base_formatted'] }} ({{ \App\Support\TierLabels::label('emerging') }}), {{ $renewals['accomplished']['base_formatted'] }} ({{ \App\Support\TierLabels::label('accomplished') }}), {{ $renewals['distinguished']['base_formatted'] }} ({{ \App\Support\TierLabels::label('distinguished') }}) — each + GST.</p>
+    <p>After the first publication period, renewal is {{ $renewal['base_formatted'] }} plus GST for every living profile. Renewal is not the same amount as the Standard Profile fee.</p>
   </div>
   <div class="faq">
     <strong>What about profile revisions after publication?</strong>
-    <p>Meaningful post-publication revisions use the configured revision charge of {{ $revision['base_formatted'] }} + GST. Routine factual or typographical corrections follow the editorial process.</p>
+    <p>A full profile rewrite is priced at {{ $revision['base_formatted'] }} plus GST. Submitting a maintenance request does not collect that payment. Jannayaks arranges a rewrite charge separately. The published profile stays unchanged until you approve a reviewed update.</p>
   </div>
   <div class="faq">
     <strong>Is there an online In Memoriam checkout?</strong>

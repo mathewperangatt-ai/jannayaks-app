@@ -26,18 +26,18 @@ use Illuminate\Support\Str;
 /**
  * FINAL DEMONSTRATION POPULATION (corrected demonstration corpus).
  *
- * Living demonstrations (14) — seeded through the application's REAL
+ * Living demonstrations (7) — seeded through the application's REAL
  * editorial/publication workflow so each record is structurally identical
  * to a legitimately published profile (approval, version-pinned customer
  * approval, durable consent, admin publication, membership, reserved slug,
- * audit trail):
+ * audit trail). These are the full-length Standard Profile examples:
  *
- *   3 Recognised    — Fr. Joseph Mathew, P. Rajeev Menon, S. Beena Kumari
- *   4 Acclaimed     — K. Shafiq Rahman, R. Leelamma, C. Manoj Kumar,
- *                     A. Mariamma
- *   7 Distinguished — T. Gopalakrishnan, P. Sreedharan, V. Suresh Babu,
- *                     Arjun Menon, Nanditha Das, Fahim Yousuf,
- *                     Meera Krishnan
+ *   T. Gopalakrishnan, P. Sreedharan, V. Suresh Babu,
+ *   Arjun Menon, Nanditha Das, Fahim Yousuf, Meera Krishnan
+ *
+ * Short Recognised / Acclaimed demonstration profiles were retired from the
+ * public demo set. Re-seeding unpublishes any leftover demo-domain living
+ * profiles that are no longer in demo-profiles-living.php (demo emails only).
  *
  * Memorial demonstrations (2) — K. V. Mathew (Late) and Dr. Saroja Nair
  * (Late), with the supplied English and Malayalam descriptions. The corpus
@@ -87,6 +87,10 @@ class DemoProfilesSeeder extends Seeder
             $this->seedLivingDemo($slug, $entry);
         }
 
+        $result = app(\App\Services\ObsoleteLivingDemoRetirementService::class)->retire(false);
+        foreach ($result['retired'] as $row) {
+            $this->command?->info('Retired obsolete living demo: '.$row['full_name']);
+        }
         $this->seedMemorials();
         $this->seedTestAccounts();
     }

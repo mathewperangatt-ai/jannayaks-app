@@ -127,7 +127,9 @@ class InvoiceService
             'seller_gstin' => $seller['gstin'] !== '' ? $seller['gstin'] : null,
             'seller_address' => $seller['address'] !== '' ? $seller['address'] : null,
             'seller_state' => $seller['state'] !== '' ? $seller['state'] : null,
-            'place_of_supply' => $seller['place_of_supply'] !== '' ? $seller['place_of_supply'] : null,
+            // Recipient place of supply requires collected customer billing state.
+            // Do not invent it from seller config (JANNAYAKS_BILLING_PLACE_OF_SUPPLY).
+            'place_of_supply' => null,
             'seller_support_email' => $seller['support_email'] !== '' ? $seller['support_email'] : null,
             'seller_details_configured' => $seller['legal_name'] !== '' || $seller['gstin'] !== '',
         ]);
@@ -185,7 +187,7 @@ class InvoiceService
 
         $packageDescription = 'Profile package';
         if ($application !== null && in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
-            $amt = PricingAmounts::forApplicationPackage($application->package_tier);
+            $amt = PricingAmounts::forApplication($application);
             $packageDescription = $amt['label'] ?? $packageDescription;
         }
 

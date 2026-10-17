@@ -455,28 +455,24 @@ document.addEventListener('click',function(e){
     <div class="url-title">Your Personal Profile URL</div>
     <span class="url-title-ml">നിങ്ങളുടെ വ്യക്തിഗത പ്രൊഫൈൽ വിലാസം</span>
     <div class="url-note">
-      Every member gets a dedicated personal URL at jannayaks.in. You can choose how your name appears — we make it unique. The URL remains stable; public hosting follows your active membership.
-      <span class="url-note-ml">ഓരോ അംഗത്തിനും jannayaks.in-ൽ ഒരു സമർപ്പിത വ്യക്തിഗത URL ലഭിക്കുന്നു. നിങ്ങളുടെ പേര് എങ്ങനെ പ്രത്യക്ഷപ്പെടണമെന്ന് നിങ്ങൾക്ക് തിരഞ്ഞെടുക്കാം — ഞങ്ങൾ അത് അദ്വിതീയമാക്കും. URL സ്ഥിരമായിരിക്കും; പൊതു ഹോസ്റ്റിംഗ് സജീവ അംഗത്വത്തെ ആശ്രയിച്ചിരിക്കും.</span>
+      An eligible profile can use a name-based address at jannayaks.in, taken from the verified name. A short number is added only when that address is already taken. The address stays permanent; public hosting follows an active membership.
+      <span class="url-note-ml">യോഗ്യമായ പ്രൊഫൈലിന് പരിശോധിച്ച പേരിൽ നിന്നുള്ള ഒരു വിലാസം ലഭിക്കും. ആ വിലാസം മറ്റൊരാൾക്കുള്ളതാണെങ്കിൽ മാത്രം ഒരു ചെറിയ സംഖ്യ ചേർക്കും. വിലാസം സ്ഥിരമായിരിക്കും; പൊതു ഹോസ്റ്റിംഗ് സജീവ അംഗത്വത്തെ ആശ്രയിച്ചിരിക്കും.</span>
     </div>
     <div class="url-examples">
       <div class="url-example">
-        jannayaks.in/<strong>Abdulrasheed</strong>
-        <span class="url-badge">Simple</span>
+        jannayaks.in/<strong>arun.kumar</strong>
+        <span class="url-badge">Name</span>
       </div>
       <div class="url-example">
-        jannayaks.in/<strong>sukumar.aluva</strong>
-        <span class="url-badge">Name + Place</span>
-      </div>
-      <div class="url-example">
-        jannayaks.in/<strong>jacob.valiyaveed</strong>
-        <span class="url-badge">Name + Family Name</span>
+        jannayaks.in/<strong>arun.kumar12</strong>
+        <span class="url-badge">Name + number</span>
       </div>
     </div>
     <div class="url-custom">
-      <div class="url-custom-title">✦ Create Your Own Handle</div>
+      <div class="url-custom-title">Choose a name-based address</div>
       <div class="url-custom-text">
-        You can also choose a completely custom handle — like <strong>johndoe12</strong> or <strong>jj_nemom</strong>. As long as it is available and does not already exist on the platform, it is yours.
-        <span class="url-custom-text-ml">നിങ്ങൾ ആഗ്രഹിക്കുന്ന ഒരു കസ്റ്റം ഹാൻഡിൽ തിരഞ്ഞെടുക്കാം — johndoe12 അല്ലെങ്കിൽ jj_nemom പോലുള്ളത്. അത് ലഭ്യമാണെങ്കിൽ, അത് നിങ്ങളുടേതായിരിക്കും.</span>
+        The address comes from the verified name, for example <strong>arun.kumar</strong>. If that address is already taken, a short number can be added, for example <strong>arun.kumar12</strong>.
+        <span class="url-custom-text-ml">വിലാസം പരിശോധിച്ച പേരിൽ നിന്നാണ് — arun.kumar പോലെ. അത് ലഭ്യമല്ലെങ്കിൽ arun.kumar12 പോലെ ഒരു ചെറിയ സംഖ്യ ചേർക്കാം.</span>
       </div>
     </div>
   </div>

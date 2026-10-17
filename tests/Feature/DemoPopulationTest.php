@@ -9,6 +9,7 @@ use App\Models\MediaItem;
 use App\Models\Membership;
 use App\Models\Profile;
 use App\Models\ProfileIntegritySnapshot;
+use App\Models\User;
 use App\Services\ProfileIntegrityService;
 use Database\Seeders\DemoProfilesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -18,27 +19,27 @@ use Tests\TestCase;
 /**
  * Demo population (corrected demonstration corpus).
  *
- * Proves the demo seeder produces the full presentation set through the
- * real workflow: 14 living published profiles (3 Recognised / 4 Acclaimed /
- * 7 Distinguished) with verbatim bilingual corpus text and the supplied
+ * Proves the demo seeder produces the presentation set through the real
+ * workflow: 7 full-length living published profiles (Standard Profile
+ * examples) with verbatim bilingual corpus text and the supplied
  * watermarked portraits, both memorials with the "(Late)" display and no
- * unsupported dates or locations, personal slugs on personal tiers,
- * memberships started, integrity snapshots that match the attached
- * portraits, and demo-only presentation rules (no default-state location
- * line, uncropped portraits, demonstration notices, tier corner markers
- * instead of tier words).
+ * unsupported dates or locations, personal slugs, memberships started,
+ * integrity snapshots that match the attached portraits, and demo-only
+ * presentation rules (no default-state location line, uncropped portraits,
+ * demonstration notices).
  */
 class DemoPopulationTest extends TestCase
 {
     use RefreshDatabase;
 
-    private const LIVING_BY_TIER = [
-        'emerging' => ['Fr. Joseph Mathew', 'P. Rajeev Menon', 'S. Beena Kumari'],
-        'accomplished' => ['K. Shafiq Rahman', 'R. Leelamma', 'C. Manoj Kumar', 'A. Mariamma'],
-        'distinguished' => [
-            'T. Gopalakrishnan', 'P. Sreedharan', 'V. Suresh Babu',
-            'Arjun Menon', 'Nanditha Das', 'Fahim Yousuf', 'Meera Krishnan',
-        ],
+    private const LIVING_NAMES = [
+        'T. Gopalakrishnan', 'P. Sreedharan', 'V. Suresh Babu',
+        'Arjun Menon', 'Nanditha Das', 'Fahim Yousuf', 'Meera Krishnan',
+    ];
+
+    private const RETIRED_SHORT_DEMO_NAMES = [
+        'Fr. Joseph Mathew', 'P. Rajeev Menon', 'S. Beena Kumari',
+        'K. Shafiq Rahman', 'R. Leelamma', 'C. Manoj Kumar', 'A. Mariamma',
     ];
 
     protected function setUp(): void
@@ -48,40 +49,34 @@ class DemoPopulationTest extends TestCase
         Storage::fake('public');
     }
 
-    public function test_seeder_publishes_fourteen_living_demos_with_tiers_slugs_ml_and_memberships(): void
+    public function test_seeder_publishes_seven_living_standard_profile_demos_with_slugs_ml_and_memberships(): void
     {
         $this->seed(DemoProfilesSeeder::class);
 
         $published = Profile::query()->where('status', 'published')->get();
-        $this->assertSame(14, $published->count());
+        $this->assertSame(7, $published->count());
+        $this->assertEqualsCanonicalizing(self::LIVING_NAMES, $published->pluck('display_name')->all());
 
-        $namesByTier = [];
         foreach ($published as $profile) {
-            $tier = $profile->application?->package_tier;
-            $namesByTier[$tier][] = $profile->display_name;
-
+            $this->assertSame('distinguished', $profile->application?->package_tier, $profile->full_name);
             $this->assertNotNull($profile->slug, $profile->full_name);
+            $this->assertStringContainsString('.', (string) $profile->slug, $profile->full_name);
             $this->assertNotNull($profile->published_at, $profile->full_name);
             $this->assertNotNull($profile->membership, $profile->full_name.' must have a membership');
             $this->assertStringEndsWith('@jannayaks.internal', (string) $profile->user?->email, $profile->full_name);
 
-            // Bound approved EN + ML editorial for every demo; ML references its EN master.
             $enId = $profile->application?->published_english_editorial_content_id;
             $this->assertNotNull($enId, $profile->full_name);
             $mlId = $profile->application?->published_malayalam_editorial_content_id;
             $this->assertNotNull($mlId, $profile->full_name);
             $this->assertSame($enId, EditorialContent::query()->find($mlId)->source_editorial_content_id, $profile->full_name.' ML must reference its EN master');
-
-            // Personal slugs on personal tiers; system slugs on Recognised.
-            if ($tier === 'emerging') {
-                $this->assertDoesNotMatchRegularExpression('/^[a-z]+\.[a-z]/', (string) $profile->slug, $profile->full_name);
-            } else {
-                $this->assertStringContainsString('.', (string) $profile->slug, $profile->full_name);
-            }
         }
 
-        foreach (self::LIVING_BY_TIER as $tier => $names) {
-            $this->assertEqualsCanonicalizing($names, $namesByTier[$tier] ?? [], $tier);
+        foreach (self::RETIRED_SHORT_DEMO_NAMES as $name) {
+            $this->assertFalse(
+                Profile::query()->where('full_name', $name)->where('status', 'published')->exists(),
+                $name.' must not remain a published living demo',
+            );
         }
     }
 
@@ -89,6 +84,8 @@ class DemoPopulationTest extends TestCase
     {
         $this->seed(DemoProfilesSeeder::class);
         $living = require database_path('seeders/demo-profiles-living.php');
+
+        $this->assertCount(7, $living);
 
         foreach ($living as $entry) {
             $profile = Profile::query()->where('full_name', $entry['name'])->firstOrFail();
@@ -98,7 +95,6 @@ class DemoPopulationTest extends TestCase
                 $editorial = EditorialContent::query()->findOrFail($profile->application->{$binding});
                 $this->assertSame($entry[$language]['body'], $editorial->body, $entry['name'].' '.$language);
                 $this->assertSame($entry[$language]['summary'], $editorial->summary, $entry['name'].' '.$language);
-                // Summary is the first paragraph; the body keeps the complete narrative.
                 $this->assertStringStartsWith($editorial->summary."\n\n", $editorial->body, $entry['name'].' '.$language);
                 $this->assertStringNotContainsString('**', $editorial->body, $entry['name'].' '.$language);
                 $this->assertStringNotContainsString('---', $editorial->body, $entry['name'].' '.$language);
@@ -113,12 +109,6 @@ class DemoPopulationTest extends TestCase
             $this->assertSame(hash_file('sha256', database_path('seeders/demo-media/'.$entry['portrait'])), $portrait->photo_sha256, $entry['name']);
             Storage::disk('public')->assertExists($portrait->storage_path_key);
         }
-
-        // The replacement trade-union portrait is stored at its supplied size.
-        $shafiq = Profile::query()->where('full_name', 'K. Shafiq Rahman')->firstOrFail();
-        $shafiqPortrait = MediaItem::query()->where('mediable_type', $shafiq->getMorphClass())->where('mediable_id', $shafiq->id)->firstOrFail();
-        $this->assertSame([1536, 1024], [(int) $shafiqPortrait->width, (int) $shafiqPortrait->height]);
-        $this->assertSame('k_shafiq_rahman.jpg', $living['k.shafiq.rahman']['portrait']);
     }
 
     public function test_memorial_demos_use_late_display_corpus_text_and_no_dates_or_location(): void
@@ -167,7 +157,7 @@ class DemoPopulationTest extends TestCase
         $this->seed(DemoProfilesSeeder::class);
         $second = Profile::query()->where('status', 'published')->count();
 
-        $this->assertSame(14, $first);
+        $this->assertSame(7, $first);
         $this->assertSame($first, $second, 're-seeding must not duplicate or unpublish demos');
         $this->assertSame($keys, MediaItem::query()->orderBy('id')->pluck('storage_path_key', 'id')->all(), 'unchanged portraits must not be rewritten');
 
@@ -177,11 +167,41 @@ class DemoPopulationTest extends TestCase
         }
     }
 
+    public function test_reseeding_unpublishes_retired_short_profile_demos_only(): void
+    {
+        $this->seed(DemoProfilesSeeder::class);
+
+        $owner = User::query()->updateOrCreate(
+            ['email' => 'demo.fr.joseph.mathew@jannayaks.internal'],
+            ['name' => 'Fr. Joseph Mathew', 'password' => bcrypt('secret'), 'email_verified_at' => now()],
+        );
+        $retired = Profile::query()->create([
+            'user_id' => $owner->id,
+            'status' => 'published',
+            'full_name' => 'Fr. Joseph Mathew',
+            'display_name' => 'Fr. Joseph Mathew',
+            'profession' => 'Retired short demo',
+            'slug' => 'josephmat',
+            'published_at' => now(),
+            'display_phone_consent' => false,
+            'display_email_consent' => false,
+        ]);
+
+        $this->seed(DemoProfilesSeeder::class);
+
+        $retired->refresh();
+        $this->assertSame('inactive', $retired->status);
+        $this->assertNotNull($retired->unpublished_at);
+        $this->assertSame(7, Profile::query()->where('status', 'published')->whereNull('unpublished_at')->count());
+        $this->assertTrue(Profile::query()->where('full_name', 'T. Gopalakrishnan')->where('status', 'published')->exists());
+        $this->get(route('demo-profiles.index'))->assertOk()->assertDontSee('Fr. Joseph Mathew', false);
+    }
+
     public function test_reseeding_replaces_a_changed_portrait_and_refreshes_the_snapshot(): void
     {
         $this->seed(DemoProfilesSeeder::class);
 
-        $profile = Profile::query()->where('full_name', 'K. Shafiq Rahman')->firstOrFail();
+        $profile = Profile::query()->where('full_name', 'T. Gopalakrishnan')->firstOrFail();
         $portrait = MediaItem::query()->where('mediable_type', $profile->getMorphClass())->where('mediable_id', $profile->id)->firstOrFail();
         $portrait->forceFill(['photo_sha256' => str_repeat('0', 64)])->save();
         $staleKey = $portrait->storage_path_key;
@@ -190,7 +210,7 @@ class DemoPopulationTest extends TestCase
 
         $portrait->refresh();
         $this->assertNotSame($staleKey, $portrait->storage_path_key);
-        $this->assertSame(hash_file('sha256', database_path('seeders/demo-media/k_shafiq_rahman.jpg')), $portrait->photo_sha256);
+        $this->assertSame(hash_file('sha256', database_path('seeders/demo-media/t_gopalakrishnan.jpg')), $portrait->photo_sha256);
 
         $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
         $this->assertSame($portrait->storage_path_key, $snapshot->primary_photo_key);
@@ -206,8 +226,6 @@ class DemoPopulationTest extends TestCase
         $this->seed(DemoProfilesSeeder::class);
         $living = require database_path('seeders/demo-profiles-living.php');
 
-        // Simulate a database seeded before the corpus revision: published text
-        // differs from the corpus and the snapshot reflects that older state.
         $simulateEarlierSeed = function (string $fullName): Profile {
             $profile = Profile::query()->where('full_name', $fullName)->firstOrFail();
             EditorialContent::query()
@@ -236,7 +254,6 @@ class DemoPopulationTest extends TestCase
         $this->assertSame($living['t.gopalakrishnan']['ml']['body'], $malayalam->body);
         $this->assertSame($english->id, $malayalam->source_editorial_content_id);
 
-        // Superseded versions are archived intact, not overwritten.
         foreach ([$previousEnglishId, $previousMalayalamId] as $previousId) {
             $previous = EditorialContent::query()->findOrFail($previousId);
             $this->assertSame(EditorialContent::STATUS_ARCHIVED, $previous->status);
@@ -251,7 +268,6 @@ class DemoPopulationTest extends TestCase
         $this->get('/t.gopalakrishnan?lang=en')->assertOk()
             ->assertSee(last(explode("\n\n", $living['t.gopalakrishnan']['en']['body'])), false);
 
-        // Profiles outside the list keep their published text.
         $unlistedEnglish = EditorialContent::query()->findOrFail($unlisted->application->fresh()->published_english_editorial_content_id);
         $this->assertSame(1, $unlistedEnglish->version_number);
         $this->assertSame('Earlier demonstration text.', $unlistedEnglish->body);
@@ -264,61 +280,53 @@ class DemoPopulationTest extends TestCase
             );
         }
 
-        // A further run is a no-op.
         $versionCount = EditorialContent::query()->where('profile_id', $revised->id)->count();
         $this->seed(DemoProfilesSeeder::class);
         $this->assertSame($versionCount, EditorialContent::query()->where('profile_id', $revised->id)->count());
         $this->assertSame($english->id, $revised->application->fresh()->published_english_editorial_content_id);
     }
 
-    public function test_living_demo_pages_render_full_bilingual_text_with_tier_marks_and_no_tier_words(): void
+    public function test_living_demo_pages_render_full_bilingual_text_with_no_tier_words(): void
     {
         $this->seed(DemoProfilesSeeder::class);
-        $entry = (require database_path('seeders/demo-profiles-living.php'))['k.shafiq.rahman'];
+        $entry = (require database_path('seeders/demo-profiles-living.php'))['t.gopalakrishnan'];
         $lastParagraph = fn (string $body): string => last(explode("\n\n", $body));
 
-        $en = $this->get('/k.shafiq.rahman?lang=en');
+        $en = $this->get('/t.gopalakrishnan?lang=en');
         $en->assertOk()
-            ->assertSee('K. Shafiq Rahman', false)
-            ->assertSee('Trade Union Leader and Workers’ Welfare Organiser', false)
+            ->assertSee('T. Gopalakrishnan', false)
+            ->assertSee('Social Educator and Community Leader', false)
             ->assertSee($entry['en']['summary'], false)
             ->assertSee($lastParagraph($entry['en']['body']), false)
             ->assertSee('Fictional demonstration profile', false)
-            ->assertSee('tier-mark tier-mark--accomplished', false)
+            ->assertDontSee('tier-mark tier-mark--distinguished', false)
             ->assertSee('jk-portrait jk-portrait--whole', false);
-        $this->assertNoTierWordsOrDefaultLocation($en->getContent(), '/k.shafiq.rahman?lang=en');
+        $this->assertNoTierWordsOrDefaultLocation($en->getContent(), '/t.gopalakrishnan?lang=en');
 
-        $ml = $this->get('/k.shafiq.rahman?lang=ml');
+        $ml = $this->get('/t.gopalakrishnan?lang=ml');
         $ml->assertOk()->assertSee($lastParagraph($entry['ml']['body']), false);
         $this->assertStringContainsString('<html lang="ml">', $ml->getContent());
-        $this->assertNoTierWordsOrDefaultLocation($ml->getContent(), '/k.shafiq.rahman?lang=ml');
+        $this->assertNoTierWordsOrDefaultLocation($ml->getContent(), '/t.gopalakrishnan?lang=ml');
 
-        // Recognised system slug renders with the Recognised marker.
-        $slug = Profile::query()->where('full_name', 'Fr. Joseph Mathew')->value('slug');
-        $joseph = $this->get('/'.$slug);
-        $joseph->assertOk()->assertSee('Fr. Joseph Mathew', false)->assertSee('tier-mark tier-mark--emerging', false);
-        $this->assertNoTierWordsOrDefaultLocation($joseph->getContent(), '/'.$slug);
-
-        foreach (['t.gopalakrishnan', 'arjun.menon', 'nanditha.das', 'fahim.yousuf', 'meera.krishnan'] as $distinguishedSlug) {
-            $distinguished = $this->get('/'.$distinguishedSlug.'?lang=en');
-            $distinguished->assertOk()->assertSee('tier-mark tier-mark--distinguished', false);
-            $this->assertNoTierWordsOrDefaultLocation($distinguished->getContent(), '/'.$distinguishedSlug);
+        foreach (['t.gopalakrishnan', 'arjun.menon', 'nanditha.das', 'fahim.yousuf', 'meera.krishnan'] as $slug) {
+            $page = $this->get('/'.$slug.'?lang=en');
+            $page->assertOk()->assertDontSee('tier-mark tier-mark--distinguished', false);
+            $this->assertNoTierWordsOrDefaultLocation($page->getContent(), '/'.$slug);
         }
 
-        // Gallery cards carry the markers instead of tier pills. The gallery
-        // paginates at 12 cards, so the 14 demos span two pages.
-        $galleryContent = $this->get('/gallery')->assertOk()->getContent()
-            .$this->get('/gallery?page=2')->assertOk()->getContent();
-        foreach (array_merge(...array_values(self::LIVING_BY_TIER)) as $name) {
+        $galleryContent = $this->get('/gallery')->assertOk()->getContent();
+        foreach (self::LIVING_NAMES as $name) {
             $this->assertStringContainsString($name, $galleryContent);
         }
-        $this->assertSame(3, substr_count($galleryContent, 'tier-mark--emerging'));
-        $this->assertSame(4, substr_count($galleryContent, 'tier-mark--accomplished'));
-        $this->assertSame(7, substr_count($galleryContent, 'tier-mark--distinguished'));
+        foreach (self::RETIRED_SHORT_DEMO_NAMES as $name) {
+            $this->assertStringNotContainsString($name, $galleryContent);
+        }
+        $this->assertSame(0, substr_count($galleryContent, 'tier-mark--emerging'));
+        $this->assertSame(0, substr_count($galleryContent, 'tier-mark--accomplished'));
+        $this->assertSame(0, substr_count($galleryContent, 'tier-mark--distinguished'));
         foreach (['Recognised', 'Acclaimed', 'Distinguished', 'class="card-tier'] as $word) {
             $this->assertStringNotContainsString($word, $galleryContent, '/gallery must not render '.$word);
         }
-        // The district filter label names the state; no card carries a location line.
         $this->assertStringNotContainsString('<p class="card-meta">Keralam</p>', $galleryContent);
     }
 
@@ -351,19 +359,16 @@ class DemoPopulationTest extends TestCase
     {
         $this->seed(DemoProfilesSeeder::class);
 
-        // A demo with a recorded place still shows its location line.
-        $leelamma = Profile::query()->where('full_name', 'R. Leelamma')->firstOrFail();
-        $leelamma->geography->forceFill(['locality_place' => 'Kumarakom'])->save();
-        $this->get('/r.leelamma')->assertOk()->assertSee('Kumarakom, Keralam', false);
+        $arjun = Profile::query()->where('full_name', 'Arjun Menon')->firstOrFail();
+        $arjun->geography->forceFill(['locality_place' => 'Kumarakom'])->save();
+        $this->get('/arjun.menon')->assertOk()->assertSee('Kumarakom, Keralam', false);
 
-        // The same default-state geography is shown for a non-demo owner, and
-        // the demo notice and uncropped-portrait treatment are withheld.
-        $shafiq = Profile::query()->where('full_name', 'K. Shafiq Rahman')->firstOrFail();
-        $shafiq->user->forceFill(['email' => 'shafiq.member@example.com'])->save();
-        $this->get('/k.shafiq.rahman')
+        $gopal = Profile::query()->where('full_name', 'T. Gopalakrishnan')->firstOrFail();
+        $gopal->user->forceFill(['email' => 'gopalakrishnan.member@example.com'])->save();
+        $this->get('/t.gopalakrishnan')
             ->assertOk()
             ->assertSee('<p class="jk-location">Keralam</p>', false)
-            ->assertSee('tier-mark tier-mark--accomplished', false)
+            ->assertDontSee('tier-mark tier-mark--distinguished', false)
             ->assertDontSee('Fictional demonstration profile', false)
             ->assertDontSee('jk-portrait jk-portrait--whole', false);
 

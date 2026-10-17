@@ -11,13 +11,13 @@
 | require an explicit editorial approval.
 |
 | Architecture (Master Editorial Specification §17–§19):
-| - Same comprehensive source pool for ALL living tiers — tier controls
-|   editorial depth, never access to questions.
+| - One Standard Profile. The same 22-question pool is used for every new
+|   living application and for historical living tiers. Internal package_tier
+|   / pricing_generation control editorial depth only — never question access.
 | - Q1 is the ONLY required question; Q2–Q22 are optional and skippable.
 | - Conditional/domain-specific interview modules are OUT OF SCOPE by
-|   editorial decision: the 22-question Online Interview is the complete
-|   interview for all living tiers. Do not implement or add modules,
-|   triggers, or any new bilingual interview wording.
+|   editorial decision. Do not implement or add modules, triggers, or any
+|   new bilingual interview wording.
 |
 | Q3 implementation note (approved): collect only the town/area of
 | current residence — never request a full residential address.

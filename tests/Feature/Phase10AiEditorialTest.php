@@ -247,7 +247,7 @@ class Phase10AiEditorialTest extends TestCase
     {
         $rounds = (int) config('jannayaks.ai.editorial.included_prepublication_revision_rounds');
         $this->assertSame(2, $rounds);
-        $this->assertSame(2000, (int) config('jannayaks.tier_pricing.revision.base_amount'));
+        $this->assertSame(3000, (int) config('jannayaks.tier_pricing.revision.base_amount'));
     }
 
     public function test_claim_traces_are_stored_internally_for_editorial_qa(): void

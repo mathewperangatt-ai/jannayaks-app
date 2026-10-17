@@ -452,6 +452,7 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
             'full_name' => $profile->full_name,
             'preferred_display_name' => $profile->display_name,
             'package_tier' => $tier,
+            'pricing_generation' => null,
             'source_method' => 'admin_test_demo',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);

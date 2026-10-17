@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\MediaItem;
 use App\Services\ApplicationPaymentStateService;
 use App\Services\ProfileMediaService;
+use App\Support\ProfileEntitlements;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
@@ -35,7 +36,7 @@ class ProfileMediaController extends Controller
         }
 
         $tier = $this->media->authoritativeTier($profile) ?? (string) $application->package_tier;
-        $limit = $this->media->photoSlotLimitForTier($tier);
+        $limit = $this->media->photoSlotLimitForApplication($application);
         $photos = $profile->media()
             ->where('media_type', MediaItem::TYPE_PROFILE_PHOTO)
             ->orderByDesc('is_primary')
@@ -50,7 +51,7 @@ class ProfileMediaController extends Controller
             'limit' => $limit,
             'count' => $photos->count(),
             'maxKb' => (int) config('jannayaks.media.max_upload_kb', 5120),
-            'allowsVideo' => (bool) config('jannayaks.tier_pricing.packages.'.$tier.'.includes_video_link', false),
+            'allowsVideo' => ProfileEntitlements::allowsVideoLink($application),
             'videoLinks' => $profile->externalLinks()->where('link_type', 'video')->orderByDesc('id')->get(),
         ]);
     }

@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\Profile;
 use App\Models\ProfileExternalLink;
 use App\Models\User;
+use App\Support\ProfileEntitlements;
 use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -26,10 +27,7 @@ class ExternalVideoLinkService
             return false;
         }
 
-        return (bool) config(
-            'jannayaks.tier_pricing.packages.'.$application->package_tier.'.includes_video_link',
-            false,
-        );
+        return ProfileEntitlements::allowsVideoLink($application);
     }
 
     /**

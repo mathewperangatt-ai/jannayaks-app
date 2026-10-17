@@ -58,14 +58,17 @@
 
     <div class="stack" style="gap:6px;margin-top:12px">
         <div class="row" style="justify-content:space-between"><span class="note-safe">Taxable value</span><span>{{ $fmt($document['base_amount_paise'] ?? null) }}</span></div>
-        @if (($document['cgst_amount_paise'] ?? null) !== null)
-            <div class="row" style="justify-content:space-between"><span class="note-safe">CGST</span><span>{{ $fmt($document['cgst_amount_paise']) }}</span></div>
-        @endif
-        @if (($document['sgst_amount_paise'] ?? null) !== null)
-            <div class="row" style="justify-content:space-between"><span class="note-safe">SGST</span><span>{{ $fmt($document['sgst_amount_paise']) }}</span></div>
-        @endif
         @if (($document['igst_amount_paise'] ?? null) !== null)
             <div class="row" style="justify-content:space-between"><span class="note-safe">IGST</span><span>{{ $fmt($document['igst_amount_paise']) }}</span></div>
+        @elseif (($document['cgst_amount_paise'] ?? null) !== null || ($document['sgst_amount_paise'] ?? null) !== null)
+            @if (($document['cgst_amount_paise'] ?? null) !== null)
+                <div class="row" style="justify-content:space-between"><span class="note-safe">CGST</span><span>{{ $fmt($document['cgst_amount_paise']) }}</span></div>
+            @endif
+            @if (($document['sgst_amount_paise'] ?? null) !== null)
+                <div class="row" style="justify-content:space-between"><span class="note-safe">SGST</span><span>{{ $fmt($document['sgst_amount_paise']) }}</span></div>
+            @endif
+        @elseif (($document['gst_amount_paise'] ?? null) !== null && (int) $document['gst_amount_paise'] > 0)
+            <div class="row" style="justify-content:space-between"><span class="note-safe">GST</span><span>{{ $fmt($document['gst_amount_paise']) }}</span></div>
         @endif
         <div class="row" style="justify-content:space-between"><span style="font-weight:700">Invoice total</span><span style="font-weight:800;color:var(--brand)">{{ $document['total_amount_formatted'] }}</span></div>
     </div>

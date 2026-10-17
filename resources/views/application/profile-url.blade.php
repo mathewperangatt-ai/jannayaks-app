@@ -11,7 +11,7 @@
 
     <h1>Your Jannayaks URL</h1>
     <p class="lead" style="margin:0">
-        Tier: <b>{{ ucfirst($tier) }}</b>.
+        {{ \App\Support\PricingAmounts::isLivingTier((string) $tier) ? 'Standard Profile' : ucfirst((string) $tier) }}.
         @if($isPublished)
             Your public profile URL is active.
         @else
@@ -81,7 +81,7 @@
     @else
         <h2 style="margin-top:14px;font-size:16px">System-assigned URL</h2>
         <p class="lead" style="margin:0">
-            {{ \App\Support\TierLabels::label('emerging') }} profiles use a six-character system URL. A personal name-based URL is not available on this tier.
+            This profile has a six-character system address. A personal name-based address is not available for this application.
         </p>
     @endif
 

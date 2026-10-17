@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\PaymentLinkStateUncertainException;
 use App\Models\Profile;
 use App\Services\MembershipLifecycleService;
 use App\Services\ProfileUrlService;
@@ -60,6 +61,10 @@ class MembershipController extends Controller
 
         try {
             $payment = $this->razorpay->createMembershipRenewalPaymentLink($membership, $user);
+        } catch (PaymentLinkStateUncertainException) {
+            return redirect()
+                ->route('membership.show', $profile)
+                ->withErrors(['renewal' => 'An earlier renewal link is still being confirmed. Do not pay it. A new link cannot be started yet.']);
         } catch (InvalidArgumentException $e) {
             return redirect()
                 ->route('membership.show', $profile)
@@ -68,6 +73,12 @@ class MembershipController extends Controller
             return redirect()
                 ->route('membership.show', $profile)
                 ->withErrors(['renewal' => 'Unable to start renewal payment. Please try again later.']);
+        }
+
+        if ($payment->isPaidOrBetter()) {
+            return redirect()
+                ->route('membership.show', $profile)
+                ->with('status', 'A payment on the earlier renewal link was confirmed and recorded.');
         }
 
         if (is_string($payment->razorpay_link_url) && $payment->razorpay_link_url !== '') {
