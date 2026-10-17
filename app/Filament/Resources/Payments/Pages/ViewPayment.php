@@ -25,8 +25,7 @@ class ViewPayment extends ViewRecord
                     $record = $this->getRecord();
 
                     return $record instanceof Payment
-                        && $record->isActiveAttempt()
-                        && trim((string) $record->razorpay_link_id) !== ''
+                        && app(RazorpayPaymentService::class)->canStaffReconcileAttempt($record)
                         && (auth()->user()?->canManageFinance() ?? false);
                 })
                 ->action(function (RazorpayPaymentService $razorpay): void {

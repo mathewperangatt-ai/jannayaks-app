@@ -474,7 +474,7 @@ class RazorpayPaymentService
         $duplicate = $this->anotherSettledPaymentExists($payment);
         $paidAt = $paidAt ?? now();
 
-        if ($payment->status === Payment::STATUS_CANCELLED) {
+        if ($payment->isLateCaptureTerminal()) {
             $payment->settleWithdrawnCapture(
                 targetStatus: Payment::STATUS_CAPTURED,
                 gatewayPaymentId: $gatewayPaymentId,
@@ -526,15 +526,21 @@ class RazorpayPaymentService
         ?int $amountPaise,
         ?string $currency,
     ): bool {
-        if ($payment->status !== Payment::STATUS_CANCELLED) {
+        if (! $payment->isLateCaptureTerminal()) {
             return false;
         }
         if (! $this->isPlausibleGatewayPaymentId($gatewayPaymentId)) {
             return false;
         }
         $storedLinkId = trim((string) $payment->razorpay_link_id);
-        $incomingLinkId = trim((string) $gatewayLinkId);
-        if ($storedLinkId === '' || $incomingLinkId === '' || $incomingLinkId !== $storedLinkId) {
+        $incomingLinkId = trim((string) ($gatewayLinkId ?? ''));
+        // Terminal recovery still requires the attempt to have a stored link.
+        // When the webhook omits the link entity, amount/currency/payment-id
+        // evidence is enough; when a link id is present it must match exactly.
+        if ($storedLinkId === '') {
+            return false;
+        }
+        if ($incomingLinkId !== '' && $incomingLinkId !== $storedLinkId) {
             return false;
         }
         if ($amountPaise === null || abs($amountPaise - $payment->totalPaise()) > 1) {
@@ -545,6 +551,25 @@ class RazorpayPaymentService
         }
 
         return true;
+    }
+
+    /**
+     * Whether finance staff may run the verified Razorpay capture check.
+     * Active attempts and recent terminal attempts with a stored link qualify.
+     */
+    public function canStaffReconcileAttempt(Payment $payment): bool
+    {
+        if ($payment->gateway !== Payment::GATEWAY_RAZORPAY) {
+            return false;
+        }
+        if (trim((string) $payment->razorpay_link_id) === '') {
+            return false;
+        }
+        if ($payment->isPaidOrBetter() || $payment->isRefunded()) {
+            return false;
+        }
+
+        return $payment->isActiveAttempt() || $this->isEligibleTerminalForCaptureRecovery($payment, true);
     }
 
     private function markConfirmedWithdrawn(Payment $payment, string $reason): void
@@ -1025,10 +1050,20 @@ class RazorpayPaymentService
         $max = $this->maxAutomaticChecks();
         $minimumAge = now()->subMinutes($this->minimumAgeMinutes());
         $batch = max(1, (int) config('jannayaks.payment_reconciliation.batch_size', 20));
+        $terminalCreatedAfter = now()->subDays($this->terminalRecoveryMaxAgeDays());
 
         return Payment::query()
             ->where('gateway', Payment::GATEWAY_RAZORPAY)
-            ->whereIn('status', [Payment::STATUS_PENDING, Payment::STATUS_INITIATED])
+            ->where(function ($statusQuery) use ($terminalCreatedAfter): void {
+                $statusQuery->whereIn('status', [Payment::STATUS_PENDING, Payment::STATUS_INITIATED])
+                    ->orWhere(function ($terminal) use ($terminalCreatedAfter): void {
+                        $terminal->whereIn('status', [
+                            Payment::STATUS_FAILED,
+                            Payment::STATUS_CANCELLED,
+                            Payment::STATUS_EXPIRED,
+                        ])->where('created_at', '>=', $terminalCreatedAfter);
+                    });
+            })
             ->whereNotNull('razorpay_link_id')
             ->where('razorpay_link_id', '!=', '')
             ->where('gateway_check_count', '<', $max)
@@ -1109,19 +1144,48 @@ class RazorpayPaymentService
 
     private function reconciliationClaimIsAllowed(Payment $row, bool $staffRequested): bool
     {
-        if (! $row->isActiveAttempt()) {
-            return false;
-        }
         if (trim((string) $row->razorpay_link_id) === '') {
             return false;
         }
         if ($row->gateway !== Payment::GATEWAY_RAZORPAY) {
             return false;
         }
+        if ($row->isPaidOrBetter() || $row->isRefunded()) {
+            return false;
+        }
+        if (! $row->isActiveAttempt() && ! $this->isEligibleTerminalForCaptureRecovery($row, $staffRequested)) {
+            return false;
+        }
 
         return $staffRequested
             ? $this->staffCheckIsAllowed($row)
             : $this->automaticCheckIsDue($row);
+    }
+
+    /**
+     * Terminal attempts stay eligible only while a link id remains and the
+     * attempt is still inside the bounded recovery window (staff checks may
+     * ignore the created-at window so finance can recover a verified capture).
+     */
+    private function isEligibleTerminalForCaptureRecovery(Payment $payment, bool $staffRequested = false): bool
+    {
+        if (! $payment->isLateCaptureTerminal()) {
+            return false;
+        }
+        if (trim((string) $payment->razorpay_link_id) === '') {
+            return false;
+        }
+        if ($payment->error_code === self::CODE_RECONCILIATION_MISMATCH) {
+            return false;
+        }
+        if ($staffRequested) {
+            return true;
+        }
+        if ($payment->created_at === null) {
+            return false;
+        }
+
+        return $payment->created_at->gte(now()->subDays($this->terminalRecoveryMaxAgeDays()));
     }
 
     private function staffCheckIsAllowed(Payment $payment): bool
@@ -1230,7 +1294,9 @@ class RazorpayPaymentService
 
                 return self::OUTCOME_ALREADY_SETTLED;
             }
-            if (! $this->claimStillMatches($row, $claim) || ! $row->isActiveAttempt()) {
+            $rowStillClaimable = $row->isActiveAttempt()
+                || $this->isEligibleTerminalForCaptureRecovery($row, true);
+            if (! $this->claimStillMatches($row, $claim) || ! $rowStillClaimable) {
                 return self::OUTCOME_STALE;
             }
 
@@ -1274,6 +1340,12 @@ class RazorpayPaymentService
             $linkStatus = (string) ($evidence['link_status'] ?? '');
             $inconclusive = $classified['unresolved'] !== [] || ($evidence['truncated'] ?? false) === true;
             if (in_array($linkStatus, ['cancelled', 'expired'], true) && ! $inconclusive) {
+                if ($row->isLateCaptureTerminal()) {
+                    $this->hidePaymentLinkUrl($row);
+                    $this->auditReconciliation($row, $claim['status'], self::OUTCOME_CLOSED);
+
+                    return self::OUTCOME_CLOSED;
+                }
                 $target = $linkStatus === 'expired' ? Payment::STATUS_EXPIRED : Payment::STATUS_CANCELLED;
                 $row->markFailedExpiredOrCancelled(
                     $target,
@@ -1352,14 +1424,29 @@ class RazorpayPaymentService
                 : self::OUTCOME_STALE;
         }
 
-        $row->markPaidOrCaptured(
-            targetStatus: Payment::STATUS_CAPTURED,
-            gatewayPaymentId: $gatewayPaymentId,
-            gatewayEventId: null,
-            eventType: Payment::EVENT_PAYMENT_CAPTURED,
-            paidAt: now(),
-            capturedAt: now(),
-        );
+        $wasTerminal = in_array($previousStatus, [
+            Payment::STATUS_FAILED,
+            Payment::STATUS_CANCELLED,
+            Payment::STATUS_EXPIRED,
+        ], true);
+
+        if ($wasTerminal) {
+            $row->settleWithdrawnCapture(
+                targetStatus: Payment::STATUS_CAPTURED,
+                gatewayPaymentId: $gatewayPaymentId,
+                gatewayEventId: null,
+                paidAt: now(),
+            );
+        } else {
+            $row->markPaidOrCaptured(
+                targetStatus: Payment::STATUS_CAPTURED,
+                gatewayPaymentId: $gatewayPaymentId,
+                gatewayEventId: null,
+                eventType: Payment::EVENT_PAYMENT_CAPTURED,
+                paidAt: now(),
+                capturedAt: now(),
+            );
+        }
         if (! $row->isPaidOrBetter()) {
             return self::OUTCOME_STALE;
         }
@@ -1372,6 +1459,14 @@ class RazorpayPaymentService
                 self::CODE_ADDITIONAL_CAPTURE,
                 'Verified capture was settled once. Another gateway payment on this link needs staff reconciliation.',
             );
+        } elseif ($wasTerminal) {
+            $row->error_code = self::CODE_SETTLED_ON_WITHDRAWN_LINK;
+            $row->error_message = mb_substr(
+                'Verified capture on a link that was no longer the current quote. The payment was recorded once.',
+                0,
+                255,
+            );
+            $row->save();
         } elseif (in_array($row->error_code, [self::CODE_RECONCILIATION_MISMATCH, self::CODE_RECONCILIATION_UNRESOLVED], true)) {
             $row->error_code = null;
             $row->error_message = null;
@@ -1456,5 +1551,10 @@ class RazorpayPaymentService
     private function minimumAgeMinutes(): int
     {
         return max(0, (int) config('jannayaks.payment_reconciliation.minimum_age_minutes', 30));
+    }
+
+    private function terminalRecoveryMaxAgeDays(): int
+    {
+        return max(1, (int) config('jannayaks.payment_reconciliation.terminal_recovery_max_age_days', 14));
     }
 }

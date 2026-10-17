@@ -330,6 +330,160 @@ class PaymentCaptureReconciliationTest extends TestCase
         $this->assertSame(0, $this->invoiceCount($payment));
     }
 
+    public function test_scheduler_recovers_a_late_capture_after_local_failed_status(): void
+    {
+        $payment = $this->terminalAttempt('plink_term_failed', Payment::STATUS_FAILED);
+        $this->enableGateway();
+        $this->fakeLink('plink_term_failed', 'paid', [
+            $this->paymentBody('pay_term_failed', 'captured', 472000),
+        ]);
+
+        Artisan::call('jannayaks:reconcile-payment-captures');
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_CAPTURED, $payment->status);
+        $this->assertSame('pay_term_failed', $payment->gateway_payment_id);
+        $this->assertSame(RazorpayPaymentService::CODE_SETTLED_ON_WITHDRAWN_LINK, $payment->error_code);
+        $this->assertSame(1, $this->invoiceCount($payment));
+        $this->assertSame('payment_complete_awaiting_interview', $payment->application->fresh()->status);
+        Http::assertNotSent(fn ($request): bool => $request->method() === 'POST');
+    }
+
+    public function test_scheduler_recovers_a_late_capture_after_local_expired_status(): void
+    {
+        $payment = $this->terminalAttempt('plink_term_expired', Payment::STATUS_EXPIRED);
+        $this->enableGateway();
+        $this->fakeLink('plink_term_expired', 'paid', [
+            $this->paymentBody('pay_term_expired', 'captured', 472000),
+        ]);
+
+        $this->assertSame(RazorpayPaymentService::OUTCOME_SETTLED, $this->reconcile($payment));
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_CAPTURED, $payment->status);
+        $this->assertSame(RazorpayPaymentService::CODE_SETTLED_ON_WITHDRAWN_LINK, $payment->error_code);
+        $this->assertSame(1, $this->invoiceCount($payment));
+    }
+
+    public function test_expired_terminal_without_capture_stays_terminal(): void
+    {
+        $payment = $this->terminalAttempt('plink_term_clear', Payment::STATUS_EXPIRED);
+        $this->enableGateway();
+        $this->fakeLink('plink_term_clear', 'expired', [
+            $this->paymentBody('pay_term_clear', 'failed', 472000),
+        ]);
+
+        $this->assertSame(RazorpayPaymentService::OUTCOME_CLOSED, $this->reconcile($payment));
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_EXPIRED, $payment->status);
+        $this->assertSame(0, $this->invoiceCount($payment));
+        $this->assertNull($payment->captured_at);
+    }
+
+    public function test_gateway_timeout_on_a_terminal_attempt_stays_unsettled(): void
+    {
+        $payment = $this->terminalAttempt('plink_term_timeout', Payment::STATUS_FAILED);
+        $this->enableGateway();
+        Http::fake(function () {
+            throw new \Illuminate\Http\Client\ConnectionException('timed out');
+        });
+
+        $this->assertSame(RazorpayPaymentService::OUTCOME_PENDING, $this->reconcile($payment));
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_FAILED, $payment->status);
+        $this->assertSame(1, $payment->gateway_check_count);
+        $this->assertSame(0, $this->invoiceCount($payment));
+    }
+
+    public function test_terminal_amount_mismatch_is_rejected(): void
+    {
+        $payment = $this->terminalAttempt('plink_term_mismatch', Payment::STATUS_CANCELLED);
+        $this->enableGateway();
+        $this->fakeLink('plink_term_mismatch', 'paid', [
+            $this->paymentBody('pay_term_mismatch', 'captured', 100),
+        ]);
+
+        $this->assertSame(RazorpayPaymentService::OUTCOME_MISMATCH, $this->reconcile($payment));
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_CANCELLED, $payment->status);
+        $this->assertSame(RazorpayPaymentService::CODE_RECONCILIATION_MISMATCH, $payment->error_code);
+        $this->assertSame(0, $this->invoiceCount($payment));
+    }
+
+    public function test_staff_can_recover_an_eligible_terminal_attempt(): void
+    {
+        $payment = $this->terminalAttempt('plink_term_staff', Payment::STATUS_EXPIRED);
+        $payment->forceFill([
+            'created_at' => now()->subDays(30),
+            'gateway_check_count' => 0,
+            'gateway_checked_at' => null,
+        ])->save();
+        $this->enableGateway();
+        $this->fakeLink('plink_term_staff', 'paid', [
+            $this->paymentBody('pay_term_staff', 'captured', 472000),
+        ]);
+
+        $service = app(RazorpayPaymentService::class);
+        $this->assertTrue($service->canStaffReconcileAttempt($payment->fresh()));
+        $this->assertSame(
+            RazorpayPaymentService::OUTCOME_SKIPPED,
+            $service->reconcileOpenAttempt($payment->fresh()),
+        );
+        $this->assertSame(
+            RazorpayPaymentService::OUTCOME_SETTLED,
+            $service->reconcileOpenAttempt($payment->fresh(), true),
+        );
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_CAPTURED, $payment->status);
+        $this->assertSame(1, $this->invoiceCount($payment));
+    }
+
+    public function test_a_second_capture_on_a_terminal_attempt_is_flagged_without_another_invoice(): void
+    {
+        $first = $this->openAttempt('plink_term_first', 'pay_term_first');
+        $first->markPaidOrCaptured(
+            targetStatus: Payment::STATUS_CAPTURED,
+            gatewayPaymentId: 'pay_term_first',
+            eventType: Payment::EVENT_PAYMENT_CAPTURED,
+            paidAt: now(),
+            capturedAt: now(),
+        );
+        app(InvoiceService::class)->assignSettlementDocuments($first);
+        app(ApplicationPaymentStateService::class)->afterSettled($first->fresh());
+
+        $second = $this->terminalAttempt('plink_term_dup', Payment::STATUS_FAILED, $first->application);
+        $this->enableGateway();
+        $this->fakeLink('plink_term_dup', 'paid', [
+            $this->paymentBody('pay_term_dup', 'captured', 472000),
+        ]);
+
+        $this->assertSame(RazorpayPaymentService::OUTCOME_DUPLICATE, $this->reconcile($second));
+        $second->refresh();
+        $this->assertTrue($second->isPaidOrBetter());
+        $this->assertSame(RazorpayPaymentService::CODE_DUPLICATE_CAPTURE, $second->error_code);
+        $this->assertNull($second->invoice_number);
+        $this->assertSame(1, Payment::query()->where('application_id', $first->application_id)->whereNotNull('invoice_number')->count());
+    }
+
+    public function test_historical_terminal_attempts_outside_the_recovery_window_are_not_auto_polled(): void
+    {
+        $old = $this->terminalAttempt('plink_term_old', Payment::STATUS_FAILED);
+        $old->forceFill([
+            'created_at' => now()->subDays(30),
+            'gateway_check_count' => 0,
+            'gateway_checked_at' => null,
+        ])->save();
+        $this->enableGateway();
+        Http::fake(function () {
+            throw new \Illuminate\Http\Client\ConnectionException('must not be called for old terminal');
+        });
+
+        Artisan::call('jannayaks:reconcile-payment-captures');
+        Http::assertNothingSent();
+        $this->assertSame(0, $old->fresh()->gateway_check_count);
+        $this->assertSame(Payment::STATUS_FAILED, $old->fresh()->status);
+    }
+
     public function test_each_run_processes_at_most_twenty_attempts(): void
     {
         $ids = [];
@@ -370,6 +524,23 @@ class PaymentCaptureReconciliationTest extends TestCase
             'razorpay_link_url' => 'https://rzp.io/i/'.$linkId,
             'status' => Payment::STATUS_INITIATED,
             'created_at' => now()->subHour(),
+        ])->save();
+
+        return $payment->fresh();
+    }
+
+    private function terminalAttempt(string $linkId, string $status, ?Application $application = null): Payment
+    {
+        $payment = $this->openAttempt($linkId, 'pay_'.str_replace('plink_', '', $linkId), $application);
+        $payment->markFailedExpiredOrCancelled($status, 'TEST_TERMINAL', 'Terminalized for late-capture recovery tests.');
+        $payment->forceFill([
+            'razorpay_link_id' => $linkId,
+            'razorpay_link_url' => null,
+            'created_at' => now()->subHour(),
+            'gateway_check_count' => 0,
+            'gateway_checked_at' => null,
+            'error_code' => null,
+            'error_message' => null,
         ])->save();
 
         return $payment->fresh();

@@ -115,6 +115,8 @@ class RazorpayWebhookController extends Controller
             transactionRef: is_string($linkPayload['reference_id'] ?? null) ? (string) $linkPayload['reference_id'] : null,
             applicationId: $applicationId,
             event: $event,
+            amountPaise: $amountPaise,
+            currency: $currency,
         );
 
         if (! $payment instanceof Payment) {
@@ -218,36 +220,160 @@ class RazorpayWebhookController extends Controller
         ?string $transactionRef,
         ?int $applicationId,
         string $event,
+        ?int $amountPaise = null,
+        ?string $currency = null,
     ): ?Payment {
-        $candidates = [];
         if ($paymentId !== null) {
-            $candidates[] = Payment::query()->find($paymentId);
-        }
-        if ($gatewayPaymentId !== null && $gatewayPaymentId !== '') {
-            $candidates[] = Payment::query()->where('gateway_payment_id', $gatewayPaymentId)->first();
-        }
-        if ($gatewayLinkId !== null && $gatewayLinkId !== '') {
-            $candidates[] = Payment::query()->where('razorpay_link_id', $gatewayLinkId)->first();
-        }
-        if ($transactionRef !== null && $transactionRef !== '') {
-            $candidates[] = Payment::query()->where('transaction_reference', $transactionRef)->first();
-        }
-        if ($applicationId !== null) {
-            $q = Payment::query()->where('application_id', $applicationId);
-            if (stripos($event, 'fail') !== false || stripos($event, 'cancel') !== false || stripos($event, 'expire') !== false) {
-                $candidates[] = (clone $q)->latest('id')->first();
-            } else {
-                $candidates[] = (clone $q)->activeAttempts()->latest('id')->first();
+            $byId = Payment::query()->find($paymentId);
+            if ($byId instanceof Payment) {
+                return $byId;
             }
         }
 
-        foreach ($candidates as $c) {
-            if ($c instanceof Payment) {
-                return $c;
+        $byGatewayPayment = $this->resolveUniqueColumnMatch('gateway_payment_id', $gatewayPaymentId);
+        if ($byGatewayPayment instanceof Payment) {
+            return $byGatewayPayment;
+        }
+        if ($byGatewayPayment === false) {
+            return null;
+        }
+
+        // Exact stored link id, including failed / expired / cancelled attempts.
+        $byLink = $this->resolveUniqueColumnMatch('razorpay_link_id', $gatewayLinkId);
+        if ($byLink instanceof Payment) {
+            return $byLink;
+        }
+        if ($byLink === false) {
+            return null;
+        }
+
+        if ($transactionRef !== null && $transactionRef !== '') {
+            $byRef = $this->resolveUniqueColumnMatch('transaction_reference', $transactionRef);
+            if ($byRef instanceof Payment) {
+                return $byRef;
             }
+            if ($byRef === false) {
+                return null;
+            }
+        }
+
+        if ($applicationId !== null) {
+            return $this->resolvePaymentByApplication(
+                $applicationId,
+                $event,
+                $gatewayPaymentId,
+                $gatewayLinkId,
+                $amountPaise,
+                $currency,
+            );
         }
 
         return null;
+    }
+
+    /**
+     * @return Payment|null|false Payment on unique hit, null when the value is
+     *                            absent or unmatched (keep looking), false when
+     *                            multiple rows match (do not guess).
+     */
+    private function resolveUniqueColumnMatch(string $column, ?string $value): Payment|null|false
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $matches = Payment::query()->where($column, $value)->orderBy('id')->get();
+        if ($matches->count() === 0) {
+            return null;
+        }
+        if ($matches->count() > 1) {
+            return false;
+        }
+
+        $payment = $matches->first();
+
+        return $payment instanceof Payment ? $payment : false;
+    }
+
+    /**
+     * Fallback when notes carry only application_id. Settlement events must not
+     * pick an arbitrary active attempt: require one unambiguous match on amount,
+     * currency, and any provided gateway identifiers. Fail/cancel/expire events
+     * keep the prior latest-row behaviour.
+     */
+    private function resolvePaymentByApplication(
+        int $applicationId,
+        string $event,
+        ?string $gatewayPaymentId,
+        ?string $gatewayLinkId,
+        ?int $amountPaise,
+        ?string $currency,
+    ): ?Payment {
+        if (! $this->isSettlementCaptureEvent($event)) {
+            return Payment::query()
+                ->where('application_id', $applicationId)
+                ->latest('id')
+                ->first();
+        }
+
+        $candidates = Payment::query()
+            ->where('application_id', $applicationId)
+            ->where(function ($query) use ($gatewayPaymentId): void {
+                $query->whereIn('status', [
+                    Payment::STATUS_PENDING,
+                    Payment::STATUS_INITIATED,
+                    Payment::STATUS_FAILED,
+                    Payment::STATUS_CANCELLED,
+                    Payment::STATUS_EXPIRED,
+                ]);
+                if (is_string($gatewayPaymentId) && $gatewayPaymentId !== '') {
+                    $query->orWhere(function ($settled) use ($gatewayPaymentId): void {
+                        $settled->whereIn('status', [
+                            Payment::STATUS_PAID,
+                            Payment::STATUS_CAPTURED,
+                            Payment::STATUS_SUCCESS,
+                        ])->where('gateway_payment_id', $gatewayPaymentId);
+                    });
+                }
+            })
+            ->orderBy('id')
+            ->get()
+            ->filter(function (Payment $payment) use ($gatewayPaymentId, $gatewayLinkId, $amountPaise, $currency): bool {
+                if (is_string($gatewayLinkId) && $gatewayLinkId !== '') {
+                    $storedLink = trim((string) $payment->razorpay_link_id);
+                    if ($storedLink !== '' && $storedLink !== $gatewayLinkId) {
+                        return false;
+                    }
+                }
+                if (is_string($gatewayPaymentId) && $gatewayPaymentId !== '') {
+                    $storedGateway = trim((string) $payment->gateway_payment_id);
+                    if ($storedGateway !== '' && $storedGateway !== $gatewayPaymentId) {
+                        return false;
+                    }
+                }
+                if ($amountPaise !== null) {
+                    $expected = $payment->totalPaise();
+                    if ($expected > 0 && abs($amountPaise - $expected) > 1) {
+                        return false;
+                    }
+                }
+                if (is_string($currency) && $currency !== '') {
+                    if (! $payment->currencyIsInr() || strtoupper($currency) !== PricingAmounts::CURRENCY) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
+            ->values();
+
+        if ($candidates->count() !== 1) {
+            return null;
+        }
+
+        $payment = $candidates->first();
+
+        return $payment instanceof Payment ? $payment : null;
     }
 
     private function checkAssociations(Payment $payment, ?string $gatewayLinkId, ?string $orderId): bool

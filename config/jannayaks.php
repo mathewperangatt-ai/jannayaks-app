@@ -378,5 +378,7 @@ PROMPT,
         'max_checks' => 12,
         'staff_minimum_seconds' => 120,
         'max_payments_per_link' => 5,
+        // Failed/cancelled/expired attempts older than this are not auto-polled.
+        'terminal_recovery_max_age_days' => 14,
     ],
 ];

@@ -232,6 +232,19 @@ class Payment extends Model
         ], true);
     }
 
+    /**
+     * Locally terminal attempts that may still receive a verified late capture.
+     * Ordinary transitions must not resurrect these; only settleWithdrawnCapture().
+     */
+    public function isLateCaptureTerminal(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_FAILED,
+            self::STATUS_CANCELLED,
+            self::STATUS_EXPIRED,
+        ], true);
+    }
+
     public function isSettled(): bool
     {
         return in_array($this->status, [
@@ -374,10 +387,11 @@ class Payment extends Model
     }
 
     /**
-     * Narrow exception: a verified gateway capture may settle an attempt
-     * that was cancelled only after its link was withdrawn. Callers must
-     * already have matched the link id, stored amount, currency, and a
-     * real gateway payment id.
+     * Narrow exception: a verified gateway capture may settle an attempt that
+     * was cancelled, failed, or expired after its link was withdrawn or closed.
+     * Callers must already have matched the link id, stored amount, currency,
+     * and a real gateway payment id with status captured. This bypasses
+     * canTransitionTo(); do not use it for ordinary status changes.
      */
     public function settleWithdrawnCapture(
         string $targetStatus,
@@ -388,7 +402,7 @@ class Payment extends Model
         if ($this->isPaidOrBetter()) {
             return $this;
         }
-        if ($this->status !== self::STATUS_CANCELLED) {
+        if (! $this->isLateCaptureTerminal()) {
             return $this;
         }
         if (! in_array($targetStatus, [self::STATUS_PAID, self::STATUS_CAPTURED, self::STATUS_SUCCESS], true)) {

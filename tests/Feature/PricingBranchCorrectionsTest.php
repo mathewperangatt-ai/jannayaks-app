@@ -549,6 +549,245 @@ class PricingBranchCorrectionsTest extends TestCase
         $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
     }
 
+    public function test_late_matching_webhook_settles_a_failed_attempt_once(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $failed = $this->staleAttempt($app);
+        $failed->markFailedExpiredOrCancelled(Payment::STATUS_FAILED, 'GATEWAY_FAILED', 'Customer payment failed.');
+
+        $this->postWebhook($failed, 354000, 'INR', 'plink_old', 'pay_late_failed', 'evt_late_failed')->assertOk();
+        $this->postWebhook($failed->fresh(), 354000, 'INR', 'plink_old', 'pay_late_failed', 'evt_late_failed')->assertOk();
+
+        $failed->refresh();
+        $this->assertTrue($failed->isPaidOrBetter());
+        $this->assertSame('pay_late_failed', $failed->gateway_payment_id);
+        $this->assertSame(RazorpayPaymentService::CODE_SETTLED_ON_WITHDRAWN_LINK, $failed->error_code);
+        $this->assertSame(1, Payment::query()->whereNotNull('invoice_number')->count());
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
+    public function test_late_matching_webhook_settles_an_expired_attempt_once(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $expired = $this->staleAttempt($app);
+        $expired->markFailedExpiredOrCancelled(Payment::STATUS_EXPIRED, 'LINK_EXPIRED', 'Payment link expired.');
+
+        $this->postWebhook($expired, 354000, 'INR', 'plink_old', 'pay_late_expired', 'evt_late_expired')->assertOk();
+        $this->postWebhook($expired->fresh(), 354000, 'INR', 'plink_old', 'pay_late_expired', 'evt_late_expired')->assertOk();
+
+        $expired->refresh();
+        $this->assertTrue($expired->isPaidOrBetter());
+        $this->assertSame('pay_late_expired', $expired->gateway_payment_id);
+        $this->assertSame(RazorpayPaymentService::CODE_SETTLED_ON_WITHDRAWN_LINK, $expired->error_code);
+        $this->assertSame(1, Payment::query()->whereNotNull('invoice_number')->count());
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
+    public function test_a_failed_webhook_without_capture_leaves_the_attempt_failed(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $payment = $this->staleAttempt($app);
+
+        $this->postWebhook(
+            $payment,
+            354000,
+            'INR',
+            'plink_old',
+            'pay_never_captured',
+            'evt_failed_only',
+            'payment.failed',
+            'failed',
+        )->assertOk();
+
+        $payment->refresh();
+        $this->assertSame(Payment::STATUS_FAILED, $payment->status);
+        $this->assertFalse($payment->isPaidOrBetter());
+        $this->assertNull($payment->invoice_number);
+        $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
+    public function test_late_capture_resolves_a_failed_attempt_by_payment_link_id_without_payment_id_notes(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $failed = $this->staleAttempt($app);
+        $failed->markFailedExpiredOrCancelled(Payment::STATUS_FAILED, 'GATEWAY_FAILED', 'Customer payment failed.');
+
+        $this->postWebhook(
+            $failed,
+            354000,
+            'INR',
+            'plink_old',
+            'pay_link_lookup_failed',
+            'evt_link_lookup_failed',
+            includePaymentIdNote: false,
+        )->assertOk();
+        $this->postWebhook(
+            $failed->fresh(),
+            354000,
+            'INR',
+            'plink_old',
+            'pay_link_lookup_failed',
+            'evt_link_lookup_failed',
+            includePaymentIdNote: false,
+        )->assertOk();
+
+        $failed->refresh();
+        $this->assertTrue($failed->isPaidOrBetter());
+        $this->assertSame('pay_link_lookup_failed', $failed->gateway_payment_id);
+        $this->assertSame(RazorpayPaymentService::CODE_SETTLED_ON_WITHDRAWN_LINK, $failed->error_code);
+        $this->assertSame(1, Payment::query()->whereNotNull('invoice_number')->count());
+    }
+
+    public function test_late_capture_resolves_an_expired_attempt_by_payment_link_id_without_payment_id_notes(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $expired = $this->staleAttempt($app);
+        $expired->markFailedExpiredOrCancelled(Payment::STATUS_EXPIRED, 'LINK_EXPIRED', 'Payment link expired.');
+
+        $this->postWebhook(
+            $expired,
+            354000,
+            'INR',
+            'plink_old',
+            'pay_link_lookup_expired',
+            'evt_link_lookup_expired',
+            includePaymentIdNote: false,
+        )->assertOk();
+
+        $expired->refresh();
+        $this->assertTrue($expired->isPaidOrBetter());
+        $this->assertSame('pay_link_lookup_expired', $expired->gateway_payment_id);
+        $this->assertSame(1, Payment::query()->whereNotNull('invoice_number')->count());
+    }
+
+    public function test_late_capture_with_only_application_id_settles_one_unambiguous_terminal_attempt(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $expired = $this->staleAttempt($app);
+        $expired->markFailedExpiredOrCancelled(Payment::STATUS_EXPIRED, 'LINK_EXPIRED', 'Payment link expired.');
+
+        $this->postWebhook(
+            $expired,
+            354000,
+            'INR',
+            'plink_old',
+            'pay_app_only_ok',
+            'evt_app_only_ok',
+            includeLink: false,
+            includePaymentIdNote: false,
+        )->assertOk();
+
+        $expired->refresh();
+        $this->assertTrue($expired->isPaidOrBetter());
+        $this->assertSame('pay_app_only_ok', $expired->gateway_payment_id);
+        $this->assertSame(1, Payment::query()->whereNotNull('invoice_number')->count());
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
+    public function test_late_capture_with_only_application_id_does_not_settle_when_multiple_attempts_match(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $first = $this->staleAttempt($app);
+        $first->markFailedExpiredOrCancelled(Payment::STATUS_FAILED, 'GATEWAY_FAILED', 'First failed.');
+        $second = Payment::query()->create([
+            'application_id' => $app->id,
+            'transaction_reference' => 'JNK-PAY-SECOND-TERM',
+            'gateway' => Payment::GATEWAY_RAZORPAY,
+            'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
+            'amount' => '3540.00',
+            'currency' => 'INR',
+            'status' => Payment::STATUS_EXPIRED,
+            'razorpay_link_id' => 'plink_second_term',
+        ]);
+
+        $response = $this->postWebhook(
+            $first,
+            354000,
+            'INR',
+            'plink_old',
+            'pay_ambiguous_app',
+            'evt_ambiguous_app',
+            includeLink: false,
+            includePaymentIdNote: false,
+        );
+
+        $response->assertStatus(202)->assertJsonPath('reason', 'payment_not_resolved');
+        $this->assertSame(Payment::STATUS_FAILED, $first->fresh()->status);
+        $this->assertSame(Payment::STATUS_EXPIRED, $second->fresh()->status);
+        $this->assertNull($first->fresh()->invoice_number);
+        $this->assertNull($second->fresh()->invoice_number);
+        $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+    }
+
+    public function test_duplicate_late_capture_on_a_second_terminal_attempt_is_flagged_without_a_second_invoice(): void
+    {
+        Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
+        $app = $this->application();
+        $settled = $this->staleAttempt($app);
+        $settled->forceFill([
+            'amount' => '4720.00',
+            'razorpay_link_id' => 'plink_settled_now',
+            'razorpay_link_url' => null,
+        ])->save();
+        $settled->markPaidOrCaptured(
+            targetStatus: Payment::STATUS_CAPTURED,
+            gatewayPaymentId: 'pay_settled_now',
+            gatewayEventId: 'evt_settled_now',
+            eventType: Payment::EVENT_PAYMENT_CAPTURED,
+            paidAt: now(),
+            capturedAt: now(),
+        );
+        app(ApplicationPaymentStateService::class)->afterSettled($settled);
+        app(InvoiceService::class)->assignSettlementDocuments($settled->fresh());
+        $invoice = $settled->fresh()->invoice_number;
+        $status = $app->fresh()->status;
+
+        $older = Payment::query()->create([
+            'application_id' => $app->id,
+            'transaction_reference' => 'JNK-PAY-OLDER-TERM',
+            'gateway' => Payment::GATEWAY_RAZORPAY,
+            'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
+            'amount' => '3540.00',
+            'currency' => 'INR',
+            'status' => Payment::STATUS_EXPIRED,
+            'razorpay_link_id' => 'plink_older_expired',
+        ]);
+
+        $this->postWebhook(
+            $older,
+            354000,
+            'INR',
+            'plink_older_expired',
+            'pay_older_expired_extra',
+            'evt_older_expired_extra',
+            includePaymentIdNote: false,
+        )->assertOk();
+        $this->postWebhook(
+            $older->fresh(),
+            354000,
+            'INR',
+            'plink_older_expired',
+            'pay_older_expired_extra',
+            'evt_older_expired_extra',
+            includePaymentIdNote: false,
+        )->assertOk();
+
+        $older->refresh();
+        $this->assertTrue($older->isPaidOrBetter());
+        $this->assertSame(RazorpayPaymentService::CODE_DUPLICATE_CAPTURE, $older->error_code);
+        $this->assertNull($older->invoice_number);
+        $this->assertSame($invoice, $settled->fresh()->invoice_number);
+        $this->assertSame($status, $app->fresh()->status);
+        $this->assertSame(1, Payment::query()->whereNotNull('invoice_number')->count());
+    }
+
     public function test_amount_and_link_mismatches_do_not_settle_a_withdrawn_link(): void
     {
         Config::set('services.razorpay.webhook_secret', 'whsec_corrections');
@@ -803,7 +1042,15 @@ class PricingBranchCorrectionsTest extends TestCase
         string $event = 'payment.captured',
         string $paymentStatus = 'captured',
         bool $includeLink = true,
+        bool $includePaymentIdNote = true,
     ) {
+        $notes = [
+            'application_id' => (string) $payment->application_id,
+        ];
+        if ($includePaymentIdNote) {
+            $notes['payment_id'] = (string) $payment->id;
+        }
+
         $payloadBody = [
             'payment' => [
                 'entity' => [
@@ -811,10 +1058,7 @@ class PricingBranchCorrectionsTest extends TestCase
                     'status' => $paymentStatus,
                     'amount' => $amountPaise,
                     'currency' => $currency,
-                    'notes' => [
-                        'payment_id' => (string) $payment->id,
-                        'application_id' => (string) $payment->application_id,
-                    ],
+                    'notes' => $notes,
                 ],
             ],
         ];
