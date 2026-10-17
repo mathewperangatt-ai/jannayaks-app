@@ -294,15 +294,17 @@ class Phase15MembershipLifecycleRenewalTest extends TestCase
         $pending2->update(['razorpay_link_id' => 'link_p15_wrongcur']);
         $this->postSignedMembershipWebhook($pending2, amountPaise: $pending2->totalPaise(), currency: 'USD')->assertStatus(409);
 
-        // Cancelled / superseded attempt cannot settle.
+        // A matching capture on a withdrawn renewal link is recorded and renews once.
         $pending3 = app(RazorpayPaymentService::class)->createMembershipRenewalPaymentLink($membership->fresh(), $member);
         $pending3->update(['razorpay_link_id' => 'link_p15_cancel']);
-        app(RazorpayPaymentService::class)->supersedeAttempt($pending3, 'cancelled in test');
+        $pending3->markFailedExpiredOrCancelled(Payment::STATUS_CANCELLED, 'SUPERSEDED', 'cancelled in test');
         $this->postSignedMembershipWebhook($pending3->fresh(), amountPaise: $pending3->totalPaise())
-            ->assertStatus(409);
-        $this->assertSame('inactive', $profile->fresh()->status);
+            ->assertOk();
+        $this->assertTrue($pending3->fresh()->isPaidOrBetter());
+        $this->assertSame('active', $membership->fresh()->status);
+        $this->assertSame('published', $profile->fresh()->status);
 
-        // Forged signature.
+        // Forged signature does not create another settlement.
         $pending4 = app(RazorpayPaymentService::class)->createMembershipRenewalPaymentLink($membership->fresh(), $member);
         $pending4->update(['razorpay_link_id' => 'link_p15_forged']);
         $payload = $this->membershipWebhookPayload($pending4, $pending4->totalPaise(), 'INR', 'evt_forged');
@@ -310,7 +312,7 @@ class Phase15MembershipLifecycleRenewalTest extends TestCase
             RazorpayWebhookVerifier::SIGNATURE_HEADER => 'deadbeef',
             'Content-Type' => 'application/json',
         ])->assertStatus(403);
-        $this->assertSame('inactive', $profile->fresh()->status);
+        $this->assertFalse($pending4->fresh()->isPaidOrBetter());
     }
 
     public function test_lifecycle_command_idempotent_and_catch_up_and_no_duplicate_reminders(): void

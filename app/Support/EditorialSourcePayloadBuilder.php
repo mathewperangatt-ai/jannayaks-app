@@ -15,6 +15,7 @@ final class EditorialSourcePayloadBuilder
      *
      * @return array{
      *   package_tier: string,
+     *   pricing_generation: string|null,
      *   source_method: string,
      *   display_name: string,
      *   interview_answers: list<array{question_id: string, answer: string}>,
@@ -55,6 +56,7 @@ final class EditorialSourcePayloadBuilder
 
         $payload = [
             'package_tier' => (string) $application->package_tier,
+            'pricing_generation' => $application->pricing_generation,
             'source_method' => (string) $application->source_method,
             'display_name' => $displayName,
             'interview_answers' => $answers,

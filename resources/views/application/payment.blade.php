@@ -172,6 +172,20 @@
                 {{ $ml ? 'ഡാഷ്‌ബോർഡിലേക്ക് തിരികെ പോകുക' : 'Back to Dashboard' }}
             </a>
         </div>
+    @elseif (!empty($quoteIsStale))
+        <div class="warnbox">
+            <div><b>{{ $ml ? 'നിലവിലെ തുക' : 'Current amount' }}: {{ $package['amount_incl_formatted'] ?? '' }}</b></div>
+            <div style="margin-top:4px;font-size:13px;color:#7a5100">{{ $ml ? 'മുമ്പത്തെ പേയ്‌മെൻ്റ് ലിങ്കിൽ പണമടയ്ക്കരുത്. അതിൽ നിങ്ങൾ ഇതിനകം പണമടച്ചിട്ടുണ്ടെങ്കിൽ ആ പേയ്‌മെൻ്റ് രേഖപ്പെടുത്തും. ആ ലിങ്ക് റദ്ദാക്കിയതോ പണമടച്ചതോ ആണെന്ന് ഉറപ്പാകും വരെ പുതിയ ലിങ്ക് തുടങ്ങില്ല.' : 'An earlier payment link must not be paid. If you already paid it, that payment will be recorded. A new link is not started until the earlier link is confirmed cancelled or paid.' }}</div>
+        </div>
+        <div class="actions">
+            <form id="pay-initiate-form" method="POST" action="{{ route('applications.payment.initiate', ['application' => $application->id]) }}" style="flex:1 1 260px;margin:0">
+                @csrf
+                <button class="btn primary block" type="submit" disabled aria-disabled="true">{{ $ml ? 'നിലവിലെ തുകയിൽ പുതിയ ലിങ്ക്' : 'Start a link at the current amount' }}</button>
+            </form>
+            <div class="sub" style="flex:1 1 100%">
+                {{ $ml ? 'ഓൺലൈൻ പേയ്‌മെൻ്റ് ഉടൻ ലഭ്യമാകും. പഴയ ലിങ്ക് ഉപയോഗിക്കരുത്.' : 'Online payment will be available shortly. Do not use the earlier link.' }}
+            </div>
+        </div>
     @elseif ($activePayment && $activePayment->razorpay_link_url)
         <div class="warnbox">
             <div><b>{{ $ml ? 'പേയ്‌മെൻ്റ് പുരോഗമിക്കുന്നു.' : 'Payment in progress.' }}</b></div>
@@ -252,7 +266,7 @@
                         <span class="note-safe" style="margin-top:2px;color:var(--bad)">{{ $ml ? 'കുറിപ്പ്' : 'Note' }}: {{ $p->error_message }}</span>
                     @endif
                 </div>
-                @if ($p->razorpay_link_url && $p->isActiveAttempt())
+                @if ($p->razorpay_link_url && $p->isActiveAttempt() && empty($quoteIsStale))
                     <a class="btn" style="padding:8px 12px;font-size:13px;min-height:36px" target="_blank" rel="noopener" href="{{ $p->razorpay_link_url }}">{{ $ml ? 'തുറക്കുക' : 'Open' }}</a>
                 @endif
             </div>

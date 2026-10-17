@@ -38,6 +38,8 @@ class Application extends Model
 
     public const STATUS_PUBLISHED = 'published';
 
+    public const PRICING_GENERATION_STANDARD = 'standard_profile';
+
     public const STATUS_ARCHIVED = 'archived';
 
     public const STATUS_CANCELLED = 'cancelled';
@@ -116,6 +118,7 @@ class Application extends Model
         'user_id',
         'source_method',
         'package_tier',
+        'pricing_generation',
         'full_name',
         'preferred_display_name',
         'preferred_slug',

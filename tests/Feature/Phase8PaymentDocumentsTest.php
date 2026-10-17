@@ -272,8 +272,8 @@ class Phase8PaymentDocumentsTest extends TestCase
         $this->assertSame(count($refs), count(array_unique($refs)));
     }
 
-    /** A. Cancelled/superseded success webhook cannot pay or unlock. */
-    public function test_cancelled_payment_success_webhook_cannot_settle_or_unlock(): void
+    /** A matching capture on a withdrawn link settles that attempt once. */
+    public function test_cancelled_payment_success_webhook_settles_matching_capture_once(): void
     {
         Config::set('services.razorpay.webhook_secret', 'whsec_phase8_super');
         Config::set('services.razorpay.enabled', false);
@@ -287,7 +287,7 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $old = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
         $old->forceFill(['razorpay_link_id' => 'plink_old_super'])->save();
-        app(RazorpayPaymentService::class)->supersedeAttempt($old, 'Test supersession.');
+        $old->markFailedExpiredOrCancelled(Payment::STATUS_CANCELLED, 'SUPERSEDED', 'Test supersession.');
         $old->refresh();
         $this->assertSame(Payment::STATUS_CANCELLED, $old->status);
 
@@ -331,13 +331,14 @@ class Phase8PaymentDocumentsTest extends TestCase
             ],
             $payload,
         );
-        $res->assertStatus(409)->assertJson(['ignored_superseded' => true]);
+        $res->assertOk()->assertJson(['paid' => true]);
 
         $old->refresh();
-        $this->assertSame(Payment::STATUS_CANCELLED, $old->status);
-        $this->assertFalse($old->isPaidOrBetter());
-        $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
-        $this->assertNull($old->invoice_number);
+        $this->assertTrue($old->isPaidOrBetter());
+        $this->assertSame('pay_super_old', $old->gateway_payment_id);
+        $this->assertSame(RazorpayPaymentService::CODE_SETTLED_ON_WITHDRAWN_LINK, $old->error_code);
+        $this->assertNotNull($old->invoice_number);
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
     }
 
     /** B. Re-initiating with a stale addon input never changes the amount. */

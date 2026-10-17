@@ -342,6 +342,46 @@ class Payment extends Model
         return $this;
     }
 
+    /**
+     * Narrow exception: a verified gateway capture may settle an attempt
+     * that was cancelled only after its link was withdrawn. Callers must
+     * already have matched the link id, stored amount, currency, and a
+     * real gateway payment id.
+     */
+    public function settleWithdrawnCapture(
+        string $targetStatus,
+        string $gatewayPaymentId,
+        ?string $gatewayEventId = null,
+        ?DateTimeInterface $paidAt = null,
+    ): self {
+        if ($this->isPaidOrBetter()) {
+            return $this;
+        }
+        if ($this->status !== self::STATUS_CANCELLED) {
+            return $this;
+        }
+        if (! in_array($targetStatus, [self::STATUS_PAID, self::STATUS_CAPTURED, self::STATUS_SUCCESS], true)) {
+            throw new InvalidArgumentException('Invalid settled status: '.$targetStatus);
+        }
+
+        $now = now();
+        $this->status = $targetStatus;
+        $this->gateway_payment_id = $gatewayPaymentId;
+        if ($gatewayEventId !== null && $gatewayEventId !== '') {
+            $this->gateway_event_id = $gatewayEventId;
+        }
+        $this->event_type = self::EVENT_PAYMENT_CAPTURED;
+        if ($this->paid_at === null) {
+            $this->paid_at = $paidAt ?? $now;
+        }
+        if ($this->captured_at === null) {
+            $this->captured_at = $paidAt ?? $now;
+        }
+        $this->save();
+
+        return $this;
+    }
+
     public function markRefunded(
         int|float|string $refundAmount,
         ?string $refundGatewayId = null,

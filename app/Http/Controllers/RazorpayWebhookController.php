@@ -163,7 +163,17 @@ class RazorpayWebhookController extends Controller
                 return ['status' => 200, 'body' => ['ok' => true, 'idempotent' => true, 'payment_id' => $payment->id]];
             }
 
-            return $this->applyEvent($event, $eventId, $eventTimestamp, $payment, $gatewayPaymentId, $gatewayLinkId, $orderId);
+            return $this->applyEvent(
+                $event,
+                $eventId,
+                $eventTimestamp,
+                $payment,
+                $gatewayPaymentId,
+                $gatewayLinkId,
+                $orderId,
+                $amountPaise,
+                $currency,
+            );
         });
 
         $status = $result['status'] ?? 200;
@@ -261,13 +271,7 @@ class RazorpayWebhookController extends Controller
 
         return Payment::query()
             ->where('id', '!=', $payment->id)
-            ->where(function ($q) use ($payment, $eventId) {
-                $q->where('gateway_event_id', $eventId);
-                if ($payment->application_id !== null) {
-                    $q->orWhere('application_id', $payment->application_id);
-                }
-            })
-            ->whereIn('status', [Payment::STATUS_PAID, Payment::STATUS_CAPTURED, Payment::STATUS_SUCCESS, Payment::STATUS_REFUNDED])
+            ->where('gateway_event_id', $eventId)
             ->exists();
     }
 
@@ -279,6 +283,8 @@ class RazorpayWebhookController extends Controller
         ?string $gatewayPaymentId,
         ?string $gatewayLinkId,
         ?string $orderId,
+        ?int $amountPaise,
+        ?string $currency,
     ): array {
         $successEvents = [
             'payment.captured',
@@ -306,6 +312,34 @@ class RazorpayWebhookController extends Controller
                     'status' => $payment->status,
                     'receipt_ref' => $payment->invoice_number,
                     'tax_invoice_ref' => $payment->tax_invoice_number,
+                ]];
+            }
+
+            if ($this->razorpay->withdrawnCaptureIsEligible($payment, $gatewayPaymentId, $gatewayLinkId, $amountPaise, $currency)) {
+                $settled = $this->razorpay->recordVerifiedCapture(
+                    $payment,
+                    (string) $gatewayPaymentId,
+                    $eventId !== '' ? $eventId : null,
+                    $eventTimestamp,
+                );
+                if (! $settled->isPaidOrBetter()) {
+                    return ['status' => 409, 'body' => [
+                        'ok' => false,
+                        'error' => 'Payment attempt is not active and cannot be settled.',
+                        'payment_id' => $payment->id,
+                        'status' => $payment->status,
+                        'ignored_superseded' => true,
+                    ]];
+                }
+
+                return ['status' => 200, 'body' => [
+                    'ok' => true,
+                    'paid' => true,
+                    'payment_id' => $settled->id,
+                    'status' => $settled->status,
+                    'receipt_ref' => $settled->invoice_number,
+                    'tax_invoice_ref' => $settled->tax_invoice_number,
+                    'reconciliation_code' => $settled->error_code,
                 ]];
             }
 
@@ -415,6 +449,10 @@ class RazorpayWebhookController extends Controller
 
     private function applySettledSideEffects(Payment $payment): void
     {
+        if ($payment->error_code === RazorpayPaymentService::CODE_DUPLICATE_CAPTURE) {
+            return;
+        }
+
         if ($payment->application_id !== null) {
             $this->stateService->afterSettled($payment);
         }

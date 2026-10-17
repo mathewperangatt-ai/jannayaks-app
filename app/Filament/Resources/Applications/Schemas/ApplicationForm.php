@@ -42,9 +42,12 @@ class ApplicationForm
                 ->columns(2),
             Section::make('Package & source')
                 ->schema([
+                    Placeholder::make('package_tier_label')
+                        ->label('Package')
+                        ->content(fn (?Application $record): string => TierLabels::staffLabel($record)),
                     TextInput::make('package_tier')
+                        ->label('Stored tier key')
                         ->disabled()
-                        ->formatStateUsing(fn (?string $state): string => TierLabels::label($state))
                         ->dehydrated(false),
                     TextInput::make('source_method')
                         ->disabled()

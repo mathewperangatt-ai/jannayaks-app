@@ -25,6 +25,11 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee('Create Profile', false);
         $response->assertSee('Sign In', false);
         $response->assertSee('In Memoriam', false);
+        $response->assertSee('Choose a name-based address', false);
+        $response->assertSee('arun.kumar', false);
+        $response->assertSee('arun.kumar12', false);
+        $response->assertDontSee('jj_nemom', false);
+        $response->assertDontSee('Create Your Own Handle', false);
         // The Editorial Preparation block was removed by the final frontend pass.
         $response->assertDontSee('Editorial Preparation');
         $response->assertDontSee('human editors', false);

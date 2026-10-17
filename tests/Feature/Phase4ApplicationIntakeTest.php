@@ -36,6 +36,7 @@ class Phase4ApplicationIntakeTest extends TestCase
         $this->assertDatabaseHas('applications', [
             'user_id'        => $user->id,
             'package_tier'   => 'distinguished',
+            'pricing_generation' => 'standard_profile',
             'source_method'  => 'online_interview',
             'full_name'      => 'Alice Example',
         ]);

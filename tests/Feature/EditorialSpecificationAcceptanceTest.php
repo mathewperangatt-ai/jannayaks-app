@@ -58,7 +58,7 @@ class EditorialSpecificationAcceptanceTest extends TestCase
         $this->assertTrue($run->isSuccessful());
         $system = $this->fakeAi->requests[0]['system'];
         $this->assertStringContainsString('Acclaimed: a substantially developed public-life feature', $system);
-        $this->assertStringContainsString('more editorial depth, NOT more words', $system);
+        $this->assertStringNotContainsString('More expensive means more editorial depth', $system);
     }
 
     // TEST 3 — Distinguished depth: deeper interpretation and selective detail, not a fact dump.

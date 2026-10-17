@@ -2,11 +2,14 @@
 
 namespace App\Services;
 
+use App\Exceptions\PaymentLinkStateUncertainException;
 use App\Models\Application;
 use App\Models\Membership;
 use App\Models\Payment;
 use App\Models\User;
 use App\Support\PricingAmounts;
+use Illuminate\Support\Facades\Log;
+use DateTimeInterface;
 use Illuminate\Http\Client\PendingRequest;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Http;
@@ -21,6 +24,16 @@ class RazorpayPaymentService
     public const TEST_KEY_PREFIX = 'rzp_test_';
 
     public const LIVE_KEY_PREFIX = 'rzp_live_';
+
+    public const RECONCILE_READY = 'ready';
+
+    public const RECONCILE_CAPTURED = 'captured';
+
+    public const RECONCILE_UNCERTAIN = 'uncertain';
+
+    public const CODE_SETTLED_ON_WITHDRAWN_LINK = 'SETTLED_ON_WITHDRAWN_LINK';
+
+    public const CODE_DUPLICATE_CAPTURE = 'DUPLICATE_CAPTURE_NEEDS_RECONCILIATION';
 
     public function createApplicationPaymentLink(Application $application): Payment
     {
@@ -45,6 +58,8 @@ class RazorpayPaymentService
                 ->get();
 
             $reusable = null;
+            $capturedAttempt = null;
+            $blockedByUncertainLink = false;
             foreach ($actives as $active) {
                 if ($active->totalPaise() === $totalPaise && $reusable === null) {
                     $reusable = $active;
@@ -52,7 +67,22 @@ class RazorpayPaymentService
                     continue;
                 }
 
-                $this->supersedeAttempt($active, 'Superseded by a newer payment attempt with a different amount or configuration.');
+                $outcome = $this->reconcileStaleAttempt($active, 'Superseded by a newer payment attempt with a different amount or configuration.');
+                if ($outcome === self::RECONCILE_CAPTURED) {
+                    $capturedAttempt = $active->fresh() ?? $active;
+                } elseif ($outcome === self::RECONCILE_UNCERTAIN) {
+                    $blockedByUncertainLink = true;
+                }
+            }
+
+            if ($capturedAttempt instanceof Payment) {
+                return $capturedAttempt;
+            }
+
+            if ($blockedByUncertainLink) {
+                throw new PaymentLinkStateUncertainException(
+                    'An earlier payment link is still being confirmed. A new link cannot be started yet.'
+                );
             }
 
             if ($reusable instanceof Payment
@@ -181,6 +211,8 @@ class RazorpayPaymentService
                 ->get();
 
             $reusable = null;
+            $capturedAttempt = null;
+            $blockedByUncertainLink = false;
             foreach ($actives as $active) {
                 if ($active->totalPaise() === $totalPaise && $reusable === null) {
                     $reusable = $active;
@@ -188,7 +220,22 @@ class RazorpayPaymentService
                     continue;
                 }
 
-                $this->supersedeAttempt($active, 'Superseded by a newer membership renewal attempt.');
+                $outcome = $this->reconcileStaleAttempt($active, 'Superseded by a newer membership renewal attempt.');
+                if ($outcome === self::RECONCILE_CAPTURED) {
+                    $capturedAttempt = $active->fresh() ?? $active;
+                } elseif ($outcome === self::RECONCILE_UNCERTAIN) {
+                    $blockedByUncertainLink = true;
+                }
+            }
+
+            if ($capturedAttempt instanceof Payment) {
+                return $capturedAttempt;
+            }
+
+            if ($blockedByUncertainLink) {
+                throw new PaymentLinkStateUncertainException(
+                    'An earlier renewal link is still being confirmed. A new link cannot be started yet.'
+                );
             }
 
             if ($reusable instanceof Payment
@@ -283,31 +330,17 @@ class RazorpayPaymentService
     }
 
     /**
-     * Mark a payment attempt superseded/cancelled in the database.
-     * Gateway link cancellation is best-effort and must not gate DB supersession.
+     * Withdraw a stale attempt only when the gateway confirms it is dead,
+     * or when no gateway link was ever issued. A failed or timed-out
+     * gateway check leaves the attempt active.
      */
     public function supersedeAttempt(Payment $payment, string $reason = 'Superseded by a newer payment attempt.'): void
     {
-        if ($payment->isSettled()) {
-            return;
-        }
-
-        if ($payment->status === Payment::STATUS_CANCELLED) {
-            return;
-        }
-
-        $this->cancelGatewayLinkBestEffort($payment);
-
-        $payment->markFailedExpiredOrCancelled(
-            Payment::STATUS_CANCELLED,
-            'SUPERSEDED',
-            mb_substr($reason, 0, 255),
-        );
-
-        // Keep razorpay_link_id for audit / late-webhook association; drop the usable URL.
-        if ($payment->razorpay_link_url !== null) {
-            $payment->razorpay_link_url = null;
-            $payment->save();
+        $outcome = $this->reconcileStaleAttempt($payment, $reason);
+        if ($outcome === self::RECONCILE_UNCERTAIN) {
+            throw new PaymentLinkStateUncertainException(
+                'An earlier payment link is still being confirmed. A new link cannot be started yet.'
+            );
         }
     }
 
@@ -316,22 +349,359 @@ class RazorpayPaymentService
         $this->supersedeAttempt($payment, 'Payment attempt cancelled.');
     }
 
-    private function cancelGatewayLinkBestEffort(Payment $payment): void
+    public function reconcileStaleAttempt(Payment $payment, string $reason): string
     {
-        if ($payment->razorpay_link_id === null || $payment->razorpay_link_id === '') {
+        if ($payment->isSettled()) {
+            return self::RECONCILE_CAPTURED;
+        }
+
+        if ($payment->status === Payment::STATUS_CANCELLED) {
+            return self::RECONCILE_READY;
+        }
+
+        $linkId = trim((string) $payment->razorpay_link_id);
+        if ($linkId === '') {
+            $this->markConfirmedWithdrawn($payment, $reason);
+
+            return self::RECONCILE_READY;
+        }
+
+        if (! $this->config()['enabled']) {
+            return self::RECONCILE_UNCERTAIN;
+        }
+
+        $snapshot = $this->fetchPaymentLink($linkId);
+        if ($snapshot === null) {
+            return self::RECONCILE_UNCERTAIN;
+        }
+
+        $status = strtolower((string) ($snapshot['status'] ?? ''));
+        if (in_array($status, ['cancelled', 'expired'], true)) {
+            $this->markConfirmedWithdrawn($payment, $reason);
+
+            return self::RECONCILE_READY;
+        }
+
+        if ($status === 'paid') {
+            return $this->recordGatewayPaidLink($payment, $snapshot) ? self::RECONCILE_CAPTURED : self::RECONCILE_UNCERTAIN;
+        }
+
+        $cancelled = $this->requestLinkCancellation($linkId);
+        if ($cancelled === null) {
+            return self::RECONCILE_UNCERTAIN;
+        }
+
+        $cancelledStatus = strtolower((string) ($cancelled['status'] ?? ''));
+        if (in_array($cancelledStatus, ['cancelled', 'expired'], true)) {
+            $this->markConfirmedWithdrawn($payment, $reason);
+
+            return self::RECONCILE_READY;
+        }
+
+        if ($cancelledStatus === 'paid') {
+            return $this->recordGatewayPaidLink($payment, $cancelled) ? self::RECONCILE_CAPTURED : self::RECONCILE_UNCERTAIN;
+        }
+
+        $refetched = $this->fetchPaymentLink($linkId);
+        if ($refetched === null) {
+            return self::RECONCILE_UNCERTAIN;
+        }
+
+        $refetchedStatus = strtolower((string) ($refetched['status'] ?? ''));
+        if (in_array($refetchedStatus, ['cancelled', 'expired'], true)) {
+            $this->markConfirmedWithdrawn($payment, $reason);
+
+            return self::RECONCILE_READY;
+        }
+
+        if ($refetchedStatus === 'paid') {
+            return $this->recordGatewayPaidLink($payment, $refetched) ? self::RECONCILE_CAPTURED : self::RECONCILE_UNCERTAIN;
+        }
+
+        return self::RECONCILE_UNCERTAIN;
+    }
+
+    /**
+     * Record a verified capture against this attempt. A withdrawn (cancelled)
+     * attempt may settle only through Payment::settleWithdrawnCapture().
+     * A second settled payment for the same application or membership is
+     * stored and flagged, without another unlock or service invoice.
+     */
+    public function recordVerifiedCapture(
+        Payment $payment,
+        string $gatewayPaymentId,
+        ?string $gatewayEventId = null,
+        ?DateTimeInterface $paidAt = null,
+    ): Payment {
+        if (! $this->isPlausibleGatewayPaymentId($gatewayPaymentId)) {
+            return $payment;
+        }
+
+        if ($payment->isPaidOrBetter()) {
+            return $payment;
+        }
+
+        $duplicate = $this->anotherSettledPaymentExists($payment);
+        $paidAt = $paidAt ?? now();
+
+        if ($payment->status === Payment::STATUS_CANCELLED) {
+            $payment->settleWithdrawnCapture(
+                targetStatus: Payment::STATUS_CAPTURED,
+                gatewayPaymentId: $gatewayPaymentId,
+                gatewayEventId: $gatewayEventId,
+                paidAt: $paidAt,
+            );
+        } elseif ($payment->isActiveAttempt()) {
+            $payment->markPaidOrCaptured(
+                targetStatus: Payment::STATUS_CAPTURED,
+                gatewayPaymentId: $gatewayPaymentId,
+                gatewayEventId: $gatewayEventId,
+                eventType: Payment::EVENT_PAYMENT_CAPTURED,
+                paidAt: $paidAt,
+                capturedAt: $paidAt,
+            );
+        } else {
+            return $payment;
+        }
+
+        if (! $payment->isPaidOrBetter()) {
+            return $payment;
+        }
+
+        if ($payment->razorpay_link_url !== null) {
+            $payment->razorpay_link_url = null;
+        }
+
+        $payment->error_code = $duplicate ? self::CODE_DUPLICATE_CAPTURE : self::CODE_SETTLED_ON_WITHDRAWN_LINK;
+        $payment->error_message = mb_substr(
+            $duplicate
+                ? 'Verified capture recorded after another payment had already settled. Staff reconciliation is required. No second invoice was issued.'
+                : 'Verified capture on a link that was no longer the current quote. The payment was recorded once.',
+            0,
+            255,
+        );
+        $payment->save();
+
+        if (! $duplicate) {
+            $this->applyFirstSettlement($payment);
+        }
+
+        return $payment->fresh() ?? $payment;
+    }
+
+    public function withdrawnCaptureIsEligible(
+        Payment $payment,
+        ?string $gatewayPaymentId,
+        ?string $gatewayLinkId,
+        ?int $amountPaise,
+        ?string $currency,
+    ): bool {
+        if ($payment->status !== Payment::STATUS_CANCELLED) {
+            return false;
+        }
+        if (! $this->isPlausibleGatewayPaymentId($gatewayPaymentId)) {
+            return false;
+        }
+        $storedLinkId = trim((string) $payment->razorpay_link_id);
+        $incomingLinkId = trim((string) $gatewayLinkId);
+        if ($storedLinkId === '' || $incomingLinkId === '' || $incomingLinkId !== $storedLinkId) {
+            return false;
+        }
+        if ($amountPaise === null || abs($amountPaise - $payment->totalPaise()) > 1) {
+            return false;
+        }
+        if ($currency === null || strtoupper($currency) !== PricingAmounts::CURRENCY || ! $payment->currencyIsInr()) {
+            return false;
+        }
+
+        return true;
+    }
+
+    private function markConfirmedWithdrawn(Payment $payment, string $reason): void
+    {
+        if ($payment->isSettled() || $payment->status === Payment::STATUS_CANCELLED) {
             return;
         }
 
-        $config = $this->config();
-        if (! $config['enabled']) {
-            return;
+        $payment->markFailedExpiredOrCancelled(
+            Payment::STATUS_CANCELLED,
+            'SUPERSEDED',
+            mb_substr($reason, 0, 255),
+        );
+
+        if ($payment->razorpay_link_url !== null) {
+            $payment->razorpay_link_url = null;
+            $payment->save();
+        }
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function fetchPaymentLink(string $linkId): ?array
+    {
+        try {
+            $response = $this->http()->get(self::RAZORPAY_LINKS_ENDPOINT.'/'.urlencode($linkId));
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! $response->successful() || ! is_array($response->json())) {
+            return null;
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function requestLinkCancellation(string $linkId): ?array
+    {
+        try {
+            $response = $this->http()->post(self::RAZORPAY_LINKS_ENDPOINT.'/'.urlencode($linkId).'/cancel');
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! is_array($response->json())) {
+            return null;
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * @param  array<string, mixed>  $link
+     */
+    private function recordGatewayPaidLink(Payment $payment, array $link): bool
+    {
+        $linkAmount = isset($link['amount']) ? (int) $link['amount'] : null;
+        $linkCurrency = isset($link['currency']) ? (string) $link['currency'] : null;
+        if ($linkAmount === null || abs($linkAmount - $payment->totalPaise()) > 1) {
+            return false;
+        }
+        if ($linkCurrency === null || strtoupper($linkCurrency) !== PricingAmounts::CURRENCY) {
+            return false;
+        }
+
+        $gatewayPaymentId = $this->paymentIdFromLink($link);
+        if ($gatewayPaymentId === null) {
+            return false;
+        }
+
+        $details = $this->fetchGatewayPayment($gatewayPaymentId);
+        if ($details === null) {
+            return false;
+        }
+        if ((string) ($details['id'] ?? '') !== $gatewayPaymentId) {
+            return false;
+        }
+        $detailAmount = isset($details['amount']) ? (int) $details['amount'] : null;
+        $detailCurrency = isset($details['currency']) ? (string) $details['currency'] : null;
+        $detailStatus = strtolower((string) ($details['status'] ?? ''));
+        if ($detailAmount === null || abs($detailAmount - $payment->totalPaise()) > 1) {
+            return false;
+        }
+        if ($detailCurrency === null || strtoupper($detailCurrency) !== PricingAmounts::CURRENCY) {
+            return false;
+        }
+        if (! in_array($detailStatus, ['captured', 'authorized'], true)) {
+            return false;
+        }
+
+        $this->recordVerifiedCapture($payment, $gatewayPaymentId, null, now());
+
+        return $payment->fresh()?->isPaidOrBetter() === true;
+    }
+
+    /**
+     * @return array<string, mixed>|null
+     */
+    private function fetchGatewayPayment(string $gatewayPaymentId): ?array
+    {
+        try {
+            $response = $this->http()->get('https://api.razorpay.com/v1/payments/'.urlencode($gatewayPaymentId));
+        } catch (\Throwable) {
+            return null;
+        }
+
+        if (! $response->successful() || ! is_array($response->json())) {
+            return null;
+        }
+
+        return $response->json();
+    }
+
+    /**
+     * @param  array<string, mixed>  $link
+     */
+    private function paymentIdFromLink(array $link): ?string
+    {
+        $payments = $link['payments'] ?? null;
+        if (! is_array($payments) || $payments === []) {
+            return null;
+        }
+
+        $first = $payments[0];
+        if (is_string($first) && $this->isPlausibleGatewayPaymentId($first)) {
+            return $first;
+        }
+        if (is_array($first) && isset($first['id']) && $this->isPlausibleGatewayPaymentId((string) $first['id'])) {
+            return (string) $first['id'];
+        }
+
+        return null;
+    }
+
+    private function isPlausibleGatewayPaymentId(?string $id): bool
+    {
+        return is_string($id) && preg_match('/^pay_[A-Za-z0-9_]{3,64}$/', $id) === 1;
+    }
+
+    private function anotherSettledPaymentExists(Payment $payment): bool
+    {
+        if ($payment->application_id === null && $payment->membership_id === null) {
+            return false;
+        }
+
+        return Payment::query()
+            ->where('id', '!=', $payment->id)
+            ->where(function ($query) use ($payment): void {
+                $matched = false;
+                if ($payment->application_id !== null) {
+                    $query->where('application_id', $payment->application_id);
+                    $matched = true;
+                }
+                if ($payment->membership_id !== null) {
+                    if ($matched) {
+                        $query->orWhere('membership_id', $payment->membership_id);
+                    } else {
+                        $query->where('membership_id', $payment->membership_id);
+                    }
+                }
+            })
+            ->whereIn('status', [Payment::STATUS_PAID, Payment::STATUS_CAPTURED, Payment::STATUS_SUCCESS])
+            ->exists();
+    }
+
+    private function applyFirstSettlement(Payment $payment): void
+    {
+        if ($payment->application_id !== null) {
+            app(ApplicationPaymentStateService::class)->afterSettled($payment);
+        }
+
+        if ($payment->item_type === Payment::ITEM_MEMBERSHIP && $payment->membership_id !== null) {
+            app(MembershipLifecycleService::class)->applySettledRenewal($payment->fresh() ?? $payment);
         }
 
         try {
-            $url = self::RAZORPAY_LINKS_ENDPOINT.'/'.urlencode($payment->razorpay_link_id).'/cancel';
-            $this->http()->post($url);
-        } catch (\Throwable) {
-            // Database supersession remains authoritative even if gateway cancel fails.
+            app(InvoiceService::class)->assignSettlementDocuments($payment);
+        } catch (\Throwable $e) {
+            Log::warning('Settlement document assignment failed.', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
         }
     }
 

@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Exceptions\PaymentLinkStateUncertainException;
 use App\Models\Application;
 use App\Models\Payment;
 use App\Models\SourceMaterial;
@@ -120,7 +121,7 @@ class ApplicationController extends Controller
         $validator = Validator::make($request->all(), [
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
-            'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$/'],
+            'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-][a-z0-9]+)*$/'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
@@ -227,7 +228,7 @@ class ApplicationController extends Controller
         $validator = Validator::make($request->all(), [
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
-            'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$/'],
+            'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-][a-z0-9]+)*$/'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
@@ -252,6 +253,7 @@ class ApplicationController extends Controller
                 'user_id' => $user->id,
                 'source_method' => (string) $validated['source_method'],
                 'package_tier' => PricingAmounts::STANDARD_INTERNAL_TIER,
+                'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
                 'full_name' => (string) $validated['full_name'],
                 'preferred_display_name' => (string) $validated['full_name'],
                 'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
@@ -541,8 +543,14 @@ class ApplicationController extends Controller
                 ] : null,
                 'payments_count' => $payments->count(),
             ];
-            if ($activePayment && $request->user() && (int) $activePayment->application?->user_id === (int) Auth::id()) {
+            $quoteIsStale = $this->activePaymentQuoteIsStale($activePayment, $package);
+            if ($activePayment && ! $quoteIsStale && $request->user() && (int) $activePayment->application?->user_id === (int) Auth::id()) {
                 $summary['active_payment']['razorpay_link_url'] = $activePayment->razorpay_link_url;
+            }
+            $summary['quote_is_stale'] = $quoteIsStale;
+            if ($quoteIsStale && is_array($package)) {
+                $summary['current_amount'] = $package['amount_incl_formatted'] ?? null;
+                $summary['stale_link_notice'] = 'An earlier payment link must not be paid. The current amount is shown above.';
             }
 
             return response()->json(['ok' => true, 'payment' => $summary]);
@@ -555,6 +563,7 @@ class ApplicationController extends Controller
             'activePayment' => $activePayment,
             'settledPayment' => $settledPayment,
             'isSettled' => $settledPayment !== null,
+            'quoteIsStale' => $this->activePaymentQuoteIsStale($activePayment, $package),
             'language' => $this->flowLanguage($request),
             'paymentsTestingMode' => \App\Services\ApplicationPaymentStateService::testingModeActive(),
         ]);
@@ -604,6 +613,15 @@ class ApplicationController extends Controller
             /** @var RazorpayPaymentService $svc */
             $svc = app(RazorpayPaymentService::class);
             $payment = $svc->createApplicationPaymentLink($application);
+        } catch (PaymentLinkStateUncertainException $e) {
+            $message = $this->flowLanguage($request) === 'ml'
+                ? 'മുൻ പേയ്‌മെൻ്റ് ലിങ്ക് സ്ഥിരീകരിക്കുന്നതുവരെ പുതിയ ലിങ്ക് ആരംഭിക്കാനാവില്ല. ആ ലിങ്കിൽ പണമടയ്ക്കരുത്.'
+                : 'An earlier payment link is still being confirmed. Do not pay it. A new link cannot be started yet.';
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'error' => $message], 409);
+            }
+
+            return back()->withErrors(['payment' => $message]);
         } catch (\Throwable $e) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -613,6 +631,24 @@ class ApplicationController extends Controller
             }
 
             return back()->withErrors(['payment' => 'Payment initiation failed. Please try again in a moment.']);
+        }
+
+        if ($payment->isPaidOrBetter()) {
+            $message = 'A payment on the earlier link was confirmed and recorded.';
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => true,
+                    'already_settled' => true,
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                    'message' => $message,
+                    'redirect_to' => route('applications.payment', ['application' => $application->id]),
+                ], 200);
+            }
+
+            return redirect()
+                ->route('applications.payment', ['application' => $application->id])
+                ->with('payment_initiated', $message);
         }
 
         $redirectTo = $payment->razorpay_link_url
@@ -646,6 +682,18 @@ class ApplicationController extends Controller
         }
 
         return redirect()->route('login')->withErrors(['auth' => $message]);
+    }
+
+    /**
+     * @param  array<string, mixed>|null  $package
+     */
+    private function activePaymentQuoteIsStale(?Payment $activePayment, ?array $package): bool
+    {
+        if (! $activePayment instanceof Payment || ! is_array($package) || ! isset($package['amount_incl_paise'])) {
+            return false;
+        }
+
+        return $activePayment->totalPaise() !== (int) $package['amount_incl_paise'];
     }
 
     /**

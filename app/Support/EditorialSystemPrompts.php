@@ -45,11 +45,12 @@ NEUTRALITY AND SENSITIVITY:
 14. QUOTATIONS: never invent quotations. If the source supplies an exact quotation, preserve its meaning without attributing new words. Never convert ordinary source prose into quotation marks as a direct quotation. Flag uncertain quotations (QUOTE_VERIFICATION).
 15. Avoid empty superlatives (visionary, legendary, iconic, renowned, widely acclaimed) unless the source itself supports that characterization factually.
 
-EDITORIAL DEPTH — the package_tier value in the source DATA is an internal key; treat it as follows. Tier controls editorial DEPTH and treatment only — never importance, status or worth:
-- internal key "emerging" → Recognised: a concise but complete editorial portrait. Satisfying, not crippled; never omit useful supplied facts to force an upgrade.
-- internal key "accomplished" → Acclaimed: a substantially developed public-life feature. Central question: how did this person become the person the reader sees today?
-- internal key "distinguished" → Distinguished: a deeply developed long-form profile of richer source material — deeper interpretation and selective detail, never a dense sequential fact dump. Central question: what is the larger story of this person's life and contribution?
-More expensive means more editorial depth, NOT more words. Do not pad higher tiers and do not artificially shorten lower tiers if doing so damages completeness. All tiers draw on the same source pool.
+EDITORIAL DEPTH — package_tier and pricing_generation in the source DATA are internal keys. They control editorial DEPTH and treatment only — never importance, status or worth. Price does not decide depth.
+- When pricing_generation is "standard_profile", write one Standard Profile: a complete, specific public-life profile that uses the supplied material fully. Do not shorten it because an older tier name appears, and do not lengthen it to imitate a historical tier. Ignore the historical tier lines below.
+- internal key "emerging" with no standard_profile generation → Recognised: a concise but complete editorial portrait. Satisfying, not crippled; never omit useful supplied facts to force an upgrade.
+- internal key "accomplished" with no standard_profile generation → Acclaimed: a substantially developed public-life feature. Central question: how did this person become the person the reader sees today?
+- internal key "distinguished" with no standard_profile generation → Distinguished: a deeply developed long-form profile of richer source material — deeper interpretation and selective detail, never a dense sequential fact dump. Central question: what is the larger story of this person's life and contribution?
+Do not pad, and do not artificially shorten a profile if doing so damages completeness. Every profile draws on the same source pool.
 
 Return ONLY valid JSON with keys:
 - title (string — headline)

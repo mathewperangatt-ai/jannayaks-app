@@ -66,7 +66,7 @@
             </div>
             <div class="field">
                 <label for="preferred_slug">{{ $ml ? 'ആഗ്രഹിക്കുന്ന വ്യക്തിഗത URL (ഓപ്ഷണൽ നിർദ്ദേശം)' : 'Preferred personal URL (optional hint)' }}</label>
-                <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
+                <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
                 <div class="hint">{{ $ml ? 'ഇത് ഓപ്ഷണലാണ്. നിങ്ങളുടെ സ്ഥിരീകരിച്ച പേര് രേഖപ്പെടുത്തിയ ശേഷം, arun.kumar പോലുള്ള ലഭ്യമായ പേരിനെ അടിസ്ഥാനമാക്കിയുള്ള URL-കൾ Jannayaks നിർദ്ദേശിക്കും. നിങ്ങൾ സ്വയം ഒരു username സൃഷ്ടിക്കേണ്ടതില്ല.' : 'Optional. After your verified name is on file, Jannayaks will suggest available name-based URLs such as arun.kumar. You do not invent a username.' }}</div>
                 @error('preferred_slug')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
