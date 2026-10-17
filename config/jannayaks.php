@@ -25,31 +25,41 @@ return [
         'currency' => 'INR',
         'gst_percent' => 18,
         /*
-        | Commercial model (Master Editorial Specification §12, confirmed):
-        | Internal storage keys are retained (emerging/accomplished/distinguished);
-        | customer-facing tier names come from these labels / App\Support\TierLabels.
-        | base_amount is EXCLUSIVE of GST — the customer pays base + GST at checkout.
-        | Annual membership renewal is tier-priced (same annual tier price).
+        | One public Standard Profile. Living charges are GST-exclusive.
+        | New applications: pricing_generation=standard_profile, internal
+        | package_tier=distinguished (editorial depth key only).
+        | Historical emerging/accomplished/distinguished rows keep null
+        | pricing_generation and their original package base amounts / media
+        | entitlements below. Do not reprice those rows from standard_profile.
+        | There is no launch discount and no crossed-out comparison price.
         */
+        'standard_profile' => [
+            'internal_tier' => 'distinguished',
+            'label' => 'Standard Profile',
+            'base_amount' => 4000,
+            'description' => 'Standard Profile fee, exclusive of GST.',
+            'photo_slots' => 3,
+            'includes_video_link' => false,
+        ],
         'packages' => [
             'emerging' => [
                 'label' => 'Recognised',
                 'base_amount' => 3000,
-                'description' => 'Annual profile package.',
+                'description' => 'Historical Recognised package (pre-Standard Profile).',
                 'photo_slots' => 1,
                 'includes_video_link' => false,
             ],
             'accomplished' => [
                 'label' => 'Acclaimed',
-                'base_amount' => 6000,
-                'description' => 'Annual profile package.',
+                'base_amount' => 8000,
+                'description' => 'Historical Acclaimed package (pre-Standard Profile).',
                 'photo_slots' => 3,
                 'includes_video_link' => true,
             ],
             'distinguished' => [
                 'label' => 'Distinguished',
-                'base_amount' => 9000,
-                'description' => 'Annual profile package.',
+                'base_amount' => 25000,
+                'description' => 'Historical Distinguished package (pre-Standard Profile). New Standard Profile apps use standard_profile pricing via pricing_generation.',
                 'includes_video_link' => true,
                 'photo_slots' => 5,
             ],
@@ -76,19 +86,20 @@ return [
                 env('JANNAYAKS_BILLING_SUPPORT_EMAIL', 'hello@jannayaks.in')
             ),
         ],
-        /*
-        | Flat-rate 'membership' block removed: annual membership renewal is now
-        | tier-priced at the member's applicable annual tier price (see
-        | PricingAmounts::forTierRenewal()). Cycle length remains 1 year.
-        */
         'membership' => [
             'label' => 'Annual Membership',
             'cycle_years' => 1,
         ],
+        'renewal' => [
+            'label' => 'Annual renewal',
+            'base_amount' => 1800,
+            'gst_inclusive' => false,
+            'description' => 'Annual renewal of publication and hosting, exclusive of GST.',
+        ],
         'revision' => [
-            'label' => 'Profile Revision / Update',
-            'base_amount' => 2000,
-            'description' => 'Interim profile revision or content update.',
+            'label' => 'Full profile rewrite',
+            'base_amount' => 3000,
+            'description' => 'Full profile rewrite, exclusive of GST. A maintenance request does not collect this payment.',
         ],
     ],
 
@@ -216,7 +227,7 @@ return [
         'editorial' => [
             // Two included pre-publication revision rounds are part of initial prep (P11). Not paid.
             'included_prepublication_revision_rounds' => 2,
-            // Post-publication meaningful revision uses tier_pricing.revision (₹2,000 + GST) — not in P10.
+            // A full profile rewrite is priced at tier_pricing.revision (₹3,000 + GST). A maintenance request does not collect it.
         ],
         'image_enhancement' => [
             // KILL SWITCH — disabled by default. When false: no candidate is
@@ -357,5 +368,21 @@ PROMPT,
             // Technical abuse ceiling — not a product-tier entitlement.
             'max_per_profile' => (int) env('MEDIA_VIDEO_LINKS_MAX_PER_PROFILE', 10),
         ],
+    ],
+
+    /*
+    | Scheduled capture recovery for payment attempts whose webhook retries
+    | may have stopped. Intervals are fixed: 30 minutes, then 2h, 6h, 12h,
+    | 24h, then one check a day for seven days (12 checks). The scheduler
+    | command performs no gateway calls when Razorpay is disabled.
+    */
+    'payment_reconciliation' => [
+        'batch_size' => 20,
+        'minimum_age_minutes' => 30,
+        'max_checks' => 12,
+        'staff_minimum_seconds' => 120,
+        'max_payments_per_link' => 5,
+        // Failed/cancelled/expired attempts older than this are not auto-polled.
+        'terminal_recovery_max_age_days' => 14,
     ],
 ];

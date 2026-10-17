@@ -185,7 +185,7 @@ class InvoiceService
 
         $packageDescription = 'Profile package';
         if ($application !== null && in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
-            $amt = PricingAmounts::forApplicationPackage($application->package_tier);
+            $amt = PricingAmounts::forApplication($application);
             $packageDescription = $amt['label'] ?? $packageDescription;
         }
 

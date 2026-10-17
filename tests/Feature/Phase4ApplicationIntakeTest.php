@@ -31,11 +31,12 @@ class Phase4ApplicationIntakeTest extends TestCase
             'contact_email'  => 'alice@example.com',
         ]);
 
-        $res->assertCreated()->assertJson(['ok' => true, 'package_tier' => 'accomplished']);
+        $res->assertCreated()->assertJson(['ok' => true, 'package_tier' => 'distinguished']);
         $this->assertStringContainsString('/payment', (string) $res->json('redirect_to'));
         $this->assertDatabaseHas('applications', [
             'user_id'        => $user->id,
-            'package_tier'   => 'accomplished',
+            'package_tier'   => 'distinguished',
+            'pricing_generation' => 'standard_profile',
             'source_method'  => 'online_interview',
             'full_name'      => 'Alice Example',
         ]);
@@ -55,7 +56,7 @@ class Phase4ApplicationIntakeTest extends TestCase
                 'full_name'      => $tier.' Person',
                 'contact_email'  => $tier.'@example.com',
             ])->assertCreated();
-            $this->assertSame($tier, (string) Application::query()->latest('id')->first()->package_tier);
+            $this->assertSame('distinguished', (string) Application::query()->latest('id')->first()->package_tier);
         }
     }
 
@@ -129,18 +130,19 @@ class Phase4ApplicationIntakeTest extends TestCase
         $this->assertNotContains($emergingRequiredIds[0], $progressPartial['missing_required'], true);
     }
 
-    /* 7. Progressive unlocking per tier */
-    public function test_progressive_unlocking_matches_tier(): void
+    /* 7. One shared 22-question pool for every living package key */
+    public function test_living_tiers_share_the_full_question_pool(): void
     {
         $emerging = OnlineInterviewCatalog::idsForTier('emerging');
-        $accomp   = OnlineInterviewCatalog::idsForTier('accomplished');
-        $dist     = OnlineInterviewCatalog::idsForTier('distinguished');
+        $accomp = OnlineInterviewCatalog::idsForTier('accomplished');
+        $dist = OnlineInterviewCatalog::idsForTier('distinguished');
 
-        // Same comprehensive source pool for ALL living tiers (spec §17).
+        // Same comprehensive source pool for Standard Profile and historical living keys.
         $this->assertCount(22, $emerging);
         $this->assertSame($emerging, $accomp);
         $this->assertSame($emerging, $dist);
         $this->assertContains('q22', $emerging);
+        $this->assertSame($emerging, OnlineInterviewCatalog::idsForTier(null));
 
         // Q1 is the ONLY required question; everything else is optional.
         $requiredIds = array_values(array_filter(array_map(

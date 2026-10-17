@@ -45,7 +45,11 @@ class ApplicationsTable
                 TextColumn::make('package_tier')
                     ->label('Package')
                     ->badge()
-                    ->formatStateUsing(fn (?string $state): string => TierLabels::label($state))
+                    ->formatStateUsing(function (?string $state, $record): string {
+                        return $record instanceof Application
+                            ? TierLabels::staffLabel($record)
+                            : TierLabels::label($state);
+                    })
                     ->sortable(),
                 TextColumn::make('source_method')
                     ->label('Source')

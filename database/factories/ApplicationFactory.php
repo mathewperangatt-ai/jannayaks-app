@@ -23,13 +23,24 @@ class ApplicationFactory extends Factory
         return [
             'user_id'               => User::factory(),
             'source_method'         => 'online_interview',
-            'package_tier'          => 'emerging',
+            // Factory defaults match new Standard Profile intake. Historical
+            // rows must set pricing_generation => null (and their package_tier).
+            'package_tier'          => 'distinguished',
+            'pricing_generation'    => Application::PRICING_GENERATION_STANDARD,
             'full_name'             => fake()->name(),
             'preferred_display_name' => fake()->name(),
             'preferred_contact_email'  => fake()->unique()->safeEmail(),
             'preferred_contact_mobile' => '9198'.fake()->numerify('########'),
             'intake_started_at'     => now(),
         ];
+    }
+
+    public function historical(?string $tier = 'emerging'): self
+    {
+        return $this->state(fn () => [
+            'package_tier' => $tier,
+            'pricing_generation' => null,
+        ]);
     }
 
     public function directSubmission(): self

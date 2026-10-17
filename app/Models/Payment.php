@@ -149,6 +149,8 @@ class Payment extends Model
             'invoice_issued_at' => 'datetime',
             'tax_invoice_issued_at' => 'datetime',
             'credit_note_issued_at' => 'datetime',
+            'gateway_checked_at' => 'datetime',
+            'gateway_check_count' => 'integer',
         ];
     }
 
@@ -230,6 +232,19 @@ class Payment extends Model
         ], true);
     }
 
+    /**
+     * Locally terminal attempts that may still receive a verified late capture.
+     * Ordinary transitions must not resurrect these; only settleWithdrawnCapture().
+     */
+    public function isLateCaptureTerminal(): bool
+    {
+        return in_array($this->status, [
+            self::STATUS_FAILED,
+            self::STATUS_CANCELLED,
+            self::STATUS_EXPIRED,
+        ], true);
+    }
+
     public function isSettled(): bool
     {
         return in_array($this->status, [
@@ -269,6 +284,35 @@ class Payment extends Model
             // no initiated_at column; leave timestamps alone
         }
         $this->save();
+
+        return $this;
+    }
+
+    /**
+     * Record a gateway authorization without treating it as captured.
+     * Status, invoices, and workflow stay unchanged. The schema has no
+     * authorized status, so an in-progress attempt remains initiated or pending.
+     */
+    public function rememberGatewayAuthorization(?string $gatewayPaymentId, ?string $gatewayEventId): self
+    {
+        if ($this->isPaidOrBetter() || $this->isRefunded()) {
+            return $this;
+        }
+
+        $dirty = false;
+        if (is_string($gatewayPaymentId) && $gatewayPaymentId !== ''
+            && ($this->gateway_payment_id === null || $this->gateway_payment_id === '')) {
+            $this->gateway_payment_id = $gatewayPaymentId;
+            $dirty = true;
+        }
+        if (is_string($gatewayEventId) && $gatewayEventId !== ''
+            && ($this->gateway_event_id === null || $this->gateway_event_id === '')) {
+            $this->gateway_event_id = $gatewayEventId;
+            $dirty = true;
+        }
+        if ($dirty) {
+            $this->save();
+        }
 
         return $this;
     }
@@ -336,6 +380,47 @@ class Payment extends Model
         }
         if ($eventType !== null && $eventType !== '') {
             $this->event_type = $eventType;
+        }
+        $this->save();
+
+        return $this;
+    }
+
+    /**
+     * Narrow exception: a verified gateway capture may settle an attempt that
+     * was cancelled, failed, or expired after its link was withdrawn or closed.
+     * Callers must already have matched the link id, stored amount, currency,
+     * and a real gateway payment id with status captured. This bypasses
+     * canTransitionTo(); do not use it for ordinary status changes.
+     */
+    public function settleWithdrawnCapture(
+        string $targetStatus,
+        string $gatewayPaymentId,
+        ?string $gatewayEventId = null,
+        ?DateTimeInterface $paidAt = null,
+    ): self {
+        if ($this->isPaidOrBetter()) {
+            return $this;
+        }
+        if (! $this->isLateCaptureTerminal()) {
+            return $this;
+        }
+        if (! in_array($targetStatus, [self::STATUS_PAID, self::STATUS_CAPTURED, self::STATUS_SUCCESS], true)) {
+            throw new InvalidArgumentException('Invalid settled status: '.$targetStatus);
+        }
+
+        $now = now();
+        $this->status = $targetStatus;
+        $this->gateway_payment_id = $gatewayPaymentId;
+        if ($gatewayEventId !== null && $gatewayEventId !== '') {
+            $this->gateway_event_id = $gatewayEventId;
+        }
+        $this->event_type = self::EVENT_PAYMENT_CAPTURED;
+        if ($this->paid_at === null) {
+            $this->paid_at = $paidAt ?? $now;
+        }
+        if ($this->captured_at === null) {
+            $this->captured_at = $paidAt ?? $now;
         }
         $this->save();
 

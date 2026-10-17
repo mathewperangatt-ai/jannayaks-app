@@ -7,7 +7,7 @@
             <span class="tag">PROFILE MEDIA</span>
             <h1 style="margin-top:8px">Photographs &amp; video</h1>
             <p class="lead" style="margin:0">
-                Package: <b>{{ ucfirst($tier) }}</b> —
+                {{ \App\Support\PricingAmounts::isLivingTier((string) $tier) ? 'Standard Profile' : ucfirst((string) $tier) }} —
                 {{ $count }} of {{ $limit }} photograph{{ $limit === 1 ? '' : 's' }} used.
             </p>
         </div>

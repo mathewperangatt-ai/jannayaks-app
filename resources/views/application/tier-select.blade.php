@@ -8,7 +8,7 @@
 <section class="card stack">
     <div>
         <span class="tag">STEP 1 OF 3</span>
-        <span class="list-pill">Select package tier</span>
+        <span class="list-pill">Standard Profile</span>
         <span style="float:right" role="navigation" aria-label="Language">
             @if($ml)
                 <a class="list-pill" style="text-decoration:none" href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" lang="en">English</a>
@@ -19,61 +19,23 @@
             @endif
         </span>
     </div>
-    <h1>Choose how deep we go.</h1>
+    <h1>{{ $ml ? 'നിങ്ങളുടെ പ്രൊഫൈൽ അപേക്ഷ ആരംഭിക്കുക' : 'Begin your profile application' }}</h1>
     <p class="sub">
-        Tier selection is <b>unrestricted</b>. Jannayaks does not check profession, public-office status, age, geography or achievements to decide your eligibility.
-        Every tier answers the same complete Online Interview; your choice controls the editorial depth and treatment.
+        {{ $ml ? 'ഒരു Standard Profile മാത്രമേയുള്ളൂ. എല്ലാവരും ഒരേ ഓൺലൈൻ അഭിമുഖത്തിന് ഉത്തരം നൽകുന്നു.' : 'There is one Standard Profile. Everyone answers the same Online Interview.' }}
     </p>
 
+    @php($standardQuote = \App\Support\PricingAmounts::forStandardProfile())
+    @php($renewalQuote = \App\Support\PricingAmounts::forTierRenewal(\App\Support\PricingAmounts::STANDARD_INTERNAL_TIER))
     <div class="warnbox" role="note" aria-label="Pricing note">
-        After you choose a tier and sign in, <b>payment comes next</b>. The Online Interview and source-material uploads unlock after payment is settled.
-        The prices below are exclusive of GST; 18% GST is added at payment. Tiers renew annually at the same tier price.
+        {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം പേയ്‌മെന്റ് വരും.' : 'After you sign in, payment comes next.' }}
+        <b>{{ $standardQuote['base_formatted'] }} + GST</b>.
+        {{ $ml ? 'വാർഷിക പുതുക്കൽ' : 'Annual renewal is' }}
+        <b>{{ $renewalQuote['base_formatted'] }} + GST</b>.
     </div>
 
     <form method="POST" action="{{ route('apply.intent') }}" novalidate>
         @csrf
         <input type="hidden" name="honey_bot" value="" maxlength="0" autocomplete="off" tabindex="-1" aria-hidden="true">
-
-        <div class="grid tiers" role="radiogroup" aria-label="Package tier selection">
-            @php
-                $packages = config('jannayaks.tier_pricing.packages', []);
-                $tierNamesMl = [
-                    'emerging' => 'ജനകീയർ',
-                    'accomplished' => 'ജനസമ്മതർ',
-                    'distinguished' => 'പ്രഗൽഭർ',
-                ];
-                $tiers = ['emerging' => [
-                    'title' => \App\Support\TierLabels::label('emerging'),
-                    'sections' => ['Full Online Interview — all questions', 'Concise but complete editorial portrait (EN + ML)', '1 photo slot', 'Human editorial review before publication'],
-                    'include' => ['Same complete Online Interview as every tier', '1 photo slot', 'Documentary editorial treatment', 'Review + approval before publication'],
-                ], 'accomplished' => [
-                    'title' => \App\Support\TierLabels::label('accomplished'),
-                    'sections' => ['Full Online Interview — all questions', 'Substantially developed editorial feature (EN + ML)', '3 photo slots', 'Video link'],
-                    'include' => ['Same complete Online Interview as every tier', '3 photo slots', 'Video link', 'Expanded contribution editorial'],
-                ], 'distinguished' => [
-                    'title' => \App\Support\TierLabels::label('distinguished'),
-                    'sections' => ['Full Online Interview — all questions', 'Deeply developed long-form editorial profile (EN + ML)', '5 photo slots', 'Optional direct personal interview via external professional service (add-on)'],
-                    'include' => ['Same complete Online Interview as every tier', '5 photo slots', 'Video link'],
-                ]];
-            @endphp
-            @foreach (['emerging', 'accomplished', 'distinguished'] as $tier)
-                @php $pkg = $packages[$tier] ?? []; $meta = $tiers[$tier]; $amt = number_format((int)($pkg['base_amount'] ?? 0)); @endphp
-                <label class="tier">
-                    <input type="radio" name="package_tier" value="{{ $tier }}" @if(old('package_tier')===$tier) checked @endif required>
-                    <h3>
-                        <span>{{ $meta['title'] }}</span>
-                        <span class="tier-name-ml" style="display:block;font-size:12px;font-weight:500;color:var(--ink-soft)">{{ $tierNamesMl[$tier] }}</span>
-                    </h3>
-                    <div class="price">₹{{ $amt }}<span style="font-size:12px;color:var(--ink-soft);font-weight:600;margin-left:6px">+ GST / year</span></div>
-                    <ul>
-                        @foreach ($meta['sections'] as $s)
-                            <li>{{ $s }}</li>
-                        @endforeach
-                    </ul>
-                </label>
-            @endforeach
-        </div>
-        @error('package_tier')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
 
         <div class="divider"></div>
 
@@ -104,7 +66,7 @@
             </div>
             <div class="field">
                 <label for="preferred_slug">{{ $ml ? 'ആഗ്രഹിക്കുന്ന വ്യക്തിഗത URL (ഓപ്ഷണൽ നിർദ്ദേശം)' : 'Preferred personal URL (optional hint)' }}</label>
-                <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-_][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
+                <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
                 <div class="hint">{{ $ml ? 'ഇത് ഓപ്ഷണലാണ്. നിങ്ങളുടെ സ്ഥിരീകരിച്ച പേര് രേഖപ്പെടുത്തിയ ശേഷം, arun.kumar പോലുള്ള ലഭ്യമായ പേരിനെ അടിസ്ഥാനമാക്കിയുള്ള URL-കൾ Jannayaks നിർദ്ദേശിക്കും. നിങ്ങൾ സ്വയം ഒരു username സൃഷ്ടിക്കേണ്ടതില്ല.' : 'Optional. After your verified name is on file, Jannayaks will suggest available name-based URLs such as arun.kumar. You do not invent a username.' }}</div>
                 @error('preferred_slug')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>

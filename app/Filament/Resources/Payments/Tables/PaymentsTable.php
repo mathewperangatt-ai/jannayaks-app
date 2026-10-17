@@ -23,6 +23,7 @@ class PaymentsTable
                 TextColumn::make('invoice_number')->toggleable(),
                 TextColumn::make('tax_invoice_number')->toggleable(),
                 TextColumn::make('paid_at')->dateTime()->sortable(),
+                TextColumn::make('error_code')->label('Reconciliation')->toggleable(),
             ])
             ->defaultSort('id', 'desc')
             ->filters([

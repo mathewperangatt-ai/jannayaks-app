@@ -56,7 +56,7 @@ class ApplicationInfolist
                         ->label('Tier')
                         ->badge()
                         ->color('primary')
-                        ->state(fn (?Application $record): string => TierLabels::label((string) $record->package_tier)),
+                        ->state(fn (?Application $record): string => TierLabels::staffLabel($record)),
                     TextEntry::make('profile_publication')
                         ->label('Publication')
                         ->badge()

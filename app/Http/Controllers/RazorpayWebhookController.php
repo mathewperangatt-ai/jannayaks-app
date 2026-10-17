@@ -72,6 +72,7 @@ class RazorpayWebhookController extends Controller
         $orderId = null;
         $amountPaise = null;
         $currency = null;
+        $paymentEntityStatus = null;
         $notes = [];
 
         if (is_array($paymentPayload)) {
@@ -79,6 +80,7 @@ class RazorpayWebhookController extends Controller
             $orderId = isset($paymentPayload['order_id']) && $paymentPayload['order_id'] !== null ? (string) $paymentPayload['order_id'] : null;
             $amountPaise = isset($paymentPayload['amount']) ? (int) $paymentPayload['amount'] : null;
             $currency = isset($paymentPayload['currency']) ? (string) $paymentPayload['currency'] : null;
+            $paymentEntityStatus = isset($paymentPayload['status']) ? (string) $paymentPayload['status'] : null;
             if (isset($paymentPayload['notes']) && is_array($paymentPayload['notes'])) {
                 $notes = $paymentPayload['notes'];
             }
@@ -113,6 +115,8 @@ class RazorpayWebhookController extends Controller
             transactionRef: is_string($linkPayload['reference_id'] ?? null) ? (string) $linkPayload['reference_id'] : null,
             applicationId: $applicationId,
             event: $event,
+            amountPaise: $amountPaise,
+            currency: $currency,
         );
 
         if (! $payment instanceof Payment) {
@@ -133,6 +137,31 @@ class RazorpayWebhookController extends Controller
 
         $eventTimestamp = $createdAt !== null ? Carbon::createFromTimestamp($createdAt) : null;
 
+        $captureNeedsConfirmation = $this->isSettlementCaptureEvent($event)
+            && strtolower(trim((string) $paymentEntityStatus)) !== 'captured'
+            && ! $this->isDuplicateEvent($payment, $eventId, $event);
+
+        if ($captureNeedsConfirmation) {
+            $confirmedPaymentId = $this->razorpay->captureIsConfirmedByGateway(
+                $payment,
+                $gatewayPaymentId,
+                $gatewayLinkId,
+            );
+            if (! is_string($confirmedPaymentId)) {
+                return response()->json([
+                    'ok' => false,
+                    'paid' => false,
+                    'capture_confirmed' => false,
+                    'retryable' => true,
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                ], 503);
+            }
+
+            $paymentEntityStatus = 'captured';
+            $gatewayPaymentId = $confirmedPaymentId;
+        }
+
         $result = DB::transaction(function () use (
             $event,
             $eventId,
@@ -143,6 +172,7 @@ class RazorpayWebhookController extends Controller
             $orderId,
             $amountPaise,
             $currency,
+            $paymentEntityStatus,
         ) {
             $payment = Payment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
 
@@ -163,7 +193,18 @@ class RazorpayWebhookController extends Controller
                 return ['status' => 200, 'body' => ['ok' => true, 'idempotent' => true, 'payment_id' => $payment->id]];
             }
 
-            return $this->applyEvent($event, $eventId, $eventTimestamp, $payment, $gatewayPaymentId, $gatewayLinkId, $orderId);
+            return $this->applyEvent(
+                $event,
+                $eventId,
+                $eventTimestamp,
+                $payment,
+                $gatewayPaymentId,
+                $gatewayLinkId,
+                $orderId,
+                $amountPaise,
+                $currency,
+                $paymentEntityStatus,
+            );
         });
 
         $status = $result['status'] ?? 200;
@@ -179,36 +220,160 @@ class RazorpayWebhookController extends Controller
         ?string $transactionRef,
         ?int $applicationId,
         string $event,
+        ?int $amountPaise = null,
+        ?string $currency = null,
     ): ?Payment {
-        $candidates = [];
         if ($paymentId !== null) {
-            $candidates[] = Payment::query()->find($paymentId);
-        }
-        if ($gatewayPaymentId !== null && $gatewayPaymentId !== '') {
-            $candidates[] = Payment::query()->where('gateway_payment_id', $gatewayPaymentId)->first();
-        }
-        if ($gatewayLinkId !== null && $gatewayLinkId !== '') {
-            $candidates[] = Payment::query()->where('razorpay_link_id', $gatewayLinkId)->first();
-        }
-        if ($transactionRef !== null && $transactionRef !== '') {
-            $candidates[] = Payment::query()->where('transaction_reference', $transactionRef)->first();
-        }
-        if ($applicationId !== null) {
-            $q = Payment::query()->where('application_id', $applicationId);
-            if (stripos($event, 'fail') !== false || stripos($event, 'cancel') !== false || stripos($event, 'expire') !== false) {
-                $candidates[] = (clone $q)->latest('id')->first();
-            } else {
-                $candidates[] = (clone $q)->activeAttempts()->latest('id')->first();
+            $byId = Payment::query()->find($paymentId);
+            if ($byId instanceof Payment) {
+                return $byId;
             }
         }
 
-        foreach ($candidates as $c) {
-            if ($c instanceof Payment) {
-                return $c;
+        $byGatewayPayment = $this->resolveUniqueColumnMatch('gateway_payment_id', $gatewayPaymentId);
+        if ($byGatewayPayment instanceof Payment) {
+            return $byGatewayPayment;
+        }
+        if ($byGatewayPayment === false) {
+            return null;
+        }
+
+        // Exact stored link id, including failed / expired / cancelled attempts.
+        $byLink = $this->resolveUniqueColumnMatch('razorpay_link_id', $gatewayLinkId);
+        if ($byLink instanceof Payment) {
+            return $byLink;
+        }
+        if ($byLink === false) {
+            return null;
+        }
+
+        if ($transactionRef !== null && $transactionRef !== '') {
+            $byRef = $this->resolveUniqueColumnMatch('transaction_reference', $transactionRef);
+            if ($byRef instanceof Payment) {
+                return $byRef;
             }
+            if ($byRef === false) {
+                return null;
+            }
+        }
+
+        if ($applicationId !== null) {
+            return $this->resolvePaymentByApplication(
+                $applicationId,
+                $event,
+                $gatewayPaymentId,
+                $gatewayLinkId,
+                $amountPaise,
+                $currency,
+            );
         }
 
         return null;
+    }
+
+    /**
+     * @return Payment|null|false Payment on unique hit, null when the value is
+     *                            absent or unmatched (keep looking), false when
+     *                            multiple rows match (do not guess).
+     */
+    private function resolveUniqueColumnMatch(string $column, ?string $value): Payment|null|false
+    {
+        if ($value === null || $value === '') {
+            return null;
+        }
+
+        $matches = Payment::query()->where($column, $value)->orderBy('id')->get();
+        if ($matches->count() === 0) {
+            return null;
+        }
+        if ($matches->count() > 1) {
+            return false;
+        }
+
+        $payment = $matches->first();
+
+        return $payment instanceof Payment ? $payment : false;
+    }
+
+    /**
+     * Fallback when notes carry only application_id. Settlement events must not
+     * pick an arbitrary active attempt: require one unambiguous match on amount,
+     * currency, and any provided gateway identifiers. Fail/cancel/expire events
+     * keep the prior latest-row behaviour.
+     */
+    private function resolvePaymentByApplication(
+        int $applicationId,
+        string $event,
+        ?string $gatewayPaymentId,
+        ?string $gatewayLinkId,
+        ?int $amountPaise,
+        ?string $currency,
+    ): ?Payment {
+        if (! $this->isSettlementCaptureEvent($event)) {
+            return Payment::query()
+                ->where('application_id', $applicationId)
+                ->latest('id')
+                ->first();
+        }
+
+        $candidates = Payment::query()
+            ->where('application_id', $applicationId)
+            ->where(function ($query) use ($gatewayPaymentId): void {
+                $query->whereIn('status', [
+                    Payment::STATUS_PENDING,
+                    Payment::STATUS_INITIATED,
+                    Payment::STATUS_FAILED,
+                    Payment::STATUS_CANCELLED,
+                    Payment::STATUS_EXPIRED,
+                ]);
+                if (is_string($gatewayPaymentId) && $gatewayPaymentId !== '') {
+                    $query->orWhere(function ($settled) use ($gatewayPaymentId): void {
+                        $settled->whereIn('status', [
+                            Payment::STATUS_PAID,
+                            Payment::STATUS_CAPTURED,
+                            Payment::STATUS_SUCCESS,
+                        ])->where('gateway_payment_id', $gatewayPaymentId);
+                    });
+                }
+            })
+            ->orderBy('id')
+            ->get()
+            ->filter(function (Payment $payment) use ($gatewayPaymentId, $gatewayLinkId, $amountPaise, $currency): bool {
+                if (is_string($gatewayLinkId) && $gatewayLinkId !== '') {
+                    $storedLink = trim((string) $payment->razorpay_link_id);
+                    if ($storedLink !== '' && $storedLink !== $gatewayLinkId) {
+                        return false;
+                    }
+                }
+                if (is_string($gatewayPaymentId) && $gatewayPaymentId !== '') {
+                    $storedGateway = trim((string) $payment->gateway_payment_id);
+                    if ($storedGateway !== '' && $storedGateway !== $gatewayPaymentId) {
+                        return false;
+                    }
+                }
+                if ($amountPaise !== null) {
+                    $expected = $payment->totalPaise();
+                    if ($expected > 0 && abs($amountPaise - $expected) > 1) {
+                        return false;
+                    }
+                }
+                if (is_string($currency) && $currency !== '') {
+                    if (! $payment->currencyIsInr() || strtoupper($currency) !== PricingAmounts::CURRENCY) {
+                        return false;
+                    }
+                }
+
+                return true;
+            })
+            ->values();
+
+        if ($candidates->count() !== 1) {
+            return null;
+        }
+
+        $payment = $candidates->first();
+
+        return $payment instanceof Payment ? $payment : null;
     }
 
     private function checkAssociations(Payment $payment, ?string $gatewayLinkId, ?string $orderId): bool
@@ -261,13 +426,7 @@ class RazorpayWebhookController extends Controller
 
         return Payment::query()
             ->where('id', '!=', $payment->id)
-            ->where(function ($q) use ($payment, $eventId) {
-                $q->where('gateway_event_id', $eventId);
-                if ($payment->application_id !== null) {
-                    $q->orWhere('application_id', $payment->application_id);
-                }
-            })
-            ->whereIn('status', [Payment::STATUS_PAID, Payment::STATUS_CAPTURED, Payment::STATUS_SUCCESS, Payment::STATUS_REFUNDED])
+            ->where('gateway_event_id', $eventId)
             ->exists();
     }
 
@@ -279,22 +438,44 @@ class RazorpayWebhookController extends Controller
         ?string $gatewayPaymentId,
         ?string $gatewayLinkId,
         ?string $orderId,
+        ?int $amountPaise,
+        ?string $currency,
+        ?string $paymentEntityStatus,
     ): array {
-        $successEvents = [
-            'payment.captured',
-            'payment.authorized',
-            'payment.paid',
-            'payment_link.paid',
-            'order.paid',
-        ];
         $failEvents = [
             'payment.failed',
             'payment_link.expired',
         ];
 
         $lower = strtolower($event);
+        $entityStatus = strtolower(trim((string) $paymentEntityStatus));
 
-        if (in_array($lower, $successEvents, true)) {
+        if ($lower === 'payment.authorized' || ($entityStatus === 'authorized' && ! $this->isSettlementCaptureEvent($lower))) {
+            return $this->acknowledgeAuthorization($payment, $gatewayPaymentId, $eventId);
+        }
+
+        if ($this->isSettlementCaptureEvent($lower)) {
+            if ($entityStatus !== 'captured') {
+                return ['status' => 503, 'body' => [
+                    'ok' => false,
+                    'paid' => false,
+                    'capture_confirmed' => false,
+                    'retryable' => true,
+                    'event' => $event,
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                ]];
+            }
+
+            if (! $this->razorpay->isPlausibleGatewayPaymentId($gatewayPaymentId)) {
+                return ['status' => 409, 'body' => [
+                    'ok' => false,
+                    'error' => 'Captured webhook is missing a valid gateway payment ID.',
+                    'payment_id' => $payment->id,
+                    'status' => $payment->status,
+                ]];
+            }
+
             if ($payment->isPaidOrBetter()) {
                 $this->applySettledSideEffects($payment);
 
@@ -306,6 +487,34 @@ class RazorpayWebhookController extends Controller
                     'status' => $payment->status,
                     'receipt_ref' => $payment->invoice_number,
                     'tax_invoice_ref' => $payment->tax_invoice_number,
+                ]];
+            }
+
+            if ($this->razorpay->withdrawnCaptureIsEligible($payment, $gatewayPaymentId, $gatewayLinkId, $amountPaise, $currency)) {
+                $settled = $this->razorpay->recordVerifiedCapture(
+                    $payment,
+                    (string) $gatewayPaymentId,
+                    $eventId !== '' ? $eventId : null,
+                    $eventTimestamp,
+                );
+                if (! $settled->isPaidOrBetter()) {
+                    return ['status' => 409, 'body' => [
+                        'ok' => false,
+                        'error' => 'Payment attempt is not active and cannot be settled.',
+                        'payment_id' => $payment->id,
+                        'status' => $payment->status,
+                        'ignored_superseded' => true,
+                    ]];
+                }
+
+                return ['status' => 200, 'body' => [
+                    'ok' => true,
+                    'paid' => true,
+                    'payment_id' => $settled->id,
+                    'status' => $settled->status,
+                    'receipt_ref' => $settled->invoice_number,
+                    'tax_invoice_ref' => $settled->tax_invoice_number,
+                    'reconciliation_code' => $settled->error_code,
                 ]];
             }
 
@@ -413,8 +622,45 @@ class RazorpayWebhookController extends Controller
         ]];
     }
 
+    private function isSettlementCaptureEvent(string $event): bool
+    {
+        return in_array(strtolower($event), [
+            'payment.captured',
+            'payment.paid',
+            'payment_link.paid',
+            'order.paid',
+        ], true);
+    }
+
+    private function acknowledgeAuthorization(Payment $payment, ?string $gatewayPaymentId, string $eventId): array
+    {
+        if (! $this->razorpay->isPlausibleGatewayPaymentId($gatewayPaymentId)) {
+            return ['status' => 409, 'body' => [
+                'ok' => false,
+                'error' => 'Authorized webhook is missing a valid gateway payment ID.',
+                'payment_id' => $payment->id,
+                'status' => $payment->status,
+                'paid' => false,
+            ]];
+        }
+
+        $payment->rememberGatewayAuthorization($gatewayPaymentId, $eventId !== '' ? $eventId : null);
+
+        return ['status' => 200, 'body' => [
+            'ok' => true,
+            'authorized' => true,
+            'paid' => false,
+            'payment_id' => $payment->id,
+            'status' => $payment->status,
+        ]];
+    }
+
     private function applySettledSideEffects(Payment $payment): void
     {
+        if ($payment->error_code === RazorpayPaymentService::CODE_DUPLICATE_CAPTURE) {
+            return;
+        }
+
         if ($payment->application_id !== null) {
             $this->stateService->afterSettled($payment);
         }

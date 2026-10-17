@@ -2,6 +2,8 @@
 
 namespace App\Support;
 
+use App\Models\Application;
+
 /**
  * Single source of truth mapping internal tier identifiers to the approved
  * customer-facing tier names (Master Editorial Specification §12).
@@ -34,6 +36,24 @@ final class TierLabels
         }
 
         return self::LABELS[$key] ?? ucfirst($key);
+    }
+
+    public static function staffLabel(?Application $application): string
+    {
+        if ($application === null) {
+            return '—';
+        }
+
+        if ($application->pricing_generation === Application::PRICING_GENERATION_STANDARD) {
+            return 'Standard Profile (distinguished)';
+        }
+
+        return match ((string) $application->package_tier) {
+            'emerging' => 'Recognised — historical',
+            'accomplished' => 'Acclaimed — historical',
+            'distinguished' => 'Distinguished — historical',
+            default => self::label($application->package_tier),
+        };
     }
 
     /**

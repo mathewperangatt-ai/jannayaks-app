@@ -20,7 +20,7 @@ class Phase6PaymentSecurityTest extends TestCase
 {
     use RefreshDatabase;
 
-    /* 1. Correct Recognised amount (₹3,000 + GST, GST-exclusive model). */
+    /* 1–3. Historical living tiers keep pre-Standard Profile package amounts. */
     public function test_pricing_recognised_amount_3000_plus_gst(): void
     {
         $amt = PricingAmounts::forTier('emerging');
@@ -33,38 +33,36 @@ class Phase6PaymentSecurityTest extends TestCase
         $this->assertSame(18.0, $amt['gst_rate_percent']);
         $this->assertSame('₹3,000.00', $amt['base_formatted']);
         $this->assertSame('₹3,540.00', $amt['amount_incl_formatted']);
+        $this->assertArrayNotHasKey('compare_at', $amt);
     }
 
-    /* 2. Correct Acclaimed amount (₹6,000 + GST, GST-exclusive model). */
     public function test_pricing_acclaimed_amount_6000_plus_gst(): void
     {
         $amt = PricingAmounts::forTier('accomplished');
-        $this->assertSame('INR', $amt['currency']);
-        $this->assertSame(6000 * 100, $amt['base_paise']);
-        $this->assertSame(108000, $amt['gst_paise']);
-        $this->assertSame(708000, $amt['amount_incl_paise']);
+        $this->assertSame(8000 * 100, $amt['base_paise']);
+        $this->assertSame(144000, $amt['gst_paise']);
+        $this->assertSame(944000, $amt['amount_incl_paise']);
         $this->assertFalse($amt['gst_inclusive']);
     }
 
-    /* 3. Correct Distinguished amount (₹9,000 + GST, GST-exclusive model). */
     public function test_pricing_distinguished_amount_9000_plus_gst(): void
     {
         $amt = PricingAmounts::forTier('distinguished');
-        $this->assertSame('INR', $amt['currency']);
-        $this->assertSame(9000 * 100, $amt['base_paise']);
-        $this->assertSame(162000, $amt['gst_paise']);
-        $this->assertSame(1062000, $amt['amount_incl_paise']);
+        $this->assertSame(25000 * 100, $amt['base_paise']);
+        $this->assertSame(450000, $amt['gst_paise']);
+        $this->assertSame(2950000, $amt['amount_incl_paise']);
         $this->assertFalse($amt['gst_inclusive']);
     }
 
     /* 4. Correct GST-exclusive calculation (18% added on top of base). */
     public function test_gst_exclusive_calculation_base_plus_gst_equals_total_exactly(): void
     {
-        foreach (['emerging' => 3000, 'accomplished' => 6000, 'distinguished' => 9000] as $tier => $rupees) {
+        foreach (['emerging' => 3000, 'accomplished' => 8000, 'distinguished' => 25000] as $tier => $rupees) {
             $amt = PricingAmounts::forTier($tier);
             $totalPaise = (int) $amt['amount_incl_paise'];
             $basePaise = (int) $amt['base_paise'];
             $gstPaise = (int) $amt['gst_paise'];
+            $this->assertSame($rupees * 100, $basePaise, "Tier $tier base must match historical amount.");
             $this->assertSame($totalPaise, $basePaise + $gstPaise, "Tier $tier base+gst must equal total.");
 
             $this->assertSame((int) round($basePaise * 0.18), $gstPaise, 'GST must be 18% added on top of the base.');
@@ -73,17 +71,24 @@ class Phase6PaymentSecurityTest extends TestCase
                 $this->assertSame($gstPaise, (int) $amt['cgst_paise'] + (int) $amt['sgst_paise']);
             }
         }
+
+        $standard = PricingAmounts::forStandardProfile();
+        $this->assertSame(472000, $standard['amount_incl_paise']);
+        $this->assertSame((int) $standard['gst_paise'], (int) $standard['cgst_paise'] + (int) $standard['sgst_paise']);
     }
 
     /* 5. Client cannot override amount — payment initiation uses server authoritative amount. */
     public function test_client_amount_override_rejected_server_amount_authoritative(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
-        $app = Application::factory(['user_id' => $user->id, 'package_tier' => 'emerging'])->create();
+        $app = Application::factory(['user_id' => $user->id])->create([
+            'package_tier' => 'distinguished',
+            'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
+        ]);
         Config::set('services.razorpay.enabled', false);
 
         $maliciousPayload = [
-            'package_tier' => 'distinguished',
+            'package_tier' => 'emerging',
             'override_amount_paise' => 100,
         ];
 
@@ -93,10 +98,11 @@ class Phase6PaymentSecurityTest extends TestCase
         );
         $res->assertStatus(201);
         $payment = Payment::query()->latest('id')->firstOrFail();
-        $this->assertSame(354000, $payment->totalPaise());
+        $this->assertSame(472000, $payment->totalPaise());
         $this->assertSame('INR', strtoupper((string) $payment->currency));
         $this->assertSame(Payment::STATUS_INITIATED, $payment->status);
-        $this->assertSame('emerging', (string) $app->fresh()->package_tier);
+        $this->assertSame('distinguished', (string) $app->fresh()->package_tier);
+        $this->assertSame(Application::PRICING_GENERATION_STANDARD, $app->fresh()->pricing_generation);
     }
 
     /* 6. INR enforced — non-INR throws or rejected. */
@@ -175,8 +181,9 @@ class Phase6PaymentSecurityTest extends TestCase
                     'entity' => [
                         'id' => 'pay_test9999',
                         'order_id' => null,
-                        'amount' => 354000,
+                        'amount' => 472000,
                         'currency' => 'INR',
+                        'status' => 'captured',
                         'notes' => [
                             'payment_id' => (string) $payment->id,
                             'application_id' => (string) $app->id,
@@ -247,6 +254,7 @@ class Phase6PaymentSecurityTest extends TestCase
                         'id' => 'pay_wrongamt',
                         'amount' => 100,
                         'currency' => 'INR',
+                        'status' => 'captured',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
                     ],
                 ],
@@ -284,8 +292,9 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_usd',
-                        'amount' => 354000,
+                        'amount' => 472000,
                         'currency' => 'USD',
+                        'status' => 'captured',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
                     ],
                 ],
@@ -323,8 +332,9 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_stale1',
-                        'amount' => 708000,
+                        'amount' => 472000,
                         'currency' => 'INR',
+                        'status' => 'captured',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
                     ],
                 ],
@@ -362,8 +372,9 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_idem1',
-                        'amount' => 354000,
+                        'amount' => 472000,
                         'currency' => 'INR',
+                        'status' => 'captured',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
                     ],
                 ],
@@ -412,8 +423,9 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_already',
-                        'amount' => 354000,
+                        'amount' => 472000,
                         'currency' => 'INR',
+                        'status' => 'captured',
                         'notes' => [
                             'payment_id' => (string) $payment->id,
                             'application_id' => (string) $app->id,
@@ -456,8 +468,9 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_downstream_fail',
-                        'amount' => 354000,
+                        'amount' => 472000,
                         'currency' => 'INR',
+                        'status' => 'captured',
                         'notes' => [
                             'payment_id' => (string) $payment->id,
                             'application_id' => (string) $app->id,

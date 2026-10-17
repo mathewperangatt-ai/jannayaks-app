@@ -143,7 +143,7 @@ class SeoMetadataTest extends TestCase
             '/in-memoriam' => 'In Memoriam on Jannayaks',
             '/recommend' => 'Recommend someone whose life',
             '/request-invitation' => 'Request an invitation to create a Jannayaks profile',
-            '/faq-charges' => 'Jannayaks membership charges',
+            '/faq-charges' => 'Jannayaks Standard Profile charges',
         ] as $path => $fragment) {
             $response = $this->get($path);
             $response->assertOk();

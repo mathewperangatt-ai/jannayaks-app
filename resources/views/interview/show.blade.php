@@ -4,13 +4,12 @@
 @php
     $isSubmitted = (bool) $readOnly;
     $sectionLabels = config('online_interview.sections', []);
-    $tierMap = ['emerging' => \App\Support\TierLabels::label('emerging'),'accomplished' => \App\Support\TierLabels::label('accomplished'),'distinguished' => \App\Support\TierLabels::label('distinguished')];
 @endphp
 
 <section class="card {{ $isSubmitted ? 'readonly' : '' }}" aria-label="Online Interview">
     <div class="row" style="justify-content:space-between;align-items:flex-start">
         <div>
-            <span class="tag">ONLINE INTERVIEW · {{ strtoupper($tierMap[(string)($package_tier ?? 'emerging')] ?? '') }}</span>
+            <span class="tag">ONLINE INTERVIEW</span>
             @if($isSubmitted)
                 <span class="tag ok" style="margin-left:6px">SUBMITTED · READ-ONLY</span>
             @endif
@@ -101,15 +100,12 @@
                                 rows="6"
                                 maxlength="20000"
                                 data-qid="{{ $qid }}"
-                                @if($isSubmitted || !in_array($qid, $allowed_qids, true))
+                                @if($isSubmitted)
                                     disabled readonly aria-disabled="true"
                                 @endif
                             >{{ old('answers.'.$qid, $existing) }}</textarea>
                             <div class="hint bytes" data-count-for="{{ $qid }}">
                                 @if($existing !== '') {{ mb_strlen($existing) }} characters saved. @else 0 characters @endif
-                                @if(!in_array($qid, $allowed_qids, true))
-                                     · <span style="color:var(--bad);font-weight:700">Locked for this tier</span>
-                                @endif
                             </div>
                         </div>
                         @if(!$loop->last)<div class="divider"></div>@endif

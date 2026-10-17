@@ -7,6 +7,7 @@ use App\Models\MediaItem;
 use App\Models\Profile;
 use App\Models\User;
 use App\Services\PhotoEnhancementService;
+use App\Support\ProfileEntitlements;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
@@ -32,6 +33,22 @@ class ProfileMediaService
         $slots = (int) data_get($packages, $tier.'.photo_slots', 0);
 
         return max(0, $slots);
+    }
+
+    public function photoSlotLimitForApplication(Application $application): int
+    {
+        return ProfileEntitlements::photoSlots($application);
+    }
+
+    public function photoSlotLimitForProfile(Profile $profile): int
+    {
+        $profile->loadMissing('application');
+        $application = $profile->application;
+        if (! $application instanceof Application) {
+            return 0;
+        }
+
+        return $this->photoSlotLimitForApplication($application);
     }
 
     public function authoritativeTier(Profile $profile): ?string
@@ -79,7 +96,7 @@ class ProfileMediaService
             ]);
         }
 
-        $limit = $this->photoSlotLimitForTier($tier);
+        $limit = $this->photoSlotLimitForProfile($profile);
         if ($limit < 1) {
             throw ValidationException::withMessages([
                 'photo' => 'This package does not include profile photographs.',

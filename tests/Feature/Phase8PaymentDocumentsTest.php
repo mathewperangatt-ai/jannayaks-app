@@ -29,9 +29,9 @@ class Phase8PaymentDocumentsTest extends TestCase
     {
         // The Direct Personal Interview add-on was removed as a product:
         // the package must equal the plain tier amount with no addon data.
-        $package = PricingAmounts::forApplicationPackage('distinguished');
+        $package = PricingAmounts::forStandardProfile();
 
-        $this->assertSame(1062000, $package['amount_incl_paise']);
+        $this->assertSame(472000, $package['amount_incl_paise']);
         $this->assertArrayNotHasKey('includes_addon', $package);
         $this->assertArrayNotHasKey('addon', $package);
     }
@@ -49,7 +49,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         $res->assertStatus(201);
 
         $payment = Payment::query()->where('application_id', $app->id)->latest('id')->firstOrFail();
-        $this->assertSame(1062000, $payment->totalPaise());
+        $this->assertSame(472000, $payment->totalPaise());
     }
 
     public function test_payment_initiation_without_addon_charges_base_only(): void
@@ -63,7 +63,7 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $this->actingAs($user)->postJson(route('applications.payment.initiate', $app))->assertStatus(201);
         $payment = Payment::query()->where('application_id', $app->id)->latest('id')->firstOrFail();
-        $this->assertSame(1062000, $payment->totalPaise());
+        $this->assertSame(472000, $payment->totalPaise());
     }
 
     public function test_reinitiating_payment_reuses_unchanged_amount(): void
@@ -77,13 +77,13 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $this->actingAs($user)->postJson(route('applications.payment.initiate', $app))->assertStatus(201);
         $first = Payment::query()->where('application_id', $app->id)->activeAttempts()->firstOrFail();
-        $this->assertSame(1062000, $first->totalPaise());
+        $this->assertSame(472000, $first->totalPaise());
 
         $this->actingAs($user)->postJson(route('applications.payment.initiate', $app))->assertStatus(201);
 
         $actives = Payment::query()->where('application_id', $app->id)->activeAttempts()->get();
         $this->assertCount(1, $actives);
-        $this->assertSame(1062000, $actives->first()->totalPaise());
+        $this->assertSame(472000, $actives->first()->totalPaise());
         $this->assertSame($first->id, $actives->first()->id);
     }
 
@@ -108,6 +108,7 @@ class Phase8PaymentDocumentsTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_phase8_1',
+                        'status' => 'captured',
                         'amount' => 354000,
                         'currency' => 'INR',
                         'order_id' => null,
@@ -272,8 +273,8 @@ class Phase8PaymentDocumentsTest extends TestCase
         $this->assertSame(count($refs), count(array_unique($refs)));
     }
 
-    /** A. Cancelled/superseded success webhook cannot pay or unlock. */
-    public function test_cancelled_payment_success_webhook_cannot_settle_or_unlock(): void
+    /** A matching capture on a withdrawn link settles that attempt once. */
+    public function test_cancelled_payment_success_webhook_settles_matching_capture_once(): void
     {
         Config::set('services.razorpay.webhook_secret', 'whsec_phase8_super');
         Config::set('services.razorpay.enabled', false);
@@ -287,7 +288,7 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $old = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
         $old->forceFill(['razorpay_link_id' => 'plink_old_super'])->save();
-        app(RazorpayPaymentService::class)->supersedeAttempt($old, 'Test supersession.');
+        $old->markFailedExpiredOrCancelled(Payment::STATUS_CANCELLED, 'SUPERSEDED', 'Test supersession.');
         $old->refresh();
         $this->assertSame(Payment::STATUS_CANCELLED, $old->status);
 
@@ -299,7 +300,8 @@ class Phase8PaymentDocumentsTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_super_old',
-                        'amount' => 1062000,
+                        'status' => 'captured',
+                        'amount' => 472000,
                         'currency' => 'INR',
                         'notes' => [
                             'payment_id' => (string) $old->id,
@@ -310,7 +312,7 @@ class Phase8PaymentDocumentsTest extends TestCase
                 'payment_link' => [
                     'entity' => [
                         'id' => 'plink_old_super',
-                        'amount' => 1062000,
+                        'amount' => 472000,
                         'currency' => 'INR',
                         'reference_id' => $old->transaction_reference,
                     ],
@@ -331,13 +333,14 @@ class Phase8PaymentDocumentsTest extends TestCase
             ],
             $payload,
         );
-        $res->assertStatus(409)->assertJson(['ignored_superseded' => true]);
+        $res->assertOk()->assertJson(['paid' => true]);
 
         $old->refresh();
-        $this->assertSame(Payment::STATUS_CANCELLED, $old->status);
-        $this->assertFalse($old->isPaidOrBetter());
-        $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
-        $this->assertNull($old->invoice_number);
+        $this->assertTrue($old->isPaidOrBetter());
+        $this->assertSame('pay_super_old', $old->gateway_payment_id);
+        $this->assertSame(RazorpayPaymentService::CODE_SETTLED_ON_WITHDRAWN_LINK, $old->error_code);
+        $this->assertNotNull($old->invoice_number);
+        $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
     }
 
     /** B. Re-initiating with a stale addon input never changes the amount. */
@@ -359,7 +362,7 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $actives = Payment::query()->where('application_id', $app->id)->activeAttempts()->get();
         $this->assertCount(1, $actives);
-        $this->assertSame(1062000, $actives->first()->totalPaise());
+        $this->assertSame(472000, $actives->first()->totalPaise());
         $this->assertSame($firstId, $actives->first()->id);
         $this->assertFalse((bool) $app->fresh()->distinguished_interview_addon);
     }
@@ -386,7 +389,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         ])->assertStatus(201);
 
         $payment = Payment::query()->where('application_id', $app->id)->activeAttempts()->firstOrFail();
-        $this->assertSame(354000, $payment->totalPaise());
+        $this->assertSame(472000, $payment->totalPaise());
         $this->assertFalse((bool) $app->fresh()->distinguished_interview_addon);
     }
 

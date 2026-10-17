@@ -62,18 +62,16 @@
             <h1 class="dash-name">{{ $application->full_name }}</h1>
             <div class="dash-meta">
                 @php
-                    $tierMap = ['emerging' => \App\Support\TierLabels::label('emerging'),'accomplished' => \App\Support\TierLabels::label('accomplished'),'distinguished' => \App\Support\TierLabels::label('distinguished')];
-                    $priceMap = [];
-                    foreach (['emerging', 'accomplished', 'distinguished'] as $tierKey) {
-                        $base = (int) config('jannayaks.tier_pricing.packages.'.$tierKey.'.base_amount', 0);
-                        $priceMap[$tierKey] = '₹'.number_format($base).' + GST';
-                    }
+                    $isLivingProfile = \App\Support\PricingAmounts::isLivingTier((string) $application->package_tier);
+                    $standardQuote = $isLivingProfile ? \App\Support\PricingAmounts::forStandardProfile() : null;
                 @endphp
                 @if($application->profile?->reference_code)
                     <span class="dash-pill dash-ref">Ref&nbsp;<b>{{ $application->profile->reference_code }}</b></span>
                 @endif
-                <span class="dash-pill">Tier:&nbsp;<b>{{ $tierMap[(string)$application->package_tier] ?? ucfirst($application->package_tier) }}</b></span>
-                <span class="dash-pill">{{ $priceMap[(string)$application->package_tier] ?? '—' }}</span>
+                @if($isLivingProfile)
+                    <span class="dash-pill">Standard Profile</span>
+                    <span class="dash-pill">{{ $standardQuote['base_formatted'] }} + GST</span>
+                @endif
                 <span class="dash-pill">Started {{ $application->intake_started_at ? $application->intake_started_at->format('d M Y') : '—' }}</span>
                 @if($application->online_interview_completed_at)
                     <span class="dash-pill">Submitted {{ $application->online_interview_completed_at->format('d M Y · H:i') }}</span>
@@ -121,7 +119,7 @@
                     <span style="width:{{ $progress['total'] ? (int)(($progress['answered']/$progress['total'])*100) : 0 }}%"></span>
                 </div>
                 <div class="progress-meta">
-                    <div>Answered <b>{{ $progress['answered'] }}</b> of {{ $progress['total'] }} unlocked</div>
+                    <div>Answered <b>{{ $progress['answered'] }}</b> of {{ $progress['total'] }} questions</div>
                     <div>Required <b>{{ $progress['required_answered'] }}</b> of {{ $progress['required_total'] }}</div>
                     @if (! empty($progress['missing_required']))
                         <div style="color:var(--bad)">Missing required: {{ count($progress['missing_required']) }}</div>
