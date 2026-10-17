@@ -365,4 +365,18 @@ PROMPT,
             'max_per_profile' => (int) env('MEDIA_VIDEO_LINKS_MAX_PER_PROFILE', 10),
         ],
     ],
+
+    /*
+    | Scheduled capture recovery for payment attempts whose webhook retries
+    | may have stopped. Intervals are fixed: 30 minutes, then 2h, 6h, 12h,
+    | 24h, then one check a day for seven days (12 checks). The scheduler
+    | command performs no gateway calls when Razorpay is disabled.
+    */
+    'payment_reconciliation' => [
+        'batch_size' => 20,
+        'minimum_age_minutes' => 30,
+        'max_checks' => 12,
+        'staff_minimum_seconds' => 120,
+        'max_payments_per_link' => 5,
+    ],
 ];

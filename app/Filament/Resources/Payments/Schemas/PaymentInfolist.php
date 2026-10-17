@@ -31,6 +31,8 @@ class PaymentInfolist
                     TextEntry::make('razorpay_link_id')->label('Razorpay link ID'),
                     TextEntry::make('error_code')->label('Reconciliation code'),
                     TextEntry::make('error_message')->label('Reconciliation note'),
+                    TextEntry::make('gateway_checked_at')->label('Gateway checked at')->dateTime(),
+                    TextEntry::make('gateway_check_count')->label('Gateway checks'),
                     TextEntry::make('credit_note_number'),
                     TextEntry::make('paid_at')->dateTime(),
                     TextEntry::make('refunded_at')->dateTime(),

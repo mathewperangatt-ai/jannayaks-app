@@ -35,6 +35,36 @@ class RazorpayPaymentService
 
     public const CODE_DUPLICATE_CAPTURE = 'DUPLICATE_CAPTURE_NEEDS_RECONCILIATION';
 
+    public const CODE_RECONCILIATION_UNRESOLVED = 'CAPTURE_RECONCILIATION_UNRESOLVED';
+
+    public const CODE_RECONCILIATION_MISMATCH = 'CAPTURE_RECONCILIATION_MISMATCH';
+
+    public const CODE_ADDITIONAL_CAPTURE = 'ADDITIONAL_CAPTURE_NEEDS_RECONCILIATION';
+
+    public const CODE_LINK_CLOSED = 'GATEWAY_LINK_CONFIRMED_CLOSED';
+
+    public const OUTCOME_SETTLED = 'settled';
+
+    public const OUTCOME_ALREADY_SETTLED = 'already_settled';
+
+    public const OUTCOME_DUPLICATE = 'duplicate';
+
+    public const OUTCOME_CLOSED = 'closed';
+
+    public const OUTCOME_MISMATCH = 'mismatch';
+
+    public const OUTCOME_UNRESOLVED = 'unresolved';
+
+    public const OUTCOME_PENDING = 'pending';
+
+    public const OUTCOME_UNAVAILABLE = 'unavailable';
+
+    public const OUTCOME_SKIPPED = 'skipped';
+
+    public const OUTCOME_DISABLED = 'disabled';
+
+    public const OUTCOME_STALE = 'stale_claim';
+
     public function createApplicationPaymentLink(Application $application): Payment
     {
         if (! in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
@@ -985,5 +1015,446 @@ class RazorpayPaymentService
         }
 
         return $payload;
+    }
+
+    /**
+     * @return \Illuminate\Support\Collection<int, Payment>
+     */
+    public function paymentsDueForCaptureReconciliation(): \Illuminate\Support\Collection
+    {
+        $max = $this->maxAutomaticChecks();
+        $minimumAge = now()->subMinutes($this->minimumAgeMinutes());
+        $batch = max(1, (int) config('jannayaks.payment_reconciliation.batch_size', 20));
+
+        return Payment::query()
+            ->where('gateway', Payment::GATEWAY_RAZORPAY)
+            ->whereIn('status', [Payment::STATUS_PENDING, Payment::STATUS_INITIATED])
+            ->whereNotNull('razorpay_link_id')
+            ->where('razorpay_link_id', '!=', '')
+            ->where('gateway_check_count', '<', $max)
+            ->where(function ($query): void {
+                $query->whereNull('error_code')
+                    ->orWhere('error_code', '!=', self::CODE_RECONCILIATION_MISMATCH);
+            })
+            ->where(function ($query) use ($minimumAge, $max): void {
+                $query->where(function ($first) use ($minimumAge): void {
+                    $first->where('gateway_check_count', 0)
+                        ->where('created_at', '<=', $minimumAge);
+                })->orWhere(function ($later) use ($max): void {
+                    $later->where('gateway_check_count', 1)
+                        ->where('gateway_checked_at', '<=', now()->subHours(2));
+                })->orWhere(function ($later) use ($max): void {
+                    $later->where('gateway_check_count', 2)
+                        ->where('gateway_checked_at', '<=', now()->subHours(6));
+                })->orWhere(function ($later) use ($max): void {
+                    $later->where('gateway_check_count', 3)
+                        ->where('gateway_checked_at', '<=', now()->subHours(12));
+                })->orWhere(function ($later) use ($max): void {
+                    $later->where('gateway_check_count', '>=', 4)
+                        ->where('gateway_check_count', '<', $max)
+                        ->where('gateway_checked_at', '<=', now()->subDay());
+                });
+            })
+            ->orderByRaw('gateway_checked_at ASC NULLS FIRST')
+            ->orderBy('id')
+            ->limit($batch)
+            ->get();
+    }
+
+    /**
+     * Claim the attempt, read Razorpay without holding a row lock, then apply
+     * the result only if the stored attempt is still the one that was claimed.
+     */
+    public function reconcileOpenAttempt(Payment $payment, bool $staffRequested = false): string
+    {
+        if (! $this->config()['enabled']) {
+            return self::OUTCOME_DISABLED;
+        }
+
+        $claim = $this->claimReconciliationAttempt($payment, $staffRequested);
+        if ($claim === null) {
+            return self::OUTCOME_SKIPPED;
+        }
+
+        $evidence = $this->collectReconciliationEvidence($claim);
+
+        return $this->applyReconciliationEvidence($claim, $evidence);
+    }
+
+    /**
+     * @return array{payment_id: int, link_id: string, amount_paise: int, currency: string, status: string, check_count: int}|null
+     */
+    private function claimReconciliationAttempt(Payment $payment, bool $staffRequested): ?array
+    {
+        return DB::transaction(function () use ($payment, $staffRequested): ?array {
+            $row = Payment::query()->whereKey($payment->id)->lockForUpdate()->first();
+            if (! $row instanceof Payment || ! $this->reconciliationClaimIsAllowed($row, $staffRequested)) {
+                return null;
+            }
+
+            $row->gateway_checked_at = now();
+            $row->gateway_check_count = (int) $row->gateway_check_count + 1;
+            $row->save();
+
+            return [
+                'payment_id' => (int) $row->id,
+                'link_id' => trim((string) $row->razorpay_link_id),
+                'amount_paise' => $row->totalPaise(),
+                'currency' => strtoupper((string) $row->currency),
+                'status' => (string) $row->status,
+                'check_count' => (int) $row->gateway_check_count,
+            ];
+        });
+    }
+
+    private function reconciliationClaimIsAllowed(Payment $row, bool $staffRequested): bool
+    {
+        if (! $row->isActiveAttempt()) {
+            return false;
+        }
+        if (trim((string) $row->razorpay_link_id) === '') {
+            return false;
+        }
+        if ($row->gateway !== Payment::GATEWAY_RAZORPAY) {
+            return false;
+        }
+
+        return $staffRequested
+            ? $this->staffCheckIsAllowed($row)
+            : $this->automaticCheckIsDue($row);
+    }
+
+    private function staffCheckIsAllowed(Payment $payment): bool
+    {
+        if ($payment->gateway_checked_at === null) {
+            return true;
+        }
+
+        $seconds = max(0, (int) config('jannayaks.payment_reconciliation.staff_minimum_seconds', 120));
+
+        return $payment->gateway_checked_at->lte(now()->subSeconds($seconds));
+    }
+
+    private function automaticCheckIsDue(Payment $payment): bool
+    {
+        if ((int) $payment->gateway_check_count >= $this->maxAutomaticChecks()) {
+            return false;
+        }
+        if ($payment->error_code === self::CODE_RECONCILIATION_MISMATCH) {
+            return false;
+        }
+
+        $count = (int) $payment->gateway_check_count;
+        if ($count === 0) {
+            return $payment->created_at !== null
+                && $payment->created_at->lte(now()->subMinutes($this->minimumAgeMinutes()));
+        }
+        if ($payment->gateway_checked_at === null) {
+            return false;
+        }
+
+        $dueAt = match ($count) {
+            1 => $payment->gateway_checked_at->copy()->addHours(2),
+            2 => $payment->gateway_checked_at->copy()->addHours(6),
+            3 => $payment->gateway_checked_at->copy()->addHours(12),
+            default => $payment->gateway_checked_at->copy()->addDay(),
+        };
+
+        return now()->gte($dueAt);
+    }
+
+    /**
+     * @param  array{payment_id: int, link_id: string, amount_paise: int, currency: string, status: string, check_count: int}  $claim
+     * @return array<string, mixed>
+     */
+    private function collectReconciliationEvidence(array $claim): array
+    {
+        $link = $this->fetchPaymentLink($claim['link_id']);
+        if ($link === null) {
+            return ['kind' => 'unavailable', 'hide_url' => false];
+        }
+
+        $reportedLinkId = trim((string) ($link['id'] ?? ''));
+        if ($reportedLinkId !== '' && $reportedLinkId !== $claim['link_id']) {
+            return ['kind' => 'mismatch', 'reason' => 'link_id'];
+        }
+
+        $linkAmount = isset($link['amount']) ? (int) $link['amount'] : null;
+        if ($linkAmount !== null && abs($linkAmount - $claim['amount_paise']) > 1) {
+            return ['kind' => 'mismatch', 'reason' => 'link_amount'];
+        }
+        $linkCurrency = isset($link['currency']) ? strtoupper((string) $link['currency']) : null;
+        if ($linkCurrency !== null && $linkCurrency !== PricingAmounts::CURRENCY) {
+            return ['kind' => 'mismatch', 'reason' => 'link_currency'];
+        }
+
+        $linkStatus = strtolower((string) ($link['status'] ?? ''));
+        $ids = $this->plausiblePaymentIdsOnLink($link);
+        $limit = max(1, (int) config('jannayaks.payment_reconciliation.max_payments_per_link', 5));
+        $truncated = count($ids) > $limit;
+        $inspected = array_slice($ids, 0, $limit);
+        $payments = [];
+        foreach ($inspected as $gatewayPaymentId) {
+            $details = $this->fetchGatewayPayment($gatewayPaymentId);
+            if ($details === null) {
+                return [
+                    'kind' => 'unavailable',
+                    'hide_url' => in_array($linkStatus, ['cancelled', 'expired'], true),
+                    'link_status' => $linkStatus,
+                ];
+            }
+            $payments[] = $details;
+        }
+
+        return [
+            'kind' => 'link',
+            'link_status' => $linkStatus,
+            'payments' => $payments,
+            'truncated' => $truncated,
+        ];
+    }
+
+    /**
+     * @param  array{payment_id: int, link_id: string, amount_paise: int, currency: string, status: string, check_count: int}  $claim
+     * @param  array<string, mixed>  $evidence
+     */
+    private function applyReconciliationEvidence(array $claim, array $evidence): string
+    {
+        return DB::transaction(function () use ($claim, $evidence): string {
+            $row = Payment::query()->whereKey($claim['payment_id'])->lockForUpdate()->first();
+            if (! $row instanceof Payment) {
+                return self::OUTCOME_STALE;
+            }
+            if ($row->isPaidOrBetter()) {
+                $this->auditReconciliation($row, $claim['status'], self::OUTCOME_ALREADY_SETTLED);
+
+                return self::OUTCOME_ALREADY_SETTLED;
+            }
+            if (! $this->claimStillMatches($row, $claim) || ! $row->isActiveAttempt()) {
+                return self::OUTCOME_STALE;
+            }
+
+            $kind = (string) ($evidence['kind'] ?? 'unavailable');
+            if ($kind === 'mismatch') {
+                $this->flagReconciliation($row, self::CODE_RECONCILIATION_MISMATCH, 'Gateway amount, currency, or link did not match this attempt.');
+                $this->hidePaymentLinkUrl($row);
+                $this->auditReconciliation($row, $claim['status'], self::OUTCOME_MISMATCH);
+
+                return self::OUTCOME_MISMATCH;
+            }
+
+            if ($kind !== 'link') {
+                if (($evidence['hide_url'] ?? false) === true) {
+                    $this->hidePaymentLinkUrl($row);
+                }
+                $outcome = $this->flagIfChecksExhausted($row);
+                $this->auditReconciliation($row, $claim['status'], $outcome);
+
+                return $outcome;
+            }
+
+            $classified = $this->classifyLinkPayments($row, $evidence['payments'] ?? []);
+            if ($classified['mismatch']) {
+                $this->flagReconciliation($row, self::CODE_RECONCILIATION_MISMATCH, 'Gateway amount, currency, or link did not match this attempt.');
+                $this->hidePaymentLinkUrl($row);
+                $this->auditReconciliation($row, $claim['status'], self::OUTCOME_MISMATCH);
+
+                return self::OUTCOME_MISMATCH;
+            }
+
+            if ($classified['captured'] !== []) {
+                return $this->settleReconciledCapture(
+                    $row,
+                    $claim['status'],
+                    $classified['captured'],
+                    $classified['unresolved'] !== [] || ($evidence['truncated'] ?? false) === true,
+                );
+            }
+
+            $linkStatus = (string) ($evidence['link_status'] ?? '');
+            $inconclusive = $classified['unresolved'] !== [] || ($evidence['truncated'] ?? false) === true;
+            if (in_array($linkStatus, ['cancelled', 'expired'], true) && ! $inconclusive) {
+                $target = $linkStatus === 'expired' ? Payment::STATUS_EXPIRED : Payment::STATUS_CANCELLED;
+                $row->markFailedExpiredOrCancelled(
+                    $target,
+                    self::CODE_LINK_CLOSED,
+                    'Gateway link is '.$linkStatus.' and no captured or unresolved payment remains.',
+                );
+                $this->hidePaymentLinkUrl($row);
+                $this->auditReconciliation($row, $claim['status'], self::OUTCOME_CLOSED);
+
+                return self::OUTCOME_CLOSED;
+            }
+
+            if (in_array($linkStatus, ['cancelled', 'expired'], true)) {
+                $this->hidePaymentLinkUrl($row);
+            }
+            $outcome = $this->flagIfChecksExhausted($row);
+            $this->auditReconciliation($row, $claim['status'], $outcome);
+
+            return $outcome;
+        });
+    }
+
+    /**
+     * @param  array{payment_id: int, link_id: string, amount_paise: int, currency: string, status: string, check_count: int}  $claim
+     */
+    private function claimStillMatches(Payment $row, array $claim): bool
+    {
+        return trim((string) $row->razorpay_link_id) === $claim['link_id']
+            && $row->totalPaise() === $claim['amount_paise']
+            && strtoupper((string) $row->currency) === $claim['currency']
+            && $row->currencyIsInr();
+    }
+
+    /**
+     * @param  array<int, mixed>  $payments
+     * @return array{captured: list<string>, unresolved: list<string>, mismatch: bool}
+     */
+    private function classifyLinkPayments(Payment $payment, array $payments): array
+    {
+        $captured = [];
+        $unresolved = [];
+        foreach ($payments as $details) {
+            if (! is_array($details)) {
+                return ['captured' => [], 'unresolved' => [], 'mismatch' => true];
+            }
+            $gatewayPaymentId = (string) ($details['id'] ?? '');
+            $status = strtolower((string) ($details['status'] ?? ''));
+            if ($status === 'captured') {
+                if (! $this->gatewayPaymentDetailsMatchCapture($payment, $gatewayPaymentId, $details)) {
+                    return ['captured' => [], 'unresolved' => [], 'mismatch' => true];
+                }
+                $captured[] = $gatewayPaymentId;
+
+                continue;
+            }
+            if (! in_array($status, ['failed', 'refunded'], true)) {
+                $unresolved[] = $gatewayPaymentId;
+            }
+        }
+
+        return ['captured' => $captured, 'unresolved' => $unresolved, 'mismatch' => false];
+    }
+
+    /**
+     * @param  list<string>  $capturedIds
+     */
+    private function settleReconciledCapture(Payment $row, string $previousStatus, array $capturedIds, bool $additionalAttention): string
+    {
+        $gatewayPaymentId = $capturedIds[0];
+        if ($this->anotherSettledPaymentExists($row)) {
+            $settled = $this->recordVerifiedCapture($row, $gatewayPaymentId, null, now());
+            $this->auditReconciliation($settled, $previousStatus, self::OUTCOME_DUPLICATE);
+
+            return $settled->error_code === self::CODE_DUPLICATE_CAPTURE
+                ? self::OUTCOME_DUPLICATE
+                : self::OUTCOME_STALE;
+        }
+
+        $row->markPaidOrCaptured(
+            targetStatus: Payment::STATUS_CAPTURED,
+            gatewayPaymentId: $gatewayPaymentId,
+            gatewayEventId: null,
+            eventType: Payment::EVENT_PAYMENT_CAPTURED,
+            paidAt: now(),
+            capturedAt: now(),
+        );
+        if (! $row->isPaidOrBetter()) {
+            return self::OUTCOME_STALE;
+        }
+
+        $this->hidePaymentLinkUrl($row);
+        $this->applyFirstSettlement($row);
+        if ($additionalAttention || count($capturedIds) > 1) {
+            $this->flagReconciliation(
+                $row,
+                self::CODE_ADDITIONAL_CAPTURE,
+                'Verified capture was settled once. Another gateway payment on this link needs staff reconciliation.',
+            );
+        } elseif (in_array($row->error_code, [self::CODE_RECONCILIATION_MISMATCH, self::CODE_RECONCILIATION_UNRESOLVED], true)) {
+            $row->error_code = null;
+            $row->error_message = null;
+            $row->save();
+        }
+        $this->auditReconciliation($row, $previousStatus, self::OUTCOME_SETTLED);
+
+        return self::OUTCOME_SETTLED;
+    }
+
+    private function flagIfChecksExhausted(Payment $row): string
+    {
+        if ((int) $row->gateway_check_count < $this->maxAutomaticChecks()) {
+            return self::OUTCOME_PENDING;
+        }
+
+        $this->flagReconciliation(
+            $row,
+            self::CODE_RECONCILIATION_UNRESOLVED,
+            'Automatic Razorpay checks ended without a confirmed capture. Staff review is required.',
+        );
+
+        return self::OUTCOME_UNRESOLVED;
+    }
+
+    private function flagReconciliation(Payment $payment, string $code, string $message): void
+    {
+        $payment->error_code = $code;
+        $payment->error_message = mb_substr($message, 0, 255);
+        $payment->save();
+    }
+
+    private function hidePaymentLinkUrl(Payment $payment): void
+    {
+        if ($payment->razorpay_link_url === null) {
+            return;
+        }
+
+        $payment->razorpay_link_url = null;
+        $payment->save();
+    }
+
+    private function auditReconciliation(Payment $payment, string $previousStatus, string $outcome): void
+    {
+        if (! in_array($outcome, [
+            self::OUTCOME_SETTLED,
+            self::OUTCOME_ALREADY_SETTLED,
+            self::OUTCOME_DUPLICATE,
+            self::OUTCOME_CLOSED,
+            self::OUTCOME_MISMATCH,
+            self::OUTCOME_UNRESOLVED,
+        ], true)) {
+            return;
+        }
+
+        try {
+            app(StaffAuditLogger::class)->log(
+                action: 'payment.capture_reconciliation',
+                subject: $payment,
+                before: ['status' => $previousStatus],
+                after: [
+                    'outcome' => $outcome,
+                    'status' => $payment->status,
+                    'error_code' => $payment->error_code,
+                    'gateway_payment_id' => $payment->gateway_payment_id,
+                    'payment_id' => $payment->id,
+                ],
+            );
+        } catch (\Throwable $e) {
+            Log::warning('Payment reconciliation audit failed.', [
+                'payment_id' => $payment->id,
+                'outcome' => $outcome,
+            ]);
+        }
+    }
+
+    private function maxAutomaticChecks(): int
+    {
+        return max(1, (int) config('jannayaks.payment_reconciliation.max_checks', 12));
+    }
+
+    private function minimumAgeMinutes(): int
+    {
+        return max(0, (int) config('jannayaks.payment_reconciliation.minimum_age_minutes', 30));
     }
 }

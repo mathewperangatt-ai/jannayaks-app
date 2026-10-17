@@ -149,6 +149,8 @@ class Payment extends Model
             'invoice_issued_at' => 'datetime',
             'tax_invoice_issued_at' => 'datetime',
             'credit_note_issued_at' => 'datetime',
+            'gateway_checked_at' => 'datetime',
+            'gateway_check_count' => 'integer',
         ];
     }
 
