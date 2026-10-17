@@ -79,6 +79,8 @@ class HomepageIntegrationTest extends TestCase
             'Demo Profiles →',
         ], false);
         $response->assertDontSee('ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു.', false);
+        $response->assertSee('Sign in with your Jannayaks username and password, or with Google. Then begin your profile application.', false);
+        $response->assertDontSee('start the standard profile', false);
         $response->assertDontSee('Sign in with Google or WhatsApp', false);
         $this->assertStringNotContainsStringIgnoringCase('every application', $html);
         $response->assertDontSee("A digital gallery of people's leaders.", false);

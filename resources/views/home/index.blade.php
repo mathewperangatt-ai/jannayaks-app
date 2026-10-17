@@ -401,7 +401,7 @@ document.addEventListener('click',function(e){
           <div class="step-title">Register
             <span class="step-title-ml">രജിസ്റ്റർ ചെയ്യുക</span>
           </div>
-          <div class="step-text">Sign in with your Jannayaks username and password, or with Google. Then start the standard profile and choose the personal URL you want to share.</div>
+          <div class="step-text">Sign in with your Jannayaks username and password, or with Google. Then begin your profile application.</div>
         </div>
       </div>
       <div class="step">
