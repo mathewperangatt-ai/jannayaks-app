@@ -54,7 +54,7 @@ class DemoProfilesPageTest extends TestCase
         }
 
         $response->assertSee('These are fictional demonstration profiles.', false)
-            ->assertSee('<meta name="robots" content="noindex, nofollow">', false);
+            ->assertDontSee('noindex, nofollow', false);
     }
 
     public function test_malayalam_listing_links_to_malayalam_pages(): void

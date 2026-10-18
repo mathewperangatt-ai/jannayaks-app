@@ -3,7 +3,8 @@
 <head>
     <meta charset="utf-8">
     <meta name="viewport" content="width=device-width, initial-scale=1">
-    <meta name="robots" content="noindex, nofollow">
+    {{-- SEO-1: indexing directives are managed for the launch release; see
+         docs/production-launch-manual-steps.md before flipping. --}}
     <link rel="icon" type="image/png" sizes="32x32" href="{{ asset('branding/favicon-32.png') }}">
     <link rel="icon" type="image/png" sizes="16x16" href="{{ asset('branding/favicon-16.png') }}">
     <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('branding/favicon-180.png') }}">
@@ -118,6 +119,7 @@
             </a>
             <button type="button" class="nav-menu-btn" id="publicNavBtn" aria-expanded="false" aria-controls="publicNavLinks" aria-label="Open menu">☰</button>
             <ul class="nav-links" id="publicNavLinks">
+                <li><a href="{{ route('home') }}" @if(($nav ?? '') === 'home') aria-current="page" @endif data-nav-close>Home</a></li>
                 <li><a href="{{ route('home') }}#search" data-nav-close>Search</a></li>
                 <li><a href="{{ route('home') }}#hiw" data-nav-close>How It Works</a></li>
                 <li><a href="{{ route('faq-charges') }}" @if(($nav ?? '') === 'faq') aria-current="page" @endif data-nav-close>FAQ &amp; Charges</a></li>

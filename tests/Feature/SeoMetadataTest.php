@@ -32,7 +32,7 @@ class SeoMetadataTest extends TestCase
         // Description present, no visible-copy change, noindex intact.
         $this->assertMatchesRegularExpression('#<meta name="description" content="[^"]+">#i', $content);
         $this->assertStringContainsString('digital biographical archive', $content);
-        $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
+        $this->assertStringNotContainsString('noindex', $content);
 
         // OG + Twitter.
         $this->assertStringContainsString('property="og:site_name" content="Jannayaks"', $content);
@@ -76,7 +76,7 @@ class SeoMetadataTest extends TestCase
                 $path.' canonical must be the clean absolute base URL'
             );
             $this->assertStringNotContainsString('rel="canonical" href="?', $content, $path);
-            $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content, $path);
+            $this->assertStringNotContainsString('noindex', $content, $path);
             $this->assertStringContainsString('property="og:title"', $content, $path);
         }
     }
@@ -118,7 +118,7 @@ class SeoMetadataTest extends TestCase
 
         // Twitter card present; noindex unchanged.
         $this->assertStringContainsString('name="twitter:card" content="summary"', $content);
-        $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
+        $this->assertStringNotContainsString('noindex', $content);
     }
 
     public function test_memorial_page_seo_uses_memorial_metadata(): void
@@ -133,7 +133,7 @@ class SeoMetadataTest extends TestCase
         $this->assertMatchesRegularExpression('#<meta property="og:url" content="[^"]+/in-memoriam/k\.v\.mathew">#i', $content);
         $this->assertMatchesRegularExpression('#<meta property="og:title" content="K\. V\. Mathew \(Late\) — In Memoriam — Jannayaks">#i', $content);
         $this->assertStringContainsString('property="og:type" content="profile"', $content);
-        $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
+        $this->assertStringNotContainsString('noindex', $content);
     }
 
     public function test_static_pages_have_descriptions_and_social_tags(): void
@@ -152,7 +152,7 @@ class SeoMetadataTest extends TestCase
             $this->assertStringContainsString('name="description" content="'.$fragment, $content, $path);
             $this->assertStringContainsString('property="og:title"', $content, $path);
             $this->assertStringContainsString('name="twitter:card"', $content, $path);
-            $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content, $path);
+            $this->assertStringNotContainsString('noindex', $content, $path);
         }
     }
 
@@ -166,7 +166,7 @@ class SeoMetadataTest extends TestCase
 
         $this->assertStringContainsString('name="description" content="Search published Jannayaks profiles by name, area or PIN code."', $content);
         $this->assertStringNotContainsString('Gopalakrishnan" name="description"', $content);
-        $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
+        $this->assertStringNotContainsString('noindex', $content);
         $this->assertMatchesRegularExpression('#<title>Search: Gopalakrishnan — Search — Jannayaks</title>#i', $content);
     }
 }

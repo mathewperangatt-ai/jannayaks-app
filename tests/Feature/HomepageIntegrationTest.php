@@ -15,7 +15,7 @@ class HomepageIntegrationTest extends TestCase
         $response = $this->get(route('home'));
 
         $response->assertOk();
-        $response->assertSee('noindex, nofollow', false);
+        $response->assertDontSee('noindex, nofollow', false);
         // Under Construction banner removed globally (footer pass 2).
         $response->assertDontSee('Under Construction', false);
         $response->assertSee('branding/favicon-32.png', false);
@@ -163,7 +163,7 @@ class HomepageIntegrationTest extends TestCase
         $response = $this->get(route('faq-charges'));
 
         $response->assertOk();
-        $response->assertSee('noindex, nofollow', false);
+        $response->assertDontSee('noindex, nofollow', false);
         $response->assertDontSee('Under Construction', false);
         $response->assertSee($profile['base_formatted'], false);
         $response->assertSee($renewal['base_formatted'], false);

@@ -113,7 +113,7 @@ class StructuredDataTest extends TestCase
         $content = $this->get('/t.gopalakrishnan')->getContent();
         $this->assertMatchesRegularExpression('/<link rel="canonical" href="[^"]+\/t\.gopalakrishnan">/', $content);
         $this->assertSame(1, substr_count($content, 'application/ld+json'));
-        $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
+        $this->assertStringNotContainsString('noindex', $content);
     }
 
     public function test_real_profile_breadcrumb_points_to_the_gallery(): void
@@ -179,7 +179,7 @@ class StructuredDataTest extends TestCase
         $content = $this->get('/search?q=anything')->getContent();
 
         $this->assertStringNotContainsString('application/ld+json', $content);
-        $this->assertStringContainsString('<meta name="robots" content="noindex, nofollow">', $content);
+        $this->assertStringNotContainsString('noindex', $content);
     }
 
     public function test_malayalam_and_punctuation_survive_json_encoding(): void
