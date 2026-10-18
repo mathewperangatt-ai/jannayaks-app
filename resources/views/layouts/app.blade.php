@@ -125,6 +125,9 @@
         <a href="{{ route('home') }}" class="logo" aria-label="Jannayaks home">
             <img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks">
         </a>
+        <nav class="topbar-nav" aria-label="Primary">
+            <a class="topbar-link" href="{{ route('home') }}">Home</a>
+        </nav>
         <div class="topbar-user">
             @auth
                 <span class="user-chip">{{ auth()->user()->name }}</span>

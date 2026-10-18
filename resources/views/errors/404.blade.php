@@ -1,5 +1,8 @@
 @extends('layouts.public', ['nav' => ''])
 
+@push('head')
+<meta name="robots" content="noindex, nofollow">
+@endpush
 @section('title', 'Page not found — Jannayaks')
 
 @push('head')
