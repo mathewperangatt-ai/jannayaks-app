@@ -39,7 +39,7 @@
 
     <p class="eyebrow">Legal</p>
     <h1>@yield('legal_heading')</h1>
-    <p class="legal-updated">Last revised: 9 October 2026</p>
+    <p class="legal-updated">Last revised: {{ $legalUpdated ?? '9 October 2026' }}</p>
     <p class="lede">@yield('legal_intro')</p>
 
     @yield('legal_body')

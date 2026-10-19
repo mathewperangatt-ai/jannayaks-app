@@ -214,6 +214,9 @@ return [
         // command fails safely without sending or deleting anything.
         'phone_export_recipient' => env('JANNAYAKS_PHONE_EXPORT_RECIPIENT'),
         'legal_address' => env('JANNAYAKS_LEGAL_ADDRESS', '3/532 A, Trivandrum 695573'),
+        // Shown on every legal page ("Last updated"). Update when the legal
+        // text is meaningfully revised.
+        'legal_updated' => env('JANNAYAKS_LEGAL_UPDATED', '16 October 2026'),
     ],
 
     'geography' => [

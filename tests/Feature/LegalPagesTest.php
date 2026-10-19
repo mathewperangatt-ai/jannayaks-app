@@ -63,7 +63,7 @@ class LegalPagesTest extends TestCase
         foreach (self::legalPages() as [, $path]) {
             $this->get($path)
                 ->assertOk()
-                ->assertSee('Last revised: 9 October 2026', false)
+                ->assertSee('Last revised: '.config('jannayaks.contact.legal_updated'), false)
                 ->assertDontSee('Razorpay', false)
                 ->assertDontSee('MSG91', false)
                 ->assertDontSee('one-time password', false)
