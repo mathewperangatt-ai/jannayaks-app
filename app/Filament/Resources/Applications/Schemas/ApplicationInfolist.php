@@ -114,6 +114,9 @@ class ApplicationInfolist
                     TextEntry::make('preferred_contact_mobile')
                         ->label('Preferred contact mobile')
                         ->visible(fn (?Application $record): bool => self::canSeePrivateContact($record)),
+                    TextEntry::make('preferred_whatsapp_mobile')
+                        ->label('WhatsApp number')
+                        ->visible(fn (?Application $record): bool => self::canSeePrivateContact($record)),
                 ])
                 ->columns(2)
                 ->collapsed(),

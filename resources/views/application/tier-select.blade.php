@@ -80,6 +80,11 @@
                 <input id="contact_mobile" name="contact_mobile" type="tel" maxlength="32" value="{{ old('contact_mobile') }}" autocomplete="tel">
                 @error('contact_mobile')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
+            <div class="field">
+                <label for="contact_whatsapp">{{ $ml ? 'വാട്ട്സ്ആപ്പ് നമ്പർ (ഓപ്ഷണൽ)' : 'WhatsApp number (optional)' }}</label>
+                <input id="contact_whatsapp" name="contact_whatsapp" type="tel" maxlength="32" value="{{ old('contact_whatsapp') }}" autocomplete="tel">
+                @error('contact_whatsapp')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+            </div>
         </div>
 
         <div class="missbox" role="note" id="contactNote" style="margin-top:14px">

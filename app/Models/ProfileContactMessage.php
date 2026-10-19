@@ -34,11 +34,15 @@ class ProfileContactMessage extends Model
      */
     public function ownerNotificationText(): string
     {
+        $mobileLine = filled($this->visitor_mobile)
+            ? "\nMobile number provided: {$this->visitor_mobile}."
+            : "\nNo mobile number was provided — please reply by email.";
+
         return sprintf(
-            "%s would like to contact you regarding %s.\nMobile number provided: %s.\nYou may contact %s directly if you wish.",
+            "%s would like to contact you regarding %s.%s\nYou may contact %s directly if you wish.",
             $this->visitor_name,
             $this->message,
-            $this->visitor_mobile,
+            $mobileLine,
             $this->visitor_name,
         );
     }

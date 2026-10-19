@@ -16,6 +16,11 @@ class HomepageIntegrationTest extends TestCase
 
         $response->assertOk();
         $response->assertDontSee('noindex, nofollow', false);
+        // TEMPORARY launch contact block: tel and WhatsApp links render with
+        // the configured business number.
+        $response->assertSee('tel:+919495949399', false);
+        $response->assertSee('https://wa.me/919495949399', false);
+        $response->assertSee('94 95 94 93 99', false);
         // Under Construction banner removed globally (footer pass 2).
         $response->assertDontSee('Under Construction', false);
         $response->assertSee('branding/favicon-32.png', false);

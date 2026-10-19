@@ -375,6 +375,12 @@ document.addEventListener('click',function(e){
     <a class="home-action" href="{{ route('faq-charges') }}">Tariff Plans →</a>
     <a class="home-action" href="{{ route('demo-profiles.index') }}">Demo Profiles →</a>
   </div>
+  {{-- TEMPORARY launch contact block: remove after the initial period --}}
+  <p class="intro-contact" style="margin:18px auto 0;max-width:740px;text-align:center;font-size:15px">
+        ചോദ്യങ്ങളുണ്ടോ? Questions?
+        <a href="tel:{{ $contactTel }}" style="color:var(--navy);font-weight:600">{{ $contactPhone }}</a> ·
+        <a href="https://wa.me/{{ preg_replace('/\D/', '', $contactTel) }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:600">WhatsApp</a>
+  </p>
 </section>
 <!-- RECOMMEND SOMEONE -->
 <section class="recommend-strip">

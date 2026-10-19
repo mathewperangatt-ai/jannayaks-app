@@ -96,9 +96,10 @@ class AppServiceProvider extends ServiceProvider
             return \Illuminate\Validation\Rules\Password::min(10)->letters()->numbers();
         });
 
-        // Legal pages render inside their own @section blocks, so the
-        // operator contact details must reach each page view directly.
-        \Illuminate\Support\Facades\View::composer('legal.*', function ($view) {
+        // Legal pages render inside their own @section blocks, and the
+        // homepage carries the temporary launch contact block, so the
+        // operator contact details must reach those views directly.
+        \Illuminate\Support\Facades\View::composer(['legal.*', 'home.index'], function ($view) {
             $view->with([
                 'legalAddress' => (string) config('jannayaks.contact.legal_address'),
                 'contactEmail' => (string) config('jannayaks.contact.public_email'),

@@ -36,6 +36,10 @@ class ApplicationForm
                     TextInput::make('preferred_contact_mobile')
                         ->label('Preferred contact mobile')
                         ->disabled()
+                        ->dehydrated(false),
+                    TextInput::make('preferred_whatsapp_mobile')
+                        ->label('WhatsApp number')
+                        ->disabled()
                         ->dehydrated(false)
                         ->visible(fn (?Application $record): bool => self::canSeePrivateContact($record)),
                 ])

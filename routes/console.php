@@ -60,3 +60,15 @@ Schedule::command(VerifyProfileIntegrityCommand::class)
     ->twiceDaily(0, 12)
     ->withoutOverlapping(60)
     ->name('verify-profile-integrity');
+
+/*
+| TEMPORARY weekly contact-numbers export (approved while phone storage is
+| being minimised): exports paid applications' contact/WhatsApp numbers to
+| the owner by CSV email, then removes them from the live database. See
+| ExportContactNumbersCommand for eligibility and safety rules.
+*/
+Schedule::command('jannayaks:export-contact-numbers')
+    ->weeklyOn(1, '9:00')
+    ->timezone(config('jannayaks.membership_lifecycle.business_timezone', 'Asia/Kolkata'))
+    ->withoutOverlapping(30)
+    ->name('export-contact-numbers');

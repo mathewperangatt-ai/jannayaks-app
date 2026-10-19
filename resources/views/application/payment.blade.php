@@ -306,6 +306,10 @@
             <div class="note-safe">{{ $ml ? 'മൊബൈൽ' : 'Mobile' }}</div>
             <div style="font-weight:600">{{ $application->preferred_contact_mobile ?? '—' }}</div>
         </div>
+        <div>
+            <div class="note-safe">{{ $ml ? 'വാട്ട്സ്ആപ്പ്' : 'WhatsApp' }}</div>
+            <div style="font-weight:600">{{ $application->preferred_whatsapp_mobile ?? '—' }}</div>
+        </div>
     </div>
     <div class="actions" style="margin-top:18px">
         <a class="btn ghost" href="{{ route('applications.show', ['application' => $application->id]) }}">{{ $ml ? 'ഡാഷ്‌ബോർഡ്' : 'Dashboard' }}</a>

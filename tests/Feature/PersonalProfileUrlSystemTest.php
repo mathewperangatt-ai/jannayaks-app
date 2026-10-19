@@ -184,11 +184,13 @@ class PersonalProfileUrlSystemTest extends TestCase
     {
         // Final frontend pass §34 removed the phone; footer pass 2 removed the
         // physical address (it belongs on the Contact page only).
+        // SUPERSEDED (launch period): the owner re-approved the business
+        // number on the homepage as a temporary launch contact.
         $this->get('/')
             ->assertOk()
             ->assertSee('hello@jannayaks.in', false)
             ->assertDontSee('hello@jannayaks.com', false)
-            ->assertDontSee('94 95 94 93 99', false)
+            ->assertSee('94 95 94 93 99', false)
             ->assertDontSee('3/532 A, Trivandrum 695573', false);
     }
 

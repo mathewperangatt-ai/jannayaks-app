@@ -89,7 +89,9 @@ class ProfileEngagementController extends Controller
     {
         $validated = $request->validate([
             'visitor_name' => ['required', 'string', 'min:2', 'max:120'],
-            'visitor_mobile' => ['required', 'string', 'max:32', 'regex:/^[0-9+\-\s]{6,20}$/'],
+            // Optional since the launch simplification: visitors may contact
+            // the owner by email alone; a provided number keeps its validation.
+            'visitor_mobile' => ['nullable', 'string', 'max:32', 'regex:/^[0-9+\-\s]{6,20}$/'],
             'message' => ['required', 'string', 'min:5', 'max:1000'],
             'honey_bot' => ['nullable', 'string', 'max:0'],
         ]);
@@ -113,7 +115,7 @@ class ProfileEngagementController extends Controller
         $message = ProfileContactMessage::query()->create([
             'profile_id' => $profile->id,
             'visitor_name' => $validated['visitor_name'],
-            'visitor_mobile' => $validated['visitor_mobile'],
+            'visitor_mobile' => filled($validated['visitor_mobile'] ?? null) ? $validated['visitor_mobile'] : null,
             'message' => $validated['message'],
             'ip_hash' => hash('sha256', (string) $request->ip()),
         ]);

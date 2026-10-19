@@ -36,7 +36,6 @@ class InMemoriamProfileForm
                 ->columns(2)
                 ->schema([
                     TextInput::make('commissioner_contact_name')->required()->maxLength(255),
-                    TextInput::make('commissioner_contact_mobile')->required()->maxLength(32),
                     TextInput::make('commissioner_contact_email')->email()->maxLength(255),
                     TextInput::make('commissioner_relation')->maxLength(128),
                     Toggle::make('commissioner_display_consent')

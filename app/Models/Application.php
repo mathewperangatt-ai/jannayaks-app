@@ -125,6 +125,7 @@ class Application extends Model
         'distinguished_interview_addon',
         'preferred_contact_email',
         'preferred_contact_mobile',
+        'preferred_whatsapp_mobile',
         'direct_submission_note',
         'intake_started_at',
         'online_interview_completed_at',
