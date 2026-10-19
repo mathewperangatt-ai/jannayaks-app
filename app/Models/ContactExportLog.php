@@ -17,6 +17,12 @@ class ContactExportLog extends Model
 
     public const STATUS_EMPTY = 'empty';
 
+    // Two-phase programme: delivered and awaiting the owner's explicit
+    // confirmation before the source values are removed.
+    public const STATUS_AWAITING_CONFIRMATION = 'awaiting_confirmation';
+
+    public const STATUS_CONFIRMED = 'confirmed';
+
     public $timestamps = false;
 
     protected $fillable = [

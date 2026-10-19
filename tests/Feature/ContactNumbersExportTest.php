@@ -53,25 +53,36 @@ class ContactNumbersExportTest extends TestCase
 
         $this->artisan('jannayaks:export-contact-numbers')->assertExitCode(0);
 
+        // Two-phase: delivered values are RETAINED until owner confirmation.
         $app->refresh();
-        $this->assertNull($app->preferred_contact_mobile);
-        $this->assertNull($app->preferred_whatsapp_mobile);
-        $this->assertNotNull($app->contact_exported_at);
+        $this->assertSame('9800000001', (string) $app->preferred_contact_mobile, 'Values must be retained until confirmation');
+        $this->assertSame('9800000002', (string) $app->preferred_whatsapp_mobile);
+        $this->assertNull($app->contact_exported_at);
+        $this->assertNotNull($app->contact_export_batch_id, 'The batch claim marks the exported-but-unconfirmed rows');
         $this->assertSame(Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW, (string) $app->status);
         $this->assertSame('Paid Applicant', (string) $app->full_name, 'Name and other fields stay untouched');
         $this->assertNotNull($app->preferred_contact_email, 'Emails are never removed');
 
         $this->assertSame(1, ContactExportLog::count());
         $log = ContactExportLog::first();
-        $this->assertSame(ContactExportLog::STATUS_SUCCESS, (string) $log->status);
+        $this->assertSame(ContactExportLog::STATUS_AWAITING_CONFIRMATION, (string) $log->status);
         $this->assertSame(1, $log->row_count);
-        $this->assertNotNull($log->file_hash);
+        $this->assertNotNull($log->file_path);
 
         Storage::disk('private_uploads')->assertExists($log->file_path);
         $csv = Storage::disk('private_uploads')->get($log->file_path);
         $this->assertStringContainsString('9800000001', $csv);
         $this->assertStringContainsString('9800000002', $csv);
         $this->assertStringContainsString((string) $app->id, $csv);
+
+        // Owner confirms after verifying the CSV — only then are values removed.
+        $this->artisan('jannayaks:confirm-contact-export', ['batch_id' => $log->batch_id])->assertExitCode(0);
+
+        $app->refresh();
+        $this->assertNull($app->preferred_contact_mobile, 'Confirmation removes the exported values');
+        $this->assertNull($app->preferred_whatsapp_mobile);
+        $this->assertSame('confirmed', (string) $log->fresh()->status);
+        $this->assertSame('paid', (string) $app->payment_status);
     }
 
     /* 2. CSV: exact contents, escaping, no emails, formula-injection safe. */
@@ -217,9 +228,19 @@ class ContactNumbersExportTest extends TestCase
         $this->artisan('jannayaks:export-contact-numbers')->assertExitCode(0);
 
         $app->refresh();
+        $this->assertSame('9800000001', (string) $app->preferred_contact_mobile, 'Delivered values retained until confirmation');
+        $this->assertNotNull($app->contact_export_batch_id);
+
+        $this->artisan('jannayaks:confirm-contact-export')->assertExitCode(0);
+
+        $app->refresh();
+        $this->assertNull($app->preferred_contact_mobile);
         $this->assertSame('paid', (string) $app->payment_status);
-        $successLogs = ContactExportLog::where('status', ContactExportLog::STATUS_SUCCESS)->count();
-        $this->assertGreaterThanOrEqual(1, $successLogs);
+        $this->assertSame(
+            1,
+            ContactExportLog::where('status', ContactExportLog::STATUS_CONFIRMED)->count(),
+            'The confirmed batch is recorded'
+        );
     }
 
     /* 7. A later paid application joins a subsequent weekly batch. */
@@ -240,14 +261,24 @@ class ContactNumbersExportTest extends TestCase
         ]);
 
         $this->artisan('jannayaks:export-contact-numbers')->assertExitCode(0);
+        $this->artisan('jannayaks:export-contact-numbers')->assertExitCode(0);
 
-        $this->assertNull($second->fresh()->preferred_contact_mobile);
-        $this->assertSame(2, ContactExportLog::where('status', ContactExportLog::STATUS_SUCCESS)->count());
+        $this->assertSame(2, ContactExportLog::where('status', ContactExportLog::STATUS_AWAITING_CONFIRMATION)->count());
+        $this->assertNotNull($first->fresh()->preferred_contact_mobile, 'Retained until confirmation');
+        $this->assertNotNull($second->fresh()->preferred_whatsapp_mobile, 'Retained until confirmation');
+
+        $this->artisan('jannayaks:confirm-contact-export', ['batch_id' => $first->contact_export_batch_id])->assertExitCode(0);
+        $this->artisan('jannayaks:confirm-contact-export', ['batch_id' => $second->contact_export_batch_id])->assertExitCode(0);
+
+        $this->assertNull($first->fresh()->preferred_whatsapp_mobile);
+        $this->assertNull($second->fresh()->preferred_whatsapp_mobile);
+        $this->assertSame(2, ContactExportLog::where('status', ContactExportLog::STATUS_CONFIRMED)->count());
         $this->assertSame(
             2,
             Application::query()->whereNotNull('contact_exported_at')->count(),
             'Both applications must carry the exported marker'
         );
+        $this->assertNull($second->fresh()->preferred_contact_mobile);
         $this->assertNotNull($first->fresh()->preferred_contact_email, 'Emails are never removed');
     }
 

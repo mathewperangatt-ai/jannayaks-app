@@ -209,9 +209,10 @@ return [
         'public_phone' => env('JANNAYAKS_PUBLIC_PHONE', '94 95 94 93 99'),
         'public_phone_tel' => env('JANNAYAKS_PUBLIC_PHONE_TEL', '+919495949399'),
         // Weekly contact-numbers export recipient (temporary programme).
-        // Defaults to the public/support inbox; override via Railway when the
-        // owner designates a different administrative mailbox.
-        'phone_export_recipient' => env('JANNAYAKS_PHONE_EXPORT_RECIPIENT', env('JANNAYAKS_PUBLIC_EMAIL', 'hello@jannayaks.in')),
+        // CONFIDENTIAL destination: must be an explicitly configured,
+        // owner-approved administrative mailbox. When unset, the export
+        // command fails safely without sending or deleting anything.
+        'phone_export_recipient' => env('JANNAYAKS_PHONE_EXPORT_RECIPIENT'),
         'legal_address' => env('JANNAYAKS_LEGAL_ADDRESS', '3/532 A, Trivandrum 695573'),
     ],
 

@@ -113,27 +113,23 @@ class ExportContactNumbersCommand extends Command
             return self::FAILURE;
         }
 
-        // Delivery accepted by the transport — now, and only now, remove the
-        // exported numbers from the live database.
-        Application::query()
-            ->where('contact_export_batch_id', $batchId)
-            ->update([
-                'preferred_contact_mobile' => null,
-                'preferred_whatsapp_mobile' => null,
-                'contact_exported_at' => now(),
-            ]);
-
+        // Delivery accepted by the transport. Two-phase programme: the source
+        // values are RETAINED until the owner runs
+        // jannayaks:confirm-contact-export for this batch — deletion never
+        // happens automatically and contact_exported_at is only stamped by the
+        // confirmation command.
         ContactExportLog::create([
             'batch_id' => $batchId,
             'recipient' => $recipient,
             'row_count' => $eligible->count(),
             'file_path' => $path,
             'file_hash' => $fileHash,
-            'status' => ContactExportLog::STATUS_SUCCESS,
+            'status' => ContactExportLog::STATUS_AWAITING_CONFIRMATION,
             'created_at' => now(),
         ]);
 
-        $this->info('Export batch '.$batchId.' delivered ('.$eligible->count().' applications). Contact values removed from the live database.');
+        $this->info('Export batch '.$batchId.' delivered ('.$eligible->count().' applications) and marked AWAITING CONFIRMATION.');
+        $this->line('Run jannayaks:confirm-contact-export '.$batchId.' after verifying the CSV to remove the exported numbers.');
 
         return self::SUCCESS;
     }
