@@ -316,7 +316,12 @@ class ContactNumbersExportTest extends TestCase
         Mail::fake();
 
         // Visit the profile first so back() returns to it, as in a browser.
-        $this->get('/t.gopalakrishnan')->assertOk();
+        // The rendered mobile input must no longer carry the HTML required
+        // attribute: email-only enquiries are accepted.
+        $this->get('/t.gopalakrishnan')
+            ->assertOk()
+            ->assertSee('id="visitor_mobile" name="visitor_mobile" maxlength="20" inputmode="tel"', false)
+            ->assertDontSee('id="visitor_mobile" name="visitor_mobile" maxlength="20" required', false);
 
         $response = $this->post('/profiles/t.gopalakrishnan/contact', [
             'visitor_name' => 'Email Only Visitor',

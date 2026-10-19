@@ -233,7 +233,7 @@
                     </div>
                     <div class="jk-field">
                         <label for="visitor_mobile">Your mobile number</label>
-                        <input id="visitor_mobile" name="visitor_mobile" maxlength="20" required inputmode="tel" value="{{ old('visitor_mobile') }}">
+                        <input id="visitor_mobile" name="visitor_mobile" maxlength="20" inputmode="tel" value="{{ old('visitor_mobile') }}">
                     </div>
                     <div class="jk-field">
                         <label for="message">Message / reason for contact</label>
