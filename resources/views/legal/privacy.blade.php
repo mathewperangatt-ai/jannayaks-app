@@ -23,7 +23,7 @@
     <strong class="legal-box-title">Contact for questions about your data</strong>
     Aurex Network<br>
     {{ $legalAddress }}<br>
-    Name of the person who answers: Mathew<br>
+    Name of the person who answers: Mathew Perangatt, Founder<br>
     Email: <a href="mailto:{{ $contactEmail }}">{{ $contactEmail }}</a><br>
     Telephone: <a href="tel:{{ $contactTel }}">{{ $contactPhone }}</a>
 </address>

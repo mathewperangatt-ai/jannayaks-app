@@ -48,14 +48,14 @@ class LegalPagesTest extends TestCase
     {
         $this->get('/privacy')
             ->assertOk()
-            ->assertSee('3/532 A, Trivandrum 695573', false)
+            ->assertSee('MP 3/532A, PIN 695573', false)
             ->assertSee('Name of the person who answers: Mathew', false)
             ->assertSee('tel:+919495949399', false);
 
         $this->get('/grievance')
             ->assertOk()
-            ->assertSee('3/532 A, Trivandrum 695573', false)
-            ->assertSee('Name: Mathew', false);
+            ->assertSee('MP 3/532A, PIN 695573', false)
+            ->assertSee('Name: Mathew Perangatt, Founder', false);
     }
 
     public function test_legal_pages_omit_retired_providers_and_draft_markers(): void
