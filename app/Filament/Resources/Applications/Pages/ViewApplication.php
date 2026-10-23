@@ -4,15 +4,21 @@ namespace App\Filament\Resources\Applications\Pages;
 
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
+use App\Models\EditorialRevisionRequest;
 use App\Models\User;
 use App\Services\ApplicationWorkflowService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
+use App\Services\PostPublicationUpdateService;
+use App\Support\EditorialTestBypass;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Textarea;
+use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
+use Filament\Schemas\Components\Section;
 use InvalidArgumentException;
 
 class ViewApplication extends ViewRecord
@@ -71,7 +77,13 @@ class ViewApplication extends ViewRecord
                 ->label('Release for customer preview')
                 ->requiresConfirmation()
                 ->modalHeading('Release profile for customer preview')
-                ->modalDescription('Requires an approved English editorial master. The member can then review, request included revisions, or approve. Does not publish.')
+                ->modalDescription(function (): string {
+                    $record = $this->getRecord();
+
+                    return app(EditorialTestBypass::class)->releaseModalDescription(
+                        $record instanceof Application ? $record : null,
+                    );
+                })
                 ->visible(fn (): bool => (auth()->user()?->canManageEditorial() ?? false)
                     && $this->getRecord()?->status !== Application::STATUS_PUBLISHED
                     && ! $this->hasOpenMaintenanceRequest())
@@ -129,20 +141,20 @@ class ViewApplication extends ViewRecord
                 ->visible(fn (): bool => (auth()->user()?->canManageEditorial() ?? false)
                     && ($this->maintenanceRequest()?->isAwaitingPreparation() === true))
                 ->form([
-                    \Filament\Schemas\Components\Section::make('English — prepared version')
+                    Section::make('English — prepared version')
                         ->description('Applied to the cycle\'s current proposed English version. Locked versions get an immutable successor.')
                         ->schema([
-                            \Filament\Forms\Components\TextInput::make('en_title')->label('Title')->maxLength(255),
-                            \Filament\Forms\Components\Textarea::make('en_summary')->label('Summary')->rows(3)->maxLength(2000),
-                            \Filament\Forms\Components\Textarea::make('en_body')->label('Body')->rows(8)->maxLength(20000),
+                            TextInput::make('en_title')->label('Title')->maxLength(255),
+                            Textarea::make('en_summary')->label('Summary')->rows(3)->maxLength(2000),
+                            Textarea::make('en_body')->label('Body')->rows(8)->maxLength(20000),
                         ])
                         ->columns(1),
-                    \Filament\Schemas\Components\Section::make('Malayalam — prepared version (paired to this English master)')
+                    Section::make('Malayalam — prepared version (paired to this English master)')
                         ->description('Applied to the cycle\'s current proposed Malayalam version. Its EN↔ML pairing is established now, at creation — never later.')
                         ->schema([
-                            \Filament\Forms\Components\TextInput::make('ml_title')->label('Title (Malayalam)')->maxLength(255),
-                            \Filament\Forms\Components\Textarea::make('ml_summary')->label('Summary (Malayalam)')->rows(3)->maxLength(2000),
-                            \Filament\Forms\Components\Textarea::make('ml_body')->label('Body (Malayalam)')->rows(8)->maxLength(20000),
+                            TextInput::make('ml_title')->label('Title (Malayalam)')->maxLength(255),
+                            Textarea::make('ml_summary')->label('Summary (Malayalam)')->rows(3)->maxLength(2000),
+                            Textarea::make('ml_body')->label('Body (Malayalam)')->rows(8)->maxLength(20000),
                         ])
                         ->columns(1),
                 ])
@@ -174,7 +186,7 @@ class ViewApplication extends ViewRecord
                     }
 
                     try {
-                        $request = app(\App\Services\PostPublicationUpdateService::class)->prepareVersions(
+                        $request = app(PostPublicationUpdateService::class)->prepareVersions(
                             $application,
                             $actor,
                             $enData === [] ? null : $enData,
@@ -207,7 +219,7 @@ class ViewApplication extends ViewRecord
                     $application = $this->getRecord();
 
                     try {
-                        $request = app(\App\Services\PostPublicationUpdateService::class)->prepareViaAiDraft($application, $actor);
+                        $request = app(PostPublicationUpdateService::class)->prepareViaAiDraft($application, $actor);
                         Notification::make()
                             ->title('AI maintenance draft prepared')
                             ->body('Draft EN/ML versions are linked to the maintenance request and await editorial review. AI output is never released to the customer directly.')
@@ -235,7 +247,7 @@ class ViewApplication extends ViewRecord
                     $application = $this->getRecord();
 
                     try {
-                        app(\App\Services\PostPublicationUpdateService::class)->releaseMaintenancePreview($application, $actor);
+                        app(PostPublicationUpdateService::class)->releaseMaintenancePreview($application, $actor);
                         Notification::make()->title('Maintenance preview released')->body('The customer can now approve the updated profile or request minor corrections.')->success()->send();
                     } catch (InvalidArgumentException $e) {
                         Notification::make()->title('Cannot release maintenance preview')->body($e->getMessage())->danger()->send();
@@ -248,7 +260,7 @@ class ViewApplication extends ViewRecord
                 ->modalHeading('Publish the customer-approved maintenance update')
                 ->modalDescription('Admin only. Publishes the customer-approved EN/ML versions as the new public profile. Previous published versions remain as immutable history. Audited.')
                 ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false)
-                    && ($this->maintenanceRequest()?->status === \App\Models\EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED))
+                    && ($this->maintenanceRequest()?->status === EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED))
                 ->action(function (): void {
                     $actor = auth()->user();
                     if (! $actor instanceof User) {
@@ -259,7 +271,7 @@ class ViewApplication extends ViewRecord
                     $application = $this->getRecord();
 
                     try {
-                        app(\App\Services\PostPublicationUpdateService::class)->completePublication($application, $actor);
+                        app(PostPublicationUpdateService::class)->completePublication($application, $actor);
                         Notification::make()->title('Maintenance update published')->body('The approved EN/ML versions are now the published profile. The maintenance request is completed.')->success()->send();
                     } catch (InvalidArgumentException $e) {
                         Notification::make()->title('Cannot publish maintenance update')->body($e->getMessage())->danger()->send();
@@ -270,9 +282,9 @@ class ViewApplication extends ViewRecord
         ];
     }
 
-    private function maintenanceRequest(): ?\App\Models\EditorialRevisionRequest
+    private function maintenanceRequest(): ?EditorialRevisionRequest
     {
-        return app(\App\Services\PostPublicationUpdateService::class)->openRequestFor($this->getRecord());
+        return app(PostPublicationUpdateService::class)->openRequestFor($this->getRecord());
     }
 
     private function hasOpenMaintenanceRequest(): bool

@@ -9,6 +9,7 @@ use App\Models\EditorialRevisionRequest;
 use App\Models\Profile;
 use App\Models\User;
 use App\Support\EditorialPlainTextSanitizer;
+use App\Support\EditorialTestBypass;
 use Illuminate\Support\Facades\Cache;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
@@ -64,11 +65,13 @@ class CustomerEditorialWorkflowService
             throw new InvalidArgumentException('An open profile-maintenance request exists. Complete it through the maintenance workflow first.');
         }
 
-        if (! $application->isPaymentSettled() && $application->source_method !== 'admin_test_demo') {
+        $testBypass = app(EditorialTestBypass::class)->appliesTo($application);
+
+        if (! $application->isPaymentSettled() && $application->source_method !== 'admin_test_demo' && ! $testBypass) {
             throw new InvalidArgumentException('Payment must be settled before customer preview.');
         }
 
-        return DB::transaction(function () use ($application, $actor) {
+        return DB::transaction(function () use ($application, $actor, $testBypass) {
             /** @var Application $locked */
             $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
 
@@ -81,7 +84,13 @@ class CustomerEditorialWorkflowService
             }
 
             $profile = $this->requireProfile($locked);
-            [$english, $malayalam] = $this->resolvePreviewVersions($profile);
+            // Re-read inside the lock. A profile that became public between
+            // the outer check and the lock must not receive the bypass.
+            $testBypass = $testBypass && app(EditorialTestBypass::class)->appliesTo($locked);
+            if (! $locked->isPaymentSettled() && $locked->source_method !== 'admin_test_demo' && ! $testBypass) {
+                throw new InvalidArgumentException('Payment must be settled before customer preview.');
+            }
+            [$english, $malayalam] = $this->resolvePreviewVersions($profile, $testBypass);
 
             $this->invalidateActiveApproval(
                 $locked,
@@ -121,17 +130,39 @@ class CustomerEditorialWorkflowService
                     'updated_at' => now(),
                 ]);
 
+            $after = [
+                'status' => $locked->status,
+                'preview_english_editorial_content_id' => $english->id,
+                'preview_malayalam_editorial_content_id' => $malayalam?->id,
+                'english_editorial_status' => $english->status,
+                'test_bypass' => $testBypass,
+            ];
+            if ($testBypass) {
+                $after['profile_reference_code'] = $profile->reference_code;
+                $after['payment_status'] = $locked->payment_status;
+            }
+
             $this->auditLogger->log(
                 action: 'editorial.customer_preview_released',
                 subject: $locked,
                 before: $before,
-                after: [
-                    'status' => $locked->status,
-                    'preview_english_editorial_content_id' => $english->id,
-                    'preview_malayalam_editorial_content_id' => $malayalam?->id,
-                ],
+                after: $after,
                 actor: $actor,
             );
+
+            if ($testBypass) {
+                $this->auditLogger->log(
+                    action: 'editorial.test_bypass_used',
+                    subject: $locked,
+                    after: [
+                        'profile_reference_code' => $profile->reference_code,
+                        'english_editorial_content_id' => $english->id,
+                        'english_editorial_status' => $english->status,
+                        'payment_status' => $locked->payment_status,
+                    ],
+                    actor: $actor,
+                );
+            }
 
             return $locked->fresh() ?? $locked;
         });
@@ -454,8 +485,19 @@ class CustomerEditorialWorkflowService
             ], true);
     }
 
-    private function resolvePreviewVersions(Profile $profile): array
+    private function resolvePreviewVersions(Profile $profile, bool $allowUnapprovedDraft = false): array
     {
+        if ($allowUnapprovedDraft) {
+            $english = $this->latestReleasableVersion($profile, EditorialContent::LANGUAGE_EN);
+            if (! $english instanceof EditorialContent) {
+                throw new InvalidArgumentException('No usable English editorial draft is available to release.');
+            }
+
+            $malayalam = $this->latestReleasableVersion($profile, EditorialContent::LANGUAGE_ML);
+
+            return [$english, $malayalam];
+        }
+
         $english = EditorialContent::query()
             ->where('profile_id', $profile->id)
             ->where('language', EditorialContent::LANGUAGE_EN)
@@ -488,6 +530,36 @@ class CustomerEditorialWorkflowService
             ->first();
 
         return [$english, $malayalam];
+    }
+
+    /**
+     * Highest-version English or Malayalam row that can be shown privately.
+     * Draft status and AI provenance are left unchanged.
+     */
+    private function latestReleasableVersion(Profile $profile, string $language): ?EditorialContent
+    {
+        $versions = EditorialContent::query()
+            ->where('profile_id', $profile->id)
+            ->where('language', $language)
+            ->whereIn('status', [
+                EditorialContent::STATUS_APPROVED,
+                EditorialContent::STATUS_DRAFT,
+            ])
+            ->orderByDesc('version_number')
+            ->get();
+
+        foreach ($versions as $version) {
+            if (! $version instanceof EditorialContent || $version->isIncompleteFailedGeneration()) {
+                continue;
+            }
+            if (! filled($version->body) && ! filled($version->title)) {
+                continue;
+            }
+
+            return $version;
+        }
+
+        return null;
     }
 
     private function invalidateActiveApproval(Application $application, string $reason, ?User $actor): void

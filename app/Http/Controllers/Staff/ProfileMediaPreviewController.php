@@ -11,8 +11,9 @@ use Symfony\Component\HttpFoundation\StreamedResponse;
 class ProfileMediaPreviewController extends Controller
 {
     /**
-     * Editorial staff preview of a profile photograph (including pending/rejected).
-     * Does not use the public publication gate.
+     * Editorial staff preview of a customer profile photograph or its private
+     * AI enhancement candidate (including pending/rejected). Unrelated media
+     * types are not served. Does not use the public publication gate.
      */
     public function __invoke(MediaItem $media): StreamedResponse
     {
@@ -21,7 +22,10 @@ class ProfileMediaPreviewController extends Controller
             abort(403);
         }
 
-        if ($media->media_type !== MediaItem::TYPE_PROFILE_PHOTO || ! filled($media->storage_path_key)) {
+        if (! in_array($media->media_type, [
+            MediaItem::TYPE_PROFILE_PHOTO,
+            MediaItem::TYPE_PROFILE_PHOTO_ENHANCEMENT,
+        ], true) || ! filled($media->storage_path_key)) {
             abort(404);
         }
 

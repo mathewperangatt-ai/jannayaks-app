@@ -2,13 +2,16 @@
 
 namespace Tests\Feature;
 
+use App\Contracts\PhotoEnhancementClient;
+use App\Filament\Resources\Applications\Pages\ViewApplication;
 use App\Filament\Resources\Applications\RelationManagers\ProfileMediaRelationManager;
 use App\Models\Application;
-use App\Models\MediaItem;
 use App\Models\PhotoEnhancementRun;
 use App\Models\Profile;
 use App\Models\User;
+use App\Services\Ai\FakePhotoEnhancementClient;
 use App\Services\PhotoEnhancementService;
+use App\Services\ProfileMediaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
@@ -61,13 +64,13 @@ class PhotoEnhancementAdminUiTest extends TestCase
         return Livewire::actingAs($this->admin)
             ->test(ProfileMediaRelationManager::class, [
                 'ownerRecord' => $this->application,
-                'pageClass' => \App\Filament\Resources\Applications\Pages\ViewApplication::class,
+                'pageClass' => ViewApplication::class,
             ]);
     }
 
     public function test_completed_run_shows_status_badge_and_all_three_actions(): void
     {
-        $source = app(\App\Services\ProfileMediaService::class)->uploadProfilePhoto(
+        $source = app(ProfileMediaService::class)->uploadProfilePhoto(
             profile: $this->application->profile,
             file: UploadedFile::fake()->image('p.jpg', 600, 800),
             actor: $this->application->user,
@@ -84,7 +87,7 @@ class PhotoEnhancementAdminUiTest extends TestCase
 
     public function test_comparison_modal_renders_source_and_candidate_labels(): void
     {
-        $source = app(\App\Services\ProfileMediaService::class)->uploadProfilePhoto(
+        $source = app(ProfileMediaService::class)->uploadProfilePhoto(
             profile: $this->application->profile,
             file: UploadedFile::fake()->image('p.jpg', 600, 800),
             actor: $this->application->user,
@@ -105,9 +108,17 @@ class PhotoEnhancementAdminUiTest extends TestCase
         $this->assertStringContainsString(route('staff.profile-media.preview', ['media' => $source]), $html);
         $this->assertStringContainsString(route('staff.profile-media.preview', ['media' => $run->candidate]), $html);
         $this->assertStringContainsString('enhance the photograph, never reinvent the person', $html);
+        $this->assertStringContainsString('jy-enhance-compare', $html);
+        $this->assertStringContainsString('@media (min-width: 768px)', $html);
+        $this->assertStringContainsString('Simulated provider', $html);
+        $this->assertStringContainsString('not a genuine AI enhancement', $html);
 
-        // And the action itself renders on the table.
-        $this->relation()->assertSeeText('Compare AI enhancement');
+        // And the action itself renders on the table, including on the stacked mobile layout.
+        $this->relation()
+            ->assertSeeText('Compare AI enhancement')
+            ->assertSeeText('Accept Enhanced')
+            ->assertSeeText('Keep Original')
+            ->assertSeeText('stacked on a phone');
     }
 
     public function test_no_run_shows_no_enhancement_ui(): void
@@ -122,9 +133,9 @@ class PhotoEnhancementAdminUiTest extends TestCase
 
     public function test_failed_run_shows_retry_and_no_decision_actions(): void
     {
-        app()->instance(\App\Contracts\PhotoEnhancementClient::class, tap(new \App\Services\Ai\FakePhotoEnhancementClient, fn ($c) => $c->failNext = true));
+        app()->instance(PhotoEnhancementClient::class, tap(new FakePhotoEnhancementClient, fn ($c) => $c->failNext = true));
 
-        $source = app(\App\Services\ProfileMediaService::class)->uploadProfilePhoto(
+        $source = app(ProfileMediaService::class)->uploadProfilePhoto(
             profile: $this->application->profile,
             file: UploadedFile::fake()->image('p.jpg', 600, 800),
             actor: $this->application->user,

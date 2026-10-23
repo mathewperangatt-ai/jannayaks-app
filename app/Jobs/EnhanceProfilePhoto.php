@@ -24,11 +24,16 @@ class EnhanceProfilePhoto implements ShouldQueue
     use Queueable;
     use SerializesModels;
 
+    public const QUEUE_NAME = 'photo-enhancement';
+
     public int $tries = 1;
 
     public int $timeout = 240;
 
-    public function __construct(public int $runId) {}
+    public function __construct(public int $runId)
+    {
+        $this->onQueue(self::QUEUE_NAME);
+    }
 
     public function handle(PhotoEnhancementService $service): void
     {

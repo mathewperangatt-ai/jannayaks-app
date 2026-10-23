@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Contracts\PhotoEnhancementClient;
 use App\Jobs\EnhanceProfilePhoto;
+use App\Models\Application;
 use App\Models\MediaItem;
 use App\Models\PhotoEnhancementRun;
 use App\Models\Profile;
@@ -11,14 +12,14 @@ use App\Models\User;
 use App\Services\Ai\FakePhotoEnhancementClient;
 use App\Services\PhotoEnhancementService;
 use App\Services\ProfileMediaService;
+use App\Services\PublicProfilePresentationService;
+use Illuminate\Console\Scheduling\Schedule;
+use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Queue;
 use Illuminate\Support\Facades\Storage;
-use Intervention\Image\Encoders\JpegEncoder;
-use Intervention\Image\ImageManager;
-use Intervention\Image\Drivers\Gd\Driver;
 use Tests\TestCase;
 
 /**
@@ -54,7 +55,7 @@ class PhotoEnhancementTest extends TestCase
             'display_phone_consent' => false,
             'display_email_consent' => false,
         ]);
-        \App\Models\Application::factory()->paid()->create([
+        Application::factory()->paid()->create([
             'user_id' => $this->member->id,
             'profile_id' => $this->profile->id,
             'full_name' => 'Photo Person',
@@ -262,6 +263,56 @@ class PhotoEnhancementTest extends TestCase
         $this->assertNotNull($candidate->photo_sha256);
         $this->assertSame('image/jpeg', $candidate->mime_type);
 
+        // The comparison modal loads both files through the staff preview
+        // route. The candidate is a different media type and must still be
+        // served to editorial staff.
+        $sourceBytes = Storage::disk('public')->get($source->storage_path_key);
+        $candidateBytes = Storage::disk('public')->get($candidate->storage_path_key);
+        $this->assertNotSame('', $sourceBytes);
+        $this->assertNotSame('', $candidateBytes);
+
+        $this->get(route('staff.profile-media.preview', $candidate))
+            ->assertRedirect(route('login'));
+
+        $sourceResponse = $this->actingAs($this->admin)
+            ->get(route('staff.profile-media.preview', $source));
+        $sourceResponse->assertOk();
+        $sourceResponse->assertHeader('Content-Type', 'image/jpeg');
+        $sourceResponse->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->assertStringContainsString('private', (string) $sourceResponse->headers->get('Cache-Control'));
+        $this->assertStringContainsString('no-store', (string) $sourceResponse->headers->get('Cache-Control'));
+        $this->assertSame($sourceBytes, $sourceResponse->streamedContent());
+
+        $candidateResponse = $this->actingAs($this->admin)
+            ->get(route('staff.profile-media.preview', $candidate));
+        $candidateResponse->assertOk();
+        $candidateResponse->assertHeader('Content-Type', 'image/jpeg');
+        $candidateResponse->assertHeader('X-Content-Type-Options', 'nosniff');
+        $this->assertStringContainsString('private', (string) $candidateResponse->headers->get('Cache-Control'));
+        $this->assertStringContainsString('no-store', (string) $candidateResponse->headers->get('Cache-Control'));
+        $this->assertSame($candidateBytes, $candidateResponse->streamedContent());
+
+        $this->actingAs($this->member)
+            ->get(route('staff.profile-media.preview', $candidate))
+            ->assertForbidden();
+
+        $unrelated = MediaItem::query()->create([
+            'mediable_type' => $this->profile->getMorphClass(),
+            'mediable_id' => $this->profile->id,
+            'media_type' => MediaItem::TYPE_DOCUMENT,
+            'storage_path_key' => 'profile-media/unrelated/note.txt',
+            'disk' => 'public',
+            'privacy' => MediaItem::PRIVACY_PRIVATE,
+            'review_status' => MediaItem::REVIEW_PENDING,
+            'uploaded_by_id' => $this->member->id,
+            'mime_type' => 'text/plain',
+        ]);
+        Storage::disk('public')->put($unrelated->storage_path_key, 'not-a-photograph');
+
+        $this->actingAs($this->admin)
+            ->get(route('staff.profile-media.preview', $unrelated))
+            ->assertNotFound();
+
         // Candidate never counts against the customer's photo slots: a tier-1
         // package can still hold a second real upload.
         Config::set('jannayaks.tier_pricing.packages.emerging.includes_photo_slots', 1);
@@ -286,7 +337,7 @@ class PhotoEnhancementTest extends TestCase
         $this->assertSame(1, PhotoEnhancementRun::query()->where('source_media_id', $source->id)->count());
 
         // The DB-level guarantee (partial unique index) also holds.
-        $this->expectException(\Illuminate\Database\QueryException::class);
+        $this->expectException(QueryException::class);
         PhotoEnhancementRun::query()->create([
             'source_media_id' => $source->id,
             'provider' => 'fake',
@@ -438,7 +489,7 @@ class PhotoEnhancementTest extends TestCase
         $this->assertFalse($candidate->isApprovedForPublicDisplay());
 
         // Public photo list contains exactly the source.
-        $public = app(\App\Services\PublicProfilePresentationService::class)->publicProfilePhotos($this->profile->fresh());
+        $public = app(PublicProfilePresentationService::class)->publicProfilePhotos($this->profile->fresh());
         $this->assertSame([$source->id], $public->pluck('id')->all());
     }
 
@@ -475,5 +526,93 @@ class PhotoEnhancementTest extends TestCase
         Storage::disk('public')->assertExists($item->storage_path_key);
         $run = PhotoEnhancementRun::query()->where('source_media_id', $item->id)->first();
         $this->assertTrue($run === null || in_array($run->status, [PhotoEnhancementRun::STATUS_FAILED, PhotoEnhancementRun::STATUS_QUEUED], true));
+    }
+
+    public function test_database_queue_processing_creates_a_candidate_linked_to_the_source(): void
+    {
+        config(['queue.default' => 'database']);
+        app('queue')->setDefaultDriver('database');
+        $this->enable();
+
+        $source = $this->uploadSource();
+        $originalBytes = Storage::disk('public')->get($source->storage_path_key);
+        $run = PhotoEnhancementRun::query()->where('source_media_id', $source->id)->sole();
+
+        $this->assertSame(PhotoEnhancementRun::STATUS_QUEUED, $run->status);
+        $this->assertNull($run->candidate_media_id);
+        $this->assertDatabaseHas('jobs', ['queue' => EnhanceProfilePhoto::QUEUE_NAME]);
+
+        $this->artisan('queue:work', [
+            'connection' => 'database',
+            '--queue' => EnhanceProfilePhoto::QUEUE_NAME,
+            '--once' => true,
+        ])->assertSuccessful();
+
+        $run->refresh();
+        $source->refresh();
+        $this->assertSame(PhotoEnhancementRun::STATUS_COMPLETED, $run->status);
+        $candidate = MediaItem::query()->find($run->candidate_media_id);
+        $this->assertInstanceOf(MediaItem::class, $candidate);
+        $this->assertSame($source->id, (int) $candidate->enhanced_from_media_id);
+        $this->assertSame(MediaItem::TYPE_PROFILE_PHOTO_ENHANCEMENT, $candidate->media_type);
+        $this->assertSame(MediaItem::PRIVACY_PRIVATE, $candidate->privacy);
+        $this->assertSame(MediaItem::REVIEW_PENDING, $candidate->review_status);
+        $this->assertFalse($candidate->is_primary);
+        $this->assertSame($originalBytes, Storage::disk('public')->get($source->storage_path_key));
+    }
+
+    public function test_production_fake_provider_fails_visibly_and_stores_no_candidate(): void
+    {
+        Config::set('jannayaks.ai.image_enhancement.enabled', true);
+        Config::set('jannayaks.ai.image_enhancement.provider', 'fake');
+        Queue::fake();
+
+        $source = $this->uploadSource();
+        $run = PhotoEnhancementRun::query()->where('source_media_id', $source->id)->sole();
+        $this->assertSame(PhotoEnhancementRun::STATUS_QUEUED, $run->status);
+
+        $this->app->detectEnvironment(fn (): string => 'production');
+        app(PhotoEnhancementService::class)->processRun($run->fresh());
+
+        $run->refresh();
+        $this->assertSame(PhotoEnhancementRun::STATUS_FAILED, $run->status);
+        $this->assertStringContainsString('simulated fake client', (string) $run->error_message);
+        $this->assertNull($run->candidate_media_id);
+        $this->assertSame(0, MediaItem::query()->where('enhanced_from_media_id', $source->id)->count());
+        $this->assertSame(MediaItem::PRIVACY_PRIVATE, $source->fresh()->privacy);
+    }
+
+    public function test_scheduler_drains_only_the_photo_enhancement_queue(): void
+    {
+        $event = collect(app(Schedule::class)->events())
+            ->first(fn ($scheduled): bool => str_contains((string) $scheduled->command, EnhanceProfilePhoto::QUEUE_NAME));
+
+        $this->assertNotNull($event);
+        $this->assertStringContainsString('--stop-when-empty', (string) $event->command);
+        $this->assertStringContainsString('--max-time=230', (string) $event->command);
+        $this->assertStringNotContainsString('--queue=default', (string) $event->command);
+        $this->assertSame('process-photo-enhancement-queue', $event->description);
+        $this->assertTrue($event->withoutOverlapping);
+        // expiresAt is minutes. Five minutes covers the 230-second worker
+        // plus startup and shutdown, and is the hard-kill recovery bound.
+        $this->assertSame(5, $event->expiresAt);
+    }
+
+    public function test_database_queue_retry_after_exceeds_the_only_queued_job_timeout(): void
+    {
+        $jobFiles = glob(app_path('Jobs/*.php')) ?: [];
+        $jobClasses = array_map(
+            fn (string $file): string => 'App\\Jobs\\'.basename($file, '.php'),
+            $jobFiles,
+        );
+
+        $this->assertSame([EnhanceProfilePhoto::class], $jobClasses);
+
+        $job = new EnhanceProfilePhoto(1);
+        $retryAfter = (int) config('queue.connections.database.retry_after');
+
+        $this->assertSame(240, $job->timeout);
+        $this->assertSame(300, $retryAfter);
+        $this->assertGreaterThan($job->timeout, $retryAfter);
     }
 }

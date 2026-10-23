@@ -56,5 +56,14 @@ Laravel pattern, per docs.railway.com → Laravel guide "Cron Service"):
 maintenance mode. Combined with the `withoutOverlapping(120)` mutex on the lifecycle
 command, overlapping invocations are safe.
 
-No queue worker service is required today: the application dispatches nothing to
-queues (`app/Jobs` does not exist); `QUEUE_CONNECTION=database` is idle.
+The scheduler service is also the queue worker. `app/Jobs/EnhanceProfilePhoto.php`
+is the only `ShouldQueue` job: timeout 240 seconds, queue name `photo-enhancement`.
+`routes/console.php` drains that queue every minute with
+`queue:work --queue=photo-enhancement --stop-when-empty --max-time=230`.
+It does not consume the `default` queue. Do not add a separate queue-worker service.
+
+`DB_QUEUE_RETRY_AFTER` defaults to 300 seconds and must stay above the 240-second
+job timeout, or a long run can be reserved twice. The drain uses
+`withoutOverlapping(5)`. That argument is minutes. The mutex is removed when
+the command finishes; five minutes is the recovery bound if the process is
+hard-killed before that cleanup.

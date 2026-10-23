@@ -3,11 +3,14 @@
 namespace App\Filament\Resources\Applications\RelationManagers;
 
 use App\Models\MediaItem;
+use App\Models\PhotoEnhancementRun;
 use App\Models\Profile;
 use App\Models\User;
+use App\Services\PhotoEnhancementService;
 use App\Services\ProfileMediaService;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
+use Filament\Notifications\Notification;
 use Filament\Resources\RelationManagers\RelationManager;
 use Filament\Tables\Columns\IconColumn;
 use Filament\Tables\Columns\ImageColumn;
@@ -24,6 +27,8 @@ class ProfileMediaRelationManager extends RelationManager
     public function table(Table $table): Table
     {
         return $table
+            ->description('Each row is the customer’s original photograph. The AI enhancement column shows whether a run is waiting, processing, ready, failed, or simulated. Use the compare action on that row to view the original and the candidate: side by side on a wide screen and stacked on a phone. The original stays private until you choose it, and a candidate is not the public primary photograph until you accept it.')
+            ->stackedOnMobile()
             ->columns([
                 ImageColumn::make('staff_preview_thumbnail')
                     ->label('')
@@ -34,34 +39,40 @@ class ProfileMediaRelationManager extends RelationManager
                     ->width(40)
                     ->square(false)
                     ->extraImgAttributes(['style' => 'border:1px solid #d3ddd1;border-radius:6px;background:#eaf2e7;object-fit:cover']),
-                TextColumn::make('id')->label('ID'),
-                TextColumn::make('review_status')->badge()->label('Review'),
-                IconColumn::make('is_primary')->boolean()->label('Primary req.'),
-                TextColumn::make('privacy')->badge(),
                 TextColumn::make('enhancement_status')
                     ->label('AI enhancement')
                     ->badge()
                     ->placeholder('—')
                     ->formatStateUsing(fn (?string $state): string => (string) $state)
                     ->color(fn (?string $state): string => match (true) {
-                        $state === 'Ready for review' => 'success',
                         str_contains((string) $state, 'failed') => 'danger',
-                        $state === 'Queued' || $state === 'Processing' => 'info',
+                        str_contains((string) $state, 'simulated') => 'warning',
+                        str_starts_with((string) $state, 'Ready for review') => 'success',
+                        str_starts_with((string) $state, 'Queued') || str_starts_with((string) $state, 'Processing') => 'info',
                         default => 'gray',
                     })
                     ->state(function (MediaItem $record): ?string {
-                        $service = app(\App\Services\PhotoEnhancementService::class);
+                        $service = app(PhotoEnhancementService::class);
                         $run = $service->latestRunFor($record);
                         if ($run === null) {
-                            return null;
+                            return $service->enabled() ? 'Not started' : 'Enhancement off';
                         }
 
-                        return $run->statusLabel();
+                        $label = $run->statusLabel();
+                        if ($run->provider === 'fake') {
+                            $label .= ' · simulated';
+                        }
+
+                        return $label;
                     }),
-                TextColumn::make('width')->label('W'),
-                TextColumn::make('height')->label('H'),
-                TextColumn::make('size_bytes')->numeric()->label('Bytes'),
-                TextColumn::make('created_at')->dateTime(),
+                TextColumn::make('review_status')->badge()->label('Review'),
+                IconColumn::make('is_primary')->boolean()->label('Primary req.'),
+                TextColumn::make('privacy')->badge(),
+                TextColumn::make('id')->label('ID')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('width')->label('W')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('height')->label('H')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('size_bytes')->numeric()->label('Bytes')->toggleable(isToggledHiddenByDefault: true),
+                TextColumn::make('created_at')->dateTime()->toggleable(isToggledHiddenByDefault: true),
             ])
             ->defaultSort('id', 'desc')
             ->recordActions([
@@ -69,14 +80,33 @@ class ProfileMediaRelationManager extends RelationManager
                     ->label('Compare AI enhancement')
                     ->color('gray')
                     ->modalHeading('Customer source vs AI enhanced candidate')
-                    ->modalDescription('The enhanced candidate is an AI-assisted suggestion — the administrator makes the final decision. The candidate is never public until accepted.')
+                    ->modalDescription('The candidate is a suggestion. A simulated provider is not genuine AI. The candidate is never public until you accept it.')
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
                     ->modalContent(fn (MediaItem $record) => view('filament.relation-managers.photo-enhancement-comparison', [
                         'source' => $record,
-                        'run' => app(\App\Services\PhotoEnhancementService::class)->latestRunFor($record),
+                        'run' => app(PhotoEnhancementService::class)->latestRunFor($record),
                     ]))
                     ->modalCancelActionLabel('Close')
+                    ->extraModalFooterActions(fn (MediaItem $record): array => [
+                        Action::make('acceptEnhancedFromCompare')
+                            ->label('Accept Enhanced')
+                            ->color('success')
+                            ->visible(fn (): bool => $this->candidateReadyFor($record))
+                            ->action(fn () => $this->decideEnhancement($record, 'accept')),
+                        Action::make('keepOriginalFromCompare')
+                            ->label('Keep Original')
+                            ->color('gray')
+                            ->visible(fn (): bool => $this->candidateReadyFor($record))
+                            ->action(fn () => $this->decideEnhancement($record, 'keep')),
+                        Action::make('regenerateFromCompare')
+                            ->label('Regenerate')
+                            ->color('warning')
+                            ->visible(fn (): bool => $this->candidateReadyFor($record))
+                            ->action(fn () => $this->decideEnhancement($record, 'regenerate')),
+                    ])
                     ->visible(fn (MediaItem $record): bool => (auth()->user()?->canManageEditorial() ?? false)
-                        && app(\App\Services\PhotoEnhancementService::class)->latestRunFor($record) !== null),
+                        && app(PhotoEnhancementService::class)->latestRunFor($record) !== null),
                 Action::make('acceptEnhanced')
                     ->label('Accept Enhanced')
                     ->color('success')
@@ -108,16 +138,16 @@ class ProfileMediaRelationManager extends RelationManager
                     ->modalHeading('Retry the failed enhancement')
                     ->modalDescription('The original customer photograph remains available and untouched. A new enhancement attempt will be queued.')
                     ->visible(fn (MediaItem $record): bool => (auth()->user()?->canManageEditorial() ?? false)
-                        && ($run = app(\App\Services\PhotoEnhancementService::class)->latestRunFor($record)) !== null
-                        && $run->status === \App\Models\PhotoEnhancementRun::STATUS_FAILED)
+                        && ($run = app(PhotoEnhancementService::class)->latestRunFor($record)) !== null
+                        && $run->status === PhotoEnhancementRun::STATUS_FAILED)
                     ->action(function (MediaItem $record): void {
-                        $service = app(\App\Services\PhotoEnhancementService::class);
+                        $service = app(PhotoEnhancementService::class);
                         $run = $service->latestRunFor($record);
                         if ($run === null) {
                             return;
                         }
                         $service->retry($run, auth()->user());
-                        \Filament\Notifications\Notification::make()->title('Enhancement retry queued')->success()->send();
+                        Notification::make()->title('Enhancement retry queued')->success()->send();
                     }),
                 Action::make('preview')
                     ->label('Inspect')
@@ -207,10 +237,10 @@ class ProfileMediaRelationManager extends RelationManager
             return false;
         }
 
-        $run = app(\App\Services\PhotoEnhancementService::class)->activeRunFor($record);
+        $run = app(PhotoEnhancementService::class)->activeRunFor($record);
 
         return $run !== null
-            && $run->status === \App\Models\PhotoEnhancementRun::STATUS_COMPLETED
+            && $run->status === PhotoEnhancementRun::STATUS_COMPLETED
             && $run->candidate_media_id !== null;
     }
 
@@ -221,11 +251,11 @@ class ProfileMediaRelationManager extends RelationManager
             return;
         }
 
-        $service = app(\App\Services\PhotoEnhancementService::class);
+        $service = app(PhotoEnhancementService::class);
         $run = $service->activeRunFor($record);
         $candidate = $run?->candidate;
         if ($run === null || ! $candidate instanceof MediaItem) {
-            \Filament\Notifications\Notification::make()->title('No active enhancement candidate')->warning()->send();
+            Notification::make()->title('No active enhancement candidate')->warning()->send();
 
             return;
         }
@@ -238,7 +268,7 @@ class ProfileMediaRelationManager extends RelationManager
                 default => null,
             };
 
-            \Filament\Notifications\Notification::make()
+            Notification::make()
                 ->title(match ($decision) {
                     'accept' => 'Enhanced photograph accepted',
                     'keep' => 'Customer original kept',
@@ -248,9 +278,9 @@ class ProfileMediaRelationManager extends RelationManager
                 ->success()
                 ->send();
         } catch (\ValueError $e) {
-            \Filament\Notifications\Notification::make()->title('Cannot decide enhancement candidate')->body($e->getMessage())->danger()->send();
+            Notification::make()->title('Cannot decide enhancement candidate')->body($e->getMessage())->danger()->send();
         } catch (\Throwable) {
-            \Filament\Notifications\Notification::make()->title('Enhancement action failed')->danger()->send();
+            Notification::make()->title('Enhancement action failed')->danger()->send();
         }
     }
 }

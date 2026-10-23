@@ -21,6 +21,26 @@ return [
         'testing_mode' => env('JANNAYAKS_PAYMENTS_TESTING_MODE', false),
     ],
 
+    /*
+    | Temporary editorial test bypass (DISABLED by default).
+    |
+    | Unlike payments.testing_mode, this never applies to every application.
+    | It applies only when enabled AND the linked profile reference_code is
+    | in the comma-separated allowlist. It does not record a payment,
+    | invoice, webhook or settlement, and it does not mark an editorial
+    | draft approved. Publication of an unapproved draft stays forbidden.
+    |
+    | reference_codes is empty unless JANNAYAKS_EDITORIAL_TEST_BYPASS_REFERENCES
+    | is set. A profile reference is unique in the database; confirm the
+    | allowlisted code is the single synthetic test profile before enabling.
+    | Set JANNAYAKS_EDITORIAL_TEST_BYPASS_ENABLED=false (or remove it) to
+    | restore the ordinary workflow. No database reset is required.
+    */
+    'editorial_test_bypass' => [
+        'enabled' => env('JANNAYAKS_EDITORIAL_TEST_BYPASS_ENABLED', false),
+        'reference_codes' => env('JANNAYAKS_EDITORIAL_TEST_BYPASS_REFERENCES', ''),
+    ],
+
     'tier_pricing' => [
         'currency' => 'INR',
         'gst_percent' => 18,
@@ -319,7 +339,7 @@ PROMPT,
                 "font-src 'self' https://fonts.gstatic.com",
                 "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com",
                 "connect-src 'self' https://translate.googleapis.com https://translate-pa.googleapis.com",
-                "frame-src https://translate.googleapis.com",
+                'frame-src https://translate.googleapis.com',
             ]),
             // Filament admin panel (Livewire + Alpine): script-src gains
             // 'unsafe-eval', which Alpine's expression evaluation requires under
@@ -336,11 +356,10 @@ PROMPT,
                 "font-src 'self' https://fonts.gstatic.com",
                 "script-src 'self' 'unsafe-inline' 'unsafe-eval' https://translate.google.com https://translate.googleapis.com",
                 "connect-src 'self' https://translate.googleapis.com",
-                "frame-src https://translate.googleapis.com",
+                'frame-src https://translate.googleapis.com',
             ]),
         ],
     ],
-
 
     /*
     | Profile media (Phase 14). Public photographs vs private source materials stay separate.

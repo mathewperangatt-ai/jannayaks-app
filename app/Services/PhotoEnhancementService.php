@@ -11,6 +11,7 @@ use App\Models\User;
 use Illuminate\Database\Eloquent\Builder;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Support\Str;
 use Throwable;
 use ValueError;
 
@@ -163,6 +164,12 @@ class PhotoEnhancementService
         $run->forceFill(['status' => PhotoEnhancementRun::STATUS_PROCESSING, 'started_at' => now()])->save();
 
         try {
+            if ($this->client()->providerName() === 'fake' && app()->isProduction()) {
+                throw new \RuntimeException(
+                    'The configured image provider is the simulated fake client, not genuine AI enhancement. Set JANNAYAKS_AI_IMAGE_PROVIDER=openai and configure the OpenAI API key. No candidate was stored.'
+                );
+            }
+
             $disk = filled($source->disk) ? (string) $source->disk : 'public';
             $sourceBytes = Storage::disk($disk)->get($source->storage_path_key);
             if ($sourceBytes === null || $sourceBytes === '') {
@@ -496,7 +503,7 @@ class PhotoEnhancementService
     {
         $prefix = trim((string) config('jannayaks.media.object_prefix', 'profile-media'), '/');
 
-        return $prefix.'/profiles/'.$profile->id.'/enhanced-'.\Illuminate\Support\Str::lower((string) \Illuminate\Support\Str::ulid()).'.jpg';
+        return $prefix.'/profiles/'.$profile->id.'/enhanced-'.Str::lower((string) Str::ulid()).'.jpg';
     }
 
     /** Sources of a profile that currently have an active/failed run (admin table). */

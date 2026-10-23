@@ -2,20 +2,25 @@
 
 namespace App\Filament\Resources\Applications\Schemas;
 
+use App\Filament\Resources\EditorialContents\EditorialContentResource;
 use App\Models\Application;
 use App\Models\EditorialContent;
 use App\Models\EditorialRevisionRequest;
 use App\Models\MediaItem;
 use App\Models\User;
 use App\Services\MembershipLifecycleService;
+use App\Services\PostPublicationUpdateService;
 use App\Services\ProfileUrlService;
+use App\Support\EditorialTestBypass;
+use App\Support\TextDiffHighlighter;
+use App\Support\TierLabels;
 use Filament\Infolists\Components\IconEntry;
 use Filament\Infolists\Components\ImageEntry;
 use Filament\Infolists\Components\RepeatableEntry;
 use Filament\Infolists\Components\TextEntry;
 use Filament\Schemas\Components\Section;
-use App\Support\TierLabels;
 use Filament\Schemas\Schema;
+use Illuminate\Support\Collection;
 
 class ApplicationInfolist
 {
@@ -204,7 +209,7 @@ class ApplicationInfolist
                 ->description('Free-form change requests from the customer, pinned to the exact preview versions they reviewed. The customer does not edit editorial text directly — the editorial team processes each request. Open cycles are shown here; completed history is under "Completed request history".')
                 ->schema([
                     self::revisionRequestEntry()
-                        ->state(fn (?Application $record): \Illuminate\Support\Collection => $record === null
+                        ->state(fn (?Application $record): Collection => $record === null
                             ? collect()
                             : EditorialRevisionRequest::query()
                                 ->where('application_id', (int) $record->id)
@@ -232,7 +237,7 @@ class ApplicationInfolist
                 ->description('Completed and cancelled revision/maintenance cycles for this profile, newest first. Bounded to the most recent 25 in this view; every record remains in the database and audit trail.')
                 ->schema([
                     self::revisionRequestEntry()
-                        ->state(fn (?Application $record): \Illuminate\Support\Collection => $record === null
+                        ->state(fn (?Application $record): Collection => $record === null
                             ? collect()
                             : EditorialRevisionRequest::query()
                                 ->where('application_id', (int) $record->id)
@@ -263,7 +268,7 @@ class ApplicationInfolist
                 ->schema([
                     RepeatableEntry::make('profile_editorial_versions')
                         ->label('')
-                        ->state(fn (?Application $record): \Illuminate\Support\Collection => $record?->profile === null
+                        ->state(fn (?Application $record): Collection => $record?->profile === null
                             ? collect()
                             : EditorialContent::query()
                                 ->where('profile_id', $record->profile->id)
@@ -479,7 +484,7 @@ class ApplicationInfolist
         // published-state wayfinding: the banner reflects the cycle's stage
         // (derived from the authoritative request state), never inventing a
         // new workflow status.
-        $maintenance = app(\App\Services\PostPublicationUpdateService::class)->openRequestFor($application);
+        $maintenance = app(PostPublicationUpdateService::class)->openRequestFor($application);
         if ($maintenance !== null) {
             $classification = $maintenance->billing_classification === EditorialRevisionRequest::BILLING_COMPLIMENTARY
                 ? 'Complimentary'
@@ -555,7 +560,7 @@ class ApplicationInfolist
         ];
         $tone = $tones[$wayfinding['tone']] ?? $tones['muted'];
 
-        return '<div style="border:1px solid '.$tone['border'].';background:'.$tone['bg'].';border-radius:10px;padding:14px 16px;margin-bottom:4px">'
+        $html = '<div style="border:1px solid '.$tone['border'].';background:'.$tone['bg'].';border-radius:10px;padding:14px 16px;margin-bottom:4px">'
             .'<div style="display:flex;flex-wrap:wrap;align-items:baseline;gap:6px 14px">'
             .'<span style="font:600 10px/1.4 \'DM Sans\',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#6f8075">Current state</span>'
             .'<span style="font:600 15px/1.4 \'Fraunces\',Georgia,serif;color:'.$tone['text'].'">'.e($wayfinding['state']).'</span>'
@@ -565,6 +570,16 @@ class ApplicationInfolist
             .'<span style="font-size:13.5px;line-height:1.5;color:#1f2924">'.e($wayfinding['action']).'</span>'
             .'</div>'
             .'</div>';
+
+        $notice = app(EditorialTestBypass::class)->adminNotice($application);
+        if ($notice !== null) {
+            $html .= '<div style="border:1px solid #c0762e;background:#fffaf3;border-radius:10px;padding:14px 16px;margin-top:8px">'
+                .'<div style="font:600 10px/1.4 \'DM Sans\',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#7a4a1c">Test bypass active</div>'
+                .'<p style="font-size:13.5px;line-height:1.5;color:#1f2924;margin:6px 0 0">'.e($notice).'</p>'
+                .'</div>';
+        }
+
+        return $html;
     }
 
     /**
@@ -582,12 +597,12 @@ class ApplicationInfolist
         $pairs = [];
         foreach ([
             'English' => [
-                \App\Models\EditorialContent::LANGUAGE_EN,
+                EditorialContent::LANGUAGE_EN,
                 $application->published_english_editorial_content_id,
                 $request->resulting_english_editorial_content_id,
             ],
             'Malayalam' => [
-                \App\Models\EditorialContent::LANGUAGE_ML,
+                EditorialContent::LANGUAGE_ML,
                 $application->published_malayalam_editorial_content_id,
                 $request->resulting_malayalam_editorial_content_id,
             ],
@@ -596,13 +611,13 @@ class ApplicationInfolist
                 continue;
             }
 
-            $published = filled($publishedId) ? \App\Models\EditorialContent::query()->find($publishedId) : null;
-            $proposed = \App\Models\EditorialContent::query()->find($proposedId);
+            $published = filled($publishedId) ? EditorialContent::query()->find($publishedId) : null;
+            $proposed = EditorialContent::query()->find($proposedId);
             if ($proposed === null) {
                 continue;
             }
 
-            $diff = \App\Support\TextDiffHighlighter::diff(
+            $diff = TextDiffHighlighter::diff(
                 (string) $published?->body,
                 (string) $proposed->body,
             );
@@ -636,7 +651,7 @@ class ApplicationInfolist
             return null;
         }
 
-        return app(\App\Services\PostPublicationUpdateService::class)->openRequestFor($application);
+        return app(PostPublicationUpdateService::class)->openRequestFor($application);
     }
 
     /**
@@ -745,7 +760,7 @@ class ApplicationInfolist
 
     public static function editorialContentViewUrl(int $contentId): string
     {
-        return \App\Filament\Resources\EditorialContents\EditorialContentResource::getUrl('view', ['record' => $contentId]);
+        return EditorialContentResource::getUrl('view', ['record' => $contentId]);
     }
 
     /**

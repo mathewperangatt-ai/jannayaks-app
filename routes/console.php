@@ -4,6 +4,7 @@ use App\Console\Commands\FailStaleAiEditorialRunsCommand;
 use App\Console\Commands\ProcessMembershipLifecycleCommand;
 use App\Console\Commands\ReconcilePaymentCapturesCommand;
 use App\Console\Commands\VerifyProfileIntegrityCommand;
+use App\Jobs\EnhanceProfilePhoto;
 use Illuminate\Foundation\Inspiring;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Schedule;
@@ -72,3 +73,25 @@ Schedule::command('jannayaks:export-contact-numbers')
     ->timezone(config('jannayaks.membership_lifecycle.business_timezone', 'Asia/Kolkata'))
     ->withoutOverlapping(30)
     ->name('export-contact-numbers');
+
+/*
+| Photo enhancement is the only queued job (EnhanceProfilePhoto, timeout
+| 240 seconds, queue photo-enhancement). Production runs schedule:work and
+| has no separate queue-worker service, so this drain is what processes
+| that queue. It stops when empty and does not claim the default queue.
+| On the sync driver the upload already runs the job inline; this command
+| is then an empty drain.
+|
+| withoutOverlapping() is minutes, not seconds. Five minutes covers
+| --max-time=230 plus artisan startup and shutdown. finish() releases the
+| mutex when the command exits; the expiry is only the bound after a
+| hard kill that cannot run that cleanup.
+*/
+Schedule::command(sprintf(
+    'queue:work %s --queue=%s --stop-when-empty --max-time=230 --tries=1 --max-jobs=10',
+    (string) config('queue.default', 'database'),
+    EnhanceProfilePhoto::QUEUE_NAME,
+))
+    ->everyMinute()
+    ->withoutOverlapping(5)
+    ->name('process-photo-enhancement-queue');

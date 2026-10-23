@@ -40,7 +40,10 @@ return [
             'connection' => env('DB_QUEUE_CONNECTION'),
             'table' => env('DB_QUEUE_TABLE', 'jobs'),
             'queue' => env('DB_QUEUE', 'default'),
-            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 90),
+            // Must exceed the longest database-queued job timeout. The only
+            // ShouldQueue job is EnhanceProfilePhoto (240 seconds); 300 leaves
+            // a 60-second margin so a long run is not reserved a second time.
+            'retry_after' => (int) env('DB_QUEUE_RETRY_AFTER', 300),
             'after_commit' => false,
         ],
 

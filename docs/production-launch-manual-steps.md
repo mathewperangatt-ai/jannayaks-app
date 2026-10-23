@@ -39,7 +39,7 @@ Notes:
   files keep working unchanged (per-row disk resolution).
 - The bucket is referenced by code but its contents are never exposed by URL.
 
-## 2. Railway scheduler service (membership lifecycle + AI run sweeper)
+## 2. Railway scheduler service (membership lifecycle, AI run sweeper, photo queue)
 
 A Railway web service runs ONE process. The Laravel scheduler needs its own
 long-running service (Railpack/Nixpacks ignore extra Procfile process types, so
@@ -51,16 +51,26 @@ a Procfile alone cannot provide this).
    `php artisan schedule:work`
 4. Copy the same environment variables as the web service (at minimum `APP_ENV`,
    `APP_KEY` (identical value), `APP_URL`, all `DB_*`/`DATABASE_URL`,
-   `CACHE_STORE`, `SESSION_DRIVER`, and both `MEMBERSHIP_*` and
+   `CACHE_STORE`, `SESSION_DRIVER`, `QUEUE_CONNECTION=database`,
+   `DB_QUEUE_RETRY_AFTER=300`, and both `MEMBERSHIP_*` and
    `JANNAYAKS_OPENAI_TIMEOUT` if customized). Shared variables are safest.
+   `DB_QUEUE_RETRY_AFTER` must stay above the photo job timeout of 240 seconds.
 5. Do NOT attach a public domain. Keep the builder identical to the web service.
 6. Verify after deploy: scheduler service logs show heartbeat output; the
    membership command is registered (`01:15` Asia/Kolkata daily) and the AI
    sweeper every 15 minutes (`routes/console.php`).
 
 `schedule:work` plus the `withoutOverlapping` mutexes make overlapping or
-restarted services safe. No queue worker is needed: the app dispatches nothing
-to queues today.
+restarted services safe. The scheduler is also the worker for profile-photo
+enhancement. `EnhanceProfilePhoto` is the only queued job (timeout 240 seconds).
+It is placed on the `photo-enhancement` queue and drained every minute by
+`queue:work --queue=photo-enhancement --stop-when-empty --max-time=230`
+(`routes/console.php`). That command does not consume the `default` queue.
+Do not add a separate queue-worker service.
+
+`DB_QUEUE_RETRY_AFTER` defaults to 300 seconds and must remain greater than
+240. The photo-drain overlap lock is 5 minutes. A normal exit releases it
+immediately; 5 minutes is only how long a hard kill can block the next drain.
 
 ## 3. Trusted proxies (client-IP hardening)
 
@@ -99,7 +109,9 @@ Until the two widget variables are set, the OTP page shows a safe
 ## 5. Post-deploy verification checklist
 
 - [ ] Web service: `/up` returns 200; login page shows Google only (OTP hidden).
-- [ ] Scheduler service: running; logs show `schedule:work` output.
+- [ ] Scheduler service: running; logs show `schedule:work` output, including the
+      photo-enhancement drain. `QUEUE_CONNECTION=database` and
+      `DB_QUEUE_RETRY_AFTER` is 300 or greater on both web and scheduler.
 - [ ] Upload a source material as a test applicant; confirm the object appears
       in the R2 `jannayaks-source-materials` bucket (Cloudflare dashboard) and
       downloads via the staff route.

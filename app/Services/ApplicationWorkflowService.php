@@ -151,6 +151,7 @@ class ApplicationWorkflowService
             }
 
             $english = $this->resolveEnglishVersionToPublish($locked, $requireCustomerApproval);
+            $this->assertResolvedVersionMayBePublished($locked, $english, $requireCustomerApproval);
             $malayalam = $english instanceof EditorialContent
                 ? $this->resolveMalayalamVersionToPublish($profile, $english)
                 : null;
@@ -210,6 +211,46 @@ class ApplicationWorkflowService
 
             return $locked->fresh() ?? $locked;
         });
+    }
+
+    /**
+     * Publish only the English version resolveEnglishVersionToPublish selected.
+     * An obsolete preview or customer-approval pin may still point at an
+     * archived predecessor during replacement publication; that pin is not
+     * the version going live. A draft, or any selection that is not the
+     * approved customer-approved version on the normal path, cannot be published.
+     */
+    private function assertResolvedVersionMayBePublished(
+        Application $application,
+        ?EditorialContent $english,
+        bool $requireCustomerApproval,
+    ): void {
+        if ($english instanceof EditorialContent && $english->status === EditorialContent::STATUS_APPROVED) {
+            if ($requireCustomerApproval
+                && (int) $english->id !== (int) $application->customer_approved_english_editorial_content_id) {
+                throw new InvalidArgumentException('Customer approval of a specific editorial version is required.');
+            }
+
+            return;
+        }
+
+        $pinIds = array_values(array_unique(array_filter([
+            $application->customer_approved_english_editorial_content_id,
+            $application->preview_english_editorial_content_id,
+        ])));
+        $unapprovedPin = $pinIds !== [] && EditorialContent::query()
+            ->where('profile_id', $application->profile_id)
+            ->whereIn('id', $pinIds)
+            ->where('status', '!=', EditorialContent::STATUS_APPROVED)
+            ->exists();
+
+        if ($unapprovedPin) {
+            throw new InvalidArgumentException('An unapproved editorial draft cannot be published.');
+        }
+
+        if ($requireCustomerApproval) {
+            throw new InvalidArgumentException('Customer approval of a specific editorial version is required.');
+        }
     }
 
     private function resolveEnglishVersionToPublish(Application $application, bool $requireCustomerApproval): ?EditorialContent

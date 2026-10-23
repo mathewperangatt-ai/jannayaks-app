@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\ApplicationWorkflowService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
+use App\Support\EditorialTestBypass;
 use Filament\Actions\Action;
 use Filament\Actions\ViewAction;
 use Filament\Notifications\Notification;
@@ -67,6 +68,14 @@ class EditApplication extends EditRecord
             Action::make('releaseCustomerPreview')
                 ->label('Release for customer preview')
                 ->requiresConfirmation()
+                ->modalHeading('Release profile for customer preview')
+                ->modalDescription(function (): string {
+                    $record = $this->getRecord();
+
+                    return app(EditorialTestBypass::class)->releaseModalDescription(
+                        $record instanceof Application ? $record : null,
+                    );
+                })
                 ->visible(fn (): bool => auth()->user()?->canManageEditorial() ?? false)
                 ->action(function (): void {
                     $actor = auth()->user();
