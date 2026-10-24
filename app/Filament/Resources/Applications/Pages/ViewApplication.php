@@ -103,6 +103,42 @@ class ViewApplication extends ViewRecord
                         Notification::make()->title('Cannot release preview')->body($e->getMessage())->danger()->send();
                     }
                 }),
+            Action::make('approvePublicationTestEnglishDraft')
+                ->label('Approve unchanged English draft')
+                ->color('warning')
+                ->requiresConfirmation()
+                ->modalHeading('Approve the customer-approved English draft')
+                ->modalDescription('Publication test only. Marks the exact unchanged English version the customer already approved as editorially approved. It does not edit the text, clear the customer approval, approve Malayalam, or record a payment.')
+                ->visible(function (): bool {
+                    $record = $this->getRecord();
+
+                    return (auth()->user()?->isAdmin() ?? false)
+                        && $record instanceof Application
+                        && app(ApplicationWorkflowService::class)->mayApprovePublicationTestEnglishDraft($record);
+                })
+                ->action(function (): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User || ! $actor->isAdmin()) {
+                        abort(403);
+                    }
+
+                    try {
+                        /** @var Application $application */
+                        $application = $this->getRecord();
+                        app(ApplicationWorkflowService::class)->approvePublicationTestEnglishDraft($application, $actor);
+                        Notification::make()
+                            ->title('English draft marked editorially approved')
+                            ->body('The customer approval was kept. Malayalam was not approved, and no payment was recorded.')
+                            ->success()
+                            ->send();
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()
+                            ->title('Cannot approve this draft')
+                            ->body($e->getMessage())
+                            ->danger()
+                            ->send();
+                    }
+                }),
             Action::make('publishApplication')
                 ->label('Publish')
                 ->color('success')

@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Application;
 use App\Models\EditorialContent;
+use App\Models\EditorialCustomerApproval;
 use App\Models\Profile;
 use App\Models\User;
 use App\Support\PublicationTestBypass;
@@ -104,6 +105,176 @@ class ApplicationWorkflowService
         );
 
         return $application->fresh() ?? $application;
+    }
+
+    /**
+     * Publication-test-only: mark the exact unchanged English draft the customer
+     * already approved as editorially approved. Does not edit narrative, clear
+     * the customer approval, approve Malayalam, or write a payment.
+     */
+    public function mayApprovePublicationTestEnglishDraft(?Application $application): bool
+    {
+        if (! $application instanceof Application || $application->id === null) {
+            return false;
+        }
+
+        if (! app(PublicationTestBypass::class)->appliesTo($application)) {
+            return false;
+        }
+
+        if ($application->status !== Application::STATUS_AWAITING_PUBLICATION
+            || $application->customer_approved_at === null
+            || $application->customer_approved_english_editorial_content_id === null) {
+            return false;
+        }
+
+        $approval = EditorialCustomerApproval::query()
+            ->where('application_id', $application->id)
+            ->whereNull('invalidated_at')
+            ->first();
+
+        if (! $approval instanceof EditorialCustomerApproval
+            || (int) $approval->english_editorial_content_id !== (int) $application->customer_approved_english_editorial_content_id
+            || $approval->approved_at === null
+            || ! $approval->approved_at->equalTo($application->customer_approved_at)) {
+            return false;
+        }
+
+        $english = EditorialContent::query()->find($approval->english_editorial_content_id);
+
+        return $english instanceof EditorialContent
+            && (int) $english->profile_id === (int) $application->profile_id
+            && $english->language === EditorialContent::LANGUAGE_EN
+            && $english->status === EditorialContent::STATUS_DRAFT
+            && $english->updated_at !== null
+            && ! $english->updated_at->greaterThan($approval->approved_at);
+    }
+
+    /**
+     * Admin-only status transition for the publication test. The customer
+     * approval record and the application pin must name the same English draft,
+     * and that draft's text must be unchanged since the customer approved it.
+     */
+    public function approvePublicationTestEnglishDraft(Application $application, User $actor): EditorialContent
+    {
+        if (! $actor->isAdmin() || ! $actor->isActiveAccount()) {
+            throw new InvalidArgumentException('Only an authorised Admin may approve an editorial draft for the publication test.');
+        }
+
+        return DB::transaction(function () use ($application, $actor) {
+            /** @var Application $locked */
+            $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+
+            if (! $locked->profile_id) {
+                throw new InvalidArgumentException('The publication test bypass is not active for this profile.');
+            }
+
+            /** @var Profile $profile */
+            $profile = Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->firstOrFail();
+            $locked->setRelation('profile', $profile);
+
+            if (! app(PublicationTestBypass::class)->appliesTo($locked)) {
+                throw new InvalidArgumentException('The publication test bypass is not active for this profile.');
+            }
+
+            if ($locked->status !== Application::STATUS_AWAITING_PUBLICATION) {
+                throw new InvalidArgumentException('The application is not awaiting publication of a customer-approved version.');
+            }
+
+            if ($locked->customer_approved_at === null || $locked->customer_approved_english_editorial_content_id === null) {
+                throw new InvalidArgumentException('An active customer approval of the exact English version is required.');
+            }
+
+            $approval = EditorialCustomerApproval::query()
+                ->where('application_id', $locked->id)
+                ->whereNull('invalidated_at')
+                ->lockForUpdate()
+                ->first();
+
+            if (! $approval instanceof EditorialCustomerApproval) {
+                throw new InvalidArgumentException('An active customer approval of the exact English version is required.');
+            }
+
+            if ((int) $approval->english_editorial_content_id !== (int) $locked->customer_approved_english_editorial_content_id
+                || $approval->approved_at === null
+                || ! $approval->approved_at->equalTo($locked->customer_approved_at)) {
+                throw new InvalidArgumentException('The customer approval record does not match the application\'s approved English version.');
+            }
+
+            $english = EditorialContent::query()
+                ->whereKey($approval->english_editorial_content_id)
+                ->lockForUpdate()
+                ->first();
+
+            if (! $english instanceof EditorialContent
+                || (int) $english->profile_id !== (int) $profile->id
+                || $english->language !== EditorialContent::LANGUAGE_EN
+                || (int) $english->id !== (int) $locked->customer_approved_english_editorial_content_id) {
+                throw new InvalidArgumentException('The customer approval record does not match the application\'s approved English version.');
+            }
+
+            if ($english->status !== EditorialContent::STATUS_DRAFT) {
+                throw new InvalidArgumentException('The customer-approved English version is not an unapproved draft.');
+            }
+
+            if ($english->updated_at === null || $english->updated_at->greaterThan($approval->approved_at)) {
+                throw new InvalidArgumentException('The customer-approved English version has changed since the customer approved it.');
+            }
+
+            $narrative = [
+                'title' => (string) $english->title,
+                'summary' => (string) $english->summary,
+                'body' => (string) $english->body,
+                'language' => (string) $english->language,
+                'version_number' => (int) $english->version_number,
+            ];
+
+            $beforeStatus = $english->status;
+            $english->forceFill([
+                'status' => EditorialContent::STATUS_APPROVED,
+                'reviewed_by_id' => $actor->id,
+            ])->save();
+            $english->refresh();
+
+            $unchanged = (string) $english->title === $narrative['title']
+                && (string) $english->summary === $narrative['summary']
+                && (string) $english->body === $narrative['body']
+                && (string) $english->language === $narrative['language']
+                && (int) $english->version_number === $narrative['version_number'];
+
+            if (! $unchanged) {
+                throw new InvalidArgumentException('The customer-approved English version has changed since the customer approved it.');
+            }
+
+            $locked->refresh();
+            if ((int) $locked->customer_approved_english_editorial_content_id !== (int) $english->id
+                || $locked->customer_approved_at === null) {
+                throw new InvalidArgumentException('The customer approval record does not match the application\'s approved English version.');
+            }
+
+            $this->auditLogger->log(
+                action: 'editorial.publication_test_english_draft_approved',
+                subject: $english,
+                before: [
+                    'status' => $beforeStatus,
+                    'editorial_content_id' => $english->id,
+                    'version_number' => $english->version_number,
+                ],
+                after: [
+                    'status' => $english->status,
+                    'editorial_content_id' => $english->id,
+                    'version_number' => $english->version_number,
+                    'language' => $english->language,
+                    'application_id' => $locked->id,
+                    'customer_approval_id' => $approval->id,
+                    'customer_approved_english_editorial_content_id' => $locked->customer_approved_english_editorial_content_id,
+                    'reason' => 'Publication test only: mark the unchanged customer-approved English draft as editorially approved.',
+                ],
+                actor: $actor,
+            );
+
+            return $english;
+        });
     }
 
     /**
