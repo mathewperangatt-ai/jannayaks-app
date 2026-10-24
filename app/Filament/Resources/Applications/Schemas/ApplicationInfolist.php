@@ -12,6 +12,7 @@ use App\Services\MembershipLifecycleService;
 use App\Services\PostPublicationUpdateService;
 use App\Services\ProfileUrlService;
 use App\Support\EditorialTestBypass;
+use App\Support\PublicationTestBypass;
 use App\Support\TextDiffHighlighter;
 use App\Support\TierLabels;
 use Filament\Infolists\Components\IconEntry;
@@ -576,6 +577,14 @@ class ApplicationInfolist
             $html .= '<div style="border:1px solid #c0762e;background:#fffaf3;border-radius:10px;padding:14px 16px;margin-top:8px">'
                 .'<div style="font:600 10px/1.4 \'DM Sans\',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#7a4a1c">Test bypass active</div>'
                 .'<p style="font-size:13.5px;line-height:1.5;color:#1f2924;margin:6px 0 0">'.e($notice).'</p>'
+                .'</div>';
+        }
+
+        $publicationNotice = app(PublicationTestBypass::class)->adminNotice($application);
+        if ($publicationNotice !== null) {
+            $html .= '<div style="border:1px solid #8f2d2d;background:#fff5f5;border-radius:10px;padding:14px 16px;margin-top:8px">'
+                .'<div style="font:600 10px/1.4 \'DM Sans\',sans-serif;letter-spacing:.16em;text-transform:uppercase;color:#8f2d2d">Publication test active</div>'
+                .'<p style="font-size:13.5px;line-height:1.5;color:#1f2924;margin:6px 0 0">'.e($publicationNotice).'</p>'
                 .'</div>';
         }
 

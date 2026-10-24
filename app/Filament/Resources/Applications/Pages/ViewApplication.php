@@ -11,6 +11,7 @@ use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
 use App\Services\PostPublicationUpdateService;
 use App\Support\EditorialTestBypass;
+use App\Support\PublicationTestBypass;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
 use Filament\Forms\Components\Textarea;
@@ -107,7 +108,13 @@ class ViewApplication extends ViewRecord
                 ->color('success')
                 ->requiresConfirmation()
                 ->modalHeading('Publish this profile')
-                ->modalDescription('Admin only. Normal path requires customer approval. Exceptional offline/admin publication is audited.')
+                ->modalDescription(function (): string {
+                    $record = $this->getRecord();
+
+                    return app(PublicationTestBypass::class)->publishModalDescription(
+                        $record instanceof Application ? $record : null,
+                    );
+                })
                 ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false)
                     && ! $this->hasOpenMaintenanceRequest())
                 ->form([
@@ -133,6 +140,34 @@ class ViewApplication extends ViewRecord
                         Notification::make()->title('Profile published')->success()->send();
                     } catch (InvalidArgumentException $e) {
                         Notification::make()->title('Cannot publish')->body($e->getMessage())->danger()->send();
+                    }
+                }),
+            Action::make('unpublishPublicationTest')
+                ->label('Unpublish test profile')
+                ->color('danger')
+                ->requiresConfirmation()
+                ->modalHeading('Unpublish this test profile')
+                ->modalDescription('Removes the public URL for a profile published through the publication test bypass. Payment status is not changed. The payment gate returns for any later publication once the bypass is disabled.')
+                ->visible(function (): bool {
+                    $record = $this->getRecord();
+
+                    return (auth()->user()?->isAdmin() ?? false)
+                        && $record instanceof Application
+                        && app(PublicationTestBypass::class)->mayUnpublish($record);
+                })
+                ->action(function (): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User) {
+                        abort(403);
+                    }
+
+                    try {
+                        /** @var Application $application */
+                        $application = $this->getRecord();
+                        app(ApplicationWorkflowService::class)->unpublishPublicationTest($application, $actor);
+                        Notification::make()->title('Test profile unpublished')->success()->send();
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot unpublish')->body($e->getMessage())->danger()->send();
                     }
                 }),
             Action::make('savePreparedVersions')

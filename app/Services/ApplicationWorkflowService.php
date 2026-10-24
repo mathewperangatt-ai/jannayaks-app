@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\EditorialContent;
 use App\Models\Profile;
 use App\Models\User;
+use App\Support\PublicationTestBypass;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -137,8 +138,15 @@ class ApplicationWorkflowService
                 throw new InvalidArgumentException('Replacement publication requires a fresh customer-approved version awaiting publication.');
             }
 
-            if (! $locked->isPaymentSettled() && $locked->source_method !== 'admin_test_demo') {
+            $locked->setRelation('profile', $profile);
+            $publicationBypass = app(PublicationTestBypass::class)->appliesTo($locked);
+
+            if (! $locked->isPaymentSettled() && $locked->source_method !== 'admin_test_demo' && ! $publicationBypass) {
                 throw new InvalidArgumentException('Payment must be settled before publication.');
+            }
+
+            if ($publicationBypass && ! $requireCustomerApproval) {
+                throw new InvalidArgumentException('The publication test bypass requires customer approval of the exact approved English version.');
             }
 
             if ($requireCustomerApproval) {
@@ -205,6 +213,82 @@ class ApplicationWorkflowService
                     'published_english_editorial_content_id' => $locked->published_english_editorial_content_id,
                     'published_malayalam_editorial_content_id' => $locked->published_malayalam_editorial_content_id,
                     'customer_approved_english_editorial_content_id' => $locked->customer_approved_english_editorial_content_id,
+                    'publication_test_bypass' => $publicationBypass,
+                ],
+                actor: $actor,
+            );
+
+            if ($publicationBypass) {
+                $this->auditLogger->log(
+                    action: 'application.publication_test_bypass_used',
+                    subject: $locked,
+                    after: [
+                        'profile_reference_code' => $profile->reference_code,
+                        'payment_status' => $locked->payment_status,
+                        'published_english_editorial_content_id' => $locked->published_english_editorial_content_id,
+                        'customer_approved_english_editorial_content_id' => $locked->customer_approved_english_editorial_content_id,
+                    ],
+                    actor: $actor,
+                );
+            }
+
+            return $locked->fresh() ?? $locked;
+        });
+    }
+
+    /**
+     * Hide a profile that was published through the publication test bypass.
+     * Does not record a payment change and does not require the flag to
+     * still be enabled.
+     */
+    public function unpublishPublicationTest(Application $application, User $actor): Application
+    {
+        if (! $actor->isAdmin() || ! $actor->isActiveAccount()) {
+            throw new InvalidArgumentException('Only an authorised Admin may unpublish.');
+        }
+
+        return DB::transaction(function () use ($application, $actor) {
+            /** @var Application $locked */
+            $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+            if (! $locked->profile_id) {
+                throw new InvalidArgumentException('A linked profile is required.');
+            }
+
+            /** @var Profile $profile */
+            $profile = Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->firstOrFail();
+            $locked->setRelation('profile', $profile);
+
+            if (! app(PublicationTestBypass::class)->mayUnpublish($locked)) {
+                throw new InvalidArgumentException('Only a profile published through the publication test bypass can be unpublished this way.');
+            }
+
+            $before = [
+                'application_status' => $locked->status,
+                'profile_status' => $profile->status,
+                'unpublished_at' => $profile->unpublished_at?->toIso8601String(),
+                'payment_status' => $locked->payment_status,
+            ];
+
+            $locked->forceFill([
+                'status' => Application::STATUS_AWAITING_PUBLICATION,
+            ])->save();
+
+            $profile->forceFill([
+                'status' => 'customer_preview',
+                'unpublished_at' => now(),
+                'updated_at' => now(),
+            ])->save();
+
+            $this->auditLogger->log(
+                action: 'application.publication_test_unpublished',
+                subject: $locked,
+                before: $before,
+                after: [
+                    'application_status' => $locked->status,
+                    'profile_status' => $profile->status,
+                    'unpublished_at' => $profile->unpublished_at?->toIso8601String(),
+                    'payment_status' => $locked->payment_status,
+                    'profile_reference_code' => $profile->reference_code,
                 ],
                 actor: $actor,
             );

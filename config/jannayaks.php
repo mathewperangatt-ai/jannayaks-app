@@ -41,6 +41,27 @@ return [
         'reference_codes' => env('JANNAYAKS_EDITORIAL_TEST_BYPASS_REFERENCES', ''),
     ],
 
+    /*
+    | Temporary publication test bypass (DISABLED by default).
+    |
+    | Separate from the editorial preview bypass and from payments.testing_mode.
+    | When enabled, only a uniquely identified allowlisted profile that is not
+    | already publicly listed may be published without a settled payment.
+    | Payment status stays pending. No payment, invoice, receipt, webhook, or
+    | settlement is written. Customer approval of the exact approved English
+    | version is still required, including against the exceptional admin path.
+    | The reference list is empty unless
+    | JANNAYAKS_PUBLICATION_TEST_BYPASS_REFERENCES is set. Do not put a
+    | production reference in this file. Set the flag false (or remove it)
+    | to restore the payment gate. No database reset is required. A profile
+    | already published through this bypass stays public until an admin
+    | unpublishes it.
+    */
+    'publication_test_bypass' => [
+        'enabled' => env('JANNAYAKS_PUBLICATION_TEST_BYPASS_ENABLED', false),
+        'reference_codes' => env('JANNAYAKS_PUBLICATION_TEST_BYPASS_REFERENCES', ''),
+    ],
+
     'tier_pricing' => [
         'currency' => 'INR',
         'gst_percent' => 18,
