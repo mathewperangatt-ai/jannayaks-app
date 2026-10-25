@@ -29,9 +29,6 @@ class OnlineInterviewController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
         }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
-            return $this->paymentGate($request, $application);
-        }
         if (! in_array((string) $application->source_method, (array) config('online_interview.submission.valid_source_methods_for_interview', ['online_interview']), true)) {
             return $this->forbid($request, 'This application is not an Online Interview intake.');
         }
@@ -83,9 +80,6 @@ class OnlineInterviewController extends Controller
         }
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
-        }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
-            return $this->paymentGate($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
             return $this->forbid($request, 'This interview has already been submitted.');
@@ -151,9 +145,6 @@ class OnlineInterviewController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
         }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
-            return $this->paymentGate($request, $application);
-        }
         if ($application->isInterviewSubmitted()) {
             if ($request->expectsJson()) {
                 return response()->json([
@@ -204,9 +195,22 @@ class OnlineInterviewController extends Controller
             }
 
             return back()
+                ->withInput()
                 ->withErrors([
                     'submit' => 'Please complete all required questions before submitting. Missing: '.count($progress['missing_required']).'.',
                 ]);
+        }
+
+        if (! $request->boolean('questionnaire_confirmed')) {
+            $message = 'Confirm that you have reviewed your answers and are ready to submit the questionnaire for editorial preparation. This does not approve or publish the finished profile.';
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => $message,
+                ], 422);
+            }
+
+            return back()->withInput()->withErrors(['questionnaire_confirmed' => $message]);
         }
 
         $rateKey = 'ol-submit:user:'.(int) Auth::id();
@@ -219,7 +223,7 @@ class OnlineInterviewController extends Controller
                 ], 429);
             }
 
-            return back()->withErrors(['submit' => 'Please wait before submitting again.']);
+            return back()->withInput()->withErrors(['submit' => 'Please wait before submitting again.']);
         }
 
         app(ApplicationWorkflowService::class)->markInterviewSubmitted($application, $request->user());
@@ -232,14 +236,23 @@ class OnlineInterviewController extends Controller
             (string) $request->userAgent(),
         );
 
+        $paymentStillRequired = ! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application);
+        $nextStep = $paymentStillRequired ? 'payment' : 'editorial_processing';
+
         if ($request->expectsJson()) {
             return response()->json([
                 'ok' => true,
                 'submitted_at' => $application->online_interview_completed_at->toIso8601String(),
                 'application_id' => $application->id,
-                'next_step' => 'editorial_processing',
+                'next_step' => $nextStep,
                 'status' => $application->status,
             ]);
+        }
+
+        if ($paymentStillRequired) {
+            return redirect()
+                ->route('applications.payment', ['application' => $application->id])
+                ->with('submitted', 'Online Interview submitted. Payment is the next step.');
         }
 
         return redirect()->route('online-interview.show', ['application' => $application->id])
@@ -262,23 +275,6 @@ class OnlineInterviewController extends Controller
         }
 
         return redirect()->route('home')->withErrors(['interview' => $message]);
-    }
-
-    private function paymentGate(Request $request, Application $application): JsonResponse|RedirectResponse
-    {
-        $message = 'Complete payment for this application before continuing the Online Interview.';
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'ok' => false,
-                'error' => $message,
-                'redirect_to' => route('applications.payment', ['application' => $application->id]),
-            ], 403);
-        }
-
-        return redirect()
-            ->route('applications.payment', ['application' => $application->id])
-            ->withErrors(['payment' => $message]);
     }
 
     /**

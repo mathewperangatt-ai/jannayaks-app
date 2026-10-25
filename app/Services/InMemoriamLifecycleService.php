@@ -196,9 +196,9 @@ class InMemoriamLifecycleService
                 $this->urls->assignSlug($locked, $slug, $actor);
                 $locked->refresh();
             } elseif (! filled($locked->slug)) {
-                throw ValidationException::withMessages([
-                    'publish' => 'A public memorial URL slug is required before publication.',
-                ]);
+                $generated = $this->urls->generateCanonicalSlug($locked);
+                $this->urls->assignSlug($locked, $generated, $actor);
+                $locked->refresh();
             }
 
             $today = $this->businessToday();

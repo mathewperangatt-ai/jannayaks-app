@@ -1,5 +1,6 @@
 @extends('layouts.public', ['htmlLang' => $language === 'ml' ? 'ml' : 'en', 'nav' => $isDemonstration ? 'demo-profiles' : 'gallery'])
 @php($listingUrl = $isDemonstration ? route('demo-profiles.index') : route('gallery.index'))
+@php($listingLabel = $isDemonstration ? 'Demo Profiles' : 'Gallery')
 
 @section('title', $displayName.' — Jannayaks')
 
@@ -14,7 +15,7 @@
     trim((string) ($activeEditorial?->summary ?? '')) !== '' ? trim((string) $activeEditorial->summary) : null,
     $photo ? route('profiles.public.photo', [$profile, $photo]) : null,
     filled($profession) ? $profession : null,
-    [['Home', route('home')], ['Demo Profiles', $listingUrl], [$displayName, $canonicalUrl]],
+    [['Home', route('home')], [$listingLabel, $listingUrl], [$displayName, $canonicalUrl]],
 )))
 
 @push('head')
@@ -47,7 +48,7 @@
     .jk-location{font:500 10px var(--jk-ui);letter-spacing:.18em;text-transform:uppercase;color:var(--jk-muted);margin:0 0 26px}
     .jk-intro{font-size:clamp(17px,1.8vw,19px);line-height:1.6;border-left:5px solid #8eaf88;padding:4px 0 4px 22px;max-width:620px;margin:0}
     .jk-url-label{font:600 9px var(--jk-ui);letter-spacing:.2em;text-transform:uppercase;color:#7d9b79;margin:30px 0 8px}
-    .jk-urlrow{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
+    .jk-urlrow,.jk-url-actions{display:flex;gap:8px;align-items:center;flex-wrap:wrap}
     .jk-urlpill,.jk-copy{height:42px;border:1px solid #b8c9b5;background:rgba(255,255,255,.36);padding:0 15px;display:inline-flex;align-items:center;font:500 12.5px var(--jk-ui);color:var(--jk-blue);border-radius:2px}
     .jk-copy{background:var(--jk-blue);color:#fff;border-color:var(--jk-blue);cursor:pointer;text-transform:uppercase;letter-spacing:.1em;font-size:10px;font-weight:600}
     .jk-copy:hover{background:var(--jk-saffron);border-color:var(--jk-saffron)}
@@ -57,11 +58,14 @@
     .jk-lang a[lang="ml"]{font-family:'Noto Serif Malayalam',var(--jk-ui)}
     .jk-lang a:hover{background:#fff}
     .jk-lang a[aria-current="true"]{color:var(--jk-saffron);font-weight:600;background:#fffdf8;box-shadow:inset 0 -2px 0 var(--jk-saffron)}
+    .jk-lang a:focus-visible{outline:2px solid var(--jk-blue);outline-offset:2px}
     .jk-demo-note{margin:16px 0 0;font:500 11px var(--jk-ui);color:var(--jk-muted);letter-spacing:.06em}
 
-    /* well-wisher rail: contact + reactions */
-    .jk-rail{grid-column:3}
-    .jk-hero.with-rail{grid-template-columns:minmax(0,30fr) minmax(0,48fr) minmax(0,22fr)}
+    .jk-ref{display:inline-flex;align-items:center;margin:16px 0 0;padding:7px 12px;border:1px solid var(--jk-line);background:var(--jk-surface);font:600 13px var(--jk-ui);letter-spacing:.04em;color:var(--jk-blue)}
+    .jk-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+
+    /* engagement sits below the editorial record */
+    .jk-engage-grid{display:grid;grid-template-columns:minmax(0,1.15fr) minmax(0,.85fr);gap:clamp(18px,3vw,28px);align-items:start}
     .jk-box{background:var(--jk-surface);border:1px solid var(--jk-line);padding:22px;margin-bottom:16px}
     .jk-box h2{font:600 12px var(--jk-ui);letter-spacing:.18em;text-transform:uppercase;color:var(--jk-blue);margin:0 0 6px}
     .jk-box .jk-box-sub{font:400 12.5px/1.55 var(--jk-ui);color:var(--jk-muted);margin:0 0 14px}
@@ -95,8 +99,13 @@
     .jk-summary-quote{background:var(--jk-surface2);padding:26px 28px 20px;color:var(--jk-blue);font:italic 20px/1.45 var(--jk-serif);position:relative;margin:0 0 26px}
     .jk-summary-quote::before{content:"\201C";font-size:64px;line-height:1;position:absolute;left:18px;top:2px;color:#c8d8c4}
     .jk-summary-quote p{position:relative;z-index:1;margin:0;padding-top:22px}
-    .jk-side-feature{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;border:1px solid var(--jk-line);background:var(--jk-surface2)}
+    .jk-side-feature{width:100%;height:auto;max-height:min(72vh,720px);object-fit:contain;object-position:center top;display:block;border:1px solid var(--jk-line);background:var(--jk-surface2)}
     .jk-figcap{font:500 9px var(--jk-ui);letter-spacing:.2em;text-transform:uppercase;color:#81907e;margin-top:8px}
+    .jk-position-copy{background:var(--jk-surface2);padding:26px 28px;color:var(--jk-ink);font:400 16.5px/1.78 var(--jk-serif)}
+    .jk-position-copy p{margin:0}
+    .jk-bio-grid--solo{grid-template-columns:minmax(0,1fr)}
+    .jk-bio-grid--solo .jk-bodytext{max-width:none}
+    .jk-story-continue{margin-top:28px}
 
     /* ledger + lists */
     .jk-ledgerrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:26px;padding:20px 0;border-bottom:1px solid var(--jk-line)}
@@ -108,10 +117,12 @@
     .jk-item:first-of-type{border-top:1px solid var(--jk-line)}
     .jk-code{font:600 10px var(--jk-ui);letter-spacing:.16em;color:var(--jk-saffron);padding-top:5px}
 
-    /* gallery */
-    .jk-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-    .jk-gallery a{display:block;border:1px solid #bdcfba;background:var(--jk-surface);text-decoration:none}
-    .jk-gallery img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block}
+    /* gallery — only positions that hold a photograph or a passage of the story */
+    .jk-gallery{display:grid;gap:16px}
+    .jk-gallery--cols-2{grid-template-columns:repeat(2,minmax(0,1fr))}
+    .jk-gallery--cols-3{grid-template-columns:repeat(3,minmax(0,1fr))}
+    .jk-gallery-slot{display:block;min-height:220px;border:1px solid #bdcfba;background:var(--jk-surface2);text-decoration:none}
+    .jk-gallery img{width:100%;height:auto;max-height:420px;object-fit:contain;object-position:center top;display:block;background:var(--jk-surface2)}
     .jk-note{padding:22px 26px;background:var(--jk-surface2);color:var(--jk-blue);font-size:16.5px;line-height:1.6}
 
     .jk-videos{margin:0;padding:0;list-style:none}
@@ -124,25 +135,24 @@
     .jk-page.lang-ml .jk-name{font-family:'Noto Serif Malayalam',var(--jk-serif);line-height:1.25}
     .jk-page.lang-ml .jk-sectionhead h2{font-family:'Noto Serif Malayalam',var(--jk-serif)}
     .jk-page.lang-ml .jk-summary-quote{font-style:normal;line-height:1.8}
+    .jk-page.lang-ml .jk-position-copy{font-family:'Noto Serif Malayalam',var(--jk-serif);line-height:1.95}
 
     /* mobile */
-    @media(max-width:1020px){
-        .jk-hero.with-rail{grid-template-columns:minmax(0,42fr) minmax(0,58fr)}
-        .jk-rail{grid-column:1/-1;display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
-    }
     @media(max-width:720px){
         .jk-page{margin:-18px -14px -48px}
-        .jk-hero,.jk-hero.with-rail{grid-template-columns:1fr;gap:30px}
+        .jk-hero{grid-template-columns:1fr;gap:30px}
         .jk-portrait-wrap{max-width:340px;margin:0 auto}
-        .jk-rail{grid-template-columns:1fr}
+        .jk-engage-grid{grid-template-columns:1fr}
         .jk-bio-grid{grid-template-columns:1fr}
-        .jk-urlrow{flex-direction:column;align-items:stretch}
+        .jk-urlrow,.jk-url-actions{flex-direction:column;align-items:stretch}
         .jk-urlpill,.jk-copy{justify-content:center;width:100%}
         .jk-section{padding-top:48px}
         .jk-sectionhead{grid-template-columns:auto auto 1fr}
         .jk-tail{grid-column:3}
         .jk-ledgerrow{grid-template-columns:1fr;gap:8px}
         .jk-bodytext{font-size:15.5px}
+        .jk-side-feature{max-height:none}
+        .jk-gallery,.jk-gallery--cols-2,.jk-gallery--cols-3{grid-template-columns:1fr}
     }
 </style>
 @endpush
@@ -155,11 +165,11 @@
 <div class="jk-wrap">
 
     <nav class="jk-crumbs" aria-label="Breadcrumb">
-        <a href="{{ route('home') }}">Home</a> / <a href="{{ $listingUrl }}">Demo Profiles</a> /
+        <a href="{{ route('home') }}">Home</a> / <a href="{{ $listingUrl }}">{{ $listingLabel }}</a> /
         <span aria-current="page">{{ $displayName }}</span>
     </nav>
 
-    <section class="jk-hero with-rail">
+    <section class="jk-hero">
         <figure style="margin:0">
             <div class="jk-portrait-wrap">
                 @if($photo)
@@ -172,7 +182,7 @@
                 @endif
             </div>
             <figcaption class="jk-caption">
-                <span>{{ $locationLabel ? 'KERALAM · INDIA' : 'PUBLIC LIFE' }}</span>
+                <span>{{ $locationCaption ?? ($locationLabel ? 'KERALAM · INDIA' : 'PUBLIC LIFE') }}</span>
                 <span>JANNAYAKS</span>
             </figcaption>
         </figure>
@@ -186,20 +196,25 @@
                 <p class="jk-org">{{ $profession }}</p>
             @endif
             @if($locationLabel)
-                <p class="jk-location">{{ $locationLabel }}</p>
+                <p class="jk-location"><span class="jk-location-kicker">Broad location</span> {{ $locationLabel }}</p>
             @endif
 
             @if($activeEditorial && filled($activeEditorial->summary))
                 <p class="jk-intro">{{ $activeEditorial->summary }}</p>
             @endif
 
+            @if(filled($referenceCode ?? null))
+                <p class="jk-ref">Profile reference · {{ $referenceCode }}</p>
+            @endif
+
             <div class="jk-url-label">Permanent profile URL</div>
             <div class="jk-urlrow">
                 <span class="jk-urlpill">{{ $canonicalUrl }}</span>
-                <span style="display:inline-flex;gap:8px">
+                <span class="jk-url-actions" style="display:inline-flex;gap:8px">
                     <button type="button" class="jk-copy" data-copy="{{ $canonicalUrl }}">Copy link</button>
                     <button type="button" class="jk-copy" style="background:transparent;color:var(--jk-blue)" data-share="{{ $canonicalUrl }}" data-share-title="{{ $displayName }} — Jannayaks">Share</button>
                 </span>
+                <p id="jk-share-status" class="jk-sr" role="status" aria-live="polite"></p>
                 @if($malayalam)
                     <span class="jk-lang" role="navigation" aria-label="Language">
                         <a href="{{ route('profiles.public', ['slug' => $profile->slug, 'lang' => 'en']) }}" lang="en" @if($language === 'en') aria-current="true" @endif>English</a>
@@ -212,86 +227,36 @@
                 <p class="jk-demo-note">Fictional demonstration profile — created to show how a Jannayaks profile reads. It does not describe a real person.</p>
             @endif
         </div>
-
-        {{-- Well-wisher rail: Contact box + Like / Applaud (first laptop viewport) --}}
-        <aside class="jk-rail" id="wellwishers">
-            <div class="jk-box">
-                <h2>Contact</h2>
-                <p class="jk-box-sub">Send a brief message to {{ $displayName }}. Your details are shared only with the profile owner — never displayed publicly.</p>
-                @if(session('contact_status') === 'sent')
-                    <p class="jk-status">Thank you. Your message has been passed on to {{ $displayName }}.</p>
-                @endif
-                @if($errors->any())
-                    <p class="jk-status err">{{ $errors->first('contact') ?: 'Please review the highlighted fields and try again.' }}</p>
-                @endif
-                <form method="POST" action="{{ route('profiles.contact', $profile->slug) }}">
-                    @csrf
-                    <input type="text" name="honey_bot" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
-                    <div class="jk-field">
-                        <label for="visitor_name">Your name</label>
-                        <input id="visitor_name" name="visitor_name" maxlength="120" required value="{{ old('visitor_name') }}">
-                    </div>
-                    <div class="jk-field">
-                        <label for="visitor_mobile">Your mobile number</label>
-                        <input id="visitor_mobile" name="visitor_mobile" maxlength="20" inputmode="tel" value="{{ old('visitor_mobile') }}">
-                    </div>
-                    <div class="jk-field">
-                        <label for="message">Message / reason for contact</label>
-                        <textarea id="message" name="message" maxlength="1000" required>{{ old('message') }}</textarea>
-                    </div>
-                    <button type="submit" class="jk-send">Send message</button>
-                </form>
-            </div>
-
-            <div class="jk-box">
-                <h2>Show appreciation</h2>
-                <p class="jk-box-sub">No public counts — only {{ $displayName }} will privately see your name and broad location.</p>
-                @if(auth()->check())
-                    <div class="jk-reactions">
-                        <form method="POST" action="{{ route('profiles.react', $profile->slug) }}">
-                            @csrf
-                            <input type="hidden" name="reaction" value="like">
-                            @php($liked = in_array('like', $viewerReactions))
-                            <button type="submit" class="jk-react {{ $liked ? 'on' : '' }}" aria-pressed="{{ $liked ? 'true' : 'false' }}">♡ Like</button>
-                        </form>
-                        <form method="POST" action="{{ route('profiles.react', $profile->slug) }}">
-                            @csrf
-                            <input type="hidden" name="reaction" value="applaud">
-                            @php($applauded = in_array('applaud', $viewerReactions))
-                            <button type="submit" class="jk-react {{ $applauded ? 'on' : '' }}" aria-pressed="{{ $applauded ? 'true' : 'false' }}">👏 Applaud</button>
-                        </form>
-                    </div>
-                    <p class="jk-privacy">Your name and broad location may be visible to the profile owner. Your phone number and email are never shared because of a reaction.</p>
-                @else
-                    <a class="jk-react-login" href="{{ route('login', ['return' => url()->current()]) }}">Sign in to Like or Applaud →</a>
-                    <p class="jk-privacy">A lightweight sign-in (Jannayaks account or Google) is required, so profile owners see genuine well-wishers only.</p>
-                @endif
-            </div>
-        </aside>
     </section>
 
-    @if($activeEditorial && filled($activeEditorial->body))
-        <section class="jk-section" id="biography">
-            <div class="jk-sectionhead">
-                <span class="jk-num">I</span><span class="jk-dash"></span>
-                <h2>{{ $language === 'ml' ? 'ജീവചരിത്രം' : 'Biography' }}</h2>
-                <span class="jk-tail">{{ $profession ?: ($headline ?: 'Public Life') }}</span>
-            </div>
-            <div class="jk-bio-grid">
+    @if($articleHasBody)
+        <section class="jk-section" id="biography" aria-labelledby="biography-title">
+            <h2 id="biography-title" class="jk-sr">Profile</h2>
+            <div class="jk-bio-grid{{ $showFeatureColumn ? '' : ' jk-bio-grid--solo' }}">
                 <div class="jk-bodytext">
-                    @foreach(preg_split('/\n\s*\n/u', trim((string) $activeEditorial->body)) as $para)
-                        @if(trim($para) !== '')<p>{{ trim($para) }}</p>@endif
+                    @foreach($articleParagraphs as $para)
+                        <p>{{ $para }}</p>
                     @endforeach
-                </div>
-                <aside>
-                    @if($photo)
-                        <img class="jk-side-feature{{ $isDemonstration ? ' jk-portrait--whole' : '' }}" src="{{ route('profiles.public.photo', [$profile, $photo]) }}" alt="{{ $photo->alt_text ?: ($displayName.' — documentary photograph') }}">
-                        <p class="jk-figcap">{{ strtoupper($displayName) }} · DOCUMENTARY RECORD</p>
-                    @else
-                        <div class="jk-summary-quote"><p>{{ $activeEditorial->summary ?: ($headline ?: 'A carefully prepared record of a life of public contribution.') }}</p></div>
+                    @if(filled($activeEditorial->summary))
+                        <div class="jk-summary-quote"><p>{{ $activeEditorial->summary }}</p></div>
                     @endif
-                </aside>
+                </div>
+                @if($featurePhoto)
+                    <aside data-photo-position="additional-1">
+                        <img class="jk-side-feature{{ $isDemonstration ? ' jk-portrait--whole' : '' }}" src="{{ route('profiles.public.photo', [$profile, $featurePhoto]) }}" alt="{{ $featurePhoto->alt_text ?: ($displayName.' — documentary photograph') }}">
+                        <p class="jk-figcap">{{ strtoupper($displayName) }} · DOCUMENTARY RECORD</p>
+                    </aside>
+                @elseif(filled($featureCopy))
+                    <aside class="jk-position-copy" data-photo-position="additional-1">
+                        <p>{{ $featureCopy }}</p>
+                    </aside>
+                @endif
             </div>
+            @if(! $galleryHasPhotograph && $galleryEntries->isNotEmpty())
+                <div class="jk-story-continue">
+                    @include('public.partials.magazine-positions')
+                </div>
+            @endif
         </section>
     @endif
 
@@ -320,20 +285,14 @@
         </section>
     @endif
 
-    @if($photos->count() > 1)
+    @if($galleryHasPhotograph)
         <section class="jk-section" id="gallery">
             <div class="jk-sectionhead">
                 <span class="jk-num">{{ $publicOffices->isNotEmpty() ? 'III' : 'II' }}</span><span class="jk-dash"></span>
                 <h2>{{ $language === 'ml' ? 'ഗാലറി' : 'Gallery' }}</h2>
                 <span class="jk-tail">DOCUMENTARY PHOTOGRAPHS</span>
             </div>
-            <div class="jk-gallery">
-                @foreach($photos->skip(1) as $galleryPhoto)
-                    <a href="{{ route('profiles.public.photo', [$profile, $galleryPhoto]) }}">
-                        <img src="{{ route('profiles.public.photo', [$profile, $galleryPhoto]) }}" alt="{{ $galleryPhoto->alt_text ?: ($displayName.' photograph') }}" loading="lazy">
-                    </a>
-                @endforeach
-            </div>
+            @include('public.partials.magazine-positions')
             <p class="jk-note" style="margin-top:16px">Photographs are held as documentary records — captioned and preserved alongside the written record.</p>
         </section>
     @endif
@@ -356,11 +315,65 @@
         </section>
     @endif
 
-    <p style="margin-top:56px"><a href="{{ $listingUrl }}" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a></p>
+    <section class="jk-section" id="wellwishers" aria-labelledby="engage-title">
+        <h2 id="engage-title" class="jk-sr">Contact and appreciation</h2>
+        <div class="jk-engage-grid">
+            <div class="jk-box">
+                <h2>Show appreciation</h2>
+                <p class="jk-box-sub">No public counts — only {{ $displayName }} will privately see your name and broad location.</p>
+                @if(auth()->check())
+                    <div class="jk-reactions">
+                        <form method="POST" action="{{ route('profiles.react', $profile->slug) }}">
+                            @csrf
+                            <input type="hidden" name="reaction" value="like">
+                            @php($liked = in_array('like', $viewerReactions))
+                            <button type="submit" class="jk-react {{ $liked ? 'on' : '' }}" aria-pressed="{{ $liked ? 'true' : 'false' }}">♡ Like</button>
+                        </form>
+                        <form method="POST" action="{{ route('profiles.react', $profile->slug) }}">
+                            @csrf
+                            <input type="hidden" name="reaction" value="applaud">
+                            @php($applauded = in_array('applaud', $viewerReactions))
+                            <button type="submit" class="jk-react {{ $applauded ? 'on' : '' }}" aria-pressed="{{ $applauded ? 'true' : 'false' }}">👏 Applaud</button>
+                        </form>
+                    </div>
+                    <p class="jk-privacy">Your name and broad location may be visible to the profile owner. Your phone number and email are never shared because of a reaction.</p>
+                @else
+                    <a class="jk-react-login" href="{{ route('login', ['return' => url()->current()]) }}">Sign in to Like or Applaud →</a>
+                    <p class="jk-privacy">A lightweight sign-in (Jannayaks account or Google) is required, so profile owners see genuine well-wishers only.</p>
+                @endif
+            </div>
 
-    @if(filled($referenceCode ?? null))
-        <p style="margin:14px 0 0;font:500 10px var(--jk-ui);letter-spacing:.18em;text-transform:uppercase;color:#82907f">Profile reference · {{ $referenceCode }}</p>
-    @endif
+            <div class="jk-box">
+                <h2>Contact</h2>
+                <p class="jk-box-sub">Send a brief message to {{ $displayName }}. Your details are shared only with the profile owner — never displayed publicly.</p>
+                @if(session('contact_status') === 'sent')
+                    <p class="jk-status">Thank you. Your message has been passed on to {{ $displayName }}.</p>
+                @endif
+                @if($errors->any())
+                    <p class="jk-status err">{{ $errors->first('contact') ?: 'Please review the highlighted fields and try again.' }}</p>
+                @endif
+                <form method="POST" action="{{ route('profiles.contact', $profile->slug) }}">
+                    @csrf
+                    <input type="text" name="honey_bot" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
+                    <div class="jk-field">
+                        <label for="visitor_name">Your name</label>
+                        <input id="visitor_name" name="visitor_name" maxlength="120" required value="{{ old('visitor_name') }}">
+                    </div>
+                    <div class="jk-field">
+                        <label for="visitor_mobile">Your mobile number</label>
+                        <input id="visitor_mobile" name="visitor_mobile" maxlength="20" inputmode="tel" value="{{ old('visitor_mobile') }}">
+                    </div>
+                    <div class="jk-field">
+                        <label for="message">Message / reason for contact</label>
+                        <textarea id="message" name="message" maxlength="1000" required>{{ old('message') }}</textarea>
+                    </div>
+                    <button type="submit" class="jk-send">Send message</button>
+                </form>
+            </div>
+        </div>
+    </section>
+
+    <p style="margin-top:56px"><a href="{{ $listingUrl }}" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to {{ $listingLabel }}</a></p>
 </div>
 </div>
 
@@ -368,30 +381,59 @@
 <script>
 (function(){
     var copied = 'Link copied';
-    function toast(msg){
+    var failed = 'Could not copy the link. Select the permanent URL and copy it manually.';
+    function announce(msg){
+        var live = document.getElementById('jk-share-status');
+        if (live) live.textContent = msg;
         var t = document.createElement('div');
         t.textContent = msg;
+        t.setAttribute('role', 'status');
         t.style.cssText = 'position:fixed;left:50%;bottom:26px;transform:translateX(-50%);background:#214d68;color:#fff;padding:10px 18px;font:500 13px sans-serif;z-index:60;opacity:0;transition:opacity .2s';
         document.body.appendChild(t);
         requestAnimationFrame(function(){ t.style.opacity = '1'; });
-        setTimeout(function(){ t.style.opacity = '0'; setTimeout(function(){ t.remove(); }, 300); }, 1800);
+        setTimeout(function(){ t.style.opacity = '0'; setTimeout(function(){ t.remove(); }, 300); }, 2200);
+    }
+    function fallbackCopy(text){
+        var ta = document.createElement('textarea');
+        ta.value = text;
+        ta.setAttribute('readonly', '');
+        ta.style.cssText = 'position:fixed;top:0;left:0;width:1px;height:1px;opacity:0';
+        document.body.appendChild(ta);
+        ta.focus();
+        ta.select();
+        ta.setSelectionRange(0, text.length);
+        var ok = false;
+        try { ok = document.execCommand('copy'); } catch (e) { ok = false; }
+        ta.remove();
+        announce(ok ? copied : failed);
     }
     function copyText(text){
-        if (navigator.clipboard && navigator.clipboard.writeText) return navigator.clipboard.writeText(text).then(function(){ toast(copied); });
-        var ta = document.createElement('textarea');
-        ta.value = text; ta.setAttribute('readonly',''); ta.style.cssText = 'position:fixed;opacity:0';
-        document.body.appendChild(ta); ta.select();
-        try { document.execCommand('copy'); toast(copied); } catch(e){}
-        ta.remove();
-        return Promise.resolve();
+        if (!text) { announce(failed); return; }
+        if (window.isSecureContext && navigator.clipboard && navigator.clipboard.writeText) {
+            navigator.clipboard.writeText(text).then(function(){ announce(copied); }).catch(function(){ fallbackCopy(text); });
+            return;
+        }
+        fallbackCopy(text);
     }
     document.querySelectorAll('[data-copy]').forEach(function(b){
-        b.addEventListener('click', function(){ copyText(b.dataset.copy); });
+        if (b.dataset.jkBound === '1') return;
+        b.dataset.jkBound = '1';
+        b.addEventListener('click', function(){ copyText(b.getAttribute('data-copy')); });
     });
     document.querySelectorAll('[data-share]').forEach(function(b){
+        if (b.dataset.jkBound === '1') return;
+        b.dataset.jkBound = '1';
         b.addEventListener('click', function(){
-            if (navigator.share) { navigator.share({ title: b.dataset.shareTitle, url: b.dataset.share }).catch(function(){}); }
-            else { copyText(b.dataset.share); }
+            var url = b.getAttribute('data-share');
+            var title = b.getAttribute('data-share-title') || document.title;
+            if (navigator.share) {
+                navigator.share({ title: title, text: title, url: url }).catch(function(err){
+                    if (err && err.name === 'AbortError') return;
+                    copyText(url);
+                });
+                return;
+            }
+            copyText(url);
         });
     });
 })();

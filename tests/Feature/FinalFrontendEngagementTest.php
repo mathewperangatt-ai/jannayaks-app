@@ -4,6 +4,7 @@ namespace Tests\Feature;
 
 use App\Mail\InvitationRequestMail;
 use App\Mail\ProfileContactMail;
+use App\Mail\RecommendationInvitationMail;
 use App\Mail\RecommendationReceivedMail;
 use App\Models\Application;
 use App\Models\Profile;
@@ -153,22 +154,27 @@ class FinalFrontendEngagementTest extends TestCase
 
         $this->post('/recommend', [
             'recommender_name' => 'Deepa Menon',
-            'recommender_contact' => 'deepa@example.com',
             'recommended_name' => 'Ravi Chandran',
+            'recommended_email' => 'ravi.chandran@example.test',
             'recommended_location' => 'Kollam',
             'recommended_role' => 'Teacher and youth mentor',
             'reason' => 'Two decades of quiet community teaching and library work in her town.',
             'acknowledged_terms' => '1',
         ])->assertRedirect(route('recommend.show'));
 
-        $this->assertDatabaseHas('recommendations', ['recommended_name' => 'Ravi Chandran']);
-        Mail::assertSent(RecommendationReceivedMail::class, 1);
+        $this->assertDatabaseHas('recommendations', [
+            'recommended_name' => 'Ravi Chandran',
+            'recommended_email' => 'ravi.chandran@example.test',
+            'share_recommender_name' => false,
+        ]);
+        Mail::assertSent(RecommendationInvitationMail::class, 1);
+        Mail::assertNotSent(RecommendationReceivedMail::class);
 
         // Terms acknowledgement is mandatory.
         $this->post('/recommend', [
             'recommender_name' => 'Deepa Menon',
-            'recommender_contact' => 'deepa@example.com',
             'recommended_name' => 'Someone Else',
+            'recommended_email' => 'someone.else@example.test',
             'reason' => 'A long enough reason statement for validation.',
         ])->assertSessionHasErrors();
     }

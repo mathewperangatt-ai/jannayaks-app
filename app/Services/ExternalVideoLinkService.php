@@ -52,7 +52,7 @@ class ExternalVideoLinkService
 
         if (! $this->tierAllowsVideo($profile)) {
             throw ValidationException::withMessages([
-                'url' => 'External video links are not included with this package.',
+                'url' => 'Video links are not part of a Jannayaks profile.',
             ]);
         }
 

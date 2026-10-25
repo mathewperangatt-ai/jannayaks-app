@@ -4,11 +4,13 @@ namespace App\Filament\Resources\Applications\Pages;
 
 use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
+use App\Models\EditorialContent;
 use App\Models\EditorialRevisionRequest;
 use App\Models\User;
 use App\Services\ApplicationWorkflowService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
+use App\Services\MalayalamConsentService;
 use App\Services\PostPublicationUpdateService;
 use App\Support\EditorialTestBypass;
 use App\Support\PublicationTestBypass;
@@ -137,6 +139,56 @@ class ViewApplication extends ViewRecord
                             ->body($e->getMessage())
                             ->danger()
                             ->send();
+                    }
+                }),
+            Action::make('approveMalayalamForConsent')
+                ->label('Approve Malayalam for customer consent')
+                ->requiresConfirmation()
+                ->modalHeading('Approve this Malayalam version')
+                ->modalDescription('Marks the Malayalam draft paired to the published English version as editorially approved. It does not record customer consent, change the English text, or publish Malayalam.')
+                ->visible(function (): bool {
+                    return (auth()->user()?->canManageEditorial() ?? false)
+                        && $this->malayalamDraftForConsent() instanceof EditorialContent;
+                })
+                ->action(function (): void {
+                    $actor = auth()->user();
+                    $malayalam = $this->malayalamDraftForConsent();
+                    if (! $actor instanceof User || ! $malayalam instanceof EditorialContent) {
+                        abort(403);
+                    }
+
+                    try {
+                        app(MalayalamConsentService::class)->approveForCustomerConsent($this->applicationRecord(), $malayalam, $actor);
+                        Notification::make()->title('Malayalam approved for customer consent')->success()->send();
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot approve Malayalam')->body($e->getMessage())->danger()->send();
+                    }
+                }),
+            Action::make('attachConsentedMalayalam')
+                ->label('Attach consented Malayalam')
+                ->color('success')
+                ->requiresConfirmation()
+                ->modalHeading('Attach the consented Malayalam text')
+                ->modalDescription('Adds the editorially approved Malayalam version the customer has consented to. It does not replace the English publication, start a membership, or record a payment.')
+                ->visible(function (): bool {
+                    $record = $this->getRecord();
+
+                    return (auth()->user()?->isAdmin() ?? false)
+                        && $record instanceof Application
+                        && $record->published_malayalam_editorial_content_id === null
+                        && app(MalayalamConsentService::class)->hasCurrentCustomerConsent($record);
+                })
+                ->action(function (): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User || ! $actor->isAdmin()) {
+                        abort(403);
+                    }
+
+                    try {
+                        app(MalayalamConsentService::class)->attachToPublishedProfile($this->applicationRecord(), $actor);
+                        Notification::make()->title('Malayalam attached to the published profile')->success()->send();
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot attach Malayalam')->body($e->getMessage())->danger()->send();
                     }
                 }),
             Action::make('publishApplication')
@@ -361,5 +413,33 @@ class ViewApplication extends ViewRecord
     private function hasOpenMaintenanceRequest(): bool
     {
         return $this->maintenanceRequest() !== null;
+    }
+
+    private function applicationRecord(): Application
+    {
+        $record = $this->getRecord();
+        if (! $record instanceof Application) {
+            abort(404);
+        }
+
+        return $record;
+    }
+
+    private function malayalamDraftForConsent(): ?EditorialContent
+    {
+        $application = $this->getRecord();
+        if (! $application instanceof Application || $application->published_english_editorial_content_id === null) {
+            return null;
+        }
+
+        $malayalam = EditorialContent::query()
+            ->where('profile_id', $application->profile_id)
+            ->where('language', EditorialContent::LANGUAGE_ML)
+            ->where('status', EditorialContent::STATUS_DRAFT)
+            ->where('source_editorial_content_id', $application->published_english_editorial_content_id)
+            ->orderByDesc('version_number')
+            ->first();
+
+        return $malayalam instanceof EditorialContent ? $malayalam : null;
     }
 }

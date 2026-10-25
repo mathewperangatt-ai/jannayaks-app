@@ -124,6 +124,7 @@ class StructuredDataTest extends TestCase
 
         $crumbs = $this->nodesByType('/t.gopalakrishnan')['BreadcrumbList']['itemListElement'];
 
+        $this->assertSame('Gallery', $crumbs[1]['name']);
         $this->assertSame(route('gallery.index'), $crumbs[1]['item']);
     }
 

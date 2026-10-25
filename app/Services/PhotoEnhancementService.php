@@ -54,14 +54,16 @@ class PhotoEnhancementService
     }
 
     /**
-     * A source photo is eligible while it exists as a normal customer
-     * profile photo that has not been rejected.
+     * Only the current primary profile photograph can be sent to the image
+     * provider. Additional photographs are resized by ProfilePhotoOptimizer
+     * and are not enhancement sources. A rejected photograph is not eligible.
      */
     public function sourceEligible(?MediaItem $source): bool
     {
         return $source instanceof MediaItem
             && $source->exists
             && $source->media_type === MediaItem::TYPE_PROFILE_PHOTO
+            && (bool) $source->is_primary
             && $source->review_status !== MediaItem::REVIEW_REJECTED
             && filled($source->storage_path_key);
     }

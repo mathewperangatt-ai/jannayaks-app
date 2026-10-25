@@ -4,11 +4,13 @@ namespace Tests\Feature;
 
 use App\Models\Application;
 use App\Models\InterviewAnswer;
+use App\Models\Profile;
 use App\Models\SourceMaterial;
 use App\Models\User;
 use App\Support\OnlineInterviewCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Schema;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -24,21 +26,23 @@ class Phase4ApplicationIntakeTest extends TestCase
         ]);
 
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
-            'package_tier'   => 'accomplished',
-            'source_method'  => 'online_interview',
-            'full_name'      => 'Alice Example',
+            'package_tier' => 'accomplished',
+            'source_method' => 'online_interview',
+            'full_name' => 'Alice Example',
             'preferred_slug' => 'alice-example',
-            'contact_email'  => 'alice@example.com',
+            'contact_email' => 'alice@example.com',
         ]);
 
         $res->assertCreated()->assertJson(['ok' => true, 'package_tier' => 'distinguished']);
-        $this->assertStringContainsString('/payment', (string) $res->json('redirect_to'));
+        $this->assertStringContainsString('/interview', (string) $res->json('redirect_to'));
+        $this->assertStringNotContainsString('/payment', (string) $res->json('redirect_to'));
         $this->assertDatabaseHas('applications', [
-            'user_id'        => $user->id,
-            'package_tier'   => 'distinguished',
+            'user_id' => $user->id,
+            'package_tier' => 'distinguished',
             'pricing_generation' => 'standard_profile',
-            'source_method'  => 'online_interview',
-            'full_name'      => 'Alice Example',
+            'source_method' => 'online_interview',
+            'full_name' => 'Alice Example',
+            'preferred_slug' => 'alice-example',
         ]);
         $app = Application::query()->latest('id')->first();
         $this->assertNotNull($app->intake_started_at);
@@ -51,10 +55,10 @@ class Phase4ApplicationIntakeTest extends TestCase
         foreach (['emerging', 'accomplished', 'distinguished'] as $tier) {
             $user = User::factory()->create(['email_verified_at' => now()]);
             $this->actingAs($user)->postJson(route('applications.store'), [
-                'package_tier'   => $tier,
-                'source_method'  => 'online_interview',
-                'full_name'      => $tier.' Person',
-                'contact_email'  => $tier.'@example.com',
+                'package_tier' => $tier,
+                'source_method' => 'online_interview',
+                'full_name' => $tier.' Person',
+                'contact_email' => $tier.'@example.com',
             ])->assertCreated();
             $this->assertSame('distinguished', (string) Application::query()->latest('id')->first()->package_tier);
         }
@@ -66,9 +70,9 @@ class Phase4ApplicationIntakeTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
         // Distinguished with no verification / no achievements provided:
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
-            'package_tier'  => 'distinguished',
+            'package_tier' => 'distinguished',
             'source_method' => 'online_interview',
-            'full_name'     => 'No Achievements Provided',
+            'full_name' => 'No Achievements Provided',
             'contact_email' => 'no.achievements@example.com',
         ]);
         $res->assertCreated();
@@ -81,17 +85,17 @@ class Phase4ApplicationIntakeTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $user->id,
-            'package_tier'  => 'emerging',
+            'user_id' => $user->id,
+            'package_tier' => 'emerging',
             'source_method' => 'online_interview',
-            'full_name'     => 'Bob Original',
+            'full_name' => 'Bob Original',
         ])->paid()->create();
 
         $original = 'ഇത് ഒരു മലയാളം ഉത്തരമാണ്. Mixed with English and Manglish words like Ayal Njan koode undaayirunnu.';
 
         $res = $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), [
             'question_id' => 'q1',
-            'answer'      => $original,
+            'answer' => $original,
         ]);
         $res->assertOk()->assertJson(['ok' => true, 'answered' => 1]);
 
@@ -116,7 +120,7 @@ class Phase4ApplicationIntakeTest extends TestCase
         $this->assertNotEmpty($progressAllBlank['missing_required']);
 
         $emergingRequiredIds = array_values(array_filter(array_map(
-            static fn (array $q): ?string => !empty($q['required']) ? (string) ($q['id'] ?? '') : null,
+            static fn (array $q): ?string => ! empty($q['required']) ? (string) ($q['id'] ?? '') : null,
             $emerging
         )));
         sort($emergingRequiredIds);
@@ -157,22 +161,22 @@ class Phase4ApplicationIntakeTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $user->id,
-            'package_tier'  => 'emerging',
+            'user_id' => $user->id,
+            'package_tier' => 'emerging',
             'source_method' => 'online_interview',
-            'full_name'     => 'Incomplete Saver',
+            'full_name' => 'Incomplete Saver',
         ])->paid()->create();
 
         $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), [
             'question_id' => 'q1',
-            'answer'      => 'Saved draft answer q1.',
+            'answer' => 'Saved draft answer q1.',
         ])->assertOk();
 
         $res = $this->actingAs($user)->getJson(route('online-interview.show', ['application' => $app->id]));
         $res->assertOk()->assertJson([
-            'ok'        => true,
+            'ok' => true,
             'read_only' => false,
-            'progress'  => ['answered' => 1],
+            'progress' => ['answered' => 1],
         ]);
         $answers = $res->json('answers');
         $this->assertSame('Saved draft answer q1.', (string) ($answers['q1'] ?? ''));
@@ -183,10 +187,10 @@ class Phase4ApplicationIntakeTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $user->id,
-            'package_tier'  => 'emerging',
+            'user_id' => $user->id,
+            'package_tier' => 'emerging',
             'source_method' => 'online_interview',
-            'full_name'     => 'Completed Submission',
+            'full_name' => 'Completed Submission',
         ])->paid()->create();
 
         // Q1 is the only required question (approved 22-question catalog).
@@ -200,7 +204,9 @@ class Phase4ApplicationIntakeTest extends TestCase
             'answers' => $answers,
         ])->assertOk();
 
-        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]));
+        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), [
+            'questionnaire_confirmed' => '1',
+        ]);
         $res->assertOk()->assertJson(['ok' => true, 'next_step' => 'editorial_processing']);
 
         $app->refresh();
@@ -212,10 +218,10 @@ class Phase4ApplicationIntakeTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $user->id,
-            'package_tier'  => 'emerging',
+            'user_id' => $user->id,
+            'package_tier' => 'emerging',
             'source_method' => 'online_interview',
-            'full_name'     => 'Incomplete',
+            'full_name' => 'Incomplete',
         ])->paid()->create();
 
         $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]));
@@ -229,12 +235,12 @@ class Phase4ApplicationIntakeTest extends TestCase
     public function test_cross_user_application_access_denied(): void
     {
         $alice = User::factory()->create(['email_verified_at' => now()]);
-        $bob   = User::factory()->create(['email_verified_at' => now()]);
+        $bob = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $alice->id,
-            'package_tier'  => 'emerging',
+            'user_id' => $alice->id,
+            'package_tier' => 'emerging',
             'source_method' => 'online_interview',
-            'full_name'     => 'Only Alice',
+            'full_name' => 'Only Alice',
         ])->paid()->create();
 
         $this->actingAs($bob)->getJson(route('applications.show', ['application' => $app->id]))->assertForbidden();
@@ -245,17 +251,17 @@ class Phase4ApplicationIntakeTest extends TestCase
     public function test_cross_user_answer_modification_denied(): void
     {
         $alice = User::factory()->create(['email_verified_at' => now()]);
-        $bob   = User::factory()->create(['email_verified_at' => now()]);
+        $bob = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $alice->id,
-            'package_tier'  => 'emerging',
+            'user_id' => $alice->id,
+            'package_tier' => 'emerging',
             'source_method' => 'online_interview',
-            'full_name'     => 'Alice App',
+            'full_name' => 'Alice App',
         ])->paid()->create();
 
         $this->actingAs($bob)->patchJson(route('online-interview.save', ['application' => $app->id]), [
             'question_id' => 'q1',
-            'answer'      => 'Bob writing into Alice interview.',
+            'answer' => 'Bob writing into Alice interview.',
         ])->assertForbidden();
 
         $this->assertDatabaseMissing('interview_answers', [
@@ -269,17 +275,21 @@ class Phase4ApplicationIntakeTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $user->id,
-            'package_tier'  => 'emerging',
+            'user_id' => $user->id,
+            'package_tier' => 'emerging',
             'source_method' => 'online_interview',
-            'full_name'     => 'Dup Submit',
+            'full_name' => 'Dup Submit',
         ])->paid()->create();
         $ids = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
         $answers = [];
-        foreach ($ids as $id) { $answers[$id] = 'a'; }
+        foreach ($ids as $id) {
+            $answers[$id] = 'a';
+        }
         $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), ['answers' => $answers]);
 
-        $first = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]));
+        $first = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), [
+            'questionnaire_confirmed' => '1',
+        ]);
         $first->assertOk();
         $t1 = (string) $first->json('submitted_at');
 
@@ -294,16 +304,16 @@ class Phase4ApplicationIntakeTest extends TestCase
         Storage::fake('private_uploads');
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $user->id,
-            'package_tier'  => 'accomplished',
+            'user_id' => $user->id,
+            'package_tier' => 'accomplished',
             'source_method' => 'direct_submission',
-            'full_name'     => 'Direct Uploader',
+            'full_name' => 'Direct Uploader',
         ])->paid()->create();
 
         $file = UploadedFile::fake()->create('biography.pdf', 64, 'application/pdf');
 
         $res = $this->actingAs($user)->postJson(route('applications.upload.material', ['application' => $app->id]), [
-            'material'      => $file,
+            'material' => $file,
             'material_type' => 'biography',
         ]);
 
@@ -325,16 +335,16 @@ class Phase4ApplicationIntakeTest extends TestCase
 
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $user->id,
-            'package_tier'  => 'accomplished',
+            'user_id' => $user->id,
+            'package_tier' => 'accomplished',
             'source_method' => 'direct_submission',
-            'full_name'     => 'Alternate Disk Uploader',
+            'full_name' => 'Alternate Disk Uploader',
         ])->paid()->create();
 
         $file = UploadedFile::fake()->create('notes.pdf', 32, 'application/pdf');
 
         $res = $this->actingAs($user)->postJson(route('applications.upload.material', ['application' => $app->id]), [
-            'material'      => $file,
+            'material' => $file,
             'material_type' => 'personal_notes',
         ]);
 
@@ -352,16 +362,16 @@ class Phase4ApplicationIntakeTest extends TestCase
 
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $user->id,
-            'package_tier'  => 'emerging',
+            'user_id' => $user->id,
+            'package_tier' => 'emerging',
             'source_method' => 'direct_submission',
-            'full_name'     => 'Default Disk Uploader',
+            'full_name' => 'Default Disk Uploader',
         ])->paid()->create();
 
         $file = UploadedFile::fake()->create('story.txt', 8, 'text/plain');
 
         $res = $this->actingAs($user)->postJson(route('applications.upload.material', ['application' => $app->id]), [
-            'material'      => $file,
+            'material' => $file,
             'material_type' => 'biography',
         ]);
 
@@ -376,36 +386,41 @@ class Phase4ApplicationIntakeTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory([
-            'user_id'       => $user->id,
-            'package_tier'  => 'emerging',
+            'user_id' => $user->id,
+            'package_tier' => 'emerging',
             'source_method' => 'online_interview',
-            'full_name'     => 'No Profile Yet',
+            'full_name' => 'No Profile Yet',
         ])->paid()->create();
         $ids = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
-        $answers = []; foreach ($ids as $id) { $answers[$id] = 'answer'; }
+        $answers = [];
+        foreach ($ids as $id) {
+            $answers[$id] = 'answer';
+        }
         $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), ['answers' => $answers]);
-        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]))->assertOk();
+        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), [
+            'questionnaire_confirmed' => '1',
+        ])->assertOk();
         $app->refresh();
         $this->assertNull($app->profile_id);
-        $this->assertSame(0, \App\Models\Profile::query()->count());
+        $this->assertSame(0, Profile::query()->count());
     }
 
     /* 16. Existing Phase 1–3 tests remain green (smoke check): integrity TCs still exist and reference tables still exist. */
     public function test_existing_phase_1_3_tables_still_intact(): void
     {
         // These tables from Phase 1–3 foundation must still be present after Phase 4 migrations:
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('users'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('profiles'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('applications'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('geo_states'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('geo_wards'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('payments'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('memberships'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('consent_records'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('editorial_contents'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('in_memoriam_profiles'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('slug_redirects'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('interview_answers'));
-        $this->assertTrue(\Illuminate\Support\Facades\Schema::hasTable('source_materials'));
+        $this->assertTrue(Schema::hasTable('users'));
+        $this->assertTrue(Schema::hasTable('profiles'));
+        $this->assertTrue(Schema::hasTable('applications'));
+        $this->assertTrue(Schema::hasTable('geo_states'));
+        $this->assertTrue(Schema::hasTable('geo_wards'));
+        $this->assertTrue(Schema::hasTable('payments'));
+        $this->assertTrue(Schema::hasTable('memberships'));
+        $this->assertTrue(Schema::hasTable('consent_records'));
+        $this->assertTrue(Schema::hasTable('editorial_contents'));
+        $this->assertTrue(Schema::hasTable('in_memoriam_profiles'));
+        $this->assertTrue(Schema::hasTable('slug_redirects'));
+        $this->assertTrue(Schema::hasTable('interview_answers'));
+        $this->assertTrue(Schema::hasTable('source_materials'));
     }
 }

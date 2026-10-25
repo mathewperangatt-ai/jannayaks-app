@@ -5,10 +5,14 @@ namespace Tests\Feature;
 use App\Models\Application;
 use App\Models\Profile;
 use App\Models\ReservedSlug;
+use App\Models\SlugRedirect;
+use App\Models\StaffActionLog;
 use App\Models\User;
 use App\Services\ApplicationWorkflowService;
 use App\Services\ProfileUrlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Schema;
+use InvalidArgumentException;
 use Tests\TestCase;
 
 class PersonalProfileUrlSystemTest extends TestCase
@@ -100,7 +104,7 @@ class PersonalProfileUrlSystemTest extends TestCase
         $this->assertDatabaseHas('slug_reservations', ['slug' => 'arun.kumar']);
 
         $other = $this->prepareUnpublishedLiving('distinguished', 'Arun Kumar Nair');
-        $this->expectException(\InvalidArgumentException::class);
+        $this->expectException(InvalidArgumentException::class);
         app(ProfileUrlService::class)->selectPersonalSlug($other['profile'], $other['user'], 'arun.kumar', 'distinguished');
     }
 
@@ -180,6 +184,133 @@ class PersonalProfileUrlSystemTest extends TestCase
         }
     }
 
+    public function test_url_allocation_does_not_depend_on_a_name_verification_status(): void
+    {
+        $this->assertFalse(Schema::hasColumn('profiles', 'name_verified'));
+        $this->assertFalse(Schema::hasColumn('profiles', 'name_verified_at'));
+        $this->assertFalse(Schema::hasColumn('applications', 'name_verified_at'));
+
+        $names = [
+            'emerging' => ['Nila Thomas', 'nila.thomas'],
+            'accomplished' => ['Dev Patel', 'dev.patel'],
+            'distinguished' => ['Meera Joseph', 'meera.joseph'],
+        ];
+
+        foreach ($names as $tier => [$name, $slug]) {
+            $prepared = $this->prepareUnpublishedLiving($tier, $name);
+            $this->actingAs($prepared['user'])->post(route('applications.profile-url.update', $prepared['application']), [
+                'slug' => 'superstar',
+            ])->assertSessionHasErrors('slug');
+
+            $this->actingAs($prepared['user'])->post(route('applications.profile-url.update', $prepared['application']), [
+                'slug' => $slug,
+            ])->assertRedirect();
+
+            $this->assertSame($slug, $prepared['profile']->fresh()->slug);
+        }
+    }
+
+    public function test_every_living_tier_receives_a_name_derived_url(): void
+    {
+        $names = [
+            'emerging' => 'Meera Joseph',
+            'accomplished' => 'Arun Kumar Nair',
+            'distinguished' => 'Ratish Ravindra',
+        ];
+
+        foreach ($names as $tier => $name) {
+            [, , $profile] = $this->publishLiving($tier, $name);
+            $expected = strtolower(str_replace(' ', '.', $name));
+
+            $this->assertSame($expected, $profile->slug);
+            $this->assertFalse(str_starts_with((string) $profile->slug, 'late.'));
+            $this->assertFalse(app(ProfileUrlService::class)->isEmergingSystemSlug($profile->slug));
+        }
+    }
+
+    public function test_automatic_allocation_numbers_the_natural_slug_when_it_is_taken(): void
+    {
+        [, , $first] = $this->publishLiving('emerging', 'Meera Joseph');
+        $this->assertSame('meera.joseph', $first->slug);
+
+        [, , $second] = $this->publishLiving('accomplished', 'Meera Joseph');
+        $this->assertMatchesRegularExpression('/^meera\.joseph\d{2}$/', (string) $second->slug);
+        preg_match('/(\d{2})$/', (string) $second->slug, $matches);
+        $this->assertNotSame((string) $second->id, $matches[1] ?? null);
+
+        $this->assertTrue(
+            StaffActionLog::query()
+                ->where('action', 'profile_url.slug_assigned')
+                ->where('subject_id', $second->id)
+                ->where('after->slug', $second->slug)
+                ->exists()
+        );
+    }
+
+    public function test_publication_assigns_ratish_ravindra_for_that_verified_name(): void
+    {
+        [$member, $application, $profile] = $this->publishLiving(
+            'distinguished',
+            'Ratish Ravindra',
+            pricingGeneration: Application::PRICING_GENERATION_STANDARD,
+        );
+
+        $this->assertSame('ratish.ravindra', $profile->slug);
+        $this->assertFalse(str_ends_with((string) $profile->slug, '.late'));
+        $this->assertFalse(app(ProfileUrlService::class)->isEmergingSystemSlug($profile->slug));
+        $this->assertSame(Application::PRICING_GENERATION_STANDARD, $application->pricing_generation);
+        $this->assertSame($member->id, (int) $profile->user_id);
+
+        $assigned = StaffActionLog::query()
+            ->where('action', 'profile_url.slug_assigned')
+            ->where('subject_id', $profile->id)
+            ->firstOrFail();
+        $this->assertSame('ratish.ravindra', $assigned->after['slug']);
+    }
+
+    public function test_existing_opaque_slug_changes_only_through_audited_personal_selection(): void
+    {
+        [$member, $application, $profile] = $this->publishLiving(
+            'distinguished',
+            'Ratish Ravindra',
+            existingSlug: '4IZ2UF',
+            pricingGeneration: Application::PRICING_GENERATION_STANDARD,
+        );
+        $admin = User::factory()->admin()->create();
+
+        $this->assertSame('4IZ2UF', $profile->slug);
+
+        $updated = app(ProfileUrlService::class)->selectPersonalSlug(
+            $profile->fresh(),
+            $admin,
+            'ratish.ravindra',
+            'distinguished',
+        );
+
+        $this->assertSame('ratish.ravindra', $updated->slug);
+        $this->assertFalse(str_ends_with((string) $updated->slug, '.late'));
+        $this->assertTrue(SlugRedirect::query()->where('old_slug', '4IZ2UF')->where('new_slug', 'ratish.ravindra')->exists());
+        $this->assertTrue(
+            StaffActionLog::query()
+                ->where('action', 'profile_url.slug_changed')
+                ->where('actor_user_id', $admin->id)
+                ->where('subject_id', $profile->id)
+                ->exists()
+        );
+        $this->assertSame($member->id, (int) $updated->user_id);
+        $this->assertSame(Application::STATUS_PUBLISHED, $application->fresh()->status);
+    }
+
+    public function test_publication_requires_a_name_derived_slug_for_a_personal_tier(): void
+    {
+        try {
+            $this->publishLiving('distinguished', 'Dr');
+            $this->fail('A personal-tier profile without a usable name must not receive a random slug.');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('personal profile URL', $e->getMessage());
+        }
+    }
+
     public function test_home_footer_uses_official_contact_details(): void
     {
         // Final frontend pass §34 removed the phone; footer pass 2 removed the
@@ -232,8 +363,12 @@ class PersonalProfileUrlSystemTest extends TestCase
     /**
      * @return array{0: User, 1: Application, 2: Profile}
      */
-    private function publishLiving(string $tier, string $fullName = 'Arun Kumar Nair'): array
-    {
+    private function publishLiving(
+        string $tier,
+        string $fullName = 'Arun Kumar Nair',
+        ?string $existingSlug = null,
+        ?string $pricingGeneration = null,
+    ): array {
         $member = User::factory()->create();
         $admin = User::factory()->admin()->create();
 
@@ -243,6 +378,7 @@ class PersonalProfileUrlSystemTest extends TestCase
             'full_name' => $fullName,
             'display_name' => $fullName,
             'profession' => '',
+            'slug' => $existingSlug,
             'display_phone_consent' => false,
             'display_email_consent' => false,
         ]);
@@ -253,6 +389,7 @@ class PersonalProfileUrlSystemTest extends TestCase
             'full_name' => $fullName,
             'preferred_display_name' => $fullName,
             'package_tier' => $tier,
+            'pricing_generation' => $pricingGeneration,
             'source_method' => 'admin_test_demo',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);

@@ -4,6 +4,8 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\PaymentLinkStateUncertainException;
 use App\Models\Application;
+use App\Models\GeoDistrict;
+use App\Models\GeoState;
 use App\Models\Payment;
 use App\Models\SourceMaterial;
 use App\Services\ApplicationPaymentStateService;
@@ -13,6 +15,7 @@ use App\Services\PublicProfilePresentationService;
 use App\Services\RazorpayPaymentService;
 use App\Support\OnlineInterviewCatalog;
 use App\Support\PricingAmounts;
+use App\Support\TierLabels;
 use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -35,7 +38,7 @@ class ApplicationController extends Controller
         $language = $this->flowLanguage($request);
         $tiers = self::LIVING_TIERS;
         $sourceMethods = ['online_interview', 'direct_submission'];
-        $tierLabels = \App\Support\TierLabels::forLivingTiers();
+        $tierLabels = TierLabels::forLivingTiers();
 
         $auth = Auth::check();
         $showTiers = $auth || $request->boolean('tiers') || $request->query('step') === 'tiers';
@@ -70,6 +73,7 @@ class ApplicationController extends Controller
             'tier_labels' => $tierLabels,
             'guest' => ! $auth,
             'language' => $language,
+            'districts' => GeoDistrict::query()->orderBy('name')->get(['id', 'name']),
         ]);
     }
 
@@ -102,6 +106,12 @@ class ApplicationController extends Controller
         if ($this->flowLanguage($request) !== 'ml') {
             return [
                 'source_method.required' => 'Please select how you would like to submit your content.',
+                'district_id.required' => 'Choose the district in Keralam.',
+                'district_id.exists' => 'Choose a district from the list.',
+                'broad_location.required' => 'Enter a town, city or other broad location.',
+                'location_state.required' => 'Enter the state or province.',
+                'location_country.required' => 'Enter the country.',
+                'location_scope.in' => 'Choose Keralam or somewhere else.',
             ];
         }
 
@@ -110,6 +120,91 @@ class ApplicationController extends Controller
             'full_name.required' => 'പൂർണ്ണനാമം നൽകേണ്ടതാണ്.',
             'contact_email.required_without' => 'ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകിയിട്ടില്ലെങ്കിൽ ഇമെയിൽ നൽകേണ്ടതാണ്.',
             'contact_mobile.required_without' => 'ഇമെയിൽ നൽകിയിട്ടില്ലെങ്കിൽ ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകേണ്ടതാണ്.',
+            'district_id.required' => 'കേരളത്തിലെ ജില്ല തിരഞ്ഞെടുക്കുക.',
+            'district_id.exists' => 'പട്ടികയിലുള്ള ഒരു ജില്ല തിരഞ്ഞെടുക്കുക.',
+            'broad_location.required' => 'പട്ടണം, നഗരം അല്ലെങ്കിൽ മറ്റൊരു വിശാലമായ സ്ഥലം നൽകുക.',
+            'location_state.required' => 'സംസ്ഥാനം അല്ലെങ്കിൽ പ്രവിശ്യ നൽകുക.',
+            'location_country.required' => 'രാജ്യം നൽകുക.',
+            'location_scope.in' => 'കേരളമോ മറ്റൊരു സ്ഥലമോ തിരഞ്ഞെടുക്കുക.',
+        ];
+    }
+
+    /**
+     * Location is required when the customer form sends a scope. Requests that
+     * omit it, including existing intake tests, still create an application.
+     *
+     * @return array<string, mixed>
+     */
+    private function intakeLocationRules(): array
+    {
+        return [
+            'location_scope' => ['sometimes', 'nullable', 'in:kerala,elsewhere'],
+            'district_id' => ['exclude_unless:location_scope,kerala', 'required', 'integer', 'exists:geo_districts,id'],
+            'broad_location' => ['exclude_unless:location_scope,elsewhere', 'required', 'string', 'min:2', 'max:120'],
+            'location_state' => ['exclude_unless:location_scope,elsewhere', 'required', 'string', 'min:2', 'max:120'],
+            'location_country' => ['exclude_unless:location_scope,elsewhere', 'required', 'string', 'min:2', 'max:80'],
+        ];
+    }
+
+    /**
+     * Form-field names kept in the guest session so sign-in can resume them.
+     *
+     * @return array<string, mixed>
+     */
+    private function locationIntent(Request $request): array
+    {
+        $scope = $request->input('location_scope');
+        if (! is_string($scope) || ! in_array($scope, ['kerala', 'elsewhere'], true)) {
+            return [];
+        }
+
+        if ($scope === 'kerala') {
+            return [
+                'location_scope' => 'kerala',
+                'district_id' => (int) $request->input('district_id'),
+            ];
+        }
+
+        return [
+            'location_scope' => 'elsewhere',
+            'broad_location' => trim((string) $request->input('broad_location')),
+            'location_state' => trim((string) $request->input('location_state')),
+            'location_country' => trim((string) $request->input('location_country')),
+        ];
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function locationColumns(Request $request): array
+    {
+        $scope = $request->input('location_scope');
+        if (! is_string($scope) || ! in_array($scope, ['kerala', 'elsewhere'], true)) {
+            return [
+                'location_scope' => null,
+                'location_district_id' => null,
+                'broad_location' => null,
+                'location_state' => null,
+                'location_country' => null,
+            ];
+        }
+
+        if ($scope === 'kerala') {
+            return [
+                'location_scope' => 'kerala',
+                'location_district_id' => (int) $request->input('district_id'),
+                'broad_location' => null,
+                'location_state' => GeoState::currentDisplayName(),
+                'location_country' => GeoState::currentCountryName(),
+            ];
+        }
+
+        return [
+            'location_scope' => 'elsewhere',
+            'location_district_id' => null,
+            'broad_location' => trim((string) $request->input('broad_location')),
+            'location_state' => trim((string) $request->input('location_state')),
+            'location_country' => trim((string) $request->input('location_country')),
         ];
     }
 
@@ -122,15 +217,21 @@ class ApplicationController extends Controller
         $validator = Validator::make($request->all(), [
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
-            'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-][a-z0-9]+)*$/'],
+            'preferred_slug' => ['nullable', 'string', 'max:128'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
             'contact_whatsapp' => ['nullable', 'string', 'max:32', 'regex:/^[0-9+\-\s]{6,20}$/'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
             'honey_bot' => ['nullable', 'string', 'max:0'],
-        ], $this->intakeValidationMessages($request));
+        ] + $this->intakeLocationRules(), $this->intakeValidationMessages($request));
 
         if ($validator->fails()) {
+            return $this->validationErrorResponse($request, $validator);
+        }
+        $preferredSlug = $this->preferredSlugHint($request, (string) $request->input('full_name'));
+        if ($preferredSlug['ok'] !== true) {
+            $validator->errors()->add('preferred_slug', $preferredSlug['error']);
+
             return $this->validationErrorResponse($request, $validator);
         }
         if ((string) $request->input('honey_bot', '') !== '') {
@@ -142,12 +243,12 @@ class ApplicationController extends Controller
             'package_tier' => PricingAmounts::STANDARD_INTERNAL_TIER,
             'source_method' => (string) $validated['source_method'],
             'full_name' => (string) $validated['full_name'],
-            'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
+            'preferred_slug' => $preferredSlug['slug'],
             'contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
             'contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
             'contact_whatsapp' => isset($validated['contact_whatsapp']) && $validated['contact_whatsapp'] !== '' ? (string) $validated['contact_whatsapp'] : null,
             'direct_submission_note' => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
-        ];
+        ] + $this->locationIntent($request);
 
         $request->session()->put('apply.intent', $intent);
 
@@ -163,8 +264,12 @@ class ApplicationController extends Controller
             ]);
         }
 
+        $next = ($intent['source_method'] ?? '') === 'direct_submission'
+            ? 'Sign in to continue to document submission.'
+            : 'Sign in to continue to the Online Interview.';
+
         return redirect()->route('login', ['return' => route('apply.continue')])
-            ->with('status', 'Sign in to continue — payment comes next, then the Online Interview.');
+            ->with('status', $next);
     }
 
     public function continueFromIntent(Request $request): JsonResponse|RedirectResponse
@@ -231,15 +336,21 @@ class ApplicationController extends Controller
         $validator = Validator::make($request->all(), [
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
-            'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-][a-z0-9]+)*$/'],
+            'preferred_slug' => ['nullable', 'string', 'max:128'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
             'contact_whatsapp' => ['nullable', 'string', 'max:32', 'regex:/^[0-9+\-\s]{6,20}$/'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
             'honey_bot' => ['nullable', 'string', 'max:0'],
-        ]);
+        ] + $this->intakeLocationRules(), $this->intakeValidationMessages($request));
 
         if ($validator->fails()) {
+            return $this->validationErrorResponse($request, $validator);
+        }
+        $preferredSlug = $this->preferredSlugHint($request, (string) $request->input('full_name'));
+        if ($preferredSlug['ok'] !== true) {
+            $validator->errors()->add('preferred_slug', $preferredSlug['error']);
+
             return $this->validationErrorResponse($request, $validator);
         }
 
@@ -249,7 +360,7 @@ class ApplicationController extends Controller
 
         $validated = $validator->safe()->all();
 
-        return DB::transaction(function () use ($request, $validated) {
+        return DB::transaction(function () use ($request, $validated, $preferredSlug) {
             $user = Auth::user();
 
             $application = new Application;
@@ -260,7 +371,8 @@ class ApplicationController extends Controller
                 'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
                 'full_name' => (string) $validated['full_name'],
                 'preferred_display_name' => (string) $validated['full_name'],
-                'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
+                'preferred_slug' => $preferredSlug['slug'],
+                ...$this->locationColumns($request),
                 'preferred_contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
                 'preferred_contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
                 'preferred_whatsapp_mobile' => isset($validated['contact_whatsapp']) && $validated['contact_whatsapp'] !== '' ? (string) $validated['contact_whatsapp'] : null,
@@ -268,7 +380,9 @@ class ApplicationController extends Controller
                 'intake_started_at' => now(),
                 'direct_submission_received_at' => (string) $validated['source_method'] === 'direct_submission' ? now() : null,
                 'payment_status' => Application::PAYMENT_STATUS_PENDING,
-                'status' => Application::STATUS_PAYMENT_PENDING,
+                'status' => (string) $validated['source_method'] === 'direct_submission'
+                    ? Application::STATUS_INTAKE_IN_PROGRESS
+                    : Application::STATUS_INTERVIEW_IN_PROGRESS,
             ])->save();
 
             if ($request->expectsJson()) {
@@ -281,14 +395,84 @@ class ApplicationController extends Controller
                 ], 201);
             }
 
+            $message = $application->source_method === 'direct_submission'
+                ? 'Application started. Upload the documents for this profile.'
+                : 'Application started. Continue to the Online Interview. Payment comes after the questionnaire is submitted.';
+
             return redirect($this->redirectUrlFor($application))
-                ->with('application_created', 'Application started. Complete payment to unlock the Online Interview or source-material uploads.');
+                ->with('application_created', $message);
         });
     }
 
     private function redirectUrlFor(Application $application): string
     {
+        if ($application->source_method === 'direct_submission') {
+            return route('applications.upload.show', ['application' => $application->id]);
+        }
+
+        if ($application->source_method === 'online_interview' && ! $application->isInterviewSubmitted()) {
+            return route('online-interview.show', ['application' => $application->id]);
+        }
+
         return route('applications.payment', ['application' => $application->id]);
+    }
+
+    /**
+     * Online Interview customers reach payment only after the questionnaire
+     * is submitted. Opening the form and saving the application do not
+     * create a payment.
+     */
+    private function paymentIsPremature(Application $application): bool
+    {
+        if (ApplicationPaymentStateService::testingModeActive()) {
+            return false;
+        }
+
+        return $application->source_method === 'online_interview'
+            && ! $application->isInterviewSubmitted()
+            && ! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)
+            && $application->status === Application::STATUS_INTERVIEW_IN_PROGRESS;
+    }
+
+    /**
+     * @return array{ok: bool, slug: ?string, error?: string}
+     */
+    private function preferredSlugHint(Request $request, string $fullName): array
+    {
+        $raw = $request->input('preferred_slug');
+        if (! is_string($raw) || trim($raw) === '') {
+            return ['ok' => true, 'slug' => null];
+        }
+
+        $candidate = preg_replace('/\s+/', '.', trim($raw)) ?? '';
+        $urls = app(ProfileUrlService::class);
+        $result = $urls->validatePersonalSlugCandidate($candidate, null, $fullName);
+        if (($result['ok'] ?? false) === true) {
+            return ['ok' => true, 'slug' => $result['slug']];
+        }
+        if (($result['error'] ?? '') === 'That URL is not available.') {
+            return ['ok' => true, 'slug' => $urls->normalizePersonalSlug($candidate)];
+        }
+
+        $error = (string) ($result['error'] ?? 'Use a name-based address such as sree or arun.kumar.');
+        if ($this->flowLanguage($request) === 'ml') {
+            $error = 'ഈ വിലാസം പ്രൊഫൈലിലെ പേരിൽ നിന്നുള്ളതായിരിക്കണം. ഉദാഹരണം: sree അല്ലെങ്കിൽ arun.kumar. വലിയ അക്ഷരം, അടിവര, അല്ലെങ്കിൽ മറ്റൊരു പേര് സ്വീകരിക്കില്ല. ശൂന്യമായി വിട്ടാലും മതി.';
+        }
+
+        return ['ok' => false, 'slug' => null, 'error' => $error];
+    }
+
+    private function materialsOpen(Application $application): bool
+    {
+        if ($application->source_method === 'direct_submission') {
+            return true;
+        }
+
+        if ($application->source_method === 'online_interview' && ! $application->isInterviewSubmitted()) {
+            return true;
+        }
+
+        return app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application);
     }
 
     private function paymentGateResponse(Request $request, Application $application): JsonResponse|RedirectResponse
@@ -367,7 +551,7 @@ class ApplicationController extends Controller
             'publicProfileUrl' => $publicProfileUrl,
             'publicProfilePath' => $publicProfilePath,
             'identityPhoto' => $identityPhoto,
-            'paymentsTestingMode' => \App\Services\ApplicationPaymentStateService::testingModeActive(),
+            'paymentsTestingMode' => ApplicationPaymentStateService::testingModeActive(),
         ]);
     }
 
@@ -379,7 +563,7 @@ class ApplicationController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! $this->materialsOpen($application)) {
             return $this->paymentGateResponse($request, $application);
         }
 
@@ -417,7 +601,7 @@ class ApplicationController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! $this->materialsOpen($application)) {
             return $this->paymentGateResponse($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
@@ -502,6 +686,20 @@ class ApplicationController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
+        if ($this->paymentIsPremature($application)) {
+            $message = 'Complete the Online Interview before payment. No payment has been started.';
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => $message,
+                    'redirect_to' => route('online-interview.show', ['application' => $application->id]),
+                ], 403);
+            }
+
+            return redirect()
+                ->route('online-interview.show', ['application' => $application->id])
+                ->withErrors(['payment' => $message]);
+        }
 
         $payments = Payment::query()
             ->where('application_id', $application->id)
@@ -570,7 +768,7 @@ class ApplicationController extends Controller
             'isSettled' => $settledPayment !== null,
             'quoteIsStale' => $this->activePaymentQuoteIsStale($activePayment, $package),
             'language' => $this->flowLanguage($request),
-            'paymentsTestingMode' => \App\Services\ApplicationPaymentStateService::testingModeActive(),
+            'paymentsTestingMode' => ApplicationPaymentStateService::testingModeActive(),
         ]);
     }
 
@@ -586,6 +784,16 @@ class ApplicationController extends Controller
             return $this->validationErrorResponse($request, Validator::make([], [])->after(function ($v) {
                 $v->errors()->add('package_tier', 'Invalid package tier for payment.');
             }));
+        }
+        if ($this->paymentIsPremature($application)) {
+            $message = 'Complete the Online Interview before payment. No payment has been started.';
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'error' => $message], 403);
+            }
+
+            return redirect()
+                ->route('online-interview.show', ['application' => $application->id])
+                ->withErrors(['payment' => $message]);
         }
         if ($application->isPaymentSettled()) {
             if ($request->expectsJson()) {
@@ -603,7 +811,7 @@ class ApplicationController extends Controller
         }
 
         // Payments testing mode — initiation is refused while testing runs.
-        if (\App\Services\ApplicationPaymentStateService::testingModeActive()) {
+        if (ApplicationPaymentStateService::testingModeActive()) {
             $message = $this->flowLanguage($request) === 'ml'
                 ? 'ടെസ്റ്റിംഗ് കാലത്ത് ഓൺലൈൻ പേയ്‌മെൻ്റ് താൽക്കാലികമായി നിർത്തിവെച്ചിരിക്കുകയാണ്.'
                 : 'Online payments are temporarily unavailable during testing.';

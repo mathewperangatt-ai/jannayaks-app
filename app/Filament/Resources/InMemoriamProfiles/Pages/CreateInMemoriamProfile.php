@@ -59,12 +59,14 @@ class CreateInMemoriamProfile extends CreateRecord
             actor: $actor,
         );
 
-        if (filled($this->pendingSlug)) {
-            try {
-                app(InMemoriamUrlService::class)->assignSlug($record, $this->pendingSlug, $actor);
-            } catch (ValidationException $e) {
-                report($e);
-            }
+        $urls = app(InMemoriamUrlService::class);
+        try {
+            $candidate = filled($this->pendingSlug)
+                ? $this->pendingSlug
+                : $urls->generateCanonicalSlug($record);
+            $urls->assignSlug($record, $candidate, $actor);
+        } catch (ValidationException $e) {
+            report($e);
         }
     }
 }

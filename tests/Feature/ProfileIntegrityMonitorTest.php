@@ -20,6 +20,7 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
 use Illuminate\Support\Facades\Storage;
+use Illuminate\Validation\ValidationException;
 use Tests\TestCase;
 
 /**
@@ -181,22 +182,30 @@ class ProfileIntegrityMonitorTest extends TestCase
     {
         $pack = $this->seedPublishedProfile();
         $profile = $pack['profile']->fresh();
-        $editor = User::factory()->editor()->create();
         $videos = app(ExternalVideoLinkService::class);
 
-        $pending = $videos->submit(
-            $profile,
-            $pack['member'],
-            'https://www.youtube.com/watch?v=abc123xyz',
-            'Interview',
-        );
-        $videos->approve($pending, $editor);
+        $stored = ProfileExternalLink::query()->create([
+            'profile_id' => $profile->id,
+            'link_type' => ProfileExternalLink::TYPE_VIDEO,
+            'label' => 'Interview',
+            'url' => 'https://www.youtube.com/watch?v=abc123xyz',
+            'status' => ProfileExternalLink::STATUS_APPROVED,
+            'is_publicly_active' => true,
+            'submitted_by_user_id' => $pack['member']->id,
+        ]);
 
-        $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
-        $this->assertNotEmpty($snapshot->video_links);
-        $this->assertSame('media.external_video_approved', (string) $snapshot->source_event);
+        try {
+            $videos->submit($profile, $pack['member'], 'https://www.youtube.com/watch?v=newlink', 'Replacement');
+            $this->fail('A stored video link must not be replaceable by a new submission.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('url', $e->errors());
+        }
 
-        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+        $this->assertSame('https://www.youtube.com/watch?v=abc123xyz', $stored->fresh()->url);
+        $state = app(ProfileIntegrityService::class)->canonicalPublicState($profile->fresh());
+        $this->assertSame([], $state['video_links']);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile->fresh(), 'run-test', true);
         $this->assertSame(ProfileIntegrityService::CLASSIFICATION_HEALTHY, $result['classification']);
     }
 

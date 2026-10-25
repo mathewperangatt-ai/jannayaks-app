@@ -4,12 +4,17 @@ namespace Tests\Feature;
 
 use App\Models\Application;
 use App\Models\ConsentRecord;
+use App\Models\EditorialContent;
 use App\Models\EditorialCustomerApproval;
+use App\Models\InterviewAnswer;
 use App\Models\User;
 use App\Services\ConsentRecordingService;
 use App\Services\CustomerEditorialWorkflowService;
+use App\Services\EditorialGenerationService;
+use App\Support\OnlineInterviewCatalog;
 use Illuminate\Database\QueryException;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\DB;
 use RuntimeException;
 use Tests\TestCase;
 
@@ -22,7 +27,9 @@ class ConsentRecordingTest extends TestCase
         [$user, $application] = $this->seedPaidApplicationWithRequiredAnswers();
         config(['online_interview.submission.prevent_duplicate_within_seconds' => 0]);
 
-        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $application->id]))
+        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $application->id]), [
+            'questionnaire_confirmed' => '1',
+        ])
             ->assertOk();
 
         $this->assertSame(1, ConsentRecord::query()->count());
@@ -139,7 +146,7 @@ class ConsentRecordingTest extends TestCase
         // Nested transaction: contains the Postgres transaction abort to a savepoint.
         $duplicateRejected = false;
         try {
-            \Illuminate\Support\Facades\DB::transaction(function () use ($member) {
+            DB::transaction(function () use ($member) {
                 ConsentRecord::query()->create([
                     'user_id' => $member->id,
                     'consent_key' => ConsentRecordingService::KEY_EDITORIAL_APPROVAL_PUBLICATION,
@@ -182,7 +189,7 @@ class ConsentRecordingTest extends TestCase
             'full_name' => 'Consent Leader',
         ]);
 
-        $ids = \App\Support\OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
+        $ids = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
         $answers = [];
         foreach ($ids as $id) {
             $answers[$id] = 'A consented answer.';
@@ -210,7 +217,7 @@ class ConsentRecordingTest extends TestCase
             'source_method' => 'online_interview',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
-        \App\Models\InterviewAnswer::query()->create([
+        InterviewAnswer::query()->create([
             'application_id' => $application->id,
             'user_id' => $member->id,
             'question_id' => 'q1',
@@ -218,19 +225,19 @@ class ConsentRecordingTest extends TestCase
             'answered_at' => now(),
         ]);
 
-        app(\App\Services\EditorialGenerationService::class)->generateForApplication($application->fresh(), $editor);
+        app(EditorialGenerationService::class)->generateForApplication($application->fresh(), $editor);
 
-        $english = \App\Models\EditorialContent::query()
+        $english = EditorialContent::query()
             ->where('profile_id', $application->fresh()->profile_id)
-            ->where('language', \App\Models\EditorialContent::LANGUAGE_EN)
+            ->where('language', EditorialContent::LANGUAGE_EN)
             ->orderByDesc('version_number')
             ->firstOrFail();
         $english->forceFill([
-            'status' => \App\Models\EditorialContent::STATUS_APPROVED,
+            'status' => EditorialContent::STATUS_APPROVED,
             'reviewed_by_id' => $editor->id,
         ])->save();
 
-        app(\App\Services\CustomerEditorialWorkflowService::class)->releaseForCustomerPreview($application->fresh(), $editor);
+        app(CustomerEditorialWorkflowService::class)->releaseForCustomerPreview($application->fresh(), $editor);
 
         return [$member, $application->fresh(), (int) $english->id];
     }

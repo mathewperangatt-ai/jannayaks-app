@@ -17,7 +17,6 @@ use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -253,8 +252,10 @@ class Phase8PaymentDocumentsTest extends TestCase
             'payment_settled_at' => now(),
         ]);
 
-        $this->actingAs($user)->get(route('online-interview.show', $app))->assertRedirect();
+        $this->actingAs($user)->get(route('online-interview.show', $app))->assertOk();
+        $this->assertFalse(app(ApplicationPaymentStateService::class)->isPaymentSettled($app->fresh()));
         $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+        $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
     }
 
     public function test_receipt_and_tax_invoice_prefixes_remain_unique(): void
@@ -383,6 +384,10 @@ class Phase8PaymentDocumentsTest extends TestCase
         $res->assertCreated();
         $app = Application::query()->findOrFail($res->json('application_id'));
         $this->assertFalse((bool) $app->distinguished_interview_addon);
+        $app->forceFill([
+            'status' => Application::STATUS_INTERVIEW_SUBMITTED,
+            'online_interview_completed_at' => now(),
+        ])->save();
 
         $this->actingAs($user)->postJson(route('applications.payment.initiate', $app), [
             'distinguished_interview_addon' => true,
@@ -408,7 +413,8 @@ class Phase8PaymentDocumentsTest extends TestCase
         $app = $app->fresh();
 
         $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app));
-        $this->actingAs($user)->get(route('online-interview.show', $app))->assertRedirect();
+        $app->forceFill(['online_interview_completed_at' => now()])->save();
+        $this->actingAs($user)->get(route('online-interview.show', $app))->assertOk();
         Storage::fake('private_uploads');
         $file = UploadedFile::fake()->create('bio.pdf', 100, 'application/pdf');
         $this->actingAs($user)->postJson(route('applications.upload.material', $app), [

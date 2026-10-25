@@ -3,14 +3,15 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\Payment;
 use App\Models\User;
-use App\Support\IndiaMobile;
+use App\Services\ApplicationPaymentStateService;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Auth;
-use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Storage;
+use Laravel\Socialite\Contracts\Provider;
 use Laravel\Socialite\Contracts\User as SocialiteUser;
 use Laravel\Socialite\Facades\Socialite;
 use Mockery;
@@ -167,7 +168,7 @@ class Phase7AuthJourneyTest extends TestCase
         $this->assertNotNull(session('apply.intent'));
     }
 
-    public function test_after_login_intent_creates_application_and_sends_to_payment(): void
+    public function test_after_login_intent_creates_application_and_sends_to_the_interview(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
 
@@ -181,10 +182,11 @@ class Phase7AuthJourneyTest extends TestCase
         $app = Application::query()->where('user_id', $user->id)->latest('id')->first();
         $this->assertNotNull($app);
         $this->assertSame(Application::PAYMENT_STATUS_PENDING, $app->payment_status);
-        $this->assertSame(Application::STATUS_PAYMENT_PENDING, $app->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, $app->status);
+        $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
     }
 
-    public function test_forged_payment_status_in_store_cannot_unlock_interview(): void
+    public function test_forged_payment_status_in_store_cannot_skip_the_interview(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
 
@@ -200,37 +202,50 @@ class Phase7AuthJourneyTest extends TestCase
         $res->assertCreated();
         $app = Application::query()->findOrFail((int) $res->json('application_id'));
         $this->assertSame(Application::PAYMENT_STATUS_PENDING, $app->payment_status);
-        $this->assertSame(Application::STATUS_PAYMENT_PENDING, $app->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, $app->status);
         $this->assertNull($app->waived_by_user_id);
+        $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
 
         $this->actingAs($user)
             ->get(route('online-interview.show', $app))
-            ->assertRedirect(route('applications.payment', $app));
+            ->assertOk();
+        $this->actingAs($user)
+            ->postJson(route('applications.payment.initiate', $app))
+            ->assertForbidden();
+        $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
     }
 
-    public function test_unpaid_user_cannot_open_interview_or_uploads(): void
+    public function test_unpaid_online_interview_opens_before_payment(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
         ]);
-        $app->forceFill(['payment_status' => Application::PAYMENT_STATUS_PENDING])->save();
+        $app->forceFill([
+            'payment_status' => Application::PAYMENT_STATUS_PENDING,
+            'status' => Application::STATUS_INTERVIEW_IN_PROGRESS,
+        ])->save();
 
         $this->actingAs($user)
             ->get(route('online-interview.show', $app))
-            ->assertRedirect(route('applications.payment', $app));
+            ->assertOk();
 
         $this->actingAs($user)
             ->getJson(route('online-interview.show', $app))
-            ->assertForbidden();
+            ->assertOk();
 
         $this->actingAs($user)
             ->get(route('applications.upload.show', $app))
-            ->assertRedirect(route('applications.payment', $app));
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->postJson(route('applications.payment.initiate', $app))
+            ->assertForbidden();
+        $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
     }
 
-    public function test_unpaid_interview_save_and_submit_are_blocked(): void
+    public function test_unpaid_interview_can_be_saved_and_incomplete_submit_keeps_answers(): void
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->create([
@@ -239,15 +254,23 @@ class Phase7AuthJourneyTest extends TestCase
         ]);
 
         $this->actingAs($user)->patchJson(route('online-interview.save', $app), [
-            'question_id' => 'q1',
-            'answer' => 'Should not save',
-        ])->assertForbidden();
+            'question_id' => 'q2',
+            'answer' => 'Kept through a failed submit',
+        ])->assertOk();
 
-        $this->actingAs($user)->postJson(route('online-interview.submit', $app))
-            ->assertForbidden();
+        $this->actingAs($user)->postJson(route('online-interview.submit', $app), [
+            'answers' => ['q2' => 'Kept through a failed submit'],
+        ])->assertStatus(422);
+
+        $this->assertNull($app->fresh()->online_interview_completed_at);
+        $this->assertDatabaseHas('interview_answers', [
+            'application_id' => $app->id,
+            'question_id' => 'q2',
+            'original_answer' => 'Kept through a failed submit',
+        ]);
     }
 
-    public function test_unpaid_upload_post_is_blocked(): void
+    public function test_unpaid_upload_is_open_until_the_interview_is_submitted(): void
     {
         Storage::fake('private_uploads');
         $user = User::factory()->create(['email_verified_at' => now()]);
@@ -259,6 +282,16 @@ class Phase7AuthJourneyTest extends TestCase
         $file = UploadedFile::fake()->create('bio.pdf', 100, 'application/pdf');
         $this->actingAs($user)->postJson(route('applications.upload.material', $app), [
             'material' => $file,
+            'material_type' => 'biography',
+        ])->assertCreated();
+
+        $app->forceFill([
+            'online_interview_completed_at' => now(),
+            'status' => Application::STATUS_INTERVIEW_SUBMITTED,
+        ])->save();
+
+        $this->actingAs($user)->postJson(route('applications.upload.material', $app), [
+            'material' => UploadedFile::fake()->create('later.pdf', 100, 'application/pdf'),
             'material_type' => 'biography',
         ])->assertForbidden();
     }
@@ -277,7 +310,9 @@ class Phase7AuthJourneyTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('online-interview.show', $app))
-            ->assertRedirect(route('applications.payment', $app));
+            ->assertOk();
+        $this->assertFalse(app(ApplicationPaymentStateService::class)->isPaymentSettled($app->fresh()));
+        $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
     }
 
     public function test_paid_or_waived_user_can_open_interview(): void
@@ -314,7 +349,7 @@ class Phase7AuthJourneyTest extends TestCase
         $social->shouldReceive('getEmail')->andReturn($email);
         $social->shouldReceive('getName')->andReturn($name);
 
-        $provider = Mockery::mock(\Laravel\Socialite\Contracts\Provider::class);
+        $provider = Mockery::mock(Provider::class);
         $provider->shouldReceive('user')->andReturn($social);
         Socialite::shouldReceive('driver')->with('google')->andReturn($provider);
     }

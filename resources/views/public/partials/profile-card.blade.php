@@ -23,7 +23,7 @@
             <p class="card-meta">{{ $descriptor }}</p>
         @endif
         @if($location)
-            <p class="card-meta">{{ $location }}</p>
+            <p class="card-meta"><span class="card-kicker">Broad location</span> {{ $location }}</p>
         @endif
     </div>
 </a>

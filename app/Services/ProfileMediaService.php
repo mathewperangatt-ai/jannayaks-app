@@ -6,7 +6,6 @@ use App\Models\Application;
 use App\Models\MediaItem;
 use App\Models\Profile;
 use App\Models\User;
-use App\Services\PhotoEnhancementService;
 use App\Support\ProfileEntitlements;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
@@ -29,10 +28,8 @@ class ProfileMediaService
 
     public function photoSlotLimitForTier(string $tier): int
     {
-        $packages = (array) config('jannayaks.tier_pricing.packages', []);
-        $slots = (int) data_get($packages, $tier.'.photo_slots', 0);
-
-        return max(0, $slots);
+        // The stored package key is no longer a photograph allowance.
+        return ProfileEntitlements::CUSTOMER_VISIBLE_PHOTO_LIMIT;
     }
 
     public function photoSlotLimitForApplication(Application $application): int
@@ -66,13 +63,24 @@ class ProfileMediaService
     }
 
     /**
-     * Slot usage: pending + approved photographs. Rejected photos do not consume slots.
+     * Customer-visible slot usage: pending and approved profile photographs.
+     * Rejected photographs do not consume a slot. A retained original that has
+     * already been replaced by an accepted photograph does not consume a second slot.
      */
     public function profilePhotoCount(Profile $profile): int
     {
+        $replacedOriginalIds = $profile->media()
+            ->where('media_type', MediaItem::TYPE_PROFILE_PHOTO)
+            ->whereNotNull('enhanced_from_media_id')
+            ->pluck('enhanced_from_media_id');
+
         return $profile->media()
             ->where('media_type', MediaItem::TYPE_PROFILE_PHOTO)
             ->whereIn('review_status', [MediaItem::REVIEW_PENDING, MediaItem::REVIEW_APPROVED])
+            ->when(
+                $replacedOriginalIds->isNotEmpty(),
+                fn ($query) => $query->whereNotIn('id', $replacedOriginalIds->all()),
+            )
             ->count();
     }
 
@@ -99,7 +107,7 @@ class ProfileMediaService
         $limit = $this->photoSlotLimitForProfile($profile);
         if ($limit < 1) {
             throw ValidationException::withMessages([
-                'photo' => 'This package does not include profile photographs.',
+                'photo' => 'Photographs cannot be added to this profile.',
             ]);
         }
 
@@ -123,7 +131,7 @@ class ProfileMediaService
 
                 if ($existing->count() >= $limit) {
                     throw ValidationException::withMessages([
-                        'photo' => "This package allows a maximum of {$limit} photograph(s).",
+                        'photo' => "A profile can include at most {$limit} photographs.",
                     ]);
                 }
 
@@ -190,14 +198,10 @@ class ProfileMediaService
             throw $e;
         }
 
-        // Optional AI enhancement — dispatched AFTER the upload transaction
-        // has committed, and itself unable to fail the upload under any
-        // circumstance (disabled/no-candidate/no-error visible to customer).
-        try {
-            app(PhotoEnhancementService::class)->dispatchForSource($item, $actor);
-        } catch (Throwable) {
-            // Enhancement is a convenience, never a dependency.
-        }
+        // Optional AI enhancement for the primary photograph only. Dispatched
+        // after the upload transaction has committed. An additional photograph
+        // is already optimized and is not eligible, so this is a no-op for it.
+        $this->dispatchPrimaryEnhancement($item, $actor);
 
         return $item;
     }
@@ -225,7 +229,9 @@ class ProfileMediaService
             ]);
         }
 
-        return DB::transaction(function () use ($profile, $media, $actor): MediaItem {
+        $wasPrimary = (bool) $media->is_primary;
+
+        $updated = DB::transaction(function () use ($profile, $media, $actor): MediaItem {
             MediaItem::query()
                 ->where('mediable_type', $profile->getMorphClass())
                 ->where('mediable_id', $profile->id)
@@ -263,6 +269,12 @@ class ProfileMediaService
 
             return $media->fresh() ?? $media;
         });
+
+        if (! $wasPrimary) {
+            $this->dispatchPrimaryEnhancement($updated, $actor);
+        }
+
+        return $updated;
     }
 
     /**
@@ -399,7 +411,9 @@ class ProfileMediaService
             ]);
         }
 
-        return DB::transaction(function () use ($media, $reviewer, $note, $profile): MediaItem {
+        $promotedId = null;
+
+        $rejected = DB::transaction(function () use ($media, $reviewer, $note, $profile, &$promotedId): MediaItem {
             $media = MediaItem::query()->whereKey($media->id)->lockForUpdate()->firstOrFail();
             $wasPrimary = (bool) $media->is_primary;
             $before = [
@@ -431,6 +445,7 @@ class ProfileMediaService
 
                 if ($next) {
                     $next->forceFill(['is_primary' => true])->save();
+                    $promotedId = $next->id;
                 }
             }
 
@@ -449,6 +464,15 @@ class ProfileMediaService
 
             return $media->fresh() ?? $media;
         });
+
+        if ($promotedId !== null) {
+            $promoted = MediaItem::query()->find($promotedId);
+            if ($promoted instanceof MediaItem) {
+                $this->dispatchPrimaryEnhancement($promoted, $reviewer);
+            }
+        }
+
+        return $rejected;
     }
 
     /**
@@ -486,7 +510,9 @@ class ProfileMediaService
             }
         }
 
-        DB::transaction(function () use ($profile, $media, $actor): void {
+        $promotedId = null;
+
+        DB::transaction(function () use ($profile, $media, $actor, &$promotedId): void {
             $wasPrimary = (bool) $media->is_primary;
             $disk = filled($media->disk) ? (string) $media->disk : $this->publicDisk();
             $path = (string) $media->storage_path_key;
@@ -521,6 +547,7 @@ class ProfileMediaService
 
                 if ($next) {
                     $next->forceFill(['is_primary' => true])->save();
+                    $promotedId = $next->id;
                 }
             }
 
@@ -537,6 +564,13 @@ class ProfileMediaService
                 'media.profile_photo_deleted',
             );
         });
+
+        if ($promotedId !== null) {
+            $promoted = MediaItem::query()->find($promotedId);
+            if ($promoted instanceof MediaItem) {
+                $this->dispatchPrimaryEnhancement($promoted, $actor);
+            }
+        }
     }
 
     /**
@@ -665,6 +699,20 @@ class ProfileMediaService
             throw ValidationException::withMessages([
                 'photo' => 'Published profile photographs cannot be changed directly. Contact Jannayaks for an editorial correction.',
             ]);
+        }
+    }
+
+    /**
+     * Enhancement applies only to the current primary photograph, and only
+     * after its database row has been committed. Failures never affect the
+     * stored photograph.
+     */
+    private function dispatchPrimaryEnhancement(MediaItem $item, ?User $actor): void
+    {
+        try {
+            app(PhotoEnhancementService::class)->dispatchForSource($item, $actor);
+        } catch (Throwable) {
+            // Enhancement is a convenience, never a dependency.
         }
     }
 }

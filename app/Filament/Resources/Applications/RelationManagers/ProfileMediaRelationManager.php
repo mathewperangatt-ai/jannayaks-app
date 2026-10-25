@@ -8,6 +8,7 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Services\PhotoEnhancementService;
 use App\Services\ProfileMediaService;
+use App\Support\PhotographReplacementComparison;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -66,6 +67,24 @@ class ProfileMediaRelationManager extends RelationManager
                         return $label;
                     }),
                 TextColumn::make('review_status')->badge()->label('Review'),
+                TextColumn::make('customer_visible_role')
+                    ->label('Customer-visible role')
+                    ->badge()
+                    ->state(function (MediaItem $record): string {
+                        if ($record->review_status === MediaItem::REVIEW_APPROVED && $record->privacy === MediaItem::PRIVACY_PUBLIC) {
+                            return $record->is_primary ? 'Currently public · primary' : 'Currently public';
+                        }
+
+                        if ($record->review_status === MediaItem::REVIEW_PENDING) {
+                            return 'Proposed — not public until approved';
+                        }
+
+                        if ($record->enhanced_from_media_id !== null && $record->review_status === MediaItem::REVIEW_APPROVED) {
+                            return 'Accepted replacement';
+                        }
+
+                        return 'Not public';
+                    }),
                 IconColumn::make('is_primary')->boolean()->label('Primary req.'),
                 TextColumn::make('privacy')->badge(),
                 TextColumn::make('id')->label('ID')->toggleable(isToggledHiddenByDefault: true),
@@ -76,6 +95,19 @@ class ProfileMediaRelationManager extends RelationManager
             ])
             ->defaultSort('id', 'desc')
             ->recordActions([
+                Action::make('replacementComparison')
+                    ->label('Compare photographs')
+                    ->color('gray')
+                    ->modalHeading('Current photograph and proposed replacement')
+                    ->modalDescription('The proposed photograph is not published by opening this comparison. The current photograph remains in use until the replacement is approved.')
+                    ->modalWidth('7xl')
+                    ->modalSubmitAction(false)
+                    ->modalCancelActionLabel('Close')
+                    ->modalContent(fn (MediaItem $record) => view('filament.relation-managers.photo-replacement-comparison', [
+                        'record' => $record,
+                    ]))
+                    ->visible(fn (MediaItem $record): bool => (auth()->user()?->canManageEditorial() ?? false)
+                        && PhotographReplacementComparison::isAvailable($record)),
                 Action::make('enhancementComparison')
                     ->label('Compare AI enhancement')
                     ->color('gray')

@@ -6,33 +6,25 @@ use App\Models\Application;
 
 /**
  * Photo and video entitlements for living profiles.
- * New Standard Profile applications (pricing_generation=standard_profile) are
- * capped at three photographs and no external video links, even though they
- * store package_tier=distinguished for editorial depth compatibility.
- * Historical rows (pricing_generation null) keep their package-tier entitlements.
+ * Every living profile, including historical package rows, has the same
+ * customer-visible photograph limit: one primary photograph and up to three
+ * additional photographs. Stored package_tier still selects editorial depth
+ * for historical rows. It does not change the photograph limit, and it does
+ * not enable video links.
  */
 class ProfileEntitlements
 {
+    public const CUSTOMER_VISIBLE_PHOTO_LIMIT = 4;
+
     public static function photoSlots(Application $application): int
     {
-        if ($application->pricing_generation === Application::PRICING_GENERATION_STANDARD) {
-            return max(0, (int) config('jannayaks.tier_pricing.standard_profile.photo_slots', 3));
-        }
-
-        $tier = (string) $application->package_tier;
-        $slots = (int) config('jannayaks.tier_pricing.packages.'.$tier.'.photo_slots', 0);
-
-        return max(0, $slots);
+        return self::CUSTOMER_VISIBLE_PHOTO_LIMIT;
     }
 
     public static function allowsVideoLink(Application $application): bool
     {
-        if ($application->pricing_generation === Application::PRICING_GENERATION_STANDARD) {
-            return (bool) config('jannayaks.tier_pricing.standard_profile.includes_video_link', false);
-        }
-
-        $tier = (string) $application->package_tier;
-
-        return (bool) config('jannayaks.tier_pricing.packages.'.$tier.'.includes_video_link', false);
+        // A living profile does not offer video links. The stored package,
+        // including a historical tier, cannot turn the feature back on.
+        return false;
     }
 }

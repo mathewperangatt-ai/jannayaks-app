@@ -294,7 +294,7 @@ class Phase16InMemoriamTest extends TestCase
             'full_name' => 'Living',
             'display_name' => 'Living',
             'profession' => 'Leader',
-            'slug' => 'taken-by-living',
+            'slug' => 'late.taken-by-living',
             'display_phone_consent' => false,
             'display_email_consent' => false,
         ]);

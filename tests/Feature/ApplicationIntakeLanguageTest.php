@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\Payment;
 use App\Models\User;
 use App\Support\OnlineInterviewCatalog;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -42,7 +43,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertSee('ബന്ധപ്പെടാനുള്ള ഇമെയിൽ')
             ->assertSee('ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ (ഓപ്ഷണൽ)')
             ->assertSee('പിന്നോട്ട്')
-            ->assertSee('പണമടയ്ക്കുന്നതിലേക്ക് തുടരുക →')
+            ->assertSee('ഓൺലൈൻ അഭിമുഖത്തിലേക്ക് തുടരുക →')
             ->assertSee(json_encode('ബന്ധപ്പെടാനുള്ള വിവരങ്ങൾ രേഖപ്പെടുത്തി. എഡിറ്റോറിയൽ പരിശോധനയ്ക്കും തയ്യാറാക്കിയ പ്രൊഫൈൽ സ്ഥിരീകരിക്കുന്നതിനുമായി Jannayaks നിങ്ങളുമായി ബന്ധപ്പെടും.', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT), false)
             ->assertSee(route('apply', ['lang' => 'en']), false)
             ->assertDontSee('Intake source')
@@ -56,7 +57,8 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertSee('Intake source')
             ->assertSee('Online Interview (recommended)')
             ->assertSee('Direct submission')
-            ->assertSee('Continue to payment →')
+            ->assertSee('Continue to Online Interview →')
+            ->assertDontSee('After you sign in, payment comes next.')
             ->assertSee(json_encode('Contact information captured. You can add more or update them later in the application dashboard.', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT), false)
             ->assertDontSee('ഉള്ളടക്കം സമർപ്പിക്കുന്ന രീതി')
             ->assertSee(route('apply', ['lang' => 'ml']), false);
@@ -78,6 +80,10 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertRedirect();
 
         $application = Application::query()->where('user_id', $user->id)->sole();
+        $application->forceFill([
+            'status' => Application::STATUS_INTERVIEW_SUBMITTED,
+            'online_interview_completed_at' => now(),
+        ])->save();
 
         $this->actingAs($user)->get(route('applications.payment', $application))
             ->assertOk()
@@ -85,18 +91,19 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertDontSee('പേയ്‌മെൻ്റ് സ്റ്റാറ്റസ്');
     }
 
-    public function test_online_interview_intake_creates_one_application_and_continues_to_payment(): void
+    public function test_online_interview_intake_creates_one_application_and_continues_to_the_interview(): void
     {
         $user = $this->verifiedUser();
 
         $response = $this->actingAs($user)->post(route('apply.intent'), $this->intake());
 
         $application = Application::query()->where('user_id', $user->id)->sole();
-        $response->assertRedirect(route('applications.payment', $application));
+        $response->assertRedirect(route('online-interview.show', $application));
         $this->assertSame('online_interview', $application->source_method);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, $application->status);
     }
 
-    public function test_direct_submission_intake_creates_one_application_and_continues_to_payment(): void
+    public function test_direct_submission_intake_creates_one_application_and_continues_to_uploads(): void
     {
         $user = $this->verifiedUser();
 
@@ -105,9 +112,9 @@ class ApplicationIntakeLanguageTest extends TestCase
         ]));
 
         $application = Application::query()->where('user_id', $user->id)->sole();
-        $response->assertRedirect(route('applications.payment', $application));
+        $response->assertRedirect(route('applications.upload.show', $application));
         $this->assertSame('direct_submission', $application->source_method);
-        $this->assertSame(Application::STATUS_PAYMENT_PENDING, $application->status);
+        $this->assertSame(Application::STATUS_INTAKE_IN_PROGRESS, $application->status);
     }
 
     public function test_entered_intake_data_is_stored_on_the_application(): void
@@ -144,8 +151,15 @@ class ApplicationIntakeLanguageTest extends TestCase
             ]))
             ->assertOk()
             ->assertDontSee('ദയവായി ഒരു അംഗത്വ ശ്രേണി തിരഞ്ഞെടുക്കുക.')
+            ->assertSee('Upload source material', false)
+            ->assertDontSee('₹4,720.00', false);
+
+        $application = Application::query()->where('user_id', $user->id)->sole();
+        $this->assertSame('Arun Kumar', $application->full_name);
+        $this->actingAs($user)
+            ->get(route('applications.payment', $application))
+            ->assertOk()
             ->assertSee('Arun Kumar', false)
-            ->assertSee('Standard Profile', false)
             ->assertSee('₹4,720.00', false);
 
         $this->assertSame(
@@ -190,7 +204,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertSessionDoesntHaveErrors('package_tier');
     }
 
-    public function test_online_interview_stays_locked_until_payment_and_cannot_be_forged(): void
+    public function test_online_interview_opens_before_payment_and_forged_payment_status_does_not_stick(): void
     {
         $user = $this->verifiedUser();
 
@@ -200,9 +214,10 @@ class ApplicationIntakeLanguageTest extends TestCase
 
         $application = Application::query()->where('user_id', $user->id)->sole();
         $this->assertSame(Application::PAYMENT_STATUS_PENDING, $application->payment_status);
+        $this->assertSame(0, Payment::query()->where('application_id', $application->id)->count());
 
         $this->actingAs($user)->get(route('online-interview.show', $application))
-            ->assertRedirect(route('applications.payment', $application));
+            ->assertOk();
     }
 
     public function test_online_interview_catalogue_still_has_the_approved_22_questions(): void

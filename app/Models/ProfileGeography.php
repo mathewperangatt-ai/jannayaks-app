@@ -10,6 +10,7 @@ class ProfileGeography extends Model
     protected $fillable = [
         'profile_id',
         'country_code',
+        'country_name',
         'state_region_name',
         'district_id',
         'local_body_id',

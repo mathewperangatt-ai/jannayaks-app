@@ -39,10 +39,10 @@
         suggestions of people whose lives, work or public contribution may be appropriate for inclusion.
     </p>
 
-    @if(session('recommendation_status') === 'received')
+    @if(session('recommendation_status') === 'sent')
         <div class="rc-status" role="status">
-            <strong>Thank you.</strong> Your recommendation has been received and will be reviewed editorially.
-            If the suggestion is taken forward, the person may be contacted by Jannayaks.
+            <strong>Thank you.</strong> Jannayaks has sent one invitation from its own email address.
+            No profile or account has been created. A recommendation does not guarantee selection or inclusion.
         </div>
     @endif
 
@@ -56,15 +56,10 @@
         @csrf
         <input type="text" name="honey_bot" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
 
-        <div class="rc-grid">
-            <div class="rc-field">
-                <label for="recommender_name">Your name</label>
-                <input id="recommender_name" name="recommender_name" maxlength="120" required value="{{ old('recommender_name') }}">
-            </div>
-            <div class="rc-field">
-                <label for="recommender_contact">Your mobile or email</label>
-                <input id="recommender_contact" name="recommender_contact" maxlength="255" required value="{{ old('recommender_contact') }}">
-            </div>
+        <div class="rc-field">
+            <label for="recommender_name">Your name <span class="hint">(needed only if you share it)</span></label>
+            <input id="recommender_name" name="recommender_name" maxlength="120" value="{{ old('recommender_name') }}">
+            @error('recommender_name')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
         </div>
 
         <div class="rc-grid">
@@ -73,9 +68,15 @@
                 <input id="recommended_name" name="recommended_name" maxlength="120" required value="{{ old('recommended_name') }}">
             </div>
             <div class="rc-field">
-                <label for="recommended_location">Their town / broad location <span class="hint">(optional)</span></label>
-                <input id="recommended_location" name="recommended_location" maxlength="120" value="{{ old('recommended_location') }}">
+                <label for="recommended_email">Their email address</label>
+                <input id="recommended_email" name="recommended_email" type="email" maxlength="255" required value="{{ old('recommended_email') }}" autocomplete="off">
+                @error('recommended_email')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
+        </div>
+
+        <div class="rc-field">
+            <label for="recommended_location">Their town / broad location <span class="hint">(optional)</span></label>
+            <input id="recommended_location" name="recommended_location" maxlength="120" value="{{ old('recommended_location') }}">
         </div>
 
         <div class="rc-field">
@@ -94,10 +95,16 @@
         </div>
 
         <label class="rc-terms">
+            <input type="checkbox" name="share_name" value="1" @checked(old('share_name'))>
+            <span>
+                <strong>Share my name</strong><br>
+                The person you recommend will see your name along with your recommendation message if you select this option.
+            </span>
+        </label>
+
+        <label class="rc-terms">
             <input type="checkbox" name="acknowledged_terms" value="1" required @checked(old('acknowledged_terms'))>
-            <span>I understand that a recommendation does not guarantee inclusion, and that Jannayaks editorial selection applies.
-            Inclusion is not an electoral or political endorsement. The person may be contacted if appropriate, and the
-            information submitted here may be reviewed editorially.</span>
+            <span>I know this person and reasonably believe they would not mind being invited. Jannayaks will send one invitation to the email address above, from its own address, and will delete that contact information if they do not respond within 30 days. A recommendation does not create a profile. See the <a href="{{ route('legal.privacy') }}">Privacy Policy</a>.</span>
         </label>
 
         <button type="submit" class="rc-submit">Submit recommendation</button>
@@ -106,7 +113,7 @@
     <ul class="rc-notes">
         <li>Recommendation does not guarantee inclusion — Jannayaks editorial selection applies.</li>
         <li>Inclusion is not an electoral or political endorsement.</li>
-        <li>The person recommended may be contacted if appropriate.</li>
+        <li>Jannayaks sends one invitation from its own email address. No profile is created unless the person applies.</li>
         <li>This is not an application by the person themselves — for that, use <a href="{{ route('invitation-request.show') }}">Request an Invitation</a> or <a href="{{ route('apply') }}">Create Profile</a>.</li>
     </ul>
 </div>

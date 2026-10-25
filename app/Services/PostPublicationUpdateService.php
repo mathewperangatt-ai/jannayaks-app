@@ -4,6 +4,7 @@ namespace App\Services;
 
 use App\Models\Application;
 use App\Models\EditorialContent;
+use App\Models\EditorialCustomerApproval;
 use App\Models\EditorialRevisionRequest;
 use App\Models\Profile;
 use App\Models\User;
@@ -191,7 +192,7 @@ class PostPublicationUpdateService
             throw new InvalidArgumentException('No open maintenance request is awaiting editorial preparation.');
         }
 
-        $run = app(\App\Services\EditorialGenerationService::class)->generateForApplication($application, $actor);
+        $run = app(EditorialGenerationService::class)->generateForApplication($application, $actor);
         $run->refresh();
 
         $request->forceFill([
@@ -240,7 +241,7 @@ class PostPublicationUpdateService
             $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
             $profile = Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->firstOrFail();
 
-            $versioning = app(\App\Services\EditorialContentVersioningService::class);
+            $versioning = app(EditorialContentVersioningService::class);
 
             $baseEn = $request->resulting_english_editorial_content_id !== null
                 ? EditorialContent::query()->find($request->resulting_english_editorial_content_id)
@@ -382,7 +383,7 @@ class PostPublicationUpdateService
         }
 
         try {
-            return DB::transaction(function () use ($application, $member, $englishContentId, $ipAddress, $userAgent) {
+            return DB::transaction(function () use ($application, $member, $englishContentId) {
                 /** @var Application $locked */
                 $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
 
@@ -404,10 +405,14 @@ class PostPublicationUpdateService
                     ? EditorialContent::query()->find($locked->preview_malayalam_editorial_content_id)
                     : null;
 
+                if ($malayalam instanceof EditorialContent && $malayalam->status === EditorialContent::STATUS_APPROVED) {
+                    app(MalayalamConsentService::class)->recordReviewedMalayalamConsent($locked, $member, $malayalam);
+                }
+
                 // A5 — one active approval per application: invalidate any
                 // earlier active approval record before recording this one,
                 // exactly as the pre-publication approval flow does.
-                \App\Models\EditorialCustomerApproval::query()
+                EditorialCustomerApproval::query()
                     ->where('application_id', $locked->id)
                     ->whereNull('invalidated_at')
                     ->update([
@@ -416,7 +421,7 @@ class PostPublicationUpdateService
                         'updated_at' => now(),
                     ]);
 
-                \App\Models\EditorialCustomerApproval::query()->create([
+                EditorialCustomerApproval::query()->create([
                     'application_id' => $locked->id,
                     'profile_id' => $locked->profile_id,
                     'approved_by_user_id' => $member->id,
@@ -516,7 +521,7 @@ class PostPublicationUpdateService
             // validated at release. Publication consumes the already-correct
             // approved versions via the existing replacement-publication
             // machinery.
-            app(\App\Services\ApplicationWorkflowService::class)->publish($application, $actor, false);
+            app(ApplicationWorkflowService::class)->publish($application, $actor, false);
             $application->refresh();
 
             $request->forceFill([

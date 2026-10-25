@@ -116,15 +116,36 @@
     @endforeach
 </form>
 
+@if(! $isSubmitted)
+<section class="card" style="padding:16px 18px">
+    <h2 style="margin:0 0 8px;font-size:1.15rem">Help us tell your story well</h2>
+    <p class="sub" style="margin:0">The more relevant detail you share, the more material our editorial team has to prepare a substantial, distinctive profile that reflects your life and contributions. Please answer as fully as you comfortably can. If a question does not apply to you, or you prefer not to answer it, you may leave it blank.</p>
+    <p class="sub" style="margin:10px 0 0">Your answers will be used to prepare your editorial draft. You will have a separate opportunity to review and approve your profile before publication.</p>
+    <h2 lang="ml" style="margin:16px 0 8px;font-size:1.15rem">നിങ്ങളുടെ കഥ നന്നായി പറയാൻ ഞങ്ങളെ സഹായിക്കുക</h2>
+    <p class="sub" lang="ml" style="margin:0">നിങ്ങൾ പങ്കുവെക്കുന്ന പ്രസക്തമായ വിവരങ്ങൾ കൂടുന്തോറും, നിങ്ങളുടെ ജീവിതവും സംഭാവനകളും പ്രതിഫലിപ്പിക്കുന്ന സമഗ്രവും വ്യത്യസ്തവുമായ ഒരു പ്രൊഫൈൽ തയ്യാറാക്കാൻ ഞങ്ങളുടെ എഡിറ്റോറിയൽ സംഘത്തിന് കൂടുതൽ വസ്തുത ലഭിക്കും. നിങ്ങൾക്ക് സൗകര്യമായിടത്തോളം പൂർണമായി ഉത്തരം നൽകുക. ഒരു ചോദ്യം നിങ്ങൾക്ക് ബാധകമല്ലെങ്കിലോ ഉത്തരം നൽകാൻ ആഗ്രഹമില്ലെങ്കിലോ അത് ശൂന്യമായി വിടാം.</p>
+    <p class="sub" lang="ml" style="margin:10px 0 0">നിങ്ങളുടെ ഉത്തരങ്ങൾ എഡിറ്റോറിയൽ ഡ്രാഫ്റ്റ് തയ്യാറാക്കാൻ ഉപയോഗിക്കും. പ്രസിദ്ധീകരണത്തിന് മുമ്പ് പ്രൊഫൈൽ പരിശോധിച്ച് അംഗീകരിക്കാൻ നിങ്ങൾക്ക് പ്രത്യേക അവസരം ലഭിക്കും.</p>
+</section>
+@endif
+
 <section class="card" style="padding:14px 16px 18px">
-    <form method="POST" action="{{ route('online-interview.submit', $application) }}" id="submit-form" onsubmit="return confirm('Submit this Online Interview for editorial processing? Once submitted, answers become read-only and ordinary editing is locked.');">
+    <form method="POST" action="{{ route('online-interview.submit', $application) }}" id="submit-form" onsubmit="return window.jannayaksSubmitInterview(this);">
         @csrf
+        @if(! $isSubmitted)
+            <label class="rc-terms" style="display:flex;gap:10px;align-items:flex-start;margin:0 0 14px;line-height:1.55">
+                <input type="checkbox" id="questionnaireConfirmed" name="questionnaire_confirmed" value="1" @checked(old('questionnaire_confirmed'))>
+                <span>
+                    I have reviewed my answers and am ready to submit my questionnaire for editorial preparation.
+                    <span lang="ml" style="display:block;margin-top:4px">ഞാൻ എന്റെ ഉത്തരങ്ങൾ പരിശോധിച്ചു. എഡിറ്റോറിയൽ തയ്യാറെടുപ്പിനായി ചോദ്യാവലി സമർപ്പിക്കാൻ ഞാൻ തയ്യാറാണ്.</span>
+                </span>
+            </label>
+            @error('questionnaire_confirmed')<div class="hint" style="color:#7a1414;margin:-6px 0 12px">{{ $message }}</div>@enderror
+        @endif
         <div class="actions">
             <button class="btn ghost" type="submit" form="interview-form" formaction="{{ route('online-interview.save', $application) }}" formmethod="POST" @if($isSubmitted) disabled @endif>
                 💾 Save and continue (partial)
             </button>
-            <button class="btn primary" type="submit" @if($isSubmitted || !empty($progress['missing_required'])) disabled aria-disabled="true" @endif>
-                Submit for editorial processing →
+            <button class="btn primary" type="submit" id="submitQuestionnaire" @if($isSubmitted) disabled aria-disabled="true" data-submitted="1" @else disabled aria-disabled="true" data-missing="{{ empty($progress['missing_required']) ? '0' : '1' }}" @endif>
+                Submit Questionnaire →
             </button>
         </div>
         <p class="hint" style="margin-top:10px">
@@ -159,6 +180,60 @@
         });
     }
     updateCounts();
+
+    function syncQuestionnaireSubmit() {
+        var button = document.getElementById('submitQuestionnaire');
+        var box = document.getElementById('questionnaireConfirmed');
+        if (!button || button.getAttribute('data-submitted') === '1') return;
+        var missing = button.getAttribute('data-missing') === '1';
+        var ready = !missing && box && box.checked;
+        button.disabled = !ready;
+        if (ready) button.removeAttribute('aria-disabled');
+        else button.setAttribute('aria-disabled', 'true');
+    }
+    var confirmBox = document.getElementById('questionnaireConfirmed');
+    if (confirmBox) confirmBox.addEventListener('change', syncQuestionnaireSubmit);
+    syncQuestionnaireSubmit();
+
+    window.jannayaksSubmitInterview = function (submitForm) {
+        var box = document.getElementById('questionnaireConfirmed');
+        if (!box || !box.checked) {
+            return false;
+        }
+        if (!confirm('Submit this questionnaire for editorial preparation? Once submitted, answers become read-only. This does not approve or publish the finished profile.')) {
+            return false;
+        }
+        var interview = document.getElementById('interview-form');
+        if (!interview) {
+            return true;
+        }
+        var data = new FormData(interview);
+        var saveRequest = new XMLHttpRequest();
+        saveRequest.open('POST', interview.getAttribute('action') || '{{ route('online-interview.save', $application) }}', true);
+        saveRequest.setRequestHeader('Accept', 'application/json');
+        saveRequest.onreadystatechange = function () {
+            if (saveRequest.readyState !== 4) return;
+            if (saveRequest.status < 200 || saveRequest.status >= 300) {
+                if (toast) {
+                    toast.textContent = 'Could not save your latest answers. They are still on this page — try again.';
+                    toast.classList.add('show');
+                }
+                return;
+            }
+            submitForm.querySelectorAll('input[data-copied-answer]').forEach(function (el) { el.remove(); });
+            interview.querySelectorAll('textarea[name^="answers["]').forEach(function (ta) {
+                var input = document.createElement('input');
+                input.type = 'hidden';
+                input.name = ta.name;
+                input.value = ta.value;
+                input.setAttribute('data-copied-answer', '1');
+                submitForm.appendChild(input);
+            });
+            HTMLFormElement.prototype.submit.call(submitForm);
+        };
+        saveRequest.send(data);
+        return false;
+    };
 
     var submitting = false;
     form.addEventListener('submit', function(e){
@@ -206,9 +281,10 @@
                 if (meta[2]) meta[2].innerHTML = (prog.missing_required && prog.missing_required.length)
                     ? '<span style="color:var(--bad);font-weight:600">'+prog.missing_required.length+' required left</span>'
                     : '<span style="color:var(--ok);font-weight:600">Ready to submit</span>';
-                var submitBtn = document.querySelector('#submit-form .btn.primary');
-                if (submitBtn && (!prog.missing_required || prog.missing_required.length === 0)) {
-                    submitBtn.disabled = false; submitBtn.removeAttribute('aria-disabled');
+                var submitBtn = document.getElementById('submitQuestionnaire');
+                if (submitBtn) {
+                    submitBtn.setAttribute('data-missing', (prog.missing_required && prog.missing_required.length) ? '1' : '0');
+                    syncQuestionnaireSubmit();
                 }
             } else if (status === 422) {
                 if (toast) { toast.textContent = 'Missing required — scroll up to highlighted.'; toast.classList.add('show'); setTimeout(function(){toast.classList.remove('show');},2200); }

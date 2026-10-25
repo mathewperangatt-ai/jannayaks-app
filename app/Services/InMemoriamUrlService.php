@@ -13,28 +13,64 @@ use Illuminate\Validation\ValidationException;
 
 class InMemoriamUrlService
 {
-    public function __construct(private StaffAuditLogger $audit) {}
+    public const LATE_PREFIX = 'late.';
+
+    public function __construct(
+        private StaffAuditLogger $audit,
+        private PersonalSlugGenerator $personalSlugs,
+    ) {}
+
+    /**
+     * Canonical memorial slug: exactly one `late.` prefix on the name stem.
+     * Repeated prefixes collapse. A leftover `.late` suffix is removed before
+     * the prefix is applied. Living-profile assignment never calls this.
+     */
+    public function withLatePrefix(string $raw): string
+    {
+        $slug = strtolower(trim($raw));
+        $prefix = self::LATE_PREFIX;
+
+        while (str_ends_with($slug, '.late')) {
+            $slug = rtrim(substr($slug, 0, -strlen('.late')), '.');
+        }
+
+        while (str_starts_with($slug, $prefix)) {
+            $slug = substr($slug, strlen($prefix));
+        }
+
+        $slug = trim($slug, '.');
+        if ($slug === '') {
+            return '';
+        }
+
+        return $prefix.$slug;
+    }
 
     /**
      * @return array{ok: bool, slug?: string, error?: string}
      */
     public function validateSlugCandidate(string $raw, ?int $ignoreMemorialId = null): array
     {
-        $slug = strtolower(trim($raw));
-
-        if ($slug === '' || preg_match('/\s/', $raw) === 1) {
+        if ($raw !== '' && preg_match('/\s/', $raw) === 1) {
             return ['ok' => false, 'error' => 'A valid memorial URL is required (no spaces).'];
         }
 
-        if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) !== 1) {
-            return ['ok' => false, 'error' => 'Use lowercase letters, numbers, and single hyphens only.'];
+        $slug = $this->withLatePrefix($raw);
+
+        if ($slug === '') {
+            return ['ok' => false, 'error' => 'A valid memorial URL is required (no spaces).'];
         }
 
-        if (strlen($slug) < 3 || strlen($slug) > 64) {
+        if (preg_match('/^late\.[a-z0-9]+(?:[.\-][a-z0-9]+)*$/', $slug) !== 1) {
+            return ['ok' => false, 'error' => 'Use lowercase letters, numbers, dots, or single hyphens. The late. prefix is added automatically.'];
+        }
+
+        $stem = substr($slug, strlen(self::LATE_PREFIX));
+        if (strlen($stem) < 3 || strlen($slug) > 64) {
             return ['ok' => false, 'error' => 'Memorial URLs must be between 3 and 64 characters.'];
         }
 
-        if ($this->isReserved($slug)) {
+        if ($this->isReserved($slug) || $this->isReserved($stem)) {
             return ['ok' => false, 'error' => 'That URL is reserved by the system.'];
         }
 
@@ -43,6 +79,40 @@ class InMemoriamUrlService
         }
 
         return ['ok' => true, 'slug' => $slug];
+    }
+
+    /**
+     * Name-derived memorial slug beginning with exactly one `late.` prefix.
+     * The natural name is used first. A numbered variation is used only when
+     * that address is already taken.
+     *
+     * @throws ValidationException
+     */
+    public function generateCanonicalSlug(InMemoriamProfile $profile): string
+    {
+        $combinations = $this->personalSlugs->generateCombinations((string) $profile->deceased_full_name);
+        $natural = $combinations[0] ?? null;
+        if (! is_string($natural) || $natural === '') {
+            throw ValidationException::withMessages([
+                'slug' => 'A memorial URL derived from the name could not be assigned.',
+            ]);
+        }
+
+        $candidates = [$natural];
+        foreach ($this->personalSlugs->collisionSuffixes((int) $profile->id) as $number) {
+            $candidates[] = $this->personalSlugs->collisionCandidate($natural, $number);
+        }
+
+        foreach ($candidates as $candidate) {
+            $validation = $this->validateSlugCandidate($candidate, (int) $profile->id);
+            if ($validation['ok'] === true && isset($validation['slug'])) {
+                return $validation['slug'];
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'slug' => 'A memorial URL derived from the name could not be assigned.',
+        ]);
     }
 
     public function isReserved(string $slug): bool
@@ -72,6 +142,13 @@ class InMemoriamUrlService
 
         if (SlugRedirect::query()->whereRaw('LOWER(old_slug) = ?', [$normalized])->exists()) {
             return true;
+        }
+
+        if ($ignoreMemorialId !== null) {
+            $owned = InMemoriamProfile::query()->whereKey($ignoreMemorialId)->value('slug');
+            if (is_string($owned) && strtolower($owned) === $normalized) {
+                return false;
+            }
         }
 
         return SlugReservation::query()

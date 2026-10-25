@@ -334,6 +334,10 @@ class ApplicationWorkflowService
             $malayalam = $english instanceof EditorialContent
                 ? $this->resolveMalayalamVersionToPublish($profile, $english)
                 : null;
+            if ($malayalam instanceof EditorialContent
+                && ! app(MalayalamConsentService::class)->allowsPublicationBinding($locked, $malayalam)) {
+                $malayalam = null;
+            }
 
             if ($requireCustomerApproval && ! $english instanceof EditorialContent) {
                 throw new InvalidArgumentException('Customer approval of a specific editorial version is required.');

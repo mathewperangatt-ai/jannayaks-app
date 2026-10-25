@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\MediaItem;
 use App\Models\Payment;
 use App\Models\PhotoEnhancementRun;
 use App\Models\Profile;
@@ -59,7 +60,7 @@ class PaymentsTestingModeTest extends TestCase
         // No payment record and no fake settlement anywhere.
         $this->assertSame(0, Payment::query()->count());
         $app->refresh();
-        $this->assertSame('payment_pending', (string) $app->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, (string) $app->status);
         $this->assertSame('pending', (string) $app->payment_status, 'No simulated "paid" state may be recorded.');
         $this->assertNull($app->payment_settled_at);
     }
@@ -82,7 +83,7 @@ class PaymentsTestingModeTest extends TestCase
             ->assertJsonPath('ok', false);
 
         $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
-        $this->assertSame('payment_pending', (string) $app->fresh()->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, (string) $app->fresh()->status);
     }
 
     /* Testing mode ON: the payment page explains the suspension (ML default + EN). */
@@ -127,7 +128,17 @@ class PaymentsTestingModeTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('online-interview.show', ['application' => $app->id]))
-            ->assertRedirect(route('applications.payment', ['application' => $app->id]));
+            ->assertOk();
+
+        $this->actingAs($user)
+            ->postJson(route('applications.payment.initiate', ['application' => $app->id]))
+            ->assertForbidden();
+        $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
+
+        $app->forceFill([
+            'status' => Application::STATUS_INTERVIEW_SUBMITTED,
+            'online_interview_completed_at' => now(),
+        ])->save();
 
         $this->actingAs($user)
             ->postJson(route('applications.payment.initiate', ['application' => $app->id]))
@@ -223,7 +234,7 @@ class PaymentsTestingModeTest extends TestCase
         // provider (sync queue), and is stored for profile use.
         $this->assertSame(1, PhotoEnhancementRun::query()->count());
         $this->assertTrue(
-            \App\Models\MediaItem::query()
+            MediaItem::query()
                 ->where('enhanced_from_media_id', $item->id)
                 ->where('media_type', 'profile_photo_enhancement')
                 ->exists(),

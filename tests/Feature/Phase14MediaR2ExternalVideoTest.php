@@ -3,6 +3,7 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\EditorialContent;
 use App\Models\MediaItem;
 use App\Models\Profile;
 use App\Models\ProfileExternalLink;
@@ -55,45 +56,38 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         $this->assertSame(MediaItem::REVIEW_PENDING, $first->review_status);
         $this->assertSame(MediaItem::PRIVACY_PRIVATE, $first->privacy);
 
+        for ($i = 2; $i <= 4; $i++) {
+            $service->uploadProfilePhoto($profile, $this->jpegUpload("a{$i}.jpg"), $member);
+        }
+        $this->assertSame(4, $service->profilePhotoCount($profile));
+
         try {
-            $service->uploadProfilePhoto($profile, $this->jpegUpload('b.jpg'), $member);
-            $this->fail('Second Emerging photo should be rejected.');
+            $service->uploadProfilePhoto($profile, $this->jpegUpload('a5.jpg'), $member);
+            $this->fail('A fifth photograph must be refused for a historical Emerging profile.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('photo', $e->errors());
         }
 
-        $this->assertSame(1, $service->profilePhotoCount($profile));
+        $this->assertSame(4, $service->profilePhotoCount($profile->fresh()));
     }
 
     public function test_accomplished_and_distinguished_photo_limits(): void
     {
         $service = app(ProfileMediaService::class);
 
-        [, , $accomplished] = $this->makeReadyApplication('accomplished');
-        $ownerA = User::query()->findOrFail($accomplished->user_id);
-        for ($i = 0; $i < 3; $i++) {
-            $service->uploadProfilePhoto($accomplished, $this->jpegUpload("a{$i}.jpg"), $ownerA);
+        foreach (['accomplished', 'distinguished'] as $tier) {
+            [, , $profile] = $this->makeReadyApplication($tier);
+            $owner = User::query()->findOrFail($profile->user_id);
+            for ($i = 0; $i < 4; $i++) {
+                $service->uploadProfilePhoto($profile, $this->jpegUpload("{$tier}{$i}.jpg"), $owner);
+            }
+            try {
+                $service->uploadProfilePhoto($profile, $this->jpegUpload("{$tier}-over.jpg"), $owner);
+                $this->fail('A fifth photograph must be refused.');
+            } catch (ValidationException) {
+                $this->assertSame(4, $service->profilePhotoCount($profile->fresh()));
+            }
         }
-        try {
-            $service->uploadProfilePhoto($accomplished, $this->jpegUpload('a3.jpg'), $ownerA);
-            $this->fail('Fourth Accomplished photo should be rejected.');
-        } catch (ValidationException) {
-            $this->assertTrue(true);
-        }
-        $this->assertSame(3, $service->profilePhotoCount($accomplished));
-
-        [, , $distinguished] = $this->makeReadyApplication('distinguished');
-        $ownerD = User::query()->findOrFail($distinguished->user_id);
-        for ($i = 0; $i < 5; $i++) {
-            $service->uploadProfilePhoto($distinguished, $this->jpegUpload("d{$i}.jpg"), $ownerD);
-        }
-        try {
-            $service->uploadProfilePhoto($distinguished, $this->jpegUpload('d5.jpg'), $ownerD);
-            $this->fail('Sixth Distinguished photo should be rejected.');
-        } catch (ValidationException) {
-            $this->assertTrue(true);
-        }
-        $this->assertSame(5, $service->profilePhotoCount($distinguished));
     }
 
     public function test_member_cannot_manage_another_members_media(): void
@@ -330,60 +324,80 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         }
     }
 
-    public function test_post_publication_video_change_requires_approval(): void
+    public function test_a_stored_historical_video_link_stays_hidden_and_cannot_be_replaced(): void
     {
-        [$member, $application, $profile] = $this->makeReadyApplication('accomplished');
-        $videos = app(ExternalVideoLinkService::class);
-        $editor = User::factory()->editor()->create();
+        [$member, $application, $profile] = $this->makeReadyApplication('distinguished');
+        $stored = ProfileExternalLink::query()->create([
+            'profile_id' => $profile->id,
+            'link_type' => ProfileExternalLink::TYPE_VIDEO,
+            'label' => 'Historical interview',
+            'url' => 'https://www.youtube.com/watch?v=historicalStored',
+            'status' => ProfileExternalLink::STATUS_APPROVED,
+            'is_publicly_active' => true,
+            'submitted_by_user_id' => $member->id,
+        ]);
+        $profile->forceFill([
+            'slug' => 'historical.video.hidden',
+            'status' => 'published',
+            'published_at' => now(),
+            'unpublished_at' => null,
+        ])->save();
+        $english = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => 'en',
+            'status' => EditorialContent::STATUS_APPROVED,
+            'version_number' => 1,
+            'title' => 'Historical record',
+            'summary' => 'A stored video link stays off the page.',
+            'body' => 'The written record remains.',
+            'source_material' => '',
+            'ai_generated' => false,
+        ]);
+        $application->forceFill([
+            'status' => Application::STATUS_PUBLISHED,
+            'published_english_editorial_content_id' => $english->id,
+        ])->save();
 
-        $pending = $videos->submit($profile, $member, 'https://www.youtube.com/watch?v=original1', 'Original');
-        $this->assertFalse($pending->is_publicly_active);
-        $active = $videos->approve($pending, $editor);
-        $this->assertTrue($active->is_publicly_active);
-
-        $admin = User::factory()->admin()->create();
-        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false);
-        $profile = $profile->fresh();
-
-        $change = $videos->submit($profile, $member, 'https://www.youtube.com/watch?v=changed2', 'Changed');
-        $this->assertSame(ProfileExternalLink::STATUS_PENDING_REVIEW, $change->status);
-        $this->assertFalse($change->is_publicly_active);
-        $this->assertSame($active->id, $change->replaces_link_id);
-        $this->assertTrue($active->fresh()->is_publicly_active);
-
-        $this->get(route('profiles.public', $profile->slug))
+        $this->get('/historical.video.hidden')
             ->assertOk()
-            ->assertSee('https://www.youtube.com/watch?v=original1', false)
-            ->assertDontSee('https://www.youtube.com/watch?v=changed2', false);
+            ->assertDontSee('historicalStored', false)
+            ->assertDontSee('id="video"', false)
+            ->assertDontSee('Historical interview', false);
 
-        $rejected = $videos->reject($change, $editor, 'Not suitable');
-        $this->assertSame(ProfileExternalLink::STATUS_REJECTED, $rejected->status);
-        $this->assertTrue($active->fresh()->is_publicly_active);
+        $this->assertTrue(ProfileExternalLink::query()->whereKey($stored->id)->exists());
+        $this->assertSame('https://www.youtube.com/watch?v=historicalStored', $stored->fresh()->url);
 
-        $change2 = $videos->submit($profile, $member, 'https://vimeo.com/123456789', 'Approved change');
-        $approved = $videos->approve($change2, $editor);
-        $this->assertTrue($approved->is_publicly_active);
-        $this->assertFalse($active->fresh()->is_publicly_active);
-        $this->assertSame(ProfileExternalLink::STATUS_REPLACED, $active->fresh()->status);
+        try {
+            app(ExternalVideoLinkService::class)->submit(
+                $profile->fresh(),
+                $member,
+                'https://www.youtube.com/watch?v=newAttempt',
+            );
+            $this->fail('A historical profile must not accept a new video link.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('url', $e->errors());
+        }
 
-        $this->get(route('profiles.public', $profile->slug))
+        $this->assertSame(1, ProfileExternalLink::query()->where('profile_id', $profile->id)->count());
+        $this->actingAs($member)
+            ->get(route('applications.media', $application))
             ->assertOk()
-            ->assertSee('https://vimeo.com/123456789', false)
-            ->assertDontSee('https://www.youtube.com/watch?v=original1', false);
-
-        $this->assertTrue(StaffActionLog::query()->where('action', 'media.external_video_change_requested')->exists());
-        $this->assertTrue(StaffActionLog::query()->where('action', 'media.external_video_approved')->exists());
-        $this->assertTrue(StaffActionLog::query()->where('action', 'media.external_video_rejected')->exists());
+            ->assertDontSee('Submit video link', false)
+            ->assertDontSee('External video link', false);
     }
 
     public function test_support_cannot_approve_video_links(): void
     {
         [$member, , $profile] = $this->makeReadyApplication('accomplished');
-        $pending = app(ExternalVideoLinkService::class)->submit(
-            $profile,
-            $member,
-            'https://www.youtube.com/watch?v=supportblock',
-        );
+        $pending = ProfileExternalLink::query()->create([
+            'profile_id' => $profile->id,
+            'link_type' => ProfileExternalLink::TYPE_VIDEO,
+            'label' => 'Pending historical link',
+            'url' => 'https://www.youtube.com/watch?v=supportblock',
+            'status' => ProfileExternalLink::STATUS_PENDING_REVIEW,
+            'is_publicly_active' => false,
+            'submitted_by_user_id' => $member->id,
+        ]);
         $support = User::factory()->support()->create();
 
         try {

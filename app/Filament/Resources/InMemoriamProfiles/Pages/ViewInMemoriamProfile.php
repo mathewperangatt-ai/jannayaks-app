@@ -51,8 +51,9 @@ class ViewInMemoriamProfile extends ViewRecord
                 ->form([
                     TextInput::make('slug')
                         ->label('Public URL slug')
+                        ->helperText('Leave blank to keep or generate the name-based URL. A new value receives the late. prefix automatically.')
                         ->default(fn (): ?string => $this->getRecord()->slug)
-                        ->required(),
+                        ->maxLength(64),
                 ])
                 ->requiresConfirmation()
                 ->action(function (array $data): void {

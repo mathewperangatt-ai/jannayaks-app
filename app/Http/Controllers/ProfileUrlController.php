@@ -43,10 +43,10 @@ class ProfileUrlController extends Controller
         $isPublished = $this->profileUrls->isPubliclyVisible($profile);
         $canonicalUrl = $this->profileUrls->canonicalPublicUrl($profile);
         $history = $profile->slugRedirects()->orderByDesc('id')->limit(20)->get();
-        $personalSlugLocked = $this->profileUrls->hasPermanentPersonalSlug($profile);
-        $verifiedName = (string) ($profile->full_name ?: $application->full_name);
+        $personalSlugLocked = $isPublished || $this->profileUrls->hasPermanentPersonalSlug($profile);
+        $profileName = (string) ($profile->full_name ?: $application->full_name);
         $suggestions = $canSelectPersonal
-            ? $this->profileUrls->suggestPersonalSlugs($verifiedName, (int) $profile->id)
+            ? $this->profileUrls->suggestPersonalSlugs($profileName, (int) $profile->id)
             : [];
 
         return view('application.profile-url', [
@@ -60,7 +60,7 @@ class ProfileUrlController extends Controller
             'history' => $history,
             'preferredSlug' => $application->preferred_slug,
             'personalSlugLocked' => $personalSlugLocked,
-            'verifiedName' => $verifiedName,
+            'profileName' => $profileName,
             'suggestions' => $suggestions,
         ]);
     }

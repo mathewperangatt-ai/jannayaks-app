@@ -29,7 +29,7 @@ class InMemoriamProfileForm
                     TextInput::make('deceased_place_of_death')->maxLength(255),
                     TextInput::make('slug')
                         ->label('Public URL slug')
-                        ->helperText('Published at /in-memoriam/{slug}')
+                        ->helperText('Leave blank to assign a name-based URL. Memorial URLs always begin with late., added automatically. Published at /in-memoriam/{slug}')
                         ->maxLength(64),
                 ]),
             Section::make('Commissioner / contact (staff only)')

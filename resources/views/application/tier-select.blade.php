@@ -27,10 +27,11 @@
     @php($standardQuote = \App\Support\PricingAmounts::forStandardProfile())
     @php($renewalQuote = \App\Support\PricingAmounts::forTierRenewal(\App\Support\PricingAmounts::STANDARD_INTERNAL_TIER))
     <div class="warnbox" role="note" aria-label="Pricing note">
-        {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം പേയ്‌മെന്റ് വരും.' : 'After you sign in, payment comes next.' }}
+        {{ $ml ? 'Standard Profile നിരക്ക്' : 'The Standard Profile fee is' }}
         <b>{{ $standardQuote['base_formatted'] }} + GST</b>.
         {{ $ml ? 'വാർഷിക പുതുക്കൽ' : 'Annual renewal is' }}
         <b>{{ $renewalQuote['base_formatted'] }} + GST</b>.
+        {{ $ml ? 'ഓൺലൈൻ അഭിമുഖം തിരഞ്ഞെടുത്താൽ ചോദ്യാവലി സമർപ്പിച്ച ശേഷമേ പേയ്‌മെന്റ് വരൂ. നേരിട്ടുള്ള സമർപ്പണത്തിൽ ആദ്യം രേഖകൾ അപ്‌ലോഡ് ചെയ്യാം.' : 'If you choose Online Interview, payment comes after the questionnaire is submitted. Direct submission starts with document upload.' }}
     </div>
 
     <form method="POST" action="{{ route('apply.intent') }}" novalidate>
@@ -66,8 +67,8 @@
             </div>
             <div class="field">
                 <label for="preferred_slug">{{ $ml ? 'ആഗ്രഹിക്കുന്ന വ്യക്തിഗത URL (ഓപ്ഷണൽ നിർദ്ദേശം)' : 'Preferred personal URL (optional hint)' }}</label>
-                <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
-                <div class="hint">{{ $ml ? 'ഇത് ഓപ്ഷണലാണ്. നിങ്ങളുടെ സ്ഥിരീകരിച്ച പേര് രേഖപ്പെടുത്തിയ ശേഷം, arun.kumar പോലുള്ള ലഭ്യമായ പേരിനെ അടിസ്ഥാനമാക്കിയുള്ള URL-കൾ Jannayaks നിർദ്ദേശിക്കും. നിങ്ങൾ സ്വയം ഒരു username സൃഷ്ടിക്കേണ്ടതില്ല.' : 'Optional. After your verified name is on file, Jannayaks will suggest available name-based URLs such as arun.kumar. You do not invent a username.' }}</div>
+                <input id="preferred_slug" name="preferred_slug" type="text" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
+                <div class="hint">{{ $ml ? 'ഇത് ഓപ്ഷണലാണ്. ശൂന്യമായി വിട്ടാൽ അപേക്ഷ തടയില്ല. നൽകുകയാണെങ്കിൽ, പൂർണ്ണനാമത്തിൽ നിന്നുള്ള ചെറിയക്ഷര രൂപം മാത്രം — ഉദാഹരണം sree അല്ലെങ്കിൽ arun.kumar. വലിയ അക്ഷരം സ്വയം ചെറുതാക്കും. മറ്റൊരു പേര് സ്വീകരിക്കില്ല.' : 'Optional. Leave it empty and the application still continues. A hint must come from the full name, such as sree or arun.kumar. Capitals are accepted and stored in lowercase. An unrelated alias is not.' }}</div>
                 @error('preferred_slug')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
             <div class="field">
@@ -91,9 +92,56 @@
             {{ $ml ? 'വിശ്വസനീയമായ ഒരു ബന്ധപ്പെടൽ മാർഗമെങ്കിലും (ഇമെയിൽ അല്ലെങ്കിൽ മൊബൈൽ നമ്പർ) നൽകുക. എഡിറ്റോറിയൽ പരിശോധനയ്ക്കും തയ്യാറാക്കിയ പ്രൊഫൈൽ സ്ഥിരീകരിക്കുന്നതിനുമായി Jannayaks നിങ്ങളുമായി ബന്ധപ്പെടും.' : 'Provide at least one reliable contact method (email or mobile). Jannayaks will contact you for editorial review and to confirm the finished profile.' }}
         </div>
 
+        <div class="divider"></div>
+        <fieldset style="border:0;padding:0;margin:0">
+            <legend style="font-weight:600;margin-bottom:8px">{{ $ml ? 'വിശാലമായ സ്ഥലം' : 'Broad location' }}</legend>
+            <p class="hint" style="margin-top:0">{{ $ml ? 'ഇത് ഒരിക്കൽ മാത്രം ചോദിക്കുന്നു. വീട്ടുവിലാസം ആവശ്യമില്ല.' : 'This is collected once, with the other basic information. A home address is not required.' }}</p>
+            <label style="display:block;margin:8px 0">
+                <input type="radio" name="location_scope" value="kerala" @checked(old('location_scope', 'kerala') === 'kerala')>
+                {{ $ml ? 'ഈ പ്രൊഫൈൽ കേരളവുമായി ബന്ധപ്പെട്ടതാണ്' : 'This profile is associated with Keralam' }}
+            </label>
+            <label style="display:block;margin:8px 0 14px">
+                <input type="radio" name="location_scope" value="elsewhere" @checked(old('location_scope') === 'elsewhere')>
+                {{ $ml ? 'മറ്റെവിടെയെങ്കിലും' : 'Somewhere else' }}
+            </label>
+            <div id="locationKerala" @if(old('location_scope') === 'elsewhere') hidden @endif>
+                <div class="field">
+                    <label for="district_id">{{ $ml ? 'ജില്ല' : 'District' }}</label>
+                    <select id="district_id" name="district_id">
+                        <option value="">{{ $ml ? 'ജില്ല തിരഞ്ഞെടുക്കുക' : 'Choose a district' }}</option>
+                        @foreach(($districts ?? []) as $district)
+                            <option value="{{ $district->id }}" @selected((string) old('district_id') === (string) $district->id)>{{ $district->name }}</option>
+                        @endforeach
+                    </select>
+                    @error('district_id')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+                </div>
+            </div>
+            <div id="locationElsewhere" @if(old('location_scope', 'kerala') !== 'elsewhere') hidden @endif>
+                <div class="field">
+                    <label for="broad_location">{{ $ml ? 'പട്ടണം, നഗരം അല്ലെങ്കിൽ മറ്റൊരു സ്ഥലം' : 'Town, city or other place' }}</label>
+                    <input id="broad_location" name="broad_location" type="text" maxlength="120" value="{{ old('broad_location') }}">
+                    @error('broad_location')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+                </div>
+                <div class="field">
+                    <label for="location_state">{{ $ml ? 'സംസ്ഥാനം അല്ലെങ്കിൽ പ്രവിശ്യ' : 'State or province' }}</label>
+                    <input id="location_state" name="location_state" type="text" maxlength="120" value="{{ old('location_state') }}">
+                    @error('location_state')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+                </div>
+                <div class="field">
+                    <label for="location_country">{{ $ml ? 'രാജ്യം' : 'Country' }}</label>
+                    <input id="location_country" name="location_country" type="text" maxlength="80" value="{{ old('location_country') }}">
+                    @error('location_country')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+                </div>
+            </div>
+            @error('location_scope')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+        </fieldset>
+
         <div class="actions">
             <a class="btn ghost" href="{{ route('apply') }}">← {{ $ml ? 'പിന്നോട്ട്' : 'Back' }}</a>
-            <button class="btn primary" type="submit">{{ !empty($guest) ? 'Continue to sign in →' : ($ml ? 'പണമടയ്ക്കുന്നതിലേക്ക് തുടരുക →' : 'Continue to payment →') }}</button>
+            @php($interviewAction = $ml ? 'ഓൺലൈൻ അഭിമുഖത്തിലേക്ക് തുടരുക →' : 'Continue to Online Interview →')
+            @php($directAction = $ml ? 'രേഖകൾ സമർപ്പിക്കുന്നതിലേക്ക് തുടരുക →' : 'Continue to document submission →')
+            @php($signedInAction = old('source_method', 'online_interview') === 'direct_submission' ? $directAction : $interviewAction)
+            <button class="btn primary" type="submit" id="applyNext" @if(empty($guest)) data-interview="{{ $interviewAction }}" data-direct="{{ $directAction }}" @endif>{{ !empty($guest) ? 'Continue to sign in →' : $signedInAction }}</button>
         </div>
     </form>
 </section>
@@ -118,6 +166,29 @@
     if (email) email.addEventListener('input', syncContact);
     if (mobile) mobile.addEventListener('input', syncContact);
     syncContact();
+
+    var next = document.getElementById('applyNext');
+    if (next && next.dataset.interview) {
+        var sources = document.querySelectorAll('input[name="source_method"]');
+        function syncAction() {
+            var chosen = document.querySelector('input[name="source_method"]:checked');
+            next.textContent = chosen && chosen.value === 'direct_submission' ? next.dataset.direct : next.dataset.interview;
+        }
+        sources.forEach(function (input) { input.addEventListener('change', syncAction); });
+        syncAction();
+    }
+
+    var kerala = document.getElementById('locationKerala');
+    var elsewhere = document.getElementById('locationElsewhere');
+    var scopes = document.querySelectorAll('input[name="location_scope"]');
+    function syncLocation() {
+        var chosen = document.querySelector('input[name="location_scope"]:checked');
+        var away = chosen && chosen.value === 'elsewhere';
+        if (kerala) kerala.hidden = !!away;
+        if (elsewhere) elsewhere.hidden = !away;
+    }
+    scopes.forEach(function (input) { input.addEventListener('change', syncLocation); });
+    syncLocation();
 })();
 </script>
 @endpush

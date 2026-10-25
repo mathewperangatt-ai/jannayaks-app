@@ -2,6 +2,7 @@
 
 use App\Console\Commands\FailStaleAiEditorialRunsCommand;
 use App\Console\Commands\ProcessMembershipLifecycleCommand;
+use App\Console\Commands\PruneUnansweredRecommendationsCommand;
 use App\Console\Commands\ReconcilePaymentCapturesCommand;
 use App\Console\Commands\VerifyProfileIntegrityCommand;
 use App\Jobs\EnhanceProfilePhoto;
@@ -68,6 +69,17 @@ Schedule::command(VerifyProfileIntegrityCommand::class)
 | the owner by CSV email, then removes them from the live database. See
 | ExportContactNumbersCommand for eligibility and safety rules.
 */
+/*
+| Recommendation invitations keep the person's email only long enough to
+| send one message. Rows older than 30 days are deleted, whether or not
+| the invitation was delivered, because there is no response to record.
+*/
+Schedule::command(PruneUnansweredRecommendationsCommand::class)
+    ->dailyAt('02:40')
+    ->timezone($lifecycleTz !== '' ? $lifecycleTz : 'Asia/Kolkata')
+    ->withoutOverlapping(30)
+    ->name('prune-unanswered-recommendations');
+
 Schedule::command('jannayaks:export-contact-numbers')
     ->weeklyOn(1, '9:00')
     ->timezone(config('jannayaks.membership_lifecycle.business_timezone', 'Asia/Kolkata'))

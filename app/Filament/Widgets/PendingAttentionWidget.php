@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\EditorialRevisionRequest;
 use App\Models\MediaItem;
 use App\Models\Profile;
+use App\Services\MalayalamConsentService;
 use Filament\Widgets\Widget;
 use Illuminate\Contracts\View\View;
 use Illuminate\Database\Eloquent\Builder;
@@ -200,10 +201,62 @@ class PendingAttentionWidget extends Widget
             extraWhere: fn (Builder $query): Builder => $query->whereNotNull('customer_preview_released_at'),
         );
 
+        foreach ($this->malayalamCategories() as $category) {
+            $categories[] = $category;
+        }
+
         return array_values(array_filter(
             $categories,
             fn (array $category): bool => $category['total'] > 0,
         ));
+    }
+
+    /**
+     * @return list<array<string, mixed>>
+     */
+    private function malayalamCategories(): array
+    {
+        $labels = [
+            'awaiting_staff' => ['Malayalam draft awaiting staff review', 'Review the draft, then release it for customer consent.'],
+            'awaiting_consent' => ['Malayalam awaiting customer consent', 'The customer has not consented to the current Malayalam text.'],
+            'consent_recorded' => ['Malayalam consent recorded — ready to attach', 'Attach the consented Malayalam version. Do not republish the English profile.'],
+            'stale_consent' => ['Malayalam consent is stale', 'The consented text changed. Prepare the current version before it can be public.'],
+        ];
+        $buckets = app(MalayalamConsentService::class)->attentionApplicationIds();
+        $categories = [];
+
+        foreach ($labels as $key => [$label, $next]) {
+            $ids = $buckets[$key] ?? [];
+            if ($ids === []) {
+                continue;
+            }
+
+            $items = [];
+            Application::query()
+                ->whereIn('id', array_slice($ids, 0, self::VISIBLE_PER_CATEGORY))
+                ->orderByDesc('id')
+                ->get()
+                ->each(function (Application $application) use (&$items, $label, $next): void {
+                    $items[] = [
+                        'kind' => 'editorial',
+                        'title' => $label,
+                        'subject' => $application->full_name,
+                        'meta' => $next,
+                        'url' => ApplicationResource::getUrl('view', ['record' => $application->id]),
+                        'tone' => '#6f8075',
+                    ];
+                });
+
+            $categories[] = [
+                'key' => 'malayalam_'.$key,
+                'label' => $label,
+                'total' => count($ids),
+                'viewAllUrl' => ApplicationResource::getUrl('index'),
+                'items' => $items,
+            ];
+        }
+
+        return $categories;
     }
 
     /**

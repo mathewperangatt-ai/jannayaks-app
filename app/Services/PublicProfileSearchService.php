@@ -81,6 +81,7 @@ class PublicProfileSearchService
                         $geo->where('locality_place', 'ilike', $like)
                             ->orWhere('state_region_name', 'ilike', $like)
                             ->orWhere('country_code', 'ilike', $like)
+                            ->orWhere('country_name', 'ilike', $like)
                             ->orWhere('postal_code', 'ilike', $like)
                             ->orWhereHas('district', function (Builder $d) use ($like): void {
                                 $d->where('name', 'ilike', $like)
@@ -184,6 +185,7 @@ class PublicProfileSearchService
         if ($country !== '') {
             $query->whereHas('geography', function (Builder $g) use ($country): void {
                 $g->where('country_code', 'ilike', $country)
+                    ->orWhere('country_name', 'ilike', $country)
                     ->orWhereHas('district.state', fn (Builder $s) => $s->where('country_name', 'ilike', $country));
             });
         }

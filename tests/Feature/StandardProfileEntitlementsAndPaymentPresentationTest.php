@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
-use App\Models\MediaItem;
 use App\Models\Payment;
 use App\Models\Profile;
 use App\Models\User;
@@ -34,32 +33,44 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
         Storage::fake('private_uploads');
     }
 
-    public function test_standard_profile_allows_three_photos_and_rejects_a_fourth(): void
+    public function test_standard_profile_allows_one_primary_and_three_additional_photos(): void
     {
         [$member, $application, $profile] = $this->makeStandardApplication();
         $service = app(ProfileMediaService::class);
 
-        $this->assertSame(3, ProfileEntitlements::photoSlots($application));
+        $this->assertSame(4, ProfileEntitlements::photoSlots($application));
         $this->assertFalse(ProfileEntitlements::allowsVideoLink($application));
-        $this->assertSame(3, $service->photoSlotLimitForApplication($application));
+        $this->assertSame(4, $service->photoSlotLimitForApplication($application));
 
-        for ($i = 0; $i < 3; $i++) {
-            $service->uploadProfilePhoto($profile, UploadedFile::fake()->image("s{$i}.jpg", 400, 500), $member);
+        $primary = null;
+        for ($i = 0; $i < 4; $i++) {
+            $saved = $service->uploadProfilePhoto(
+                $profile,
+                UploadedFile::fake()->image("s{$i}.jpg", 400, 500),
+                $member,
+                null,
+                $i === 0,
+            );
+            $primary ??= $saved;
         }
 
+        $this->assertTrue((bool) $primary?->fresh()->is_primary);
+
         try {
-            $service->uploadProfilePhoto($profile, UploadedFile::fake()->image('s3.jpg', 400, 500), $member);
-            $this->fail('Standard Profile must reject a fourth photograph.');
+            $service->uploadProfilePhoto($profile, UploadedFile::fake()->image('s4.jpg', 400, 500), $member);
+            $this->fail('Standard Profile must reject a fifth photograph.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('photo', $e->errors());
         }
 
-        $this->assertSame(3, $service->profilePhotoCount($profile));
+        $this->assertSame(4, $service->profilePhotoCount($profile));
 
         $this->actingAs($member)
             ->get(route('applications.media', $application))
             ->assertOk()
-            ->assertSee('3', false)
+            ->assertSee('4 of 4 photographs uploaded; 0 slots available.', false)
+            ->assertSee('One primary photograph and up to 3 additional photographs.', false)
+            ->assertSee('Primary photograph', false)
             ->assertDontSee('External video link', false);
     }
 
@@ -79,26 +90,36 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
         }
     }
 
-    public function test_historical_distinguished_keeps_five_photos_and_video(): void
+    public function test_historical_distinguished_keeps_video_and_the_four_photograph_limit(): void
     {
         [$member, $application, $profile] = $this->makeHistoricalApplication('distinguished');
         $service = app(ProfileMediaService::class);
 
         $this->assertNull($application->pricing_generation);
-        $this->assertSame(5, ProfileEntitlements::photoSlots($application));
-        $this->assertTrue(ProfileEntitlements::allowsVideoLink($application));
+        $this->assertSame(4, ProfileEntitlements::photoSlots($application));
+        $this->assertFalse(ProfileEntitlements::allowsVideoLink($application));
 
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 4; $i++) {
             $service->uploadProfilePhoto($profile, UploadedFile::fake()->image("h{$i}.jpg", 400, 500), $member);
         }
-        $this->assertSame(5, $service->profilePhotoCount($profile));
+        $this->assertSame(4, $service->profilePhotoCount($profile));
+        try {
+            $service->uploadProfilePhoto($profile, UploadedFile::fake()->image('h4.jpg', 400, 500), $member);
+            $this->fail('A fifth photograph must be refused on a historical Distinguished profile.');
+        } catch (ValidationException) {
+            $this->assertSame(4, $service->profilePhotoCount($profile->fresh()));
+        }
 
-        $link = app(ExternalVideoLinkService::class)->submit(
-            $profile,
-            $member,
-            'https://www.youtube.com/watch?v=historicalOk',
-        );
-        $this->assertNotNull($link->id);
+        try {
+            app(ExternalVideoLinkService::class)->submit(
+                $profile,
+                $member,
+                'https://www.youtube.com/watch?v=historicalOk',
+            );
+            $this->fail('A historical package must not accept a new video link.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('url', $e->errors());
+        }
     }
 
     public function test_payment_page_shows_base_plus_cgst_sgst_not_tax_inclusive_base_line(): void

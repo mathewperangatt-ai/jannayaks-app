@@ -42,7 +42,7 @@
     @if($canSelectPersonal)
         <h2 style="margin-top:14px;font-size:16px">Choose your Jannayaks URL</h2>
         <p class="sub" style="margin:0">
-            Verified name: <b>{{ $verifiedName }}</b>.
+            Name on the profile: <b>{{ $profileName }}</b>.
             These suggestions are derived from that name. Arbitrary usernames are not allowed.
         </p>
         @if($personalSlugLocked)
@@ -79,9 +79,9 @@
             </form>
         @endif
     @else
-        <h2 style="margin-top:14px;font-size:16px">System-assigned URL</h2>
+        <h2 style="margin-top:14px;font-size:16px">Profile URL</h2>
         <p class="lead" style="margin:0">
-            This profile has a six-character system address. A personal name-based address is not available for this application.
+            A living profile receives its address from the name supplied on the profile. This application is outside that workflow.
         </p>
     @endif
 

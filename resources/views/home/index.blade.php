@@ -460,8 +460,8 @@ document.addEventListener('click',function(e){
     <div class="url-title">Your Personal Profile URL</div>
     <span class="url-title-ml">നിങ്ങളുടെ വ്യക്തിഗത പ്രൊഫൈൽ വിലാസം</span>
     <div class="url-note">
-      An eligible profile can use a name-based address at jannayaks.in, taken from the verified name. A short number is added only when that address is already taken. The address stays permanent; public hosting follows an active membership.
-      <span class="url-note-ml">യോഗ്യമായ പ്രൊഫൈലിന് പരിശോധിച്ച പേരിൽ നിന്നുള്ള ഒരു വിലാസം ലഭിക്കും. ആ വിലാസം മറ്റൊരാൾക്കുള്ളതാണെങ്കിൽ മാത്രം ഒരു ചെറിയ സംഖ്യ ചേർക്കും. വിലാസം സ്ഥിരമായിരിക്കും; പൊതു ഹോസ്റ്റിംഗ് സജീവ അംഗത്വത്തെ ആശ്രയിച്ചിരിക്കും.</span>
+      A Standard Profile receives a name-based address at jannayaks.in, taken from the name supplied in the profile. You can choose another available address that closely matches that name. A short number is added only when the address is already taken. The address stays permanent; public hosting follows an active membership.
+      <span class="url-note-ml">സ്റ്റാൻഡേഡ് പ്രൊഫൈലിന് പ്രൊഫൈലിൽ നൽകിയ പേരിൽ നിന്നുള്ള ഒരു വിലാസം ലഭിക്കും. ആ പേരിനോട് ചേർന്ന മറ്റൊരു ലഭ്യമായ വിലാസം തിരഞ്ഞെടുക്കാം. ആ വിലാസം മറ്റൊരാൾക്കുള്ളതാണെങ്കിൽ മാത്രം ഒരു ചെറിയ സംഖ്യ ചേർക്കും. വിലാസം സ്ഥിരമായിരിക്കും; പൊതു ഹോസ്റ്റിംഗ് സജീവ അംഗത്വത്തെ ആശ്രയിച്ചിരിക്കും.</span>
     </div>
     <div class="url-examples">
       <div class="url-example">
@@ -476,8 +476,8 @@ document.addEventListener('click',function(e){
     <div class="url-custom">
       <div class="url-custom-title">Choose a name-based address</div>
       <div class="url-custom-text">
-        The address comes from the verified name, for example <strong>arun.kumar</strong>. If that address is already taken, a short number can be added, for example <strong>arun.kumar12</strong>.
-        <span class="url-custom-text-ml">വിലാസം പരിശോധിച്ച പേരിൽ നിന്നാണ് — arun.kumar പോലെ. അത് ലഭ്യമല്ലെങ്കിൽ arun.kumar12 പോലെ ഒരു ചെറിയ സംഖ്യ ചേർക്കാം.</span>
+        The address comes from the name supplied in the profile, for example <strong>arun.kumar</strong>. You may choose another available address that closely matches that name. If that address is already taken, a short number can be added, for example <strong>arun.kumar12</strong>.
+        <span class="url-custom-text-ml">വിലാസം പ്രൊഫൈലിൽ നൽകിയ പേരിൽ നിന്നാണ് — arun.kumar പോലെ. ആ പേരിനോട് ചേർന്ന മറ്റൊരു ലഭ്യമായ വിലാസം തിരഞ്ഞെടുക്കാം. അത് ലഭ്യമല്ലെങ്കിൽ arun.kumar12 പോലെ ഒരു ചെറിയ സംഖ്യ ചേർക്കാം.</span>
       </div>
     </div>
   </div>

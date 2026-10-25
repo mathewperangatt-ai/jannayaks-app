@@ -16,6 +16,8 @@ use App\Support\EditorialSystemPrompts;
 use App\Support\OnlineInterviewCatalog;
 use App\Support\TierLabels;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Http\Client\Factory;
 use Illuminate\Support\Facades\Config;
 use Illuminate\Support\Facades\Http;
 use Tests\TestCase;
@@ -60,7 +62,7 @@ class PricingBranchCorrectionsTest extends TestCase
 
         $this->enableGateway();
         Http::fake(function () {
-            throw new \Illuminate\Http\Client\ConnectionException('timed out');
+            throw new ConnectionException('timed out');
         });
 
         try {
@@ -281,7 +283,7 @@ class PricingBranchCorrectionsTest extends TestCase
 
         $this->enableGateway();
         Http::fake(function () {
-            throw new \Illuminate\Http\Client\ConnectionException('timed out');
+            throw new ConnectionException('timed out');
         });
 
         $this->postWebhook($payment, 472000, 'INR', 'plink_unconfirmed', 'pay_unconfirmed', 'evt_unconfirmed', 'payment.captured', '')
@@ -350,7 +352,7 @@ class PricingBranchCorrectionsTest extends TestCase
                 ->assertJson(['paid' => true]);
 
             $this->replaceHttpFake(function () {
-                throw new \Illuminate\Http\Client\ConnectionException('gateway down on retry');
+                throw new ConnectionException('gateway down on retry');
             });
             $this->postWebhook($payment->fresh(), 472000, 'INR', $linkId, $payId, $eventId, $event, '')
                 ->assertOk()
@@ -381,7 +383,7 @@ class PricingBranchCorrectionsTest extends TestCase
 
             $this->enableGateway();
             $this->replaceHttpFake(function () {
-                throw new \Illuminate\Http\Client\ConnectionException('timed out');
+                throw new ConnectionException('timed out');
             });
             $this->postWebhook($payment, 472000, 'INR', $linkId, 'pay_fail_'.$suffix, 'evt_fail_'.$suffix, $event, '')
                 ->assertStatus(503)
@@ -961,7 +963,9 @@ class PricingBranchCorrectionsTest extends TestCase
             ->assertJsonPath('progress.answered', 2)
             ->assertJsonPath('progress.missing_required', []);
 
-        $this->actingAs($user)->postJson(route('online-interview.submit', $app))
+        $this->actingAs($user)->postJson(route('online-interview.submit', $app), [
+            'questionnaire_confirmed' => '1',
+        ])
             ->assertOk()
             ->assertJsonPath('ok', true)
             ->assertJsonPath('next_step', 'editorial_processing');
@@ -1017,6 +1021,9 @@ class PricingBranchCorrectionsTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('Choose a name-based address', false)
+            ->assertSee('name supplied in the profile', false)
+            ->assertDontSee('verified name', false)
+            ->assertDontSee('പരിശോധിച്ച പേര്', false)
             ->assertSee('arun.kumar12', false)
             ->assertDontSee('jj_nemom', false);
 
@@ -1052,7 +1059,8 @@ class PricingBranchCorrectionsTest extends TestCase
         $this->actingAs($owner)
             ->get(route('applications.profile-url', $application))
             ->assertOk()
-            ->assertSee('This profile has a six-character system address. A personal name-based address is not available for this application.', false);
+            ->assertSee('Choose your Jannayaks URL', false)
+            ->assertDontSee('six-character system address', false);
     }
 
     public function test_stale_payment_page_hides_the_obsolete_link_and_shows_the_current_amount(): void
@@ -1114,7 +1122,7 @@ class PricingBranchCorrectionsTest extends TestCase
 
     private function replaceHttpFake(\Closure $callback): void
     {
-        Http::swap(new \Illuminate\Http\Client\Factory);
+        Http::swap(new Factory);
         Http::fake($callback);
     }
 

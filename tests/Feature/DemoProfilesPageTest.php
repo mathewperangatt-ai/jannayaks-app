@@ -102,9 +102,33 @@ class DemoProfilesPageTest extends TestCase
 
         $this->get('/t.gopalakrishnan')
             ->assertOk()
-            ->assertSee('<a href="'.route('gallery.index').'">Demo Profiles</a>', false)
-            ->assertSee('<a href="'.route('gallery.index').'" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a>', false)
-            ->assertDontSee('href="'.route('demo-profiles.index').'">Demo Profiles</a>', false);
+            ->assertSee('<a href="'.route('gallery.index').'">Gallery</a>', false)
+            ->assertSee('<a href="'.route('gallery.index').'" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Gallery</a>', false)
+            ->assertDontSee('href="'.route('demo-profiles.index').'">Demo Profiles</a>', false)
+            ->assertDontSee('>Demo Profiles</a>', false);
+    }
+
+    public function test_public_profile_layout_keeps_the_biography_and_moves_engagement_below_it(): void
+    {
+        $this->seed(DemoProfilesSeeder::class);
+
+        $content = $this->get('/t.gopalakrishnan?lang=en')->assertOk()->getContent();
+
+        $this->assertStringContainsString('class="jk-sr">Profile</h2>', $content);
+        $this->assertStringNotContainsString('>Biography</h2>', $content);
+        $this->assertStringNotContainsString('ജീവചരിത്രം', $content);
+        $this->assertLessThan(strpos($content, '>Contact</h2>'), strpos($content, '>Show appreciation</h2>'));
+        $this->assertStringContainsString('object-fit:contain', $content);
+        $this->assertStringContainsString('aspect-ratio:3/4', $content);
+        $this->assertStringContainsString('navigator.clipboard', $content);
+        $this->assertStringContainsString('execCommand(\'copy\')', $content);
+        $this->assertStringContainsString('data-copy="', $content);
+        $this->assertStringContainsString('id="jk-share-status"', $content);
+        $this->assertStringNotContainsString('jk-hero with-rail', $content);
+        $this->assertLessThan(strpos($content, 'id="wellwishers"'), strpos($content, 'id="biography"'));
+        $this->assertSame(1, substr_count($content, 'Profile reference ·'));
+        $this->assertStringContainsString('honey_bot', $content);
+        $this->assertStringContainsString('Fictional demonstration profile', $content);
     }
 
     public function test_main_menu_marks_demo_or_gallery_as_current_by_page_type(): void

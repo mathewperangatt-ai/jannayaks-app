@@ -13,10 +13,11 @@ use Tests\TestCase;
  * A  Homepage → Sign In reaches the sign-in route and works logged out.
  * B  Homepage → Register Profile reaches the correct entry (intro → tiers).
  * C  Register Profile → Online Interview proceeds into the existing
- *    interview flow, with payment required first.
- * D  Register → Payment lands on the existing payment page after the
+ *    interview flow before payment.
+ * D  Register → Online Interview lands on the questionnaire after the
  *    application is created (register continuation of the guest intent).
- * E  Payment-before-interview gate on the existing Razorpay architecture.
+ * E  The questionnaire is available before payment. Payment stays behind
+ *    the submitted interview.
  * F  Entered data (tier, intake source, name, contacts) is preserved.
  * G  No duplicate application is created (A2 guard).
  * H  Approved Malayalam tier names render exactly — never the banned variants.
@@ -76,9 +77,8 @@ class NavigationQaJourneyTest extends TestCase
             ->assertSee('Continue to sign in');
     }
 
-    /* C + D — Guest tier form → register → application → payment page,
-       and the Online Interview stays behind the payment gate. */
-    public function test_c_d_register_continues_intent_to_payment_then_gates_interview(): void
+    /* C + D — Guest intent → register → Online Interview, before payment. */
+    public function test_c_d_register_continues_intent_to_the_interview(): void
     {
         $this->withSession(['apply.intent' => self::INTENT]);
 
@@ -87,28 +87,31 @@ class NavigationQaJourneyTest extends TestCase
 
         $app = Application::query()->latest('id')->first();
         $this->assertNotNull($app, 'Application should be created from the pending intent.');
-        $res->assertRedirect(route('applications.payment', ['application' => $app->id]));
+        $res->assertRedirect(route('online-interview.show', ['application' => $app->id]));
 
-        // Existing interview flow, gated until payment settles.
         $this->actingAs($app->user)
             ->get(route('online-interview.show', ['application' => $app->id]))
-            ->assertRedirect(route('applications.payment', ['application' => $app->id]));
+            ->assertOk();
     }
 
-    /* E — Payment-before-interview, explicitly. */
-    public function test_e_unpaid_owner_is_redirected_to_payment_from_interview(): void
+    /* E — The questionnaire is available before payment. */
+    public function test_e_unpaid_owner_can_open_the_interview_before_payment(): void
     {
         $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse-42']);
         $app = $this->createPaymentPendingApplication($user);
 
         $this->actingAs($user)
             ->get(route('online-interview.show', ['application' => $app->id]))
-            ->assertRedirect(route('applications.payment', ['application' => $app->id]));
+            ->assertOk();
 
         $this->actingAs($user)
             ->getJson(route('online-interview.show', ['application' => $app->id]))
-            ->assertStatus(403)
-            ->assertJsonPath('redirect_to', route('applications.payment', ['application' => $app->id]));
+            ->assertOk()
+            ->assertJsonPath('application_id', $app->id);
+
+        $this->actingAs($user)
+            ->get(route('applications.payment', ['application' => $app->id]))
+            ->assertRedirect(route('online-interview.show', ['application' => $app->id]));
     }
 
     /* F — Entered data is preserved through the intent → application. */
@@ -165,22 +168,28 @@ class NavigationQaJourneyTest extends TestCase
     }
 
     /* Login (existing account) also continues the pending intent. */
-    public function test_login_continues_pending_intent_to_payment(): void
+    public function test_login_continues_pending_intent_to_the_interview(): void
     {
         $user = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse-42']);
 
         $this->withSession(['apply.intent' => self::INTENT]);
-        $this->post(route('login'), [
+        $response = $this->post(route('login'), [
             'username' => $user->username,
             'password' => 'correct-horse-42',
-        ])->assertRedirect();
+        ]);
 
         $app = Application::query()->latest('id')->first();
         $this->assertNotNull($app);
+        $response->assertRedirect(route('online-interview.show', ['application' => $app->id]));
         $this->assertDatabaseHas('applications', [
             'user_id' => $user->id,
             'package_tier' => 'distinguished',
         ]);
+
+        $app->forceFill([
+            'status' => Application::STATUS_INTERVIEW_SUBMITTED,
+            'online_interview_completed_at' => now(),
+        ])->save();
 
         $this->actingAs($app->user)
             ->get(route('applications.payment', ['application' => $app->id]))
@@ -201,7 +210,7 @@ class NavigationQaJourneyTest extends TestCase
 
         /** @var Application $app */
         $app = Application::query()->latest('id')->first();
-        $this->assertSame('payment_pending', (string) $app->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, (string) $app->status);
 
         return $app;
     }

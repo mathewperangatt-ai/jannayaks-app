@@ -31,7 +31,7 @@ class TestPaymentSimulationTest extends TestCase
 
         /** @var Application $app */
         $app = Application::query()->latest('id')->first();
-        $this->assertSame('payment_pending', (string) $app->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, (string) $app->status);
 
         return $app;
     }
@@ -41,6 +41,10 @@ class TestPaymentSimulationTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = $this->makeApplicationFor($user);
+        $app->forceFill([
+            'status' => Application::STATUS_INTERVIEW_SUBMITTED,
+            'online_interview_completed_at' => now(),
+        ])->save();
 
         // Malayalam is the flow default.
         $this->actingAs($user)
@@ -121,7 +125,7 @@ class TestPaymentSimulationTest extends TestCase
             ->assertExitCode(1);
 
         $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
-        $this->assertSame('payment_pending', (string) $app->fresh()->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, (string) $app->fresh()->status);
     }
 
     /* 5. Self-disabling: refuses once Razorpay is enabled (launch safety). */

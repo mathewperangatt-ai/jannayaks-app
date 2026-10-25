@@ -70,8 +70,11 @@ return [
         | New applications: pricing_generation=standard_profile, internal
         | package_tier=distinguished (editorial depth key only).
         | Historical emerging/accomplished/distinguished rows keep null
-        | pricing_generation and their original package base amounts / media
-        | entitlements below. Do not reprice those rows from standard_profile.
+        | pricing_generation and their original package base amounts below.
+        | Do not reprice those rows from standard_profile. Photograph capacity
+        | is not a package entitlement: every living profile has four
+        | customer-visible photographs. Video links are not offered. The
+        | includes_video_link flags below are not consulted.
         | There is no launch discount and no crossed-out comparison price.
         */
         'standard_profile' => [
@@ -79,7 +82,7 @@ return [
             'label' => 'Standard Profile',
             'base_amount' => 4000,
             'description' => 'Standard Profile fee, exclusive of GST.',
-            'photo_slots' => 3,
+            'photo_slots' => 4,
             'includes_video_link' => false,
         ],
         'packages' => [
@@ -87,7 +90,7 @@ return [
                 'label' => 'Recognised',
                 'base_amount' => 3000,
                 'description' => 'Historical Recognised package (pre-Standard Profile).',
-                'photo_slots' => 1,
+                'photo_slots' => 4,
                 'includes_video_link' => false,
             ],
             'accomplished' => [
@@ -95,16 +98,16 @@ return [
                 // Historical amount from PR base f8eef32 (pre-Standard Profile).
                 'base_amount' => 6000,
                 'description' => 'Historical Acclaimed package (pre-Standard Profile).',
-                'photo_slots' => 3,
-                'includes_video_link' => true,
+                'photo_slots' => 4,
+                'includes_video_link' => false,
             ],
             'distinguished' => [
                 'label' => 'Distinguished',
                 // Historical amount from PR base f8eef32 (pre-Standard Profile).
                 'base_amount' => 9000,
                 'description' => 'Historical Distinguished package (pre-Standard Profile). New Standard Profile apps use standard_profile pricing via pricing_generation.',
-                'includes_video_link' => true,
-                'photo_slots' => 5,
+                'includes_video_link' => false,
+                'photo_slots' => 4,
             ],
         ],
         // Seller/legal fields for GST tax invoices. Leave blank until registration is confirmed.
@@ -257,7 +260,7 @@ return [
         'legal_address' => env('JANNAYAKS_LEGAL_ADDRESS', 'MP 3/532A, PIN 695573'),
         // Shown on every legal page ("Last updated"). Update when the legal
         // text is meaningfully revised.
-        'legal_updated' => env('JANNAYAKS_LEGAL_UPDATED', '19 October 2026'),
+        'legal_updated' => env('JANNAYAKS_LEGAL_UPDATED', '25 October 2026'),
     ],
 
     'geography' => [

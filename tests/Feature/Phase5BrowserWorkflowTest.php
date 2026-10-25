@@ -46,10 +46,10 @@ class Phase5BrowserWorkflowTest extends TestCase
             $create->assertSee('₹4,000.00', false);
 
             $res = $this->actingAs($user)->postJson(route('applications.store'), [
-                'package_tier'   => $tier,
-                'source_method'  => 'online_interview',
-                'full_name'      => 'T-'.$tier.' User',
-                'contact_email'  => $tier.'@example.test',
+                'package_tier' => $tier,
+                'source_method' => 'online_interview',
+                'full_name' => 'T-'.$tier.' User',
+                'contact_email' => $tier.'@example.test',
             ]);
             $res->assertCreated();
             $app = Application::query()->latest('id')->first();
@@ -66,10 +66,10 @@ class Phase5BrowserWorkflowTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
-            'package_tier'   => 'distinguished',
-            'source_method'  => 'online_interview',
-            'full_name'      => 'No Gate Test',
-            'contact_email'  => 'nogate@example.test',
+            'package_tier' => 'distinguished',
+            'source_method' => 'online_interview',
+            'full_name' => 'No Gate Test',
+            'contact_email' => 'nogate@example.test',
         ]);
         $res->assertCreated();
         $app = Application::query()->latest('id')->first();
@@ -111,7 +111,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
-        foreach (['q1','q5','q7','q9','q11','q14','q16','q22'] as $qid) {
+        foreach (['q1', 'q5', 'q7', 'q9', 'q11', 'q14', 'q16', 'q22'] as $qid) {
             $res->assertSee('data-qid="'.$qid.'"', false);
         }
     }
@@ -123,7 +123,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'accomplished', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
-        foreach (['q1','q5','q9','q11','q22'] as $qid) {
+        foreach (['q1', 'q5', 'q9', 'q11', 'q22'] as $qid) {
             $res->assertSee('data-qid="'.$qid.'"', false);
         }
     }
@@ -135,7 +135,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'distinguished', 'source_method' => 'online_interview']);
         $res = $this->actingAs($user)->get(route('online-interview.show', $app));
         $res->assertOk();
-        foreach (['q1','q3','q6','q7','q10','q12','q22'] as $qid) {
+        foreach (['q1', 'q3', 'q6', 'q7', 'q10', 'q12', 'q22'] as $qid) {
             $res->assertSee('data-qid="'.$qid.'"', false);
         }
     }
@@ -184,8 +184,8 @@ class Phase5BrowserWorkflowTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
         $malayalam = 'ഞാൻ ജീനിയസ് ആയിട്ടുണ്ട്. എനിക്ക് മനസ്സിലായി — ഗ്രാമത്തിനു പകരമെന്താ?';
-        $manglish  = "Njan jeevithathil ninnu oru nalla paadam padichu: kaaryangal okke saadhanamaake!";
-        $combined  = $malayalam . "\n\n---\n\n" . $manglish;
+        $manglish = 'Njan jeevithathil ninnu oru nalla paadam padichu: kaaryangal okke saadhanamaake!';
+        $combined = $malayalam."\n\n---\n\n".$manglish;
         $this->actingAs($user)->patchJson(route('online-interview.save', $app), [
             'answers' => ['q3' => $combined],
         ])->assertOk();
@@ -244,7 +244,9 @@ class Phase5BrowserWorkflowTest extends TestCase
         }
         $this->actingAs($user)->patchJson(route('online-interview.save', $app), $payload)->assertOk();
 
-        $submit = $this->actingAs($user)->postJson(route('online-interview.submit', $app));
+        $submit = $this->actingAs($user)->postJson(route('online-interview.submit', $app), [
+            'questionnaire_confirmed' => '1',
+        ]);
         $submit->assertOk();
         $app->refresh();
         $this->assertNotNull($app->online_interview_completed_at);
@@ -258,7 +260,9 @@ class Phase5BrowserWorkflowTest extends TestCase
         foreach (OnlineInterviewCatalog::idsForTier('emerging') as $qid) {
             $this->actingAs($user)->patchJson(route('online-interview.save', $app), ['answers' => [$qid => 'R']])->assertOk();
         }
-        $this->actingAs($user)->postJson(route('online-interview.submit', $app))->assertOk();
+        $this->actingAs($user)->postJson(route('online-interview.submit', $app), [
+            'questionnaire_confirmed' => '1',
+        ])->assertOk();
 
         $view = $this->actingAs($user)->get(route('online-interview.show', $app));
         $view->assertOk();
@@ -287,10 +291,10 @@ class Phase5BrowserWorkflowTest extends TestCase
         $tmpFile = tempnam(sys_get_temp_dir(), 'jf_').'.php';
         file_put_contents($tmpFile, (string) file_get_contents(base_path('vendor/composer/installed.php')));
         try {
-            $badPhp = new \Illuminate\Http\UploadedFile($tmpFile, 'drop.php', 'application/pdf', UPLOAD_ERR_OK, true);
+            $badPhp = new UploadedFile($tmpFile, 'drop.php', 'application/pdf', UPLOAD_ERR_OK, true);
             $r1 = $this->actingAs($user)->postJson(route('applications.upload.material', $app), [
                 'material_type' => 'resume',
-                'material'      => $badPhp,
+                'material' => $badPhp,
             ]);
             $mime422orForbidden = in_array($r1->getStatusCode(), [403, 422], true);
             $this->assertTrue($mime422orForbidden, 'Expected 403 (forbidden ext) or 422 (mime guard), got '.$r1->getStatusCode());
@@ -302,14 +306,14 @@ class Phase5BrowserWorkflowTest extends TestCase
         $badSvg = UploadedFile::fake()->create('sheet.pdf', 12, 'image/svg+xml');
         $r2 = $this->actingAs($user)->postJson(route('applications.upload.material', $app), [
             'material_type' => 'resume',
-            'material'      => $badSvg,
+            'material' => $badSvg,
         ]);
         $r2->assertStatus(422);
 
         $big = UploadedFile::fake()->create('too-big.pdf', 22000, 'application/pdf');
         $r3 = $this->actingAs($user)->postJson(route('applications.upload.material', $app), [
             'material_type' => 'resume',
-            'material'      => $big,
+            'material' => $big,
         ]);
         $r3->assertStatus(422);
         $this->assertSame(0, SourceMaterial::query()->where('application_id', $app->id)->count());
@@ -325,7 +329,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         $file = UploadedFile::fake()->create('curriculum-vitae.pdf', 400, 'application/pdf');
         $up = $this->actingAs($user)->postJson(route('applications.upload.material', $app), [
             'material_type' => 'resume',
-            'material'      => $file,
+            'material' => $file,
         ]);
         $up->assertCreated();
 
@@ -356,14 +360,14 @@ class Phase5BrowserWorkflowTest extends TestCase
 
         $this->assertSame(18, (int) config('jannayaks.tier_pricing.gst_percent'));
         $this->assertSame(4000, (int) config('jannayaks.tier_pricing.standard_profile.base_amount'));
-        $this->assertSame(3, (int) config('jannayaks.tier_pricing.standard_profile.photo_slots'));
+        $this->assertSame(4, (int) config('jannayaks.tier_pricing.standard_profile.photo_slots'));
         $this->assertFalse((bool) config('jannayaks.tier_pricing.standard_profile.includes_video_link'));
         $this->assertSame(3000, (int) config('jannayaks.tier_pricing.packages.emerging.base_amount'));
         $this->assertSame(6000, (int) config('jannayaks.tier_pricing.packages.accomplished.base_amount'));
         $this->assertSame(9000, (int) config('jannayaks.tier_pricing.packages.distinguished.base_amount'));
         $this->assertSame(1800, (int) config('jannayaks.tier_pricing.renewal.base_amount'));
         $this->assertSame(3000, (int) config('jannayaks.tier_pricing.revision.base_amount'));
-        $qids = array_map(static fn(array $q): string => (string) ($q['id'] ?? ''), (array) config('online_interview.questions', []));
+        $qids = array_map(static fn (array $q): string => (string) ($q['id'] ?? ''), (array) config('online_interview.questions', []));
         $this->assertContains('q22', $qids);
         $this->assertCount(22, $qids);
     }

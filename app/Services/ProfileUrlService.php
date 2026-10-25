@@ -18,6 +18,10 @@ class ProfileUrlService
 {
     public const EMERGING_LENGTH = 6;
 
+    /**
+     * Retained for the demonstration seeder's stored slugs. URL allocation does
+     * not consult this list.
+     */
     public const PERSONAL_TIERS = ['accomplished', 'distinguished'];
 
     private const EMERGING_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
@@ -30,12 +34,14 @@ class ProfileUrlService
     ) {}
 
     /**
-     * Ensure a published living profile has a canonical slug.
-     * Emerging (and A/D before personal selection) receive a 6-character system URL.
+     * Ensure a living profile has a canonical slug. Every living profile
+     * receives the natural name-derived slug, or the next free numbered
+     * variation when that slug is taken. An existing slug is never replaced
+     * here, including a historical six-character address.
      */
     public function assignInitialCanonicalSlug(Profile $profile, string $packageTier, ?User $actor = null): Profile
     {
-        if ($packageTier === 'in_memoriam') {
+        if (strtolower($packageTier) === 'in_memoriam') {
             throw new InvalidArgumentException('In Memoriam profiles are outside living profile URL assignment.');
         }
 
@@ -49,7 +55,12 @@ class ProfileUrlService
                 return $locked;
             }
 
-            $slug = $this->generateUniqueEmergingSlug();
+            $slug = $this->firstAvailablePersonalSlug($locked);
+
+            if ($slug === null || $slug === '') {
+                throw new InvalidArgumentException('A personal profile URL derived from the name on the profile is required before publication.');
+            }
+
             $now = now();
 
             $locked->forceFill([
@@ -73,9 +84,47 @@ class ProfileUrlService
         });
     }
 
+    /**
+     * Living profiles all use a name-derived URL. PERSONAL_TIERS remains only
+     * so the demonstration seeder can keep its existing stored slugs.
+     */
     public function packageTierAllowsPersonalSlug(string $packageTier): bool
     {
-        return in_array(strtolower($packageTier), self::PERSONAL_TIERS, true);
+        return strtolower($packageTier) !== 'in_memoriam';
+    }
+
+    /**
+     * Natural dotted name, then the next available numbered variation of that
+     * same name. Other recognisable forms stay available for the customer to
+     * choose. This path does not invent a random slug and does not add the
+     * memorial `late.` prefix.
+     */
+    private function firstAvailablePersonalSlug(Profile $profile): ?string
+    {
+        $combinations = $this->personalSlugs->generateCombinations((string) $profile->full_name);
+        $natural = $combinations[0] ?? null;
+        if (! is_string($natural) || $natural === '') {
+            return null;
+        }
+
+        $candidates = [$natural];
+        foreach ($this->personalSlugs->collisionSuffixes((int) $profile->id) as $number) {
+            $candidates[] = $this->personalSlugs->collisionCandidate($natural, $number);
+        }
+
+        foreach ($candidates as $candidate) {
+            $validation = $this->validatePersonalSlugCandidate(
+                $candidate,
+                (int) $profile->id,
+                (string) $profile->full_name,
+                (string) $profile->profession,
+            );
+            if ($validation['ok'] === true && isset($validation['slug'])) {
+                return $validation['slug'];
+            }
+        }
+
+        return null;
     }
 
     public function normalizePersonalSlug(string $raw): string
@@ -137,7 +186,7 @@ class ProfileUrlService
         }
 
         if (preg_match('/^[0-9]+$/', $slug) === 1) {
-            return ['ok' => false, 'error' => 'Personal URLs must be derived from the verified name.'];
+            return ['ok' => false, 'error' => 'Personal URLs must be derived from the name on the profile.'];
         }
 
         if ($this->isReserved($slug)) {
@@ -154,12 +203,12 @@ class ProfileUrlService
 
         if (filled($name)) {
             if (! $this->personalSlugs->isNameDerived($slug, (string) $name)) {
-                return ['ok' => false, 'error' => 'That URL must be recognisably derived from the verified name. Arbitrary usernames are not allowed.'];
+                return ['ok' => false, 'error' => 'That URL must be recognisably derived from the name supplied on the profile. Arbitrary usernames are not allowed.'];
             }
 
             $parsed = $this->personalSlugs->parsePersonalSlug($slug);
             if ($parsed !== null && ! $this->personalSlugs->titleIsConsistent($parsed['title'], $job)) {
-                return ['ok' => false, 'error' => 'That professional title does not match the verified profile.'];
+                return ['ok' => false, 'error' => 'That professional title does not match the profile.'];
             }
         }
 
@@ -264,7 +313,9 @@ class ProfileUrlService
     }
 
     /**
-     * Member selects or changes a personal/name-based canonical URL (Accomplished/Distinguished only).
+     * Member selects a name-derived URL, or staff records an audited correction.
+     * The historical package tier does not decide whether a living profile may
+     * use a name-based address.
      */
     public function selectPersonalSlug(Profile $profile, User $actor, string $rawSlug, string $packageTier): Profile
     {
@@ -274,8 +325,8 @@ class ProfileUrlService
             throw new InvalidArgumentException('You may only change the URL for your own profile.');
         }
 
-        if (! $this->packageTierAllowsPersonalSlug($packageTier)) {
-            throw new InvalidArgumentException('Your membership tier uses a system-assigned profile URL and cannot choose a personal URL.');
+        if (strtolower($packageTier) === 'in_memoriam') {
+            throw new InvalidArgumentException('In Memoriam profiles are outside living profile URL assignment.');
         }
 
         if (! $isStaff) {
@@ -367,7 +418,9 @@ class ProfileUrlService
         if ($application->profile_id) {
             $existing = Profile::query()->find($application->profile_id);
             if ($existing) {
-                return $existing;
+                app(ApplicationLocationService::class)->applyToProfile($application, $existing);
+
+                return $existing->fresh() ?? $existing;
             }
         }
 
@@ -394,9 +447,9 @@ class ProfileUrlService
                 $application->forceFill(['profile_id' => $profile->id])->save();
             }
 
-            $profile->ensureMandatoryGeography();
+            app(ApplicationLocationService::class)->applyToProfile($application, $profile);
 
-            return $profile;
+            return $profile->fresh() ?? $profile;
         });
     }
 
@@ -491,6 +544,10 @@ class ProfileUrlService
         return true;
     }
 
+    /**
+     * Historical six-character addresses only. New living profiles are allocated
+     * from the name on the profile and do not call this method.
+     */
     public function generateUniqueEmergingSlug(): string
     {
         for ($attempt = 0; $attempt < self::MAX_GENERATION_ATTEMPTS; $attempt++) {

@@ -397,6 +397,18 @@ class CustomerEditorialWorkflowService
         ?User $actor = null,
         string $reason = 'Editorial content changed after customer approval or preview.',
     ): void {
+        if ($content->language === EditorialContent::LANGUAGE_ML) {
+            app(MalayalamConsentService::class)->invalidateIfContentChanged($content, $actor, $reason);
+
+            $publishedEnglish = Application::query()
+                ->where('profile_id', $content->profile_id)
+                ->where('status', Application::STATUS_PUBLISHED)
+                ->exists();
+            if ($publishedEnglish) {
+                return;
+            }
+        }
+
         $application = Application::query()
             ->where(function ($q) use ($content) {
                 $q->where('preview_english_editorial_content_id', $content->id)

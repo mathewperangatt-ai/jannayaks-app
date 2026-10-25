@@ -64,7 +64,7 @@ class PhotoEnhancementTest extends TestCase
         ]);
     }
 
-    private function uploadSource(): MediaItem
+    private function uploadSource(bool $makePrimary = false): MediaItem
     {
         $file = UploadedFile::fake()->image('portrait.jpg', 900, 1200);
 
@@ -73,6 +73,7 @@ class PhotoEnhancementTest extends TestCase
             file: $file,
             actor: $this->member,
             altText: 'Portrait of Photo Person',
+            makePrimary: $makePrimary,
         );
     }
 
@@ -179,8 +180,74 @@ class PhotoEnhancementTest extends TestCase
 
         $this->enable();
         Queue::fake();
-        $this->uploadSource();
+        $this->uploadSource(makePrimary: true);
         Queue::assertPushed(EnhanceProfilePhoto::class);
+    }
+
+    public function test_only_the_primary_photograph_is_eligible_for_enhancement(): void
+    {
+        $this->enable();
+        Queue::fake();
+
+        $primary = $this->uploadSource();
+        $additional = $this->uploadSource();
+
+        Queue::assertPushed(EnhanceProfilePhoto::class, 1);
+        $service = app(PhotoEnhancementService::class);
+        $this->assertTrue($service->sourceEligible($primary->fresh()));
+        $this->assertFalse($service->sourceEligible($additional->fresh()));
+        $this->assertSame(0, PhotoEnhancementRun::query()->where('source_media_id', $additional->id)->count());
+
+        app(ProfileMediaService::class)->setPrimary($this->profile, $additional, $this->member);
+
+        Queue::assertPushed(EnhanceProfilePhoto::class, 2);
+        $this->assertFalse($service->sourceEligible($primary->fresh()));
+        $this->assertTrue($service->sourceEligible($additional->fresh()));
+    }
+
+    public function test_a_failed_enhancement_preserves_the_primary_photograph_bytes(): void
+    {
+        $this->enable();
+        app()->instance(PhotoEnhancementClient::class, tap(new FakePhotoEnhancementClient, fn ($client) => $client->failNext = true));
+
+        $primary = $this->uploadSource();
+        $stored = Storage::disk('public')->get($primary->storage_path_key);
+
+        $primary->refresh();
+        $run = PhotoEnhancementRun::query()->where('source_media_id', $primary->id)->sole();
+
+        $this->assertSame(PhotoEnhancementRun::STATUS_FAILED, $run->status);
+        $this->assertSame($stored, Storage::disk('public')->get($primary->storage_path_key));
+        $this->assertTrue($primary->is_primary);
+        $this->assertSame(MediaItem::REVIEW_PENDING, $primary->review_status);
+        $this->assertSame(0, MediaItem::query()->where('enhanced_from_media_id', $primary->id)->count());
+    }
+
+    public function test_portrait_and_landscape_photographs_keep_their_proportions(): void
+    {
+        $this->enable();
+        Config::set('jannayaks.media.optimization.max_edge_px', 800);
+
+        $portrait = app(ProfileMediaService::class)->uploadProfilePhoto(
+            $this->profile,
+            UploadedFile::fake()->image('portrait-tall.jpg', 400, 900),
+            $this->member,
+        );
+        $landscape = app(ProfileMediaService::class)->uploadProfilePhoto(
+            $this->profile,
+            UploadedFile::fake()->image('landscape-wide.jpg', 900, 400),
+            $this->member,
+        );
+
+        $this->assertGreaterThan($portrait->width, $portrait->height);
+        $this->assertEqualsWithDelta(400 / 900, $portrait->width / $portrait->height, 0.02);
+        $this->assertLessThanOrEqual(800, max($portrait->width, $portrait->height));
+
+        $this->assertGreaterThan($landscape->height, $landscape->width);
+        $this->assertEqualsWithDelta(900 / 400, $landscape->width / $landscape->height, 0.02);
+        $this->assertLessThanOrEqual(800, max($landscape->width, $landscape->height));
+        $this->assertFalse($landscape->is_primary);
+        $this->assertSame(0, PhotoEnhancementRun::query()->where('source_media_id', $landscape->id)->count());
     }
 
     public function test_job_does_nothing_when_source_deleted(): void
@@ -233,7 +300,7 @@ class PhotoEnhancementTest extends TestCase
 
         // Failed provider leaves source untouched.
         app()->instance(PhotoEnhancementClient::class, tap(new FakePhotoEnhancementClient, fn ($c) => $c->failNext = true));
-        $source2 = $this->uploadSource();
+        $source2 = $this->uploadSource(makePrimary: true);
         $failed = PhotoEnhancementRun::query()->where('source_media_id', $source2->id)->sole();
         $this->assertSame(PhotoEnhancementRun::STATUS_FAILED, $failed->status);
         $this->assertStringContainsString('Simulated', $failed->error_message);

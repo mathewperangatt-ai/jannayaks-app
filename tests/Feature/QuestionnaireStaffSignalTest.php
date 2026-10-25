@@ -41,7 +41,9 @@ class QuestionnaireStaffSignalTest extends TestCase
         ])->assertOk();
 
         $this->actingAs($user)
-            ->postJson(route('online-interview.submit', ['application' => $application->id]))
+            ->postJson(route('online-interview.submit', ['application' => $application->id]), [
+                'questionnaire_confirmed' => '1',
+            ])
             ->assertOk()
             ->assertJson([
                 'ok' => true,

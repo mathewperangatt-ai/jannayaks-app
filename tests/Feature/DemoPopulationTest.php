@@ -367,7 +367,7 @@ class DemoPopulationTest extends TestCase
         $gopal->user->forceFill(['email' => 'gopalakrishnan.member@example.com'])->save();
         $this->get('/t.gopalakrishnan')
             ->assertOk()
-            ->assertSee('<p class="jk-location">Keralam</p>', false)
+            ->assertSee('<span class="jk-location-kicker">Broad location</span> Keralam', false)
             ->assertDontSee('tier-mark tier-mark--distinguished', false)
             ->assertDontSee('Fictional demonstration profile', false)
             ->assertDontSee('jk-portrait jk-portrait--whole', false);

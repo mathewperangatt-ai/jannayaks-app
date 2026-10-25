@@ -11,6 +11,7 @@ use App\Models\User;
 use App\Services\MembershipLifecycleService;
 use App\Services\PostPublicationUpdateService;
 use App\Services\ProfileUrlService;
+use App\Support\CustomerRequestHighlighter;
 use App\Support\EditorialTestBypass;
 use App\Support\PublicationTestBypass;
 use App\Support\TextDiffHighlighter;
@@ -707,7 +708,9 @@ class ApplicationInfolist
                 TextEntry::make('status')->badge(),
                 TextEntry::make('request_text')
                     ->label('Customer requested changes')
-                    ->columnSpanFull(),
+                    ->columnSpanFull()
+                    ->html()
+                    ->formatStateUsing(fn (?string $state): string => CustomerRequestHighlighter::panel($state)),
                 TextEntry::make('preview_english_editorial_content_id')
                     ->label('Applies to EN version')
                     ->formatStateUsing(function ($state): string {
@@ -737,7 +740,8 @@ class ApplicationInfolist
                 TextEntry::make('customer_correction_text')
                     ->label('Customer correction request (minor corrections on the proposed version)')
                     ->columnSpanFull()
-                    ->placeholder('—'),
+                    ->html()
+                    ->formatStateUsing(fn (?string $state): string => CustomerRequestHighlighter::panel($state)),
                 TextEntry::make('resulting_english_editorial_content_id')
                     ->label('Prepared EN version')
                     ->formatStateUsing(fn ($state): string => filled($state) ? 'EN version #'.((int) $state).' — '.self::editorialVersionSummary((int) $state) : 'Not prepared yet')

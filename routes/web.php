@@ -8,17 +8,18 @@ use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\CustomerProfilePreviewController;
 use App\Http\Controllers\DemoProfilesController;
-use App\Http\Controllers\ProfileMaintenanceController;
 use App\Http\Controllers\FaqChargesController;
 use App\Http\Controllers\HomeController;
 use App\Http\Controllers\InMemoriamLandingController;
 use App\Http\Controllers\InvitationRequestController;
+use App\Http\Controllers\MalayalamConsentController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\OnlineInterviewController;
 use App\Http\Controllers\PaymentDocumentController;
 use App\Http\Controllers\ProfileConceptController;
 use App\Http\Controllers\ProfileEngagementController;
 use App\Http\Controllers\ProfileExternalVideoLinkController;
+use App\Http\Controllers\ProfileMaintenanceController;
 use App\Http\Controllers\ProfileMediaController;
 use App\Http\Controllers\ProfileUrlController;
 use App\Http\Controllers\PublicGalleryController;
@@ -155,6 +156,11 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::post('/applications/{application}/preview/approve', [CustomerProfilePreviewController::class, 'approve'])
         ->middleware('throttle:10,1')
         ->name('applications.preview.approve');
+    Route::get('/applications/{application}/malayalam-consent', [MalayalamConsentController::class, 'show'])
+        ->name('applications.malayalam-consent.show');
+    Route::post('/applications/{application}/malayalam-consent', [MalayalamConsentController::class, 'store'])
+        ->middleware('throttle:10,1')
+        ->name('applications.malayalam-consent.store');
 
     // Post-publication profile maintenance (published profiles only).
     Route::get('/applications/{application}/maintenance', [ProfileMaintenanceController::class, 'show'])
@@ -183,6 +189,9 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
 
     Route::get('/applications/{application}/media', [ProfileMediaController::class, 'show'])
         ->name('applications.media');
+    Route::get('/applications/{application}/media/{media}/preview', [ProfileMediaController::class, 'preview'])
+        ->whereNumber('media')
+        ->name('applications.media.preview');
     Route::post('/applications/{application}/media', [ProfileMediaController::class, 'store'])
         ->middleware('throttle:20,1')
         ->name('applications.media.store');

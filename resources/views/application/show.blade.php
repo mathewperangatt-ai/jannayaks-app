@@ -57,7 +57,16 @@
                 @else
                     <span class="dash-pill">Admin test/demo</span>
                 @endif
-                <span class="tag {{ $application->isInterviewSubmitted() || $application->isDirectSubmitted() ? 'ok' : 'warn' }}" style="margin-left:auto">{{ $application->isInterviewSubmitted() || $application->isDirectSubmitted() ? 'SUBMITTED' : 'IN PROGRESS' }}</span>
+                @php
+                    $intakeComplete = $application->source_method === 'online_interview'
+                        ? $application->isInterviewSubmitted()
+                        : ! in_array($application->status, [
+                            \App\Models\Application::STATUS_PAYMENT_PENDING,
+                            \App\Models\Application::STATUS_INTAKE_IN_PROGRESS,
+                            \App\Models\Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW,
+                        ], true);
+                @endphp
+                <span class="tag {{ $intakeComplete ? 'ok' : 'warn' }}" style="margin-left:auto">{{ $intakeComplete ? 'SUBMITTED' : 'IN PROGRESS' }}</span>
             </p>
             <h1 class="dash-name">{{ $application->full_name }}</h1>
             <div class="dash-meta">
@@ -137,8 +146,12 @@
         @if ($application->source_method === 'online_interview')
             @if($application->isInterviewSubmitted())
                 <p class="dash-next">
-                    @if($canPreview)
+                    @if($application->isWorkflowPublished())
+                        Your profile is published.
+                    @elseif($canPreview)
                         Your Online Interview is complete. Review your finished profile when ready, request included revisions if needed, then approve for publication.
+                    @elseif(! $application->isPaymentSettled() && empty($paymentsTestingMode))
+                        Your Online Interview has been submitted. Payment is the next step.
                     @else
                         Your Online Interview has been submitted. The editorial team is preparing your profile. You will review and approve it here before publication.
                     @endif
@@ -149,17 +162,17 @@
                 </p>
             @else
                 <p class="dash-next">
-                    All required questions are complete. Review your answers, then submit for editorial processing.
+                    All required questions are complete. Review your answers, then submit. Payment comes after the questionnaire is submitted.
                 </p>
             @endif
         @else
-            @if($application->isDirectSubmitted())
+            @if($intakeComplete)
                 <p class="dash-next">
-                    Your direct submission is received. The editorial team will prepare your profile for review and approval.
+                    Your source material is with the editorial team. They will prepare your profile for review and approval.
                 </p>
             @else
                 <p class="dash-next">
-                    Upload source material files. You can always add more before submission.
+                    Upload source material. This application stays in progress until that material is with the editorial team.
                 </p>
             @endif
         @endif
@@ -167,37 +180,47 @@
         @php
             $linkedProfile = $application->profile;
             $unlocked = app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application);
+            $interviewOpen = $application->source_method === 'online_interview' && ! $application->isInterviewSubmitted();
+            $paymentIsNext = $application->source_method === 'online_interview'
+                && $application->isInterviewSubmitted()
+                && ! $application->isPaymentSettled()
+                && empty($paymentsTestingMode)
+                && ! $canPreview
+                && ! $application->isWorkflowPublished();
+            $directUploadNext = $application->source_method === 'direct_submission' && ! $intakeComplete;
+            $materialsAvailable = $application->source_method === 'direct_submission'
+                || ($application->source_method === 'online_interview' && ! $application->isInterviewSubmitted())
+                || $unlocked;
+            $malayalamState = app(\App\Services\MalayalamConsentService::class)->customerFacingMalayalamState($application);
         @endphp
 
+        @if($malayalamState)
+            <p class="dash-next">{{ $malayalamState['message'] }}</p>
+        @endif
+
         <div class="dash-actions">
-            <a class="btn primary" href="{{ route('applications.payment', $application) }}">
-                @if ($application->isPaymentSettled())
-                    View payment / receipt
-                @elseif (!empty($paymentsTestingMode))
-                    Payments unavailable (testing)
-                @else
-                    Pay to unlock interview →
-                @endif
-            </a>
-            @if($unlocked && $application->source_method === 'online_interview')
-                <a class="btn" href="{{ route('online-interview.show', $application) }}">{{ $application->isInterviewSubmitted() ? 'View submitted answers' : 'Continue Online Interview →' }}</a>
+            @if($interviewOpen)
+                <a class="btn primary" href="{{ route('online-interview.show', $application) }}">Continue Online Interview →</a>
+            @elseif($application->source_method === 'online_interview' && $application->isInterviewSubmitted())
+                <a class="btn" href="{{ route('online-interview.show', $application) }}">View submitted answers</a>
             @endif
-            @if($unlocked)
-                <a class="btn" href="{{ route('applications.upload.show', $application) }}">{{ $materialsCount > 0 ? 'Upload more material ('.$materialsCount.')' : 'Upload source material →' }}</a>
+            @if($application->isPaymentSettled())
+                <a class="btn {{ $canPreview ? 'primary' : '' }}" href="{{ route('applications.payment', $application) }}">View payment / receipt</a>
+            @elseif(!empty($paymentsTestingMode))
+                <a class="btn" href="{{ route('applications.payment', $application) }}">Payments unavailable (testing)</a>
+            @elseif($paymentIsNext)
+                <a class="btn primary" href="{{ route('applications.payment', $application) }}">Continue to payment →</a>
+            @elseif($application->source_method === 'direct_submission' && $intakeComplete)
+                <a class="btn" href="{{ route('applications.payment', $application) }}">Continue to payment →</a>
             @endif
-            @if($unlocked && $application->source_method === 'online_interview' && !$application->isInterviewSubmitted())
-                <form method="POST" action="{{ route('online-interview.submit', $application) }}" style="margin:0" onsubmit="return confirm('Submit your answers for editorial processing? You cannot edit them after submission.');">
-                    @csrf
-                    <button class="btn" type="submit" {{ !empty($progress['missing_required']) ? 'disabled aria-disabled=true' : '' }}>
-                        Submit for editorial processing
-                    </button>
-                </form>
+            @if($materialsAvailable)
+                <a class="btn {{ $directUploadNext ? 'primary' : '' }}" href="{{ route('applications.upload.show', $application) }}">{{ $materialsCount > 0 ? 'Upload more material ('.$materialsCount.')' : 'Upload source material →' }}</a>
             @endif
         </div>
 
-        @unless($unlocked)
-            <div class="warnbox" role="note" style="margin-bottom:0">Complete payment to unlock the Online Interview and source-material uploads.</div>
-        @endunless
+        @if($paymentIsNext)
+            <div class="warnbox" role="note" style="margin-bottom:0">The Online Interview is submitted. Payment is now the next step. The fee is unchanged.</div>
+        @endif
 
         @if(!empty($progress['missing_required']))
             <div class="missbox" role="note" aria-live="polite" style="margin-bottom:0">
@@ -207,7 +230,7 @@
     </div>
 
     @php
-        $canChoosePersonal = in_array(strtolower((string) $application->package_tier), ['accomplished', 'distinguished'], true);
+        $canChoosePersonal = strtolower((string) $application->package_tier) !== 'in_memoriam';
         $showProfileUrl = $canChoosePersonal
             || ($linkedProfile && filled($linkedProfile->slug))
             || $application->status === \App\Models\Application::STATUS_PUBLISHED;
@@ -228,10 +251,21 @@
                         <span class="dmc-sub">Annual hosting, status and renewal</span>
                     </a>
                 @endif
+                @if(!empty($malayalamState['needs_action']))
+                    <a class="dash-manage-card" href="{{ route('applications.malayalam-consent.show', $application) }}">
+                        <span class="dmc-label">Malayalam text <span class="dmc-arrow">→</span></span>
+                        <span class="dmc-sub">{{ $malayalamState['message'] }}</span>
+                    </a>
+                @elseif(($malayalamState['key'] ?? null) === 'consent_recorded')
+                    <a class="dash-manage-card" href="{{ route('applications.malayalam-consent.show', $application) }}">
+                        <span class="dmc-label">Malayalam text <span class="dmc-arrow">→</span></span>
+                        <span class="dmc-sub">Consent recorded. Awaiting publication.</span>
+                    </a>
+                @endif
                 @if($linkedProfile)
                     <a class="dash-manage-card" href="{{ route('applications.media', $application) }}">
-                        <span class="dmc-label">Photographs &amp; video <span class="dmc-arrow">→</span></span>
-                        <span class="dmc-sub">Portraits and external video links</span>
+                        <span class="dmc-label">Photographs <span class="dmc-arrow">→</span></span>
+                        <span class="dmc-sub">One primary photograph and up to three additional photographs</span>
                     </a>
                 @endif
                 @if($application->status === \App\Models\Application::STATUS_PUBLISHED && $linkedProfile)
