@@ -146,12 +146,24 @@ class FinalFrontendEngagementTest extends TestCase
     {
         Mail::fake();
 
-        $this->get('/recommend')
+        $page = $this->get('/recommend')
             ->assertOk()
             ->assertSee('Recommend Someone You May Know', false)
             ->assertSee('does not guarantee inclusion', false)
-            ->assertSee('You must press Send yourself.', false)
-            ->assertSee('mailto:', false);
+            ->assertSee('You must press Send yourself.', false);
+
+        $html = $page->getContent();
+        $this->assertIsString($html);
+        $handler = "window.location.href = 'mailto:'";
+        $this->assertStringContainsString('id="openEmailDraft"', $html);
+        $this->assertStringContainsString($handler, $html);
+        $this->assertStringContainsString('encodeURIComponent', $html);
+        $this->assertStringContainsString('event.preventDefault()', $html);
+        $this->assertGreaterThan(
+            strpos($html, 'id="openEmailDraft"'),
+            strpos($html, $handler),
+            'The email-draft handler must be rendered in the page, after the button.',
+        );
 
         $this->post('/recommend', [
             'recommender_name' => 'Deepa Menon',
