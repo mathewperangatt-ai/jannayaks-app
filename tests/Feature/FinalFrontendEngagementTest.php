@@ -206,6 +206,7 @@ class FinalFrontendEngagementTest extends TestCase
         $application = Application::factory()->adminTestDemo($staff->id)->for($user)->create([
             'package_tier' => 'distinguished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
 
         $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application));
@@ -214,6 +215,7 @@ class FinalFrontendEngagementTest extends TestCase
         $ordinary = Application::factory()->for(User::factory()->create())->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
         $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($ordinary));
 

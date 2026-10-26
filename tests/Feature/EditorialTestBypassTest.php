@@ -222,6 +222,7 @@ class EditorialTestBypassTest extends TestCase
         $application->forceFill([
             'status' => Application::STATUS_PUBLISHED,
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'payment_status' => Application::PAYMENT_STATUS_PENDING,
             'customer_approved_at' => now()->subDay(),
             'customer_approved_english_editorial_content_id' => $previous->id,
@@ -310,6 +311,7 @@ class EditorialTestBypassTest extends TestCase
         $application->forceFill([
             'status' => Application::STATUS_AWAITING_PUBLICATION,
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'customer_approved_at' => now(),
             'customer_approved_english_editorial_content_id' => $draft->id,
             'preview_english_editorial_content_id' => $draft->id,
@@ -397,6 +399,7 @@ class EditorialTestBypassTest extends TestCase
             'profile_id' => $profile->id,
             'full_name' => 'Synthetic Tester '.$reference,
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_IN_EDITORIAL_REVIEW,
             'payment_status' => Application::PAYMENT_STATUS_PENDING,
             'package_tier' => 'distinguished',

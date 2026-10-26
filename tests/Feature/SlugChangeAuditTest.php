@@ -125,6 +125,7 @@ class SlugChangeAuditTest extends TestCase
             'user_id' => $member->id,
             'package_tier' => 'accomplished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_PUBLICATION,
         ]);
         $profile = Profile::query()->create([

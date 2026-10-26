@@ -101,6 +101,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
             ->postJson(route('applications.store'), [
                 'package_tier' => 'emerging',
                 'source_method' => 'online_interview',
+                'broad_location' => 'Kozhikode',
                 'full_name' => 'Golden Path Leader',
                 'preferred_slug' => 'golden.path.leader',
                 'contact_email' => 'golden.path@example.com',
@@ -113,7 +114,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
         $this->assertSame($customer->id, $application->user_id);
         $this->assertSame('distinguished', $application->package_tier);
         $this->assertSame(Application::PAYMENT_STATUS_PENDING, $application->payment_status);
-        $this->assertSame(Application::STATUS_PAYMENT_PENDING, $application->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, $application->status);
         $this->assertNull($application->profile_id, 'no profile exists before the editorial pipeline creates one');
         $this->doesntHavePublishedProfile();
 
@@ -177,7 +178,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
             ->assertOk();
 
         $this->actingAs($customer)
-            ->postJson(route('online-interview.submit', ['application' => $application->id]))
+            ->postJson(route('online-interview.submit', ['application' => $application->id]), ['questionnaire_confirmed' => true])
             ->assertOk()
             ->assertJson(['ok' => true, 'next_step' => 'editorial_processing']);
 

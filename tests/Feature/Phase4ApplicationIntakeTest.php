@@ -26,18 +26,20 @@ class Phase4ApplicationIntakeTest extends TestCase
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
             'package_tier'   => 'accomplished',
             'source_method'  => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'      => 'Alice Example',
             'preferred_slug' => 'alice-example',
             'contact_email'  => 'alice@example.com',
         ]);
 
         $res->assertCreated()->assertJson(['ok' => true, 'package_tier' => 'distinguished']);
-        $this->assertStringContainsString('/payment', (string) $res->json('redirect_to'));
+        $this->assertStringContainsString('/interview', (string) $res->json('redirect_to'));
         $this->assertDatabaseHas('applications', [
             'user_id'        => $user->id,
             'package_tier'   => 'distinguished',
             'pricing_generation' => 'standard_profile',
             'source_method'  => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'      => 'Alice Example',
         ]);
         $app = Application::query()->latest('id')->first();
@@ -53,6 +55,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             $this->actingAs($user)->postJson(route('applications.store'), [
                 'package_tier'   => $tier,
                 'source_method'  => 'online_interview',
+                'broad_location' => 'Kozhikode',
                 'full_name'      => $tier.' Person',
                 'contact_email'  => $tier.'@example.com',
             ])->assertCreated();
@@ -68,6 +71,7 @@ class Phase4ApplicationIntakeTest extends TestCase
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
             'package_tier'  => 'distinguished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'No Achievements Provided',
             'contact_email' => 'no.achievements@example.com',
         ]);
@@ -84,6 +88,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $user->id,
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Bob Original',
         ])->paid()->create();
 
@@ -160,6 +165,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $user->id,
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Incomplete Saver',
         ])->paid()->create();
 
@@ -186,6 +192,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $user->id,
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Completed Submission',
         ])->paid()->create();
 
@@ -200,7 +207,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'answers' => $answers,
         ])->assertOk();
 
-        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]));
+        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true]);
         $res->assertOk()->assertJson(['ok' => true, 'next_step' => 'editorial_processing']);
 
         $app->refresh();
@@ -215,10 +222,11 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $user->id,
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Incomplete',
         ])->paid()->create();
 
-        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]));
+        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true]);
         $res->assertStatus(422)->assertJson(['ok' => false, 'error' => 'Please complete all required questions before submitting.']);
         $this->assertArrayHasKey('missing_required', $res->json());
         $app->refresh();
@@ -234,6 +242,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $alice->id,
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Only Alice',
         ])->paid()->create();
 
@@ -250,6 +259,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $alice->id,
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Alice App',
         ])->paid()->create();
 
@@ -272,6 +282,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $user->id,
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Dup Submit',
         ])->paid()->create();
         $ids = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
@@ -279,11 +290,11 @@ class Phase4ApplicationIntakeTest extends TestCase
         foreach ($ids as $id) { $answers[$id] = 'a'; }
         $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), ['answers' => $answers]);
 
-        $first = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]));
+        $first = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true]);
         $first->assertOk();
         $t1 = (string) $first->json('submitted_at');
 
-        $second = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]));
+        $second = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true]);
         $second->assertOk()->assertJson(['ok' => true, 'already_submitted' => true]);
         $this->assertSame($t1, (string) $second->json('submitted_at'));
     }
@@ -297,6 +308,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $user->id,
             'package_tier'  => 'accomplished',
             'source_method' => 'direct_submission',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Direct Uploader',
         ])->paid()->create();
 
@@ -328,6 +340,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $user->id,
             'package_tier'  => 'accomplished',
             'source_method' => 'direct_submission',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Alternate Disk Uploader',
         ])->paid()->create();
 
@@ -355,6 +368,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $user->id,
             'package_tier'  => 'emerging',
             'source_method' => 'direct_submission',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'Default Disk Uploader',
         ])->paid()->create();
 
@@ -379,12 +393,13 @@ class Phase4ApplicationIntakeTest extends TestCase
             'user_id'       => $user->id,
             'package_tier'  => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'     => 'No Profile Yet',
         ])->paid()->create();
         $ids = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
         $answers = []; foreach ($ids as $id) { $answers[$id] = 'answer'; }
         $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), ['answers' => $answers]);
-        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]))->assertOk();
+        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true])->assertOk();
         $app->refresh();
         $this->assertNull($app->profile_id);
         $this->assertSame(0, \App\Models\Profile::query()->count());

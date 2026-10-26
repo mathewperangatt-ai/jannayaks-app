@@ -291,6 +291,7 @@ class PostPublicationUpdateTest extends TestCase
             'full_name' => $profile->full_name,
             'package_tier' => 'distinguished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
         ]);
         // paid() is an afterCreating hook that resets status — reapply the
         // published state afterwards.
@@ -331,6 +332,7 @@ class PostPublicationUpdateTest extends TestCase
             'full_name' => $profile->full_name,
             'package_tier' => 'distinguished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
         ]);
         $application->forceFill([
             'status' => Application::STATUS_EDITORIAL_APPROVED,

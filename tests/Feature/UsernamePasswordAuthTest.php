@@ -32,6 +32,7 @@ class UsernamePasswordAuthTest extends TestCase
             'full_name' => $user->name,
             'package_tier' => 'distinguished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
         ]);
 
         return [$user, $application];
@@ -141,7 +142,9 @@ class UsernamePasswordAuthTest extends TestCase
             ->postJson(route('applications.store'), [
                 'package_tier' => 'emerging',
                 'source_method' => 'online_interview',
+                'broad_location' => 'Kozhikode',
                 'full_name' => 'Second Application Attempt',
+                'contact_email' => 'second.attempt@example.com',
             ])
             ->assertStatus(409)
             ->assertJson(['application_id' => $application->id]);

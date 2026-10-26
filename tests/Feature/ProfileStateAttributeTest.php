@@ -134,6 +134,7 @@ class ProfileStateAttributeTest extends TestCase
             'preferred_display_name' => $fullName,
             'package_tier' => $tier,
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
 

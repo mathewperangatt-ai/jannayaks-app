@@ -357,6 +357,7 @@ class Phase11CustomerEditorialWorkflowTest extends TestCase
             'preferred_display_name' => 'Preview Leader',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
         InterviewAnswer::query()->create([

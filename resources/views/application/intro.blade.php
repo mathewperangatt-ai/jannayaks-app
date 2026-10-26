@@ -19,8 +19,8 @@
     <ol class="sub" style="list-style:decimal;margin:0;padding-left:22px;color:var(--ink-soft)">
         <li style="padding:2px 0"><b>Begin your profile application</b> — one Standard Profile.</li>
         <li style="padding:2px 0"><b>Sign in</b> with your Jannayaks username, Google, or create an account.</li>
-        <li style="padding:2px 0"><b>Pay</b> for the Standard Profile.</li>
         <li style="padding:2px 0"><b>Complete the Online Interview</b> (or direct submission) and upload source material.</li>
+        <li style="padding:2px 0"><b>Pay</b> for the Standard Profile.</li>
         <li style="padding:2px 0">Editorial preparation, human review, your preview and approval precede publication.</li>
     </ol>
 

@@ -871,6 +871,7 @@ class PricingBranchCorrectionsTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
         $this->actingAs($user)->postJson(route('applications.store'), [
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'New Standard',
             'contact_email' => 'new-standard@example.com',
         ])->assertCreated();
@@ -900,6 +901,7 @@ class PricingBranchCorrectionsTest extends TestCase
             'package_tier' => 'distinguished',
             'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Standard Interviewer',
         ]);
 
@@ -938,6 +940,7 @@ class PricingBranchCorrectionsTest extends TestCase
             'package_tier' => 'distinguished',
             'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Standard Flow',
             'status' => Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW,
         ]);
@@ -961,7 +964,7 @@ class PricingBranchCorrectionsTest extends TestCase
             ->assertJsonPath('progress.answered', 2)
             ->assertJsonPath('progress.missing_required', []);
 
-        $this->actingAs($user)->postJson(route('online-interview.submit', $app))
+        $this->actingAs($user)->postJson(route('online-interview.submit', $app), ['questionnaire_confirmed' => true])
             ->assertOk()
             ->assertJsonPath('ok', true)
             ->assertJsonPath('next_step', 'editorial_processing');
@@ -978,6 +981,7 @@ class PricingBranchCorrectionsTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->historical('emerging')->paid()->create([
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Historical Recognised',
         ]);
 
@@ -1023,6 +1027,7 @@ class PricingBranchCorrectionsTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
         $this->actingAs($user)->postJson(route('applications.store'), [
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Arun Kumar',
             'preferred_slug' => 'arun_kumar',
             'contact_email' => 'arun@example.com',
@@ -1084,6 +1089,7 @@ class PricingBranchCorrectionsTest extends TestCase
         return Application::factory()->create([
             'package_tier' => 'distinguished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Correction Member',
         ]);
     }

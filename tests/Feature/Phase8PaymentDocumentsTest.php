@@ -247,13 +247,14 @@ class Phase8PaymentDocumentsTest extends TestCase
         $app = Application::factory()->for($user)->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
         DB::table('applications')->where('id', $app->id)->update([
             'payment_status' => 'paid',
             'payment_settled_at' => now(),
         ]);
 
-        $this->actingAs($user)->get(route('online-interview.show', $app))->assertRedirect();
+        $this->actingAs($user)->get(route('online-interview.show', $app))->assertOk();
         $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
     }
 
@@ -284,6 +285,7 @@ class Phase8PaymentDocumentsTest extends TestCase
             'package_tier' => 'distinguished',
             'distinguished_interview_addon' => false,
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
 
         $old = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
@@ -376,6 +378,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Addon Abuse',
             'contact_email' => 'addon-abuse@example.com',
             'distinguished_interview_addon' => true,
@@ -383,6 +386,10 @@ class Phase8PaymentDocumentsTest extends TestCase
         $res->assertCreated();
         $app = Application::query()->findOrFail($res->json('application_id'));
         $this->assertFalse((bool) $app->distinguished_interview_addon);
+        $app->forceFill([
+            'status' => Application::STATUS_INTERVIEW_SUBMITTED,
+            'online_interview_completed_at' => now(),
+        ])->save();
 
         $this->actingAs($user)->postJson(route('applications.payment.initiate', $app), [
             'distinguished_interview_addon' => true,
@@ -400,6 +407,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         $app = Application::factory()->for($user)->paid()->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
         $payment = Payment::query()->where('application_id', $app->id)->firstOrFail();
         $this->assertTrue(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app));

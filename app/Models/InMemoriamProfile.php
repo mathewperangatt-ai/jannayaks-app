@@ -41,6 +41,7 @@ class InMemoriamProfile extends Model
 
     protected $fillable = [
         'commissioner_user_id',
+        'living_profile_id',
         'status',
         'commissioner_contact_name',
         'commissioner_contact_mobile',

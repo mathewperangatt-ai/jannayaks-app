@@ -26,8 +26,8 @@ class InMemoriamUrlService
             return ['ok' => false, 'error' => 'A valid memorial URL is required (no spaces).'];
         }
 
-        if (preg_match('/^[a-z0-9]+(?:-[a-z0-9]+)*$/', $slug) !== 1) {
-            return ['ok' => false, 'error' => 'Use lowercase letters, numbers, and single hyphens only.'];
+        if (preg_match('/^[a-z0-9]+(?:[.\-][a-z0-9]+)*$/', $slug) !== 1) {
+            return ['ok' => false, 'error' => 'Use lowercase letters, numbers, dots, and single hyphens only.'];
         }
 
         if (strlen($slug) < 3 || strlen($slug) > 64) {
@@ -80,8 +80,47 @@ class InMemoriamUrlService
     }
 
     /**
+     * Name-derived memorial URL with exactly one late. prefix.
+     * A slug that is already stored is left unchanged.
+     *
      * @throws ValidationException
      */
+    public function generateCanonicalSlug(InMemoriamProfile $profile): string
+    {
+        if (filled($profile->slug)) {
+            return (string) $profile->slug;
+        }
+
+        $generator = app(PersonalSlugGenerator::class);
+        $bases = $generator->generateCombinations((string) $profile->deceased_full_name);
+        if ($bases === []) {
+            throw ValidationException::withMessages([
+                'slug' => 'A name is required before a memorial URL can be assigned.',
+            ]);
+        }
+
+        $candidates = [];
+        foreach ($bases as $base) {
+            $candidates[] = $this->withLatePrefix($base);
+        }
+        foreach ($bases as $base) {
+            foreach ($generator->collisionSuffixes((int) $profile->id) as $number) {
+                $candidates[] = $this->withLatePrefix($generator->collisionCandidate($base, $number));
+            }
+        }
+
+        foreach ($candidates as $candidate) {
+            $check = $this->validateSlugCandidate($candidate, (int) $profile->id);
+            if ($check['ok'] === true) {
+                return (string) $check['slug'];
+            }
+        }
+
+        throw ValidationException::withMessages([
+            'slug' => 'No available memorial URL could be assigned.',
+        ]);
+    }
+
     public function assignSlug(InMemoriamProfile $profile, string $rawSlug, User $actor): InMemoriamProfile
     {
         if (! $actor->canManageEditorial()) {
@@ -197,6 +236,16 @@ class InMemoriamUrlService
         $target = $redirect?->redirectable;
 
         return $target instanceof InMemoriamProfile ? $target : null;
+    }
+
+    private function withLatePrefix(string $slug): string
+    {
+        $slug = strtolower(trim($slug));
+        $slug = preg_replace('/^(?:late\.)+/', '', $slug) ?? $slug;
+        $slug = preg_replace('/\.late$/', '', $slug) ?? $slug;
+        $slug = trim($slug, '.');
+
+        return $slug === '' ? '' : 'late.'.$slug;
     }
 
     private function isUniqueViolation(QueryException $e): bool

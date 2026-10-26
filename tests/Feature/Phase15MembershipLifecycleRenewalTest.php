@@ -540,6 +540,7 @@ class Phase15MembershipLifecycleRenewalTest extends TestCase
             'preferred_display_name' => $profile->display_name,
             'package_tier' => $opts['tier'] ?? 'accomplished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_PUBLICATION,
         ]);
 

@@ -22,7 +22,7 @@ class ConsentRecordingTest extends TestCase
         [$user, $application] = $this->seedPaidApplicationWithRequiredAnswers();
         config(['online_interview.submission.prevent_duplicate_within_seconds' => 0]);
 
-        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $application->id]))
+        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $application->id]), ['questionnaire_confirmed' => true])
             ->assertOk();
 
         $this->assertSame(1, ConsentRecord::query()->count());
@@ -179,6 +179,7 @@ class ConsentRecordingTest extends TestCase
             'user_id' => $user->id,
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Consent Leader',
         ]);
 
@@ -208,6 +209,7 @@ class ConsentRecordingTest extends TestCase
             'full_name' => 'Approval Consent Leader',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
         \App\Models\InterviewAnswer::query()->create([

@@ -119,6 +119,11 @@
 <section class="card" style="padding:14px 16px 18px">
     <form method="POST" action="{{ route('online-interview.submit', $application) }}" id="submit-form" onsubmit="return confirm('Submit this Online Interview for editorial processing? Once submitted, answers become read-only and ordinary editing is locked.');">
         @csrf
+        <label class="hint" style="display:flex;gap:8px;align-items:flex-start;margin:0 0 12px">
+            <input type="checkbox" name="questionnaire_confirmed" value="1" @checked(old('questionnaire_confirmed')) @if($isSubmitted) disabled @endif>
+            <span>I confirm that these answers are the questionnaire I am submitting.</span>
+        </label>
+        @error('questionnaire_confirmed')<p class="hint" style="color:#7a1414">{{ $message }}</p>@enderror
         <div class="actions">
             <button class="btn ghost" type="submit" form="interview-form" formaction="{{ route('online-interview.save', $application) }}" formmethod="POST" @if($isSubmitted) disabled @endif>
                 💾 Save and continue (partial)

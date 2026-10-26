@@ -25,13 +25,14 @@ class TestPaymentSimulationTest extends TestCase
         $this->actingAs($user)->post(route('applications.store'), [
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Pre-Launch Workflow Test',
             'contact_email' => 'prelaunch.test@example.com',
         ])->assertRedirect();
 
         /** @var Application $app */
         $app = Application::query()->latest('id')->first();
-        $this->assertSame('payment_pending', (string) $app->status);
+        $this->assertSame('interview_in_progress', (string) $app->status);
 
         return $app;
     }
@@ -121,7 +122,7 @@ class TestPaymentSimulationTest extends TestCase
             ->assertExitCode(1);
 
         $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
-        $this->assertSame('payment_pending', (string) $app->fresh()->status);
+        $this->assertSame('interview_in_progress', (string) $app->fresh()->status);
     }
 
     /* 5. Self-disabling: refuses once Razorpay is enabled (launch safety). */

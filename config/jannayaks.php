@@ -79,32 +79,32 @@ return [
             'label' => 'Standard Profile',
             'base_amount' => 4000,
             'description' => 'Standard Profile fee, exclusive of GST.',
-            'photo_slots' => 3,
+            'photo_slots' => 4,
             'includes_video_link' => false,
         ],
         'packages' => [
             'emerging' => [
                 'label' => 'Recognised',
                 'base_amount' => 3000,
-                'description' => 'Historical Recognised package (pre-Standard Profile).',
-                'photo_slots' => 1,
+                'description' => 'Historical Recognised package (pre-Standard Profile). Prices are unchanged. Customer-visible photos are capped at four and video links are not accepted.',
+                'photo_slots' => 4,
                 'includes_video_link' => false,
             ],
             'accomplished' => [
                 'label' => 'Acclaimed',
                 // Historical amount from PR base f8eef32 (pre-Standard Profile).
                 'base_amount' => 6000,
-                'description' => 'Historical Acclaimed package (pre-Standard Profile).',
-                'photo_slots' => 3,
-                'includes_video_link' => true,
+                'description' => 'Historical Acclaimed package (pre-Standard Profile). Prices are unchanged. Customer-visible photos are capped at four and video links are not accepted.',
+                'photo_slots' => 4,
+                'includes_video_link' => false,
             ],
             'distinguished' => [
                 'label' => 'Distinguished',
                 // Historical amount from PR base f8eef32 (pre-Standard Profile).
                 'base_amount' => 9000,
-                'description' => 'Historical Distinguished package (pre-Standard Profile). New Standard Profile apps use standard_profile pricing via pricing_generation.',
-                'includes_video_link' => true,
-                'photo_slots' => 5,
+                'description' => 'Historical Distinguished package (pre-Standard Profile). New Standard Profile apps use standard_profile pricing via pricing_generation. Prices are unchanged. Customer-visible photos are capped at four and video links are not accepted.',
+                'includes_video_link' => false,
+                'photo_slots' => 4,
             ],
         ],
         // Seller/legal fields for GST tax invoices. Leave blank until registration is confirmed.

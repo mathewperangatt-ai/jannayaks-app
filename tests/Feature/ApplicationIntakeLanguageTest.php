@@ -26,6 +26,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
             'full_name' => 'Arun Kumar',
+            'broad_location' => 'Kozhikode',
             'contact_email' => 'arun.kumar@example.test',
             'contact_mobile' => '9876543210',
         ], $overrides);
@@ -42,11 +43,11 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertSee('ബന്ധപ്പെടാനുള്ള ഇമെയിൽ')
             ->assertSee('ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ (ഓപ്ഷണൽ)')
             ->assertSee('പിന്നോട്ട്')
-            ->assertSee('പണമടയ്ക്കുന്നതിലേക്ക് തുടരുക →')
+            ->assertSee('തുടരുക →')
             ->assertSee(json_encode('ബന്ധപ്പെടാനുള്ള വിവരങ്ങൾ രേഖപ്പെടുത്തി. എഡിറ്റോറിയൽ പരിശോധനയ്ക്കും തയ്യാറാക്കിയ പ്രൊഫൈൽ സ്ഥിരീകരിക്കുന്നതിനുമായി Jannayaks നിങ്ങളുമായി ബന്ധപ്പെടും.', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT), false)
             ->assertSee(route('apply', ['lang' => 'en']), false)
             ->assertDontSee('Intake source')
-            ->assertDontSee('Continue to payment →');
+            ->assertDontSee('Continue →');
     }
 
     public function test_intake_form_renders_in_english_when_selected(): void
@@ -56,7 +57,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertSee('Intake source')
             ->assertSee('Online Interview (recommended)')
             ->assertSee('Direct submission')
-            ->assertSee('Continue to payment →')
+            ->assertSee('Continue →')
             ->assertSee(json_encode('Contact information captured. You can add more or update them later in the application dashboard.', JSON_HEX_TAG | JSON_HEX_APOS | JSON_HEX_AMP | JSON_HEX_QUOT), false)
             ->assertDontSee('ഉള്ളടക്കം സമർപ്പിക്കുന്ന രീതി')
             ->assertSee(route('apply', ['lang' => 'ml']), false);
@@ -92,8 +93,9 @@ class ApplicationIntakeLanguageTest extends TestCase
         $response = $this->actingAs($user)->post(route('apply.intent'), $this->intake());
 
         $application = Application::query()->where('user_id', $user->id)->sole();
-        $response->assertRedirect(route('applications.payment', $application));
+        $response->assertRedirect(route('online-interview.show', $application));
         $this->assertSame('online_interview', $application->source_method);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, $application->status);
     }
 
     public function test_direct_submission_intake_creates_one_application_and_continues_to_payment(): void
@@ -102,6 +104,7 @@ class ApplicationIntakeLanguageTest extends TestCase
 
         $response = $this->actingAs($user)->post(route('apply.intent'), $this->intake([
             'source_method' => 'direct_submission',
+            'broad_location' => 'Kozhikode',
         ]));
 
         $application = Application::query()->where('user_id', $user->id)->sole();
@@ -117,6 +120,7 @@ class ApplicationIntakeLanguageTest extends TestCase
         $this->actingAs($user)->post(route('apply.intent'), $this->intake([
             'package_tier' => 'accomplished',
             'source_method' => 'direct_submission',
+            'broad_location' => 'Kozhikode',
         ]));
 
         $application = Application::query()->where('user_id', $user->id)->sole();
@@ -141,6 +145,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->post(route('apply.intent'), $this->intake([
                 'package_tier' => '',
                 'source_method' => 'direct_submission',
+                'broad_location' => 'Kozhikode',
             ]))
             ->assertOk()
             ->assertDontSee('ദയവായി ഒരു അംഗത്വ ശ്രേണി തിരഞ്ഞെടുക്കുക.')
@@ -161,6 +166,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->post(route('apply.intent'), $this->intake([
                 'package_tier' => '',
                 'source_method' => '',
+                'broad_location' => 'Kozhikode',
                 'full_name' => '',
                 'contact_email' => '',
                 'contact_mobile' => '',
@@ -183,6 +189,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->post(route('apply.intent'), $this->intake([
                 'package_tier' => '',
                 'source_method' => '',
+                'broad_location' => 'Kozhikode',
             ]))
             ->assertSessionHasErrors([
                 'source_method' => 'Please select how you would like to submit your content.',
@@ -202,7 +209,7 @@ class ApplicationIntakeLanguageTest extends TestCase
         $this->assertSame(Application::PAYMENT_STATUS_PENDING, $application->payment_status);
 
         $this->actingAs($user)->get(route('online-interview.show', $application))
-            ->assertRedirect(route('applications.payment', $application));
+            ->assertOk();
     }
 
     public function test_online_interview_catalogue_still_has_the_approved_22_questions(): void
@@ -220,6 +227,7 @@ class ApplicationIntakeLanguageTest extends TestCase
         $application = Application::factory()->for($user)->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
 
         $this->actingAs($user)->get(route('applications.payment', $application))

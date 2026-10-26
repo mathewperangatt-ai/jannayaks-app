@@ -50,19 +50,18 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         [$member, $application, $profile] = $this->makeReadyApplication('emerging');
         $service = app(ProfileMediaService::class);
 
-        $first = $service->uploadProfilePhoto($profile, $this->jpegUpload('a.jpg'), $member);
-        $this->assertTrue($first->is_primary);
-        $this->assertSame(MediaItem::REVIEW_PENDING, $first->review_status);
-        $this->assertSame(MediaItem::PRIVACY_PRIVATE, $first->privacy);
+        for ($i = 0; $i < 4; $i++) {
+            $service->uploadProfilePhoto($profile, $this->jpegUpload("a{$i}.jpg"), $member);
+        }
 
         try {
             $service->uploadProfilePhoto($profile, $this->jpegUpload('b.jpg'), $member);
-            $this->fail('Second Emerging photo should be rejected.');
+            $this->fail('A fifth photograph should be rejected.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('photo', $e->errors());
         }
 
-        $this->assertSame(1, $service->profilePhotoCount($profile));
+        $this->assertSame(4, $service->profilePhotoCount($profile));
     }
 
     public function test_accomplished_and_distinguished_photo_limits(): void
@@ -71,29 +70,29 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
 
         [, , $accomplished] = $this->makeReadyApplication('accomplished');
         $ownerA = User::query()->findOrFail($accomplished->user_id);
-        for ($i = 0; $i < 3; $i++) {
+        for ($i = 0; $i < 4; $i++) {
             $service->uploadProfilePhoto($accomplished, $this->jpegUpload("a{$i}.jpg"), $ownerA);
         }
         try {
-            $service->uploadProfilePhoto($accomplished, $this->jpegUpload('a3.jpg'), $ownerA);
-            $this->fail('Fourth Accomplished photo should be rejected.');
+            $service->uploadProfilePhoto($accomplished, $this->jpegUpload('a4.jpg'), $ownerA);
+            $this->fail('A fifth photograph should be rejected.');
         } catch (ValidationException) {
             $this->assertTrue(true);
         }
-        $this->assertSame(3, $service->profilePhotoCount($accomplished));
+        $this->assertSame(4, $service->profilePhotoCount($accomplished));
 
         [, , $distinguished] = $this->makeReadyApplication('distinguished');
         $ownerD = User::query()->findOrFail($distinguished->user_id);
-        for ($i = 0; $i < 5; $i++) {
+        for ($i = 0; $i < 4; $i++) {
             $service->uploadProfilePhoto($distinguished, $this->jpegUpload("d{$i}.jpg"), $ownerD);
         }
         try {
-            $service->uploadProfilePhoto($distinguished, $this->jpegUpload('d5.jpg'), $ownerD);
-            $this->fail('Sixth Distinguished photo should be rejected.');
+            $service->uploadProfilePhoto($distinguished, $this->jpegUpload('d4.jpg'), $ownerD);
+            $this->fail('A fifth photograph should be rejected.');
         } catch (ValidationException) {
             $this->assertTrue(true);
         }
-        $this->assertSame(5, $service->profilePhotoCount($distinguished));
+        $this->assertSame(4, $service->profilePhotoCount($distinguished));
     }
 
     public function test_member_cannot_manage_another_members_media(): void
@@ -332,65 +331,30 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
 
     public function test_post_publication_video_change_requires_approval(): void
     {
-        [$member, $application, $profile] = $this->makeReadyApplication('accomplished');
-        $videos = app(ExternalVideoLinkService::class);
-        $editor = User::factory()->editor()->create();
+        [$member, , $profile] = $this->makeReadyApplication('accomplished');
 
-        $pending = $videos->submit($profile, $member, 'https://www.youtube.com/watch?v=original1', 'Original');
-        $this->assertFalse($pending->is_publicly_active);
-        $active = $videos->approve($pending, $editor);
-        $this->assertTrue($active->is_publicly_active);
-
-        $admin = User::factory()->admin()->create();
-        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false);
-        $profile = $profile->fresh();
-
-        $change = $videos->submit($profile, $member, 'https://www.youtube.com/watch?v=changed2', 'Changed');
-        $this->assertSame(ProfileExternalLink::STATUS_PENDING_REVIEW, $change->status);
-        $this->assertFalse($change->is_publicly_active);
-        $this->assertSame($active->id, $change->replaces_link_id);
-        $this->assertTrue($active->fresh()->is_publicly_active);
-
-        $this->get(route('profiles.public', $profile->slug))
-            ->assertOk()
-            ->assertSee('https://www.youtube.com/watch?v=original1', false)
-            ->assertDontSee('https://www.youtube.com/watch?v=changed2', false);
-
-        $rejected = $videos->reject($change, $editor, 'Not suitable');
-        $this->assertSame(ProfileExternalLink::STATUS_REJECTED, $rejected->status);
-        $this->assertTrue($active->fresh()->is_publicly_active);
-
-        $change2 = $videos->submit($profile, $member, 'https://vimeo.com/123456789', 'Approved change');
-        $approved = $videos->approve($change2, $editor);
-        $this->assertTrue($approved->is_publicly_active);
-        $this->assertFalse($active->fresh()->is_publicly_active);
-        $this->assertSame(ProfileExternalLink::STATUS_REPLACED, $active->fresh()->status);
-
-        $this->get(route('profiles.public', $profile->slug))
-            ->assertOk()
-            ->assertSee('https://vimeo.com/123456789', false)
-            ->assertDontSee('https://www.youtube.com/watch?v=original1', false);
-
-        $this->assertTrue(StaffActionLog::query()->where('action', 'media.external_video_change_requested')->exists());
-        $this->assertTrue(StaffActionLog::query()->where('action', 'media.external_video_approved')->exists());
-        $this->assertTrue(StaffActionLog::query()->where('action', 'media.external_video_rejected')->exists());
+        try {
+            app(ExternalVideoLinkService::class)->submit($profile, $member, 'https://www.youtube.com/watch?v=original1', 'Original');
+            $this->fail('Living profiles must not accept a video link.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('url', $e->errors());
+        }
+        $this->assertSame(0, ProfileExternalLink::query()->count());
     }
 
     public function test_support_cannot_approve_video_links(): void
     {
         [$member, , $profile] = $this->makeReadyApplication('accomplished');
-        $pending = app(ExternalVideoLinkService::class)->submit(
-            $profile,
-            $member,
-            'https://www.youtube.com/watch?v=supportblock',
-        );
-        $support = User::factory()->support()->create();
 
         try {
-            app(ExternalVideoLinkService::class)->approve($pending, $support);
-            $this->fail('Support must not approve video links.');
-        } catch (ValidationException) {
-            $this->assertTrue(true);
+            app(ExternalVideoLinkService::class)->submit(
+                $profile,
+                $member,
+                'https://www.youtube.com/watch?v=supportblock',
+            );
+            $this->fail('Living profiles must not accept a video link.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('url', $e->errors());
         }
     }
 
@@ -454,6 +418,7 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
             'package_tier' => $tier,
             'pricing_generation' => null,
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
 

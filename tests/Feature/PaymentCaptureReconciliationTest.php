@@ -516,6 +516,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $application ??= Application::factory()->create([
             'package_tier' => 'distinguished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'status' => 'intake_in_progress',
         ]);
         $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($application);

@@ -48,6 +48,7 @@ class Phase5BrowserWorkflowTest extends TestCase
             $res = $this->actingAs($user)->postJson(route('applications.store'), [
                 'package_tier'   => $tier,
                 'source_method'  => 'online_interview',
+                'broad_location' => 'Kozhikode',
                 'full_name'      => 'T-'.$tier.' User',
                 'contact_email'  => $tier.'@example.test',
             ]);
@@ -68,6 +69,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
             'package_tier'   => 'distinguished',
             'source_method'  => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name'      => 'No Gate Test',
             'contact_email'  => 'nogate@example.test',
         ]);
@@ -226,7 +228,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory()->for($user)->paid()->create(['package_tier' => 'emerging', 'source_method' => 'online_interview']);
-        $res = $this->actingAs($user)->postJson(route('online-interview.submit', $app));
+        $res = $this->actingAs($user)->postJson(route('online-interview.submit', $app), ['questionnaire_confirmed' => true]);
         $res->assertStatus(422);
         $app->refresh();
         $this->assertNull($app->online_interview_completed_at);
@@ -244,7 +246,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         }
         $this->actingAs($user)->patchJson(route('online-interview.save', $app), $payload)->assertOk();
 
-        $submit = $this->actingAs($user)->postJson(route('online-interview.submit', $app));
+        $submit = $this->actingAs($user)->postJson(route('online-interview.submit', $app), ['questionnaire_confirmed' => true]);
         $submit->assertOk();
         $app->refresh();
         $this->assertNotNull($app->online_interview_completed_at);
@@ -258,7 +260,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         foreach (OnlineInterviewCatalog::idsForTier('emerging') as $qid) {
             $this->actingAs($user)->patchJson(route('online-interview.save', $app), ['answers' => [$qid => 'R']])->assertOk();
         }
-        $this->actingAs($user)->postJson(route('online-interview.submit', $app))->assertOk();
+        $this->actingAs($user)->postJson(route('online-interview.submit', $app), ['questionnaire_confirmed' => true])->assertOk();
 
         $view = $this->actingAs($user)->get(route('online-interview.show', $app));
         $view->assertOk();
@@ -356,7 +358,7 @@ class Phase5BrowserWorkflowTest extends TestCase
 
         $this->assertSame(18, (int) config('jannayaks.tier_pricing.gst_percent'));
         $this->assertSame(4000, (int) config('jannayaks.tier_pricing.standard_profile.base_amount'));
-        $this->assertSame(3, (int) config('jannayaks.tier_pricing.standard_profile.photo_slots'));
+        $this->assertSame(4, (int) config('jannayaks.tier_pricing.standard_profile.photo_slots'));
         $this->assertFalse((bool) config('jannayaks.tier_pricing.standard_profile.includes_video_link'));
         $this->assertSame(3000, (int) config('jannayaks.tier_pricing.packages.emerging.base_amount'));
         $this->assertSame(6000, (int) config('jannayaks.tier_pricing.packages.accomplished.base_amount'));

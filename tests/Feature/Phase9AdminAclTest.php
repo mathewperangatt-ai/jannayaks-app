@@ -229,6 +229,7 @@ class Phase9AdminAclTest extends TestCase
             'user_id' => $user->id,
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Ready For Editorial',
         ])->paid()->create();
 
@@ -243,7 +244,7 @@ class Phase9AdminAclTest extends TestCase
         ])->assertOk();
 
         $this->actingAs($user)
-            ->postJson(route('online-interview.submit', ['application' => $app->id]))
+            ->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true])
             ->assertOk()
             ->assertJson([
                 'ok' => true,
@@ -335,6 +336,7 @@ class Phase9AdminAclTest extends TestCase
         $application = Application::factory()->paid()->create([
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
             'source_method' => 'direct_submission',
+            'broad_location' => 'Kozhikode',
         ]);
         $application->forceFill(['status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW])->save();
 

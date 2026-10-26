@@ -7,6 +7,12 @@ use Illuminate\Support\Collection;
 class OnlineInterviewCatalog
 {
     /**
+     * Version recorded with a questionnaire submission. Change it only when
+     * the approved question set itself changes.
+     */
+    public const VERSION = 'online-interview-22-v1';
+
+    /**
      * Living Standard Profile applications and historical living tiers share
      * the same 22-question pool (Master Editorial Specification §17).
      * package_tier / pricing_generation control editorial depth only — never

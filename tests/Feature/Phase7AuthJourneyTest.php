@@ -158,6 +158,7 @@ class Phase7AuthJourneyTest extends TestCase
         $res = $this->post(route('apply.intent'), [
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Guest Tier User',
             'contact_email' => 'guest.tier@example.com',
         ]);
@@ -174,6 +175,7 @@ class Phase7AuthJourneyTest extends TestCase
         $this->actingAs($user)->post(route('apply.intent'), [
             'package_tier' => 'accomplished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Paid Path User',
             'contact_email' => 'paid.path@example.com',
         ])->assertRedirect();
@@ -181,7 +183,7 @@ class Phase7AuthJourneyTest extends TestCase
         $app = Application::query()->where('user_id', $user->id)->latest('id')->first();
         $this->assertNotNull($app);
         $this->assertSame(Application::PAYMENT_STATUS_PENDING, $app->payment_status);
-        $this->assertSame(Application::STATUS_PAYMENT_PENDING, $app->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, $app->status);
     }
 
     public function test_forged_payment_status_in_store_cannot_unlock_interview(): void
@@ -191,6 +193,7 @@ class Phase7AuthJourneyTest extends TestCase
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Forge Status',
             'contact_email' => 'forge.status@example.com',
             'payment_status' => 'paid',
@@ -200,12 +203,12 @@ class Phase7AuthJourneyTest extends TestCase
         $res->assertCreated();
         $app = Application::query()->findOrFail((int) $res->json('application_id'));
         $this->assertSame(Application::PAYMENT_STATUS_PENDING, $app->payment_status);
-        $this->assertSame(Application::STATUS_PAYMENT_PENDING, $app->status);
+        $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, $app->status);
         $this->assertNull($app->waived_by_user_id);
 
         $this->actingAs($user)
             ->get(route('online-interview.show', $app))
-            ->assertRedirect(route('applications.payment', $app));
+            ->assertOk();
     }
 
     public function test_unpaid_user_cannot_open_interview_or_uploads(): void
@@ -214,20 +217,21 @@ class Phase7AuthJourneyTest extends TestCase
         $app = Application::factory()->for($user)->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
         $app->forceFill(['payment_status' => Application::PAYMENT_STATUS_PENDING])->save();
 
         $this->actingAs($user)
             ->get(route('online-interview.show', $app))
-            ->assertRedirect(route('applications.payment', $app));
+            ->assertOk();
 
         $this->actingAs($user)
             ->getJson(route('online-interview.show', $app))
-            ->assertForbidden();
+            ->assertOk();
 
         $this->actingAs($user)
             ->get(route('applications.upload.show', $app))
-            ->assertRedirect(route('applications.payment', $app));
+            ->assertOk();
     }
 
     public function test_unpaid_interview_save_and_submit_are_blocked(): void
@@ -236,15 +240,16 @@ class Phase7AuthJourneyTest extends TestCase
         $app = Application::factory()->for($user)->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
 
         $this->actingAs($user)->patchJson(route('online-interview.save', $app), [
             'question_id' => 'q1',
-            'answer' => 'Should not save',
-        ])->assertForbidden();
+            'answer' => 'Saved before payment',
+        ])->assertOk();
 
         $this->actingAs($user)->postJson(route('online-interview.submit', $app))
-            ->assertForbidden();
+            ->assertStatus(422);
     }
 
     public function test_unpaid_upload_post_is_blocked(): void
@@ -254,13 +259,14 @@ class Phase7AuthJourneyTest extends TestCase
         $app = Application::factory()->for($user)->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
 
         $file = UploadedFile::fake()->create('bio.pdf', 100, 'application/pdf');
         $this->actingAs($user)->postJson(route('applications.upload.material', $app), [
             'material' => $file,
             'material_type' => 'biography',
-        ])->assertForbidden();
+        ])->assertCreated();
     }
 
     public function test_forged_application_payment_status_paid_without_payment_row_does_not_unlock(): void
@@ -269,6 +275,7 @@ class Phase7AuthJourneyTest extends TestCase
         $app = Application::factory()->for($user)->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
         $app->forceFill([
             'payment_status' => Application::PAYMENT_STATUS_PAID,
@@ -277,7 +284,8 @@ class Phase7AuthJourneyTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('online-interview.show', $app))
-            ->assertRedirect(route('applications.payment', $app));
+            ->assertOk();
+        $this->assertFalse($app->fresh()->isPaymentSettled());
     }
 
     public function test_paid_or_waived_user_can_open_interview(): void
@@ -286,6 +294,7 @@ class Phase7AuthJourneyTest extends TestCase
         $paid = Application::factory()->for($user)->paid()->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
         $this->actingAs($user)->get(route('online-interview.show', $paid))->assertOk();
 
@@ -293,6 +302,7 @@ class Phase7AuthJourneyTest extends TestCase
         $waived = Application::factory()->for($user)->create([
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
         $waived->forceFill([
             'waived_by_user_id' => $admin->id,

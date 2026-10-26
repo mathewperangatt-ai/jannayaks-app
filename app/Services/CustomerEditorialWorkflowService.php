@@ -103,7 +103,7 @@ class CustomerEditorialWorkflowService
                 'preview_english_editorial_content_id' => $locked->preview_english_editorial_content_id,
             ];
 
-            $locked->forceFill([
+            $previewFields = [
                 'status' => Application::STATUS_EDITORIAL_APPROVED,
                 'customer_preview_released_at' => now(),
                 'preview_english_editorial_content_id' => $english->id,
@@ -111,7 +111,11 @@ class CustomerEditorialWorkflowService
                 'customer_approved_at' => null,
                 'customer_approved_english_editorial_content_id' => null,
                 'customer_approved_by_user_id' => null,
-            ])->save();
+            ];
+            if ($locked->first_customer_preview_at === null) {
+                $previewFields['first_customer_preview_at'] = now();
+            }
+            $locked->forceFill($previewFields)->save();
 
             if ($profile->status !== 'published') {
                 $profile->forceFill(['status' => 'customer_preview'])->save();
@@ -334,6 +338,7 @@ class CustomerEditorialWorkflowService
                     'approved_by_user_id' => $member->id,
                     'english_editorial_content_id' => $english->id,
                     'malayalam_editorial_content_id' => $locked->preview_malayalam_editorial_content_id,
+                    'consent_scope' => EditorialCustomerApproval::SCOPE_ENGLISH_AND_MALAYALAM,
                     'approved_at' => now(),
                 ]);
 

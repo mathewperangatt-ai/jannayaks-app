@@ -27,7 +27,7 @@
     @php($standardQuote = \App\Support\PricingAmounts::forStandardProfile())
     @php($renewalQuote = \App\Support\PricingAmounts::forTierRenewal(\App\Support\PricingAmounts::STANDARD_INTERNAL_TIER))
     <div class="warnbox" role="note" aria-label="Pricing note">
-        {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം പേയ്‌മെന്റ് വരും.' : 'After you sign in, payment comes next.' }}
+        {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം ഓൺലൈൻ അഭിമുഖം ആദ്യം വരും.' : 'After you sign in, the Online Interview comes before payment.' }}
         <b>{{ $standardQuote['base_formatted'] }} + GST</b>.
         {{ $ml ? 'വാർഷിക പുതുക്കൽ' : 'Annual renewal is' }}
         <b>{{ $renewalQuote['base_formatted'] }} + GST</b>.
@@ -65,6 +65,12 @@
                 @error('full_name')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
             <div class="field">
+                <label for="broad_location">{{ $ml ? 'സ്ഥലം' : 'Location' }}</label>
+                <input id="broad_location" name="broad_location" type="text" minlength="2" maxlength="120" required value="{{ old('broad_location') }}" autocomplete="address-level2" placeholder="{{ $ml ? 'ഉദാ. കോഴിക്കോട്' : 'e.g. Kozhikode' }}">
+                <div class="hint">{{ $ml ? 'ജില്ലയോ പട്ടണമോ മതി. ഇത് അപേക്ഷയിൽ സൂക്ഷിക്കും.' : 'A district or town is enough. This is saved with the application.' }}</div>
+                @error('broad_location')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+            </div>
+            <div class="field">
                 <label for="preferred_slug">{{ $ml ? 'ആഗ്രഹിക്കുന്ന വ്യക്തിഗത URL (ഓപ്ഷണൽ നിർദ്ദേശം)' : 'Preferred personal URL (optional hint)' }}</label>
                 <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
                 <div class="hint">{{ $ml ? 'ഇത് ഓപ്ഷണലാണ്. നിങ്ങളുടെ സ്ഥിരീകരിച്ച പേര് രേഖപ്പെടുത്തിയ ശേഷം, arun.kumar പോലുള്ള ലഭ്യമായ പേരിനെ അടിസ്ഥാനമാക്കിയുള്ള URL-കൾ Jannayaks നിർദ്ദേശിക്കും. നിങ്ങൾ സ്വയം ഒരു username സൃഷ്ടിക്കേണ്ടതില്ല.' : 'Optional. After your verified name is on file, Jannayaks will suggest available name-based URLs such as arun.kumar. You do not invent a username.' }}</div>
@@ -93,7 +99,7 @@
 
         <div class="actions">
             <a class="btn ghost" href="{{ route('apply') }}">← {{ $ml ? 'പിന്നോട്ട്' : 'Back' }}</a>
-            <button class="btn primary" type="submit">{{ !empty($guest) ? 'Continue to sign in →' : ($ml ? 'പണമടയ്ക്കുന്നതിലേക്ക് തുടരുക →' : 'Continue to payment →') }}</button>
+            <button class="btn primary" type="submit">{{ !empty($guest) ? 'Continue to sign in →' : ($ml ? 'തുടരുക →' : 'Continue →') }}</button>
         </div>
     </form>
 </section>

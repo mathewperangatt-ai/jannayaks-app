@@ -46,6 +46,38 @@ class Application extends Model
 
     public const STATUS_REFUNDED = 'refunded';
 
+    /**
+     * Statuses that still occupy an email address. Cancelled, refunded and
+     * archived applications release the address. A published profile keeps it.
+     * Another email address is a different application and is not blocked.
+     *
+     * @return list<string>
+     */
+    public static function openLifecycleStatuses(): array
+    {
+        return [
+            self::STATUS_INTAKE_IN_PROGRESS,
+            self::STATUS_INTERVIEW_IN_PROGRESS,
+            self::STATUS_INTERVIEW_SUBMITTED,
+            self::STATUS_DIRECT_SUBMITTED,
+            self::STATUS_PAYMENT_PENDING,
+            self::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW,
+            self::STATUS_AWAITING_EDITORIAL_REVIEW,
+            self::STATUS_IN_EDITORIAL_REVIEW,
+            self::STATUS_EDITORIAL_APPROVED,
+            self::STATUS_EDITORIAL_REVISION_REQUESTED,
+            self::STATUS_AWAITING_PUBLICATION,
+            self::STATUS_PUBLISHED,
+        ];
+    }
+
+    public static function normalizeApplicantEmail(?string $email): ?string
+    {
+        $email = strtolower(trim((string) $email));
+
+        return $email === '' ? null : $email;
+    }
+
     public const PAYMENT_STATUS_PENDING = 'pending';
 
     public const PAYMENT_STATUS_PAID = 'paid';
@@ -116,12 +148,14 @@ class Application extends Model
 
     protected $fillable = [
         'user_id',
+        'applicant_email_normalized',
         'source_method',
         'package_tier',
         'pricing_generation',
         'full_name',
         'preferred_display_name',
         'preferred_slug',
+        'broad_location',
         'distinguished_interview_addon',
         'preferred_contact_email',
         'preferred_contact_mobile',
@@ -129,6 +163,10 @@ class Application extends Model
         'direct_submission_note',
         'intake_started_at',
         'online_interview_completed_at',
+        'questionnaire_confirmed_at',
+        'questionnaire_version',
+        'questionnaire_submission_sha256',
+        'first_customer_preview_at',
         'direct_submission_received_at',
     ];
 
@@ -138,11 +176,13 @@ class Application extends Model
             'distinguished_interview_addon' => 'boolean',
             'intake_started_at' => 'datetime',
             'online_interview_completed_at' => 'datetime',
+            'questionnaire_confirmed_at' => 'datetime',
             'direct_submission_received_at' => 'datetime',
             'converted_to_profile_at' => 'datetime',
             'payment_settled_at' => 'datetime',
             'included_revision_rounds_used' => 'integer',
             'customer_preview_released_at' => 'datetime',
+            'first_customer_preview_at' => 'datetime',
             'customer_approved_at' => 'datetime',
         ];
     }
@@ -232,6 +272,23 @@ class Application extends Model
     public function publishedMalayalamContent(): BelongsTo
     {
         return $this->belongsTo(EditorialContent::class, 'published_malayalam_editorial_content_id');
+    }
+
+    public function interviewIsOpenBeforePayment(): bool
+    {
+        if (in_array($this->status, [
+            self::STATUS_REFUNDED,
+            self::STATUS_CANCELLED,
+            self::STATUS_ARCHIVED,
+        ], true)) {
+            return false;
+        }
+
+        if ($this->payment_status === self::PAYMENT_STATUS_REFUNDED) {
+            return false;
+        }
+
+        return $this->source_method === 'online_interview' && ! $this->isInterviewSubmitted();
     }
 
     public function isInterviewSubmitted(): bool

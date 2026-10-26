@@ -37,6 +37,7 @@ class ProfileReferenceNumberTest extends TestCase
             'full_name' => 'Arun Kumar Nair',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
 
         $profile = app(ProfileUrlService::class)->ensureDraftProfileForApplication($application->fresh());
@@ -105,6 +106,7 @@ class ProfileReferenceNumberTest extends TestCase
             'full_name' => $profile->full_name,
             'package_tier' => 'distinguished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
 
         // Profile exists but is not public: reference shows, public action must not.

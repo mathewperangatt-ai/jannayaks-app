@@ -218,6 +218,7 @@ class PersonalProfileUrlSystemTest extends TestCase
             'preferred_display_name' => $fullName,
             'package_tier' => $tier,
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_IN_EDITORIAL_REVIEW,
             'customer_approved_at' => null,
         ]);
@@ -254,6 +255,7 @@ class PersonalProfileUrlSystemTest extends TestCase
             'preferred_display_name' => $fullName,
             'package_tier' => $tier,
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
 

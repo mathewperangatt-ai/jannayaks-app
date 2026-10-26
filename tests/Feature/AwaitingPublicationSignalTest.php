@@ -19,6 +19,7 @@ class AwaitingPublicationSignalTest extends TestCase
             'full_name' => 'Approved Leader',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
         // paid() is an afterCreating hook that resets status; set the workflow status last.
         $application->forceFill(['status' => Application::STATUS_AWAITING_PUBLICATION])->save();

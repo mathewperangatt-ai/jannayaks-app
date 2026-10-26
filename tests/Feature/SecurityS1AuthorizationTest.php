@@ -55,6 +55,7 @@ class SecurityS1AuthorizationTest extends TestCase
             'full_name' => 'Member A Application',
             'package_tier' => 'distinguished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW,
         ]);
     }

@@ -60,6 +60,9 @@
     .jk-demo-note{margin:16px 0 0;font:500 11px var(--jk-ui);color:var(--jk-muted);letter-spacing:.06em}
 
     /* well-wisher rail: contact + reactions */
+    .jk-sr{position:absolute;width:1px;height:1px;padding:0;margin:-1px;overflow:hidden;clip:rect(0,0,0,0);white-space:nowrap;border:0}
+    .jk-engage{margin-top:48px}
+    .jk-engage-grid{display:grid;grid-template-columns:1fr 1fr;gap:16px;align-items:start}
     .jk-rail{grid-column:3}
     .jk-hero.with-rail{grid-template-columns:minmax(0,30fr) minmax(0,48fr) minmax(0,22fr)}
     .jk-box{background:var(--jk-surface);border:1px solid var(--jk-line);padding:22px;margin-bottom:16px}
@@ -135,6 +138,7 @@
         .jk-hero,.jk-hero.with-rail{grid-template-columns:1fr;gap:30px}
         .jk-portrait-wrap{max-width:340px;margin:0 auto}
         .jk-rail{grid-template-columns:1fr}
+        .jk-engage-grid{grid-template-columns:1fr}
         .jk-bio-grid{grid-template-columns:1fr}
         .jk-urlrow{flex-direction:column;align-items:stretch}
         .jk-urlpill,.jk-copy{justify-content:center;width:100%}
@@ -159,7 +163,7 @@
         <span aria-current="page">{{ $displayName }}</span>
     </nav>
 
-    <section class="jk-hero with-rail">
+    <section class="jk-hero">
         <figure style="margin:0">
             <div class="jk-portrait-wrap">
                 @if($photo)
@@ -212,69 +216,13 @@
                 <p class="jk-demo-note">Fictional demonstration profile — created to show how a Jannayaks profile reads. It does not describe a real person.</p>
             @endif
         </div>
-
-        {{-- Well-wisher rail: Contact box + Like / Applaud (first laptop viewport) --}}
-        <aside class="jk-rail" id="wellwishers">
-            <div class="jk-box">
-                <h2>Contact</h2>
-                <p class="jk-box-sub">Send a brief message to {{ $displayName }}. Your details are shared only with the profile owner — never displayed publicly.</p>
-                @if(session('contact_status') === 'sent')
-                    <p class="jk-status">Thank you. Your message has been passed on to {{ $displayName }}.</p>
-                @endif
-                @if($errors->any())
-                    <p class="jk-status err">{{ $errors->first('contact') ?: 'Please review the highlighted fields and try again.' }}</p>
-                @endif
-                <form method="POST" action="{{ route('profiles.contact', $profile->slug) }}">
-                    @csrf
-                    <input type="text" name="honey_bot" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
-                    <div class="jk-field">
-                        <label for="visitor_name">Your name</label>
-                        <input id="visitor_name" name="visitor_name" maxlength="120" required value="{{ old('visitor_name') }}">
-                    </div>
-                    <div class="jk-field">
-                        <label for="visitor_mobile">Your mobile number</label>
-                        <input id="visitor_mobile" name="visitor_mobile" maxlength="20" inputmode="tel" value="{{ old('visitor_mobile') }}">
-                    </div>
-                    <div class="jk-field">
-                        <label for="message">Message / reason for contact</label>
-                        <textarea id="message" name="message" maxlength="1000" required>{{ old('message') }}</textarea>
-                    </div>
-                    <button type="submit" class="jk-send">Send message</button>
-                </form>
-            </div>
-
-            <div class="jk-box">
-                <h2>Show appreciation</h2>
-                <p class="jk-box-sub">No public counts — only {{ $displayName }} will privately see your name and broad location.</p>
-                @if(auth()->check())
-                    <div class="jk-reactions">
-                        <form method="POST" action="{{ route('profiles.react', $profile->slug) }}">
-                            @csrf
-                            <input type="hidden" name="reaction" value="like">
-                            @php($liked = in_array('like', $viewerReactions))
-                            <button type="submit" class="jk-react {{ $liked ? 'on' : '' }}" aria-pressed="{{ $liked ? 'true' : 'false' }}">♡ Like</button>
-                        </form>
-                        <form method="POST" action="{{ route('profiles.react', $profile->slug) }}">
-                            @csrf
-                            <input type="hidden" name="reaction" value="applaud">
-                            @php($applauded = in_array('applaud', $viewerReactions))
-                            <button type="submit" class="jk-react {{ $applauded ? 'on' : '' }}" aria-pressed="{{ $applauded ? 'true' : 'false' }}">👏 Applaud</button>
-                        </form>
-                    </div>
-                    <p class="jk-privacy">Your name and broad location may be visible to the profile owner. Your phone number and email are never shared because of a reaction.</p>
-                @else
-                    <a class="jk-react-login" href="{{ route('login', ['return' => url()->current()]) }}">Sign in to Like or Applaud →</a>
-                    <p class="jk-privacy">A lightweight sign-in (Jannayaks account or Google) is required, so profile owners see genuine well-wishers only.</p>
-                @endif
-            </div>
-        </aside>
     </section>
 
     @if($activeEditorial && filled($activeEditorial->body))
         <section class="jk-section" id="biography">
             <div class="jk-sectionhead">
                 <span class="jk-num">I</span><span class="jk-dash"></span>
-                <h2>{{ $language === 'ml' ? 'ജീവചരിത്രം' : 'Biography' }}</h2>
+                <h2 class="jk-sr">{{ $language === 'ml' ? 'ജീവചരിത്രം' : 'Biography' }}</h2>
                 <span class="jk-tail">{{ $profession ?: ($headline ?: 'Public Life') }}</span>
             </div>
             <div class="jk-bio-grid">
@@ -355,6 +303,63 @@
             </ul>
         </section>
     @endif
+
+    <section class="jk-engage" id="wellwishers">
+        <div class="jk-engage-grid">
+            <div class="jk-box">
+                <h2>Show appreciation</h2>
+                <p class="jk-box-sub">No public counts — only {{ $displayName }} will privately see your name and broad location.</p>
+                @if(auth()->check())
+                    <div class="jk-reactions">
+                        <form method="POST" action="{{ route('profiles.react', $profile->slug) }}">
+                            @csrf
+                            <input type="hidden" name="reaction" value="like">
+                            @php($liked = in_array('like', $viewerReactions))
+                            <button type="submit" class="jk-react {{ $liked ? 'on' : '' }}" aria-pressed="{{ $liked ? 'true' : 'false' }}">♡ Like</button>
+                        </form>
+                        <form method="POST" action="{{ route('profiles.react', $profile->slug) }}">
+                            @csrf
+                            <input type="hidden" name="reaction" value="applaud">
+                            @php($applauded = in_array('applaud', $viewerReactions))
+                            <button type="submit" class="jk-react {{ $applauded ? 'on' : '' }}" aria-pressed="{{ $applauded ? 'true' : 'false' }}">👏 Applaud</button>
+                        </form>
+                    </div>
+                    <p class="jk-privacy">Your name and broad location may be visible to the profile owner. Your phone number and email are never shared because of a reaction.</p>
+                @else
+                    <a class="jk-react-login" href="{{ route('login', ['return' => url()->current()]) }}">Sign in to Like or Applaud →</a>
+                    <p class="jk-privacy">A lightweight sign-in (Jannayaks account or Google) is required, so profile owners see genuine well-wishers only.</p>
+                @endif
+            </div>
+
+            <div class="jk-box">
+                <h2>Contact</h2>
+                <p class="jk-box-sub">Send a brief message to {{ $displayName }}. Your details are shared only with the profile owner — never displayed publicly.</p>
+                @if(session('contact_status') === 'sent')
+                    <p class="jk-status">Thank you. Your message has been passed on to {{ $displayName }}.</p>
+                @endif
+                @if($errors->any())
+                    <p class="jk-status err">{{ $errors->first('contact') ?: 'Please review the highlighted fields and try again.' }}</p>
+                @endif
+                <form method="POST" action="{{ route('profiles.contact', $profile->slug) }}">
+                    @csrf
+                    <input type="text" name="honey_bot" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">
+                    <div class="jk-field">
+                        <label for="visitor_name">Your name</label>
+                        <input id="visitor_name" name="visitor_name" maxlength="120" required value="{{ old('visitor_name') }}">
+                    </div>
+                    <div class="jk-field">
+                        <label for="visitor_mobile">Your mobile number</label>
+                        <input id="visitor_mobile" name="visitor_mobile" maxlength="20" inputmode="tel" value="{{ old('visitor_mobile') }}">
+                    </div>
+                    <div class="jk-field">
+                        <label for="message">Message / reason for contact</label>
+                        <textarea id="message" name="message" maxlength="1000" required>{{ old('message') }}</textarea>
+                    </div>
+                    <button type="submit" class="jk-send">Send message</button>
+                </form>
+            </div>
+        </div>
+    </section>
 
     <p style="margin-top:56px"><a href="{{ $listingUrl }}" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a></p>
 

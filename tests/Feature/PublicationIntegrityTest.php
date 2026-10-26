@@ -199,6 +199,7 @@ class PublicationIntegrityTest extends TestCase
             'status' => Application::STATUS_AWAITING_PUBLICATION,
             'package_tier' => 'accomplished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
         ]);
 
         try {
@@ -262,6 +263,7 @@ class PublicationIntegrityTest extends TestCase
             'preferred_display_name' => 'Integrity Leader',
             'package_tier' => 'accomplished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
         InterviewAnswer::query()->create([

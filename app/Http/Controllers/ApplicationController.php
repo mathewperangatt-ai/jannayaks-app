@@ -17,6 +17,7 @@ use Illuminate\Contracts\Validation\Validator as ValidatorContract;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Validator;
@@ -122,6 +123,7 @@ class ApplicationController extends Controller
         $validator = Validator::make($request->all(), [
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
+            'broad_location' => ['required', 'string', 'min:2', 'max:120'],
             'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-][a-z0-9]+)*$/'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
@@ -142,6 +144,7 @@ class ApplicationController extends Controller
             'package_tier' => PricingAmounts::STANDARD_INTERNAL_TIER,
             'source_method' => (string) $validated['source_method'],
             'full_name' => (string) $validated['full_name'],
+            'broad_location' => trim((string) $validated['broad_location']),
             'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
             'contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
             'contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
@@ -164,7 +167,7 @@ class ApplicationController extends Controller
         }
 
         return redirect()->route('login', ['return' => route('apply.continue')])
-            ->with('status', 'Sign in to continue — payment comes next, then the Online Interview.');
+            ->with('status', 'Sign in to continue. The Online Interview comes before payment.');
     }
 
     public function continueFromIntent(Request $request): JsonResponse|RedirectResponse
@@ -202,35 +205,10 @@ class ApplicationController extends Controller
             return $this->unauthorizedResponse($request, 'You must log in before creating an application.');
         }
 
-        // A2 — one active application workflow per customer. A second
-        // application would dead-end at payment (the first holds the
-        // one-to-one profile link).
-        $existingApplication = Application::query()
-            ->where('user_id', Auth::id())
-            ->whereIn('status', [
-                Application::STATUS_PAYMENT_PENDING,
-                Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW,
-                Application::STATUS_INTAKE_IN_PROGRESS,
-                Application::STATUS_INTERVIEW_IN_PROGRESS,
-                Application::STATUS_INTERVIEW_SUBMITTED,
-                Application::STATUS_DIRECT_SUBMITTED,
-                Application::STATUS_AWAITING_EDITORIAL_REVIEW,
-                Application::STATUS_IN_EDITORIAL_REVIEW,
-                Application::STATUS_EDITORIAL_APPROVED,
-                Application::STATUS_EDITORIAL_REVISION_REQUESTED,
-                Application::STATUS_AWAITING_PUBLICATION,
-                Application::STATUS_PUBLISHED,
-            ])
-            ->orderByDesc('id')
-            ->first();
-
-        if ($existingApplication !== null) {
-            return $this->redirectHomeWithExisting($request, $existingApplication);
-        }
-
         $validator = Validator::make($request->all(), [
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
+            'broad_location' => ['required', 'string', 'min:2', 'max:120'],
             'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-][a-z0-9]+)*$/'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
@@ -251,25 +229,68 @@ class ApplicationController extends Controller
 
         return DB::transaction(function () use ($request, $validated) {
             $user = Auth::user();
+            $email = Application::normalizeApplicantEmail($user?->email);
+            if ($email === null) {
+                return $this->validationErrorResponse($request, Validator::make([], [])->after(function ($validator): void {
+                    $validator->errors()->add('email', 'Your account needs an email address before an application can be started.');
+                }));
+            }
 
+            DB::statement('SELECT pg_advisory_xact_lock(740261, hashtext(?))', [$email]);
+
+            $existingApplication = Application::query()
+                ->where(function ($query) use ($email, $user): void {
+                    $query->where('applicant_email_normalized', $email)
+                        ->orWhere('user_id', $user->id);
+                })
+                ->whereIn('status', Application::openLifecycleStatuses())
+                ->lockForUpdate()
+                ->orderByDesc('id')
+                ->first();
+
+            if ($existingApplication !== null) {
+                return $this->redirectHomeWithExisting($request, $existingApplication);
+            }
+
+            $source = (string) $validated['source_method'];
             $application = new Application;
-            $application->forceFill([
-                'user_id' => $user->id,
-                'source_method' => (string) $validated['source_method'],
-                'package_tier' => PricingAmounts::STANDARD_INTERNAL_TIER,
-                'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
-                'full_name' => (string) $validated['full_name'],
-                'preferred_display_name' => (string) $validated['full_name'],
-                'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
-                'preferred_contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
-                'preferred_contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
-                'preferred_whatsapp_mobile' => isset($validated['contact_whatsapp']) && $validated['contact_whatsapp'] !== '' ? (string) $validated['contact_whatsapp'] : null,
-                'direct_submission_note' => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
-                'intake_started_at' => now(),
-                'direct_submission_received_at' => (string) $validated['source_method'] === 'direct_submission' ? now() : null,
-                'payment_status' => Application::PAYMENT_STATUS_PENDING,
-                'status' => Application::STATUS_PAYMENT_PENDING,
-            ])->save();
+            try {
+                $application->forceFill([
+                    'user_id' => $user->id,
+                    'applicant_email_normalized' => $email,
+                    'source_method' => $source,
+                    'package_tier' => PricingAmounts::STANDARD_INTERNAL_TIER,
+                    'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
+                    'full_name' => (string) $validated['full_name'],
+                    'preferred_display_name' => (string) $validated['full_name'],
+                    'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
+                    'broad_location' => trim((string) $validated['broad_location']),
+                    'preferred_contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
+                    'preferred_contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
+                    'preferred_whatsapp_mobile' => isset($validated['contact_whatsapp']) && $validated['contact_whatsapp'] !== '' ? (string) $validated['contact_whatsapp'] : null,
+                    'direct_submission_note' => isset($validated['direct_submission_note']) && $validated['direct_submission_note'] !== '' ? (string) $validated['direct_submission_note'] : null,
+                    'intake_started_at' => now(),
+                    'direct_submission_received_at' => $source === 'direct_submission' ? now() : null,
+                    'payment_status' => Application::PAYMENT_STATUS_PENDING,
+                    'status' => $source === 'online_interview'
+                        ? Application::STATUS_INTERVIEW_IN_PROGRESS
+                        : Application::STATUS_PAYMENT_PENDING,
+                ])->save();
+            } catch (QueryException $exception) {
+                if ((string) ($exception->errorInfo[0] ?? '') !== '23505') {
+                    throw $exception;
+                }
+
+                $existingApplication = Application::query()
+                    ->where('applicant_email_normalized', $email)
+                    ->whereIn('status', Application::openLifecycleStatuses())
+                    ->first();
+                if ($existingApplication instanceof Application) {
+                    return $this->redirectHomeWithExisting($request, $existingApplication);
+                }
+
+                throw $exception;
+            }
 
             if ($request->expectsJson()) {
                 return response()->json([
@@ -281,13 +302,21 @@ class ApplicationController extends Controller
                 ], 201);
             }
 
+            $message = $application->source_method === 'online_interview'
+                ? 'Application started. Complete the Online Interview before payment.'
+                : 'Application started. You can upload source material and continue to payment.';
+
             return redirect($this->redirectUrlFor($application))
-                ->with('application_created', 'Application started. Complete payment to unlock the Online Interview or source-material uploads.');
+                ->with('application_created', $message);
         });
     }
 
     private function redirectUrlFor(Application $application): string
     {
+        if ($application->source_method === 'online_interview' && $application->interviewIsOpenBeforePayment()) {
+            return route('online-interview.show', ['application' => $application->id]);
+        }
+
         return route('applications.payment', ['application' => $application->id]);
     }
 
@@ -379,7 +408,7 @@ class ApplicationController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! $this->materialsAreOpen($application)) {
             return $this->paymentGateResponse($request, $application);
         }
 
@@ -417,7 +446,7 @@ class ApplicationController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! $this->materialsAreOpen($application)) {
             return $this->paymentGateResponse($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
@@ -582,6 +611,20 @@ class ApplicationController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbiddenResponse($request, 'This application is not yours.');
         }
+        if ($this->paymentIsPremature($application)) {
+            $message = 'Complete the Online Interview before payment.';
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => $message,
+                    'redirect_to' => route('online-interview.show', ['application' => $application->id]),
+                ], 403);
+            }
+
+            return redirect()
+                ->route('online-interview.show', ['application' => $application->id])
+                ->withErrors(['payment' => $message]);
+        }
         if (! in_array($application->package_tier, ['emerging', 'accomplished', 'distinguished'], true)) {
             return $this->validationErrorResponse($request, Validator::make([], [])->after(function ($v) {
                 $v->errors()->add('package_tier', 'Invalid package tier for payment.');
@@ -678,6 +721,26 @@ class ApplicationController extends Controller
         return redirect()
             ->route('applications.payment', ['application' => $application->id])
             ->with('payment_initiated', 'Payment has been initiated. Please complete the transaction.');
+    }
+
+    private function materialsAreOpen(Application $application): bool
+    {
+        if ($application->source_method === 'direct_submission' || $application->interviewIsOpenBeforePayment()) {
+            return true;
+        }
+
+        return app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application);
+    }
+
+    private function paymentIsPremature(Application $application): bool
+    {
+        if (ApplicationPaymentStateService::testingModeActive()) {
+            return false;
+        }
+
+        return $application->source_method === 'online_interview'
+            && $application->status === Application::STATUS_INTERVIEW_IN_PROGRESS
+            && ! $application->isInterviewSubmitted();
     }
 
     private function unauthorizedResponse(Request $request, string $message): JsonResponse|RedirectResponse

@@ -24,6 +24,7 @@ class QuestionnaireStaffSignalTest extends TestCase
             'user_id' => $user->id,
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Signal Citizen',
         ])->paid()->create();
 
@@ -41,7 +42,7 @@ class QuestionnaireStaffSignalTest extends TestCase
         ])->assertOk();
 
         $this->actingAs($user)
-            ->postJson(route('online-interview.submit', ['application' => $application->id]))
+            ->postJson(route('online-interview.submit', ['application' => $application->id]), ['questionnaire_confirmed' => true])
             ->assertOk()
             ->assertJson([
                 'ok' => true,
@@ -73,6 +74,7 @@ class QuestionnaireStaffSignalTest extends TestCase
             'user_id' => $alice->id,
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ])->paid()->create();
 
         $this->actingAs($bob)->getJson(route('online-interview.show', $application))->assertForbidden();

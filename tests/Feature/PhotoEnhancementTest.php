@@ -61,6 +61,7 @@ class PhotoEnhancementTest extends TestCase
             'full_name' => 'Photo Person',
             'package_tier' => 'distinguished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
         ]);
     }
 

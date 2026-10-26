@@ -83,6 +83,7 @@ class AdminScaleWayfindingTest extends TestCase
             'full_name' => $name,
             'package_tier' => 'distinguished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
         ]);
         $application->forceFill(['status' => Application::STATUS_PUBLISHED])->save();
 
@@ -448,6 +449,7 @@ class AdminScaleWayfindingTest extends TestCase
             'full_name' => $name,
             'package_tier' => 'distinguished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
         ]);
         $application->forceFill(['status' => Application::STATUS_PUBLISHED])->save();
 

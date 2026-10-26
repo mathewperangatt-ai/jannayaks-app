@@ -310,6 +310,7 @@ class EditorialSpecificationAcceptanceTest extends TestCase
             'preferred_display_name' => 'Acceptance Test Person',
             'package_tier' => $tier,
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
         ]);
         $application->forceFill(['status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW])->save();
 

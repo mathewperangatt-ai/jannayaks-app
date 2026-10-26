@@ -28,15 +28,27 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         URL::forceScheme('https');
     }
 
-    public function test_emerging_receives_exactly_six_alphanumeric_characters_on_publish(): void
+    public function test_new_profile_receives_a_name_derived_url_and_keeps_an_existing_slug(): void
     {
         [$member, $application, $profile] = $this->publishLiving('emerging');
 
         $slug = (string) $profile->fresh()->slug;
-        $this->assertSame(6, strlen($slug));
-        $this->assertMatchesRegularExpression('/^[A-Z0-9]{6}$/', $slug);
+        $this->assertSame('arun.kumar.nair', $slug);
         $this->assertSame($member->id, (int) $profile->user_id);
         $this->assertSame(Application::STATUS_PUBLISHED, $application->fresh()->status);
+
+        $preserved = Profile::query()->create([
+            'user_id' => User::factory()->create()->id,
+            'status' => 'under_editorial_review',
+            'full_name' => 'Ratish Ravindra',
+            'display_name' => 'Ratish Ravindra',
+            'slug' => '4IZ2UF',
+            'profession' => '',
+            'display_phone_consent' => false,
+            'display_email_consent' => false,
+        ]);
+        $kept = app(ProfileUrlService::class)->assignInitialCanonicalSlug($preserved, 'emerging');
+        $this->assertSame('4IZ2UF', $kept->slug);
     }
 
     public function test_emerging_cannot_choose_custom_personal_url(): void
@@ -208,12 +220,12 @@ class Phase12ProfileUrlAndQrTest extends TestCase
     {
         [, , $profile] = $this->publishLiving('accomplished');
         $admin = User::factory()->admin()->create();
+        $original = (string) $profile->fresh()->slug;
         app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'arun.kumar', 'accomplished');
-        app(ProfileUrlService::class)->selectPersonalSlug($profile->fresh(), $admin, 'arun.kumar.nair', 'accomplished');
 
-        $this->assertSame('arun.kumar.nair', $profile->fresh()->slug);
-        $this->get('/p/arun.kumar')->assertRedirect('/arun.kumar.nair');
-        $this->get('/arun.kumar.nair')->assertOk()->assertSee('arun.kumar.nair', false);
+        $this->assertSame('arun.kumar', $profile->fresh()->slug);
+        $this->get('/p/'.$original)->assertRedirect('/arun.kumar');
+        $this->get('/arun.kumar')->assertOk()->assertSee('arun.kumar', false);
     }
 
     public function test_historical_url_redirects_do_not_auto_expire(): void
@@ -396,6 +408,7 @@ class Phase12ProfileUrlAndQrTest extends TestCase
             'preferred_display_name' => 'Leader',
             'package_tier' => $tier,
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_IN_EDITORIAL_REVIEW,
             'customer_approved_at' => null,
         ]);
@@ -430,6 +443,7 @@ class Phase12ProfileUrlAndQrTest extends TestCase
             'preferred_display_name' => 'Leader',
             'package_tier' => $tier,
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
 

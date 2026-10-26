@@ -49,7 +49,7 @@ class ProfileUrlService
                 return $locked;
             }
 
-            $slug = $this->generateUniqueEmergingSlug();
+            $slug = $this->firstAvailablePersonalSlug($locked);
             $now = now();
 
             $locked->forceFill([
@@ -274,7 +274,7 @@ class ProfileUrlService
             throw new InvalidArgumentException('You may only change the URL for your own profile.');
         }
 
-        if (! $this->packageTierAllowsPersonalSlug($packageTier)) {
+        if (! $isStaff && ! $this->packageTierAllowsPersonalSlug($packageTier)) {
             throw new InvalidArgumentException('Your membership tier uses a system-assigned profile URL and cannot choose a personal URL.');
         }
 
@@ -395,6 +395,7 @@ class ProfileUrlService
             }
 
             $profile->ensureMandatoryGeography();
+            app(ApplicationLocationService::class)->copyBroadLocationIfEmpty($application, $profile);
 
             return $profile;
         });
@@ -489,6 +490,35 @@ class ProfileUrlService
         }
 
         return true;
+    }
+
+    /**
+     * First available name-derived URL. Existing slugs are never rewritten.
+     * A random six-character address is not assigned to a new profile.
+     */
+    private function firstAvailablePersonalSlug(Profile $profile): string
+    {
+        $bases = $this->personalSlugs->generateCombinations((string) $profile->full_name);
+        if ($bases === []) {
+            throw new InvalidArgumentException('A profile name is required before a public URL can be assigned.');
+        }
+
+        foreach ($bases as $base) {
+            if (! $this->isSlugTaken($base, (int) $profile->id)) {
+                return $base;
+            }
+        }
+
+        foreach ($bases as $base) {
+            foreach ($this->personalSlugs->collisionSuffixes((int) $profile->id) as $number) {
+                $candidate = $this->personalSlugs->collisionCandidate($base, $number);
+                if (! $this->isSlugTaken($candidate, (int) $profile->id)) {
+                    return $candidate;
+                }
+            }
+        }
+
+        throw new InvalidArgumentException('No available name-based URL could be assigned.');
     }
 
     public function generateUniqueEmergingSlug(): string

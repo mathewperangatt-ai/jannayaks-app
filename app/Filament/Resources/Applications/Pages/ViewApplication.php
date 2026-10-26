@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\EditorialRevisionRequest;
 use App\Models\User;
 use App\Services\ApplicationWorkflowService;
+use App\Services\ProfileAdministrationService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
 use App\Services\PostPublicationUpdateService;
@@ -348,9 +349,102 @@ class ViewApplication extends ViewRecord
                         Notification::make()->title('Cannot publish maintenance update')->body($e->getMessage())->danger()->send();
                     }
                 }),
+            Action::make('changeApplicantEmail')
+                ->label('Change account email')
+                ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false)
+                ->form([
+                    TextInput::make('email')->label('New account email')->email()->required(),
+                    Textarea::make('reason')->required(),
+                ])
+                ->action(function (array $data): void {
+                    $this->runAdministration(function (Application $application, User $actor) use ($data): void {
+                        app(ProfileAdministrationService::class)->changeApplicantEmail(
+                            $application,
+                            $actor,
+                            (string) $data['email'],
+                            (string) $data['reason'],
+                        );
+                    }, 'Account email updated. Profile ownership was not transferred.');
+                }),
+            Action::make('transferProfileAccount')
+                ->label('Transfer to another account')
+                ->visible(fn (): bool => auth()->user()?->isAdmin() ?? false)
+                ->form([
+                    TextInput::make('target_email')->label('Destination account email')->email()->required(),
+                    Textarea::make('reason')->required(),
+                ])
+                ->action(function (array $data): void {
+                    $this->runAdministration(function (Application $application, User $actor) use ($data): void {
+                        $target = User::query()->whereRaw('LOWER(email) = ?', [strtolower(trim((string) $data['target_email']))])->first();
+                        if (! $target instanceof User) {
+                            throw new InvalidArgumentException('No account uses that email address.');
+                        }
+                        app(ProfileAdministrationService::class)->transferToAccount(
+                            $application,
+                            $actor,
+                            $target,
+                            (string) $data['reason'],
+                        );
+                    }, 'Profile transferred to the selected account.');
+                }),
+            Action::make('changeProfileUrl')
+                ->label('Change profile URL')
+                ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false) && filled($this->getRecord()?->profile_id))
+                ->form([
+                    TextInput::make('slug')->label('New public URL')->required(),
+                    Textarea::make('reason')->required(),
+                ])
+                ->action(function (array $data): void {
+                    $this->runAdministration(function (Application $application, User $actor) use ($data): void {
+                        app(ProfileAdministrationService::class)->changeProfileUrl(
+                            $application,
+                            $actor,
+                            (string) $data['slug'],
+                            (string) $data['reason'],
+                        );
+                    }, 'Profile URL updated. The previous URL redirects to the new one.');
+                }),
+            Action::make('convertToMemorial')
+                ->label('Convert to memorial')
+                ->color('warning')
+                ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false) && filled($this->getRecord()?->profile_id))
+                ->form([
+                    TextInput::make('commissioner_contact_name')->label('Commissioner name')->required(),
+                    TextInput::make('commissioner_contact_mobile')->label('Commissioner mobile')->required(),
+                    Textarea::make('reason')->required(),
+                ])
+                ->action(function (array $data): void {
+                    $this->runAdministration(function (Application $application, User $actor) use ($data): void {
+                        app(ProfileAdministrationService::class)->convertLivingProfileToMemorial(
+                            $application,
+                            $actor,
+                            (string) $data['commissioner_contact_name'],
+                            (string) $data['commissioner_contact_mobile'],
+                            (string) $data['reason'],
+                        );
+                    }, 'Living profile converted to a memorial draft. The memorial is not published by this action.');
+                }),
             EditAction::make()
                 ->visible(fn (): bool => static::getResource()::canEdit($this->getRecord())),
         ];
+    }
+
+    private function runAdministration(callable $operation, string $success): void
+    {
+        $actor = auth()->user();
+        if (! $actor instanceof User || ! $actor->isAdmin()) {
+            abort(403);
+        }
+
+        /** @var Application $application */
+        $application = $this->getRecord();
+
+        try {
+            $operation($application, $actor);
+            Notification::make()->title($success)->success()->send();
+        } catch (InvalidArgumentException $e) {
+            Notification::make()->title('Cannot complete this action')->body($e->getMessage())->danger()->send();
+        }
     }
 
     private function maintenanceRequest(): ?EditorialRevisionRequest

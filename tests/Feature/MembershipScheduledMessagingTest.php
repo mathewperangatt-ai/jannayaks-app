@@ -55,6 +55,7 @@ class MembershipScheduledMessagingTest extends TestCase
             'preferred_display_name' => $profile->display_name,
             'package_tier' => 'accomplished',
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => \App\Models\Application::STATUS_AWAITING_PUBLICATION,
         ]);
 

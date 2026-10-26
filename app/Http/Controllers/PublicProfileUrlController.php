@@ -2,6 +2,7 @@
 
 namespace App\Http\Controllers;
 
+use App\Models\InMemoriamProfile;
 use App\Models\Profile;
 use App\Services\ProfileUrlService;
 use App\Services\PublicProfilePresentationService;
@@ -63,6 +64,14 @@ class PublicProfileUrlController extends Controller
         }
 
         $target = $redirect->redirectable;
+        if ($target instanceof InMemoriamProfile) {
+            if (! filled($target->slug) || ! app(\App\Services\InMemoriamLifecycleService::class)->isPubliclyVisible($target)) {
+                abort(404);
+            }
+
+            return redirect()->route('in-memoriam.show', ['slug' => $target->slug], 301);
+        }
+
         if (! $target instanceof Profile) {
             abort(404);
         }

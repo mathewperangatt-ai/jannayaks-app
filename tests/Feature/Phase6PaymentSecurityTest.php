@@ -403,6 +403,7 @@ class Phase6PaymentSecurityTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
         $app = Application::factory(['user_id' => $user->id, 'package_tier' => 'emerging'])->create([
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'online_interview_completed_at' => now(),
         ]);
         Config::set('services.razorpay.enabled', false);
@@ -751,19 +752,20 @@ class Phase6PaymentSecurityTest extends TestCase
         $createRes = $this->actingAs($user)->postJson(route('applications.store'), [
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Phase Check Citizen',
             'contact_email' => 'phasecheck@example.com',
         ]);
         $createRes->assertCreated();
         $appId = (int) $createRes->json('application_id');
         $this->assertGreaterThan(0, $appId);
-        $this->assertStringContainsString('/payment', (string) $createRes->json('redirect_to'));
+        $this->assertStringContainsString('/interview', (string) $createRes->json('redirect_to'));
 
         $showRes = $this->actingAs($user)->get(route('applications.show', ['application' => $appId]));
         $showRes->assertOk();
 
         $blocked = $this->actingAs($user)->get(route('online-interview.show', ['application' => $appId]));
-        $blocked->assertRedirect(route('applications.payment', ['application' => $appId]));
+        $blocked->assertOk();
 
         $app = Application::query()->findOrFail($appId);
         $this->unlockApplicationForInterview($app);

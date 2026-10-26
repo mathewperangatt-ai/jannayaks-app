@@ -29,6 +29,7 @@ class NavigationQaJourneyTest extends TestCase
         'package_tier' => 'distinguished',
         'source_method' => 'online_interview',
         'full_name' => 'Navigation QA Test',
+        'broad_location' => 'Kozhikode',
         'preferred_slug' => 'navigation-qa',
         'contact_email' => 'nav.qa@example.com',
     ];
@@ -87,12 +88,11 @@ class NavigationQaJourneyTest extends TestCase
 
         $app = Application::query()->latest('id')->first();
         $this->assertNotNull($app, 'Application should be created from the pending intent.');
-        $res->assertRedirect(route('applications.payment', ['application' => $app->id]));
+        $res->assertRedirect(route('online-interview.show', ['application' => $app->id]));
 
-        // Existing interview flow, gated until payment settles.
         $this->actingAs($app->user)
             ->get(route('online-interview.show', ['application' => $app->id]))
-            ->assertRedirect(route('applications.payment', ['application' => $app->id]));
+            ->assertOk();
     }
 
     /* E — Payment-before-interview, explicitly. */
@@ -103,12 +103,11 @@ class NavigationQaJourneyTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('online-interview.show', ['application' => $app->id]))
-            ->assertRedirect(route('applications.payment', ['application' => $app->id]));
+            ->assertOk();
 
         $this->actingAs($user)
-            ->getJson(route('online-interview.show', ['application' => $app->id]))
-            ->assertStatus(403)
-            ->assertJsonPath('redirect_to', route('applications.payment', ['application' => $app->id]));
+            ->postJson(route('applications.payment.initiate', ['application' => $app->id]))
+            ->assertForbidden();
     }
 
     /* F — Entered data is preserved through the intent → application. */
@@ -121,6 +120,7 @@ class NavigationQaJourneyTest extends TestCase
             'user_id' => User::where('email', 'nav.qa@example.com')->value('id'),
             'package_tier' => 'distinguished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Navigation QA Test',
             'preferred_slug' => 'navigation-qa',
             'preferred_contact_email' => 'nav.qa@example.com',
@@ -137,6 +137,7 @@ class NavigationQaJourneyTest extends TestCase
             ->postJson(route('apply.intent'), [
                 'package_tier' => 'emerging',
                 'source_method' => 'online_interview',
+                'broad_location' => 'Kozhikode',
                 'full_name' => 'Navigation QA Test',
                 'contact_email' => 'nav.qa@example.com',
             ])
@@ -195,13 +196,14 @@ class NavigationQaJourneyTest extends TestCase
         $this->actingAs($user)->post(route('applications.store'), [
             'package_tier' => 'distinguished',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Navigation QA Test',
             'contact_email' => 'nav.qa@example.com',
         ])->assertRedirect();
 
         /** @var Application $app */
         $app = Application::query()->latest('id')->first();
-        $this->assertSame('payment_pending', (string) $app->status);
+        $this->assertSame('interview_in_progress', (string) $app->status);
 
         return $app;
     }

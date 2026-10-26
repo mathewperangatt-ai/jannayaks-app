@@ -252,6 +252,7 @@ class PublicationTestBypassTest extends TestCase
             'profile_id' => $profile->id,
             'full_name' => 'Layout Tester '.$reference,
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_PUBLICATION,
             'payment_status' => Application::PAYMENT_STATUS_PENDING,
             'package_tier' => 'distinguished',

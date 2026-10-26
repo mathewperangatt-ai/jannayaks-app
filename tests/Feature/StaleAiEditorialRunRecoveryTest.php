@@ -116,6 +116,7 @@ class StaleAiEditorialRunRecoveryTest extends TestCase
             'full_name' => 'Wedged Leader',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
 

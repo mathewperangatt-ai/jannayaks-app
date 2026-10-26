@@ -39,15 +39,10 @@ class RefundService
             return false;
         }
 
-        $notYetPublished = $application->profile_id === null
-            && $application->converted_to_profile_at === null;
-        if (! $notYetPublished) {
-            $statuses = (array) config('jannayaks.refund.refundable_statuses', ['pending', 'success']);
-
-            return in_array((string) $application->status, $statuses, true);
-        }
-
-        return true;
+        // Eligibility ends the first time the customer is given the profile
+        // to review. Creating a draft profile is not that event, and a later
+        // preview invalidation does not reopen the refund.
+        return $application->first_customer_preview_at === null;
     }
 
     public function calculateRefundAmountPaise(Payment $payment, ?int $overridePercent = null): ?int

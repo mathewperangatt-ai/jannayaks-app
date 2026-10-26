@@ -35,6 +35,7 @@ class PaymentsTestingModeTest extends TestCase
         $this->actingAs($user)->post(route('applications.store'), [
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Testing Mode Test',
             'contact_email' => 'testing.mode@example.com',
         ])->assertRedirect();
@@ -59,7 +60,7 @@ class PaymentsTestingModeTest extends TestCase
         // No payment record and no fake settlement anywhere.
         $this->assertSame(0, Payment::query()->count());
         $app->refresh();
-        $this->assertSame('payment_pending', (string) $app->status);
+        $this->assertSame('interview_in_progress', (string) $app->status);
         $this->assertSame('pending', (string) $app->payment_status, 'No simulated "paid" state may be recorded.');
         $this->assertNull($app->payment_settled_at);
     }
@@ -82,7 +83,7 @@ class PaymentsTestingModeTest extends TestCase
             ->assertJsonPath('ok', false);
 
         $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
-        $this->assertSame('payment_pending', (string) $app->fresh()->status);
+        $this->assertSame('interview_in_progress', (string) $app->fresh()->status);
     }
 
     /* Testing mode ON: the payment page explains the suspension (ML default + EN). */
@@ -127,12 +128,12 @@ class PaymentsTestingModeTest extends TestCase
 
         $this->actingAs($user)
             ->get(route('online-interview.show', ['application' => $app->id]))
-            ->assertRedirect(route('applications.payment', ['application' => $app->id]));
+            ->assertOk();
 
         $this->actingAs($user)
             ->postJson(route('applications.payment.initiate', ['application' => $app->id]))
-            ->assertStatus(201);
-        $this->assertSame(1, Payment::query()->where('application_id', $app->id)->count());
+            ->assertForbidden();
+        $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
     }
 
     /* Testing mode OFF: settled payments and staff waivers remain the unlock paths. */

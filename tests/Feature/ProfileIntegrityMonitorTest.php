@@ -181,20 +181,19 @@ class ProfileIntegrityMonitorTest extends TestCase
     {
         $pack = $this->seedPublishedProfile();
         $profile = $pack['profile']->fresh();
-        $editor = User::factory()->editor()->create();
         $videos = app(ExternalVideoLinkService::class);
 
-        $pending = $videos->submit(
-            $profile,
-            $pack['member'],
-            'https://www.youtube.com/watch?v=abc123xyz',
-            'Interview',
-        );
-        $videos->approve($pending, $editor);
-
-        $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
-        $this->assertNotEmpty($snapshot->video_links);
-        $this->assertSame('media.external_video_approved', (string) $snapshot->source_event);
+        try {
+            $videos->submit(
+                $profile,
+                $pack['member'],
+                'https://www.youtube.com/watch?v=abc123xyz',
+                'Interview',
+            );
+            $this->fail('Living profiles must not accept a video link.');
+        } catch (\Illuminate\Validation\ValidationException) {
+            $this->assertTrue(true);
+        }
 
         $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
         $this->assertSame(ProfileIntegrityService::CLASSIFICATION_HEALTHY, $result['classification']);
@@ -456,6 +455,7 @@ class ProfileIntegrityMonitorTest extends TestCase
         $application = Application::factory()->historical('accomplished')->paid()->create([
             'user_id' => $member->id,
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'full_name' => 'Integrity Monitor Leader',
             'preferred_display_name' => 'Integrity Monitor Leader',
         ]);

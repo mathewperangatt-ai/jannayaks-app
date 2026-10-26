@@ -29,7 +29,7 @@ class OnlineInterviewController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
         }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! $this->interviewIsOpen($application)) {
             return $this->paymentGate($request, $application);
         }
         if (! in_array((string) $application->source_method, (array) config('online_interview.submission.valid_source_methods_for_interview', ['online_interview']), true)) {
@@ -84,7 +84,7 @@ class OnlineInterviewController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
         }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! $this->interviewIsOpen($application)) {
             return $this->paymentGate($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
@@ -151,7 +151,7 @@ class OnlineInterviewController extends Controller
         if ((int) $application->user_id !== (int) Auth::id()) {
             return $this->forbid($request, 'This interview is not yours.');
         }
-        if (! app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application)) {
+        if (! $this->interviewIsOpen($application)) {
             return $this->paymentGate($request, $application);
         }
         if ($application->isInterviewSubmitted()) {
@@ -209,6 +209,22 @@ class OnlineInterviewController extends Controller
                 ]);
         }
 
+        if (! $request->boolean('questionnaire_confirmed')) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'Confirm that these answers are the questionnaire you are submitting.',
+                    'errors' => [
+                        'questionnaire_confirmed' => ['Confirmation of this questionnaire submission is required.'],
+                    ],
+                ], 422);
+            }
+
+            return back()->withErrors([
+                'questionnaire_confirmed' => 'Confirmation of this questionnaire submission is required.',
+            ]);
+        }
+
         $rateKey = 'ol-submit:user:'.(int) Auth::id();
         if (! RateLimiter::attempt($rateKey, 1, fn () => true, (int) config('online_interview.submission.prevent_duplicate_within_seconds', 30))) {
             if ($request->expectsJson()) {
@@ -222,7 +238,14 @@ class OnlineInterviewController extends Controller
             return back()->withErrors(['submit' => 'Please wait before submitting again.']);
         }
 
-        app(ApplicationWorkflowService::class)->markInterviewSubmitted($application, $request->user());
+        $confirmedAnswers = $this->interview->loadAnswersMap($application);
+        ksort($confirmedAnswers);
+        app(ApplicationWorkflowService::class)->markInterviewSubmitted(
+            $application,
+            $request->user(),
+            OnlineInterviewCatalog::VERSION,
+            hash('sha256', (string) json_encode($confirmedAnswers, JSON_UNESCAPED_UNICODE)),
+        );
         $application->refresh();
 
         app(ConsentRecordingService::class)->recordOnce(
@@ -244,6 +267,13 @@ class OnlineInterviewController extends Controller
 
         return redirect()->route('online-interview.show', ['application' => $application->id])
             ->with('submitted', 'Online Interview submitted for editorial processing.');
+    }
+
+    private function interviewIsOpen(Application $application): bool
+    {
+        return $application->isInterviewSubmitted()
+            || $application->interviewIsOpenBeforePayment()
+            || app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application);
     }
 
     private function unauth(Request $request, string $message): JsonResponse|RedirectResponse

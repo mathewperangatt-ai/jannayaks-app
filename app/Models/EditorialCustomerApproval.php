@@ -7,12 +7,15 @@ use Illuminate\Database\Eloquent\Relations\BelongsTo;
 
 class EditorialCustomerApproval extends Model
 {
+    public const SCOPE_ENGLISH_AND_MALAYALAM = 'english_and_malayalam';
+
     protected $fillable = [
         'application_id',
         'profile_id',
         'approved_by_user_id',
         'english_editorial_content_id',
         'malayalam_editorial_content_id',
+        'consent_scope',
         'approved_at',
         'invalidated_at',
         'invalidation_reason',

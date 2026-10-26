@@ -539,6 +539,7 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
             'preferred_contact_mobile' => $opts['contact_mobile'] ?? null,
             'package_tier' => $tier,
             'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
 

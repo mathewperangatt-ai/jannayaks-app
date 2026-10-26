@@ -18,13 +18,22 @@ class ApplicationWorkflowService
     /**
      * After Online Interview submit: mark completed and advance workflow status.
      */
-    public function markInterviewSubmitted(Application $application, ?User $actor = null): Application
-    {
-        return DB::transaction(function () use ($application, $actor) {
+    public function markInterviewSubmitted(
+        Application $application,
+        ?User $actor = null,
+        ?string $questionnaireVersion = null,
+        ?string $submissionHash = null,
+    ): Application {
+        return DB::transaction(function () use ($application, $actor, $questionnaireVersion, $submissionHash) {
             /** @var Application $locked */
             $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
             $beforeStatus = $locked->status;
             $locked->online_interview_completed_at = now();
+            if ($questionnaireVersion !== null && $submissionHash !== null) {
+                $locked->questionnaire_confirmed_at = now();
+                $locked->questionnaire_version = $questionnaireVersion;
+                $locked->questionnaire_submission_sha256 = $submissionHash;
+            }
 
             $unlocked = app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($locked);
 
@@ -57,6 +66,9 @@ class ApplicationWorkflowService
                     after: [
                         'status' => $locked->status,
                         'online_interview_completed_at' => $locked->online_interview_completed_at?->toIso8601String(),
+                        'questionnaire_confirmed_at' => $locked->questionnaire_confirmed_at?->toIso8601String(),
+                        'questionnaire_version' => $locked->questionnaire_version,
+                        'questionnaire_submission_sha256' => $locked->questionnaire_submission_sha256,
                     ],
                     actor: $actor,
                 );

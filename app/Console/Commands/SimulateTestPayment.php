@@ -69,7 +69,12 @@ class SimulateTestPayment extends Command
         /** @var Application|null $application */
         $application = Application::query()
             ->where('user_id', $user->id)
-            ->whereIn('status', [Application::STATUS_PAYMENT_PENDING, Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW])
+            ->whereIn('status', [
+                Application::STATUS_PAYMENT_PENDING,
+                Application::STATUS_INTERVIEW_IN_PROGRESS,
+                Application::STATUS_INTERVIEW_SUBMITTED,
+                Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW,
+            ])
             ->orderByDesc('id')
             ->first();
         if ($application === null) {

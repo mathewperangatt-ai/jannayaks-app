@@ -42,7 +42,7 @@
     @if($canSelectPersonal)
         <h2 style="margin-top:14px;font-size:16px">Choose your Jannayaks URL</h2>
         <p class="sub" style="margin:0">
-            Verified name: <b>{{ $verifiedName }}</b>.
+            Name on the profile: <b>{{ $verifiedName }}</b>.
             These suggestions are derived from that name. Arbitrary usernames are not allowed.
         </p>
         @if($personalSlugLocked)
