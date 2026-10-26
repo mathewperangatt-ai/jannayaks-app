@@ -17,6 +17,7 @@ use App\Services\Ai\FakeEditorialAiClient;
 use App\Services\ApplicationLocationService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
+use App\Services\ApplicationWorkflowService;
 use App\Services\ProfileAdministrationService;
 use App\Services\ProfileUrlService;
 use App\Services\RefundService;
@@ -32,12 +33,13 @@ class AgreedCorrectionWorkflowTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_one_open_application_per_email_allows_a_different_email(): void
+    public function test_one_application_per_email_includes_closed_applications(): void
     {
         $publishedOwner = User::factory()->create(['email' => 'published.person@example.com']);
         Application::factory()->create([
             'user_id' => $publishedOwner->id,
             'applicant_email_normalized' => 'published.person@example.com',
+            'preferred_contact_email' => 'published.person@example.com',
             'status' => Application::STATUS_PUBLISHED,
             'full_name' => 'Published Person',
         ]);
@@ -54,12 +56,14 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $this->assertSame('other.person@example.com', $created->applicant_email_normalized);
         $this->assertSame('Kozhikode', $created->broad_location);
         $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, $created->status);
+
         $this->actingAs($other)->postJson(route('applications.store'), [
             'source_method' => 'online_interview',
             'full_name' => 'Other Person Again',
             'broad_location' => 'Kozhikode',
             'contact_email' => 'other.person@example.com',
-        ])->assertStatus(409);
+        ])->assertStatus(409)
+            ->assertJsonPath('error', Application::DUPLICATE_EMAIL_NOTICE);
 
         $created->forceFill(['status' => Application::STATUS_CANCELLED])->save();
         $this->actingAs($other)->postJson(route('applications.store'), [
@@ -67,38 +71,83 @@ class AgreedCorrectionWorkflowTest extends TestCase
             'full_name' => 'Other Person Restarted',
             'broad_location' => 'Kannur',
             'contact_email' => 'other.person@example.com',
-        ])->assertCreated();
-        $this->assertSame(2, Application::query()->where('user_id', $other->id)->count());
+        ])->assertStatus(409)
+            ->assertJsonPath('error', Application::DUPLICATE_EMAIL_NOTICE);
+        $this->assertSame(1, Application::query()->where('user_id', $other->id)->count());
+
+        $contactCollision = User::factory()->create(['email' => 'fresh.contact@example.com']);
+        $this->actingAs($contactCollision)->postJson(route('applications.store'), [
+            'source_method' => 'direct_submission',
+            'full_name' => 'Contact Collision',
+            'broad_location' => 'Kochi',
+            'contact_email' => 'published.person@example.com',
+        ])->assertStatus(409);
+        $this->assertSame(0, Application::query()->where('user_id', $contactCollision->id)->count());
     }
 
-    public function test_database_rejects_two_open_applications_for_the_same_email(): void
+    public function test_preferred_contact_cannot_reuse_another_account_email(): void
     {
-        $index = DB::select("SELECT indexdef FROM pg_indexes WHERE indexname = 'applications_one_open_lifecycle_email'");
+        $registeredOnly = User::factory()->create(['email' => 'registered.only@example.com']);
+        $this->assertSame(0, Application::query()->where('user_id', $registeredOnly->id)->count());
+
+        $applicant = User::factory()->create(['email' => 'new.applicant@example.com']);
+        $this->actingAs($applicant)->postJson(route('applications.store'), [
+            'source_method' => 'online_interview',
+            'full_name' => 'New Applicant',
+            'broad_location' => 'Kozhikode',
+            'contact_email' => 'Registered.Only@example.com',
+        ])->assertStatus(409)
+            ->assertJsonPath('error', Application::DUPLICATE_EMAIL_NOTICE);
+        $this->assertSame(0, Application::query()->where('user_id', $applicant->id)->count());
+
+        $this->actingAs($applicant)->postJson(route('applications.store'), [
+            'source_method' => 'online_interview',
+            'full_name' => 'New Applicant',
+            'broad_location' => 'Kozhikode',
+            'contact_email' => 'new.applicant@example.com',
+        ])->assertCreated();
+        $this->assertSame(1, Application::query()->where('user_id', $applicant->id)->count());
+    }
+
+    public function test_database_rejects_another_application_for_the_same_email_in_any_status(): void
+    {
+        $index = DB::select("SELECT indexdef FROM pg_indexes WHERE indexname = 'applications_one_email'");
         $this->assertNotEmpty($index);
         $this->assertStringContainsString('UNIQUE', strtoupper((string) $index[0]->indexdef));
+        $this->assertStringNotContainsString('status', strtolower((string) $index[0]->indexdef));
 
         Application::factory()->create([
             'applicant_email_normalized' => 'same.person@example.com',
-            'status' => Application::STATUS_INTERVIEW_IN_PROGRESS,
+            'status' => Application::STATUS_REFUNDED,
         ]);
 
         try {
             DB::transaction(function (): void {
                 Application::factory()->create([
                     'applicant_email_normalized' => 'same.person@example.com',
-                    'status' => Application::STATUS_PUBLISHED,
+                    'status' => Application::STATUS_ARCHIVED,
                 ]);
             });
-            $this->fail('Two open applications for one email must be rejected.');
+            $this->fail('A closed application must still occupy its email.');
         } catch (QueryException $exception) {
             $this->assertSame('23505', (string) ($exception->errorInfo[0] ?? ''));
         }
 
-        Application::factory()->create([
-            'applicant_email_normalized' => 'same.person@example.com',
-            'status' => Application::STATUS_REFUNDED,
-        ]);
-        $this->assertSame(2, Application::query()->where('applicant_email_normalized', 'same.person@example.com')->count());
+        $count = DB::transaction(function (): int {
+            try {
+                DB::transaction(function (): void {
+                    Application::factory()->create([
+                        'applicant_email_normalized' => 'same.person@example.com',
+                        'status' => Application::STATUS_CANCELLED,
+                    ]);
+                });
+            } catch (QueryException $exception) {
+                $this->assertSame('23505', (string) ($exception->errorInfo[0] ?? ''));
+            }
+
+            return Application::query()->where('applicant_email_normalized', 'same.person@example.com')->count();
+        });
+        $this->assertSame(1, $count);
     }
 
     public function test_location_is_required_and_copied_without_replacing_existing_geography(): void
@@ -272,6 +321,60 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $this->assertSame(1, EditorialCustomerApproval::query()->where('application_id', $application->id)->count());
     }
 
+    public function test_consent_covers_bilingual_publication_without_publishing_unprepared_malayalam(): void
+    {
+        Config::set('jannayaks.ai.provider', 'fake');
+        Config::set('jannayaks.ai.malayalam_pipeline_enabled', true);
+        $this->app->instance(EditorialAiClient::class, new FakeEditorialAiClient);
+
+        $admin = User::factory()->admin()->create();
+        $editor = User::factory()->editor()->create();
+        $member = User::factory()->create();
+        $application = Application::factory()->paid()->create([
+            'user_id' => $member->id,
+            'full_name' => 'English First',
+            'package_tier' => 'accomplished',
+            'source_method' => 'online_interview',
+            'broad_location' => 'Kozhikode',
+            'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
+        ]);
+        InterviewAnswer::query()->create([
+            'application_id' => $application->id,
+            'user_id' => $member->id,
+            'question_id' => 'q1',
+            'original_answer' => 'Malayalam is not ready.',
+            'answered_at' => now(),
+        ]);
+        app(EditorialGenerationService::class)->generateForApplication($application->fresh(), $editor);
+        $application = $application->fresh();
+        $english = EditorialContent::query()
+            ->where('profile_id', $application->profile_id)
+            ->where('language', EditorialContent::LANGUAGE_EN)
+            ->firstOrFail();
+        $malayalam = EditorialContent::query()
+            ->where('profile_id', $application->profile_id)
+            ->where('language', EditorialContent::LANGUAGE_ML)
+            ->firstOrFail();
+        $english->forceFill(['status' => EditorialContent::STATUS_APPROVED, 'reviewed_by_id' => $editor->id])->save();
+        $malayalam->forceFill([
+            'status' => EditorialContent::STATUS_DRAFT,
+            'source_editorial_content_id' => $english->id,
+        ])->save();
+
+        $workflow = app(CustomerEditorialWorkflowService::class);
+        $released = $workflow->releaseForCustomerPreview($application->fresh(), $editor);
+        $approval = $workflow->approvePreview($released, $member, $english->id);
+
+        $this->assertSame(EditorialCustomerApproval::SCOPE_ENGLISH_AND_MALAYALAM, $approval->consent_scope);
+        $this->assertNull($approval->malayalam_editorial_content_id);
+        $this->assertSame(1, EditorialCustomerApproval::query()->where('application_id', $application->id)->count());
+
+        $published = app(ApplicationWorkflowService::class)->publish($released->fresh(), $admin);
+        $this->assertNull($published->published_malayalam_editorial_content_id);
+        $this->assertSame($english->id, (int) $published->published_english_editorial_content_id);
+        $this->assertSame(EditorialContent::STATUS_DRAFT, $malayalam->fresh()->status);
+    }
+
     public function test_material_change_invalidates_the_bilingual_consent(): void
     {
         Config::set('jannayaks.ai.provider', 'fake');
@@ -353,7 +456,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $this->assertStringContainsString('object-fit:cover', $html);
     }
 
-    public function test_administrators_can_change_email_transfer_url_and_convert_with_an_audit(): void
+    public function test_administrators_can_change_email_transfer_url_and_unpublish_with_an_audit(): void
     {
         $admin = User::factory()->admin()->create();
         $editor = User::factory()->editor()->create();
@@ -434,38 +537,19 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $this->assertTrue(StaffActionLog::query()->where('action', 'profile.url_changed')->exists());
 
         $paymentCount = Payment::query()->where('application_id', $application->id)->count();
-        $memorial = $service->convertLivingProfileToMemorial(
-            $transferred->fresh(),
-            $admin,
-            'Ravi Nair',
-            '9847000111',
-            'Family requested a memorial.',
-        );
-        $again = $service->convertLivingProfileToMemorial(
-            $transferred->fresh(),
-            $admin,
-            'Ravi Nair',
-            '9847000111',
-            'Repeated request must not create another memorial.',
-        );
+        $body = $profile->fresh()->full_name;
+        $service->unpublishLivingProfile($transferred->fresh(), $admin, 'Official notice and proof received.');
+        $service->unpublishLivingProfile($transferred->fresh(), $admin, 'A repeated request must not create a memorial.');
 
-        $this->assertSame($memorial->id, $again->id);
-        $this->assertSame($profile->id, (int) $memorial->living_profile_id);
-        $this->assertSame('late.meera.nair', $memorial->fresh()->slug);
-        $this->assertSame('inactive', $profile->fresh()->status);
-        $this->assertNotNull($profile->fresh()->unpublished_at);
-        $this->assertNull($profile->fresh()->slug);
+        $profile->refresh();
+        $this->assertSame('inactive', $profile->status);
+        $this->assertNotNull($profile->unpublished_at);
+        $this->assertSame('meera', $profile->slug);
+        $this->assertSame($body, $profile->full_name);
+        $this->assertSame(0, InMemoriamProfile::query()->count());
         $this->assertSame($paymentCount, Payment::query()->where('application_id', $application->id)->count());
-        $this->assertTrue(StaffActionLog::query()->where('action', 'profile.converted_to_memorial')->exists());
+        $this->assertSame(1, StaffActionLog::query()->where('action', 'profile.living_unpublished')->count());
         $this->get('/meera')->assertNotFound();
-
-        $memorial->forceFill([
-            'status' => InMemoriamProfile::STATUS_PUBLISHED_ARCHIVED,
-            'published_at' => now(),
-            'hosting_starts_on' => now()->toDateString(),
-            'hosting_ends_on' => now()->addYear()->toDateString(),
-        ])->save();
-        $this->get('/meera')->assertRedirect('/in-memoriam/late.meera.nair');
     }
 
     public function test_recommend_someone_still_opens_a_visitor_email_draft(): void

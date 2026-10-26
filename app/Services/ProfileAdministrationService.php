@@ -3,10 +3,9 @@
 namespace App\Services;
 
 use App\Models\Application;
-use App\Models\InMemoriamProfile;
 use App\Models\Profile;
-use App\Models\SlugRedirect;
 use App\Models\User;
+use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -15,7 +14,6 @@ class ProfileAdministrationService
     public function __construct(
         private StaffAuditLogger $audit,
         private ProfileUrlService $profileUrls,
-        private InMemoriamUrlService $memorialUrls,
     ) {}
 
     /**
@@ -40,8 +38,8 @@ class ProfileAdministrationService
                 ->whereRaw('LOWER(email) = ?', [$normalized])
                 ->whereKeyNot($user->id)
                 ->exists();
-            if ($emailTaken || $this->emailOwnsAnotherOpenApplication($normalized, (int) $locked->id)) {
-                throw new InvalidArgumentException('That email address is already used by another account or open application.');
+            if ($emailTaken || Application::emailIsAssociated($normalized, (int) $locked->id, (int) $user->id)) {
+                throw new InvalidArgumentException('That email address is already used by another account or application.');
             }
 
             $before = [
@@ -49,8 +47,16 @@ class ProfileAdministrationService
                 'email' => $user->email,
                 'applicant_email_normalized' => $locked->applicant_email_normalized,
             ];
-            $user->forceFill(['email' => $normalized])->save();
-            $locked->forceFill(['applicant_email_normalized' => $normalized])->save();
+            try {
+                $user->forceFill(['email' => $normalized])->save();
+                $locked->forceFill(['applicant_email_normalized' => $normalized])->save();
+            } catch (QueryException $exception) {
+                if ((string) ($exception->errorInfo[0] ?? '') !== '23505') {
+                    throw $exception;
+                }
+
+                throw new InvalidArgumentException('That email address is already used by another account or application.');
+            }
 
             $this->audit->log(
                 action: 'application.email_changed',
@@ -95,12 +101,9 @@ class ProfileAdministrationService
             if ($targetHasProfile) {
                 throw new InvalidArgumentException('The destination account already has a profile.');
             }
-            if ($this->emailOwnsAnotherOpenApplication($targetEmail, (int) $locked->id)
-                || Application::query()
-                    ->where('user_id', $targetLocked->id)
-                    ->whereIn('status', Application::openLifecycleStatuses())
-                    ->exists()) {
-                throw new InvalidArgumentException('The destination account already has an open application.');
+            if (Application::emailIsAssociated($targetEmail, (int) $locked->id, (int) $targetLocked->id)
+                || Application::query()->where('user_id', $targetLocked->id)->exists()) {
+                throw new InvalidArgumentException('The destination account already has an application or profile.');
             }
 
             $profile = $locked->profile_id
@@ -113,12 +116,20 @@ class ProfileAdministrationService
                 'profile_user_id' => $profile?->user_id,
             ];
 
-            $locked->forceFill([
-                'user_id' => $targetLocked->id,
-                'applicant_email_normalized' => $targetEmail,
-            ])->save();
-            if ($profile instanceof Profile) {
-                $profile->forceFill(['user_id' => $targetLocked->id])->save();
+            try {
+                $locked->forceFill([
+                    'user_id' => $targetLocked->id,
+                    'applicant_email_normalized' => $targetEmail,
+                ])->save();
+                if ($profile instanceof Profile) {
+                    $profile->forceFill(['user_id' => $targetLocked->id])->save();
+                }
+            } catch (QueryException $exception) {
+                if ((string) ($exception->errorInfo[0] ?? '') !== '23505') {
+                    throw $exception;
+                }
+
+                throw new InvalidArgumentException('The destination account already has an application or profile.');
             }
 
             $this->audit->log(
@@ -167,90 +178,52 @@ class ProfileAdministrationService
     }
 
     /**
-     * Convert a living profile into a memorial draft using the memorial URL
-     * rules. History, media, consent, and payments stay on the living records.
-     * The memorial is not published by this action.
+     * Unpublish a living profile after Jannayaks has received official notice.
+     * This does not create a memorial, copy content, or change the profile URL.
      */
-    public function convertLivingProfileToMemorial(
-        Application $application,
-        User $actor,
-        string $commissionerName,
-        string $commissionerMobile,
-        string $reason,
-    ): InMemoriamProfile {
+    public function unpublishLivingProfile(Application $application, User $actor, string $reason): Profile
+    {
         $this->assertAdmin($actor, $reason);
-        $commissionerName = trim($commissionerName);
-        $commissionerMobile = trim($commissionerMobile);
-        if ($commissionerName === '' || $commissionerMobile === '') {
-            throw new InvalidArgumentException('The commissioner name and mobile number are required.');
-        }
 
-        return DB::transaction(function () use ($application, $actor, $commissionerName, $commissionerMobile, $reason): InMemoriamProfile {
+        return DB::transaction(function () use ($application, $actor, $reason): Profile {
             /** @var Application $locked */
             $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
             $profile = $locked->profile_id
                 ? Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->first()
                 : null;
             if (! $profile instanceof Profile) {
-                throw new InvalidArgumentException('This application has no living profile to convert.');
+                throw new InvalidArgumentException('This application has no living profile to unpublish.');
             }
 
-            $existing = InMemoriamProfile::query()->where('living_profile_id', $profile->id)->first();
-            if ($existing instanceof InMemoriamProfile) {
-                return $existing;
+            $before = [
+                'profile_id' => $profile->id,
+                'status' => $profile->status,
+                'slug' => $profile->slug,
+                'unpublished_at' => $profile->unpublished_at?->toIso8601String(),
+            ];
+            $alreadyUnpublished = $profile->status === 'inactive' && $profile->unpublished_at !== null;
+            if (! $alreadyUnpublished) {
+                $profile->forceFill([
+                    'status' => 'inactive',
+                    'unpublished_at' => $profile->unpublished_at ?? now(),
+                ])->save();
+
+                $this->audit->log(
+                    action: 'profile.living_unpublished',
+                    subject: $profile,
+                    before: $before,
+                    after: [
+                        'profile_id' => $profile->id,
+                        'status' => $profile->status,
+                        'slug' => $profile->slug,
+                        'unpublished_at' => $profile->unpublished_at?->toIso8601String(),
+                        'reason' => $reason,
+                    ],
+                    actor: $actor,
+                );
             }
 
-            $previousSlug = $profile->slug;
-            $memorial = InMemoriamProfile::query()->create([
-                'commissioner_user_id' => $actor->id,
-                'living_profile_id' => $profile->id,
-                'status' => InMemoriamProfile::STATUS_DRAFT,
-                'commissioner_contact_name' => $commissionerName,
-                'commissioner_contact_mobile' => $commissionerMobile,
-                'deceased_full_name' => (string) ($profile->full_name ?: $locked->full_name),
-                'deceased_display_name' => (string) ($profile->display_name ?: $profile->full_name ?: $locked->full_name),
-                'verification_status' => InMemoriamProfile::VERIFICATION_UNVERIFIED,
-                'profession' => (string) $profile->profession,
-            ]);
-
-            $slug = $this->memorialUrls->generateCanonicalSlug($memorial);
-            $memorial = $this->memorialUrls->assignSlug($memorial, $slug, $actor);
-
-            if (filled($previousSlug)) {
-                SlugRedirect::query()->create([
-                    'old_slug' => (string) $previousSlug,
-                    'new_slug' => (string) $memorial->slug,
-                    'redirectable_type' => $memorial->getMorphClass(),
-                    'redirectable_id' => $memorial->id,
-                ]);
-            }
-
-            $profile->forceFill([
-                'slug' => null,
-                'previous_slug' => $previousSlug,
-                'status' => 'inactive',
-                'unpublished_at' => $profile->unpublished_at ?? now(),
-            ])->save();
-
-            $this->audit->log(
-                action: 'profile.converted_to_memorial',
-                subject: $profile,
-                before: [
-                    'profile_id' => $profile->id,
-                    'slug' => $previousSlug,
-                    'status' => 'living',
-                ],
-                after: [
-                    'profile_id' => $profile->id,
-                    'memorial_id' => $memorial->id,
-                    'memorial_slug' => $memorial->slug,
-                    'application_id' => $locked->id,
-                    'reason' => $reason,
-                ],
-                actor: $actor,
-            );
-
-            return $memorial->fresh() ?? $memorial;
+            return $profile->fresh() ?? $profile;
         });
     }
 
@@ -267,15 +240,5 @@ class ProfileAdministrationService
     private function lockEmail(string $email): void
     {
         DB::statement('SELECT pg_advisory_xact_lock(740261, hashtext(?))', [$email]);
-    }
-
-    private function emailOwnsAnotherOpenApplication(string $email, int $ignoreApplicationId): bool
-    {
-        return Application::query()
-            ->where('applicant_email_normalized', $email)
-            ->whereIn('status', Application::openLifecycleStatuses())
-            ->whereKeyNot($ignoreApplicationId)
-            ->lockForUpdate()
-            ->exists();
     }
 }

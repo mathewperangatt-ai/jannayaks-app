@@ -404,25 +404,22 @@ class ViewApplication extends ViewRecord
                         );
                     }, 'Profile URL updated. The previous URL redirects to the new one.');
                 }),
-            Action::make('convertToMemorial')
-                ->label('Convert to memorial')
+            Action::make('unpublishLivingProfile')
+                ->label('Unpublish living profile')
                 ->color('warning')
                 ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false) && filled($this->getRecord()?->profile_id))
                 ->form([
-                    TextInput::make('commissioner_contact_name')->label('Commissioner name')->required(),
-                    TextInput::make('commissioner_contact_mobile')->label('Commissioner mobile')->required(),
-                    Textarea::make('reason')->required(),
+                    Textarea::make('reason')->required()
+                        ->helperText('Official notice has been received. This only unpublishes the living profile. It does not create a memorial or copy any content.'),
                 ])
                 ->action(function (array $data): void {
                     $this->runAdministration(function (Application $application, User $actor) use ($data): void {
-                        app(ProfileAdministrationService::class)->convertLivingProfileToMemorial(
+                        app(ProfileAdministrationService::class)->unpublishLivingProfile(
                             $application,
                             $actor,
-                            (string) $data['commissioner_contact_name'],
-                            (string) $data['commissioner_contact_mobile'],
                             (string) $data['reason'],
                         );
-                    }, 'Living profile converted to a memorial draft. The memorial is not published by this action.');
+                    }, 'Living profile unpublished. No memorial profile was created.');
                 }),
             EditAction::make()
                 ->visible(fn (): bool => static::getResource()::canEdit($this->getRecord())),

@@ -28,25 +28,11 @@ return new class extends Migration
               AND applications.applicant_email_normalized IS NULL
         ');
 
-        DB::statement("
-            CREATE UNIQUE INDEX applications_one_open_lifecycle_email
+        DB::statement('
+            CREATE UNIQUE INDEX applications_one_email
             ON applications (applicant_email_normalized)
             WHERE applicant_email_normalized IS NOT NULL
-              AND status IN (
-                'intake_in_progress',
-                'interview_in_progress',
-                'interview_submitted',
-                'direct_submitted',
-                'payment_pending',
-                'payment_complete_awaiting_interview',
-                'awaiting_editorial_review',
-                'in_editorial_review',
-                'editorial_approved',
-                'editorial_revision_requested',
-                'awaiting_publication',
-                'published'
-              )
-        ");
+        ');
 
         Schema::table('editorial_customer_approvals', function (Blueprint $table): void {
             $table->string('consent_scope', 64)->nullable()->after('malayalam_editorial_content_id');
@@ -72,6 +58,7 @@ return new class extends Migration
             $table->dropColumn('consent_scope');
         });
 
+        DB::statement('DROP INDEX IF EXISTS applications_one_email');
         DB::statement('DROP INDEX IF EXISTS applications_one_open_lifecycle_email');
 
         Schema::table('applications', function (Blueprint $table): void {

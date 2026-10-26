@@ -56,12 +56,23 @@ class ApplicationController extends Controller
             ]);
         }
 
+        $emailNotice = null;
+        if ($auth) {
+            $accountEmail = Application::normalizeApplicantEmail(Auth::user()?->email);
+            $userId = (int) Auth::id();
+            if (Application::query()->where('user_id', $userId)->exists()
+                || Application::emailIsAssociated($accountEmail, null, $userId)) {
+                $emailNotice = Application::DUPLICATE_EMAIL_NOTICE;
+            }
+        }
+
         if ($request->expectsJson()) {
             return response()->json([
                 'ok' => true,
                 'login_required' => ! $auth,
                 'offering' => 'standard_profile',
                 'source_methods' => $sourceMethods,
+                'email_notice' => $emailNotice,
             ]);
         }
 
@@ -71,6 +82,7 @@ class ApplicationController extends Controller
             'tier_labels' => $tierLabels,
             'guest' => ! $auth,
             'language' => $language,
+            'emailNotice' => $emailNotice,
         ]);
     }
 
@@ -236,26 +248,34 @@ class ApplicationController extends Controller
                 }));
             }
 
-            DB::statement('SELECT pg_advisory_xact_lock(740261, hashtext(?))', [$email]);
+            $contactEmail = Application::normalizeApplicantEmail($validated['contact_email'] ?? null);
+            $lockEmails = array_values(array_unique(array_filter([$email, $contactEmail])));
+            sort($lockEmails, SORT_STRING);
+            foreach ($lockEmails as $lockEmail) {
+                DB::statement('SELECT pg_advisory_xact_lock(740261, hashtext(?))', [$lockEmail]);
+            }
 
             $existingApplication = Application::query()
                 ->where(function ($query) use ($email, $user): void {
                     $query->where('applicant_email_normalized', $email)
-                        ->orWhere('user_id', $user->id);
+                        ->orWhere('user_id', $user->id)
+                        ->orWhereRaw('lower(trim(preferred_contact_email)) = ?', [$email]);
                 })
-                ->whereIn('status', Application::openLifecycleStatuses())
                 ->lockForUpdate()
                 ->orderByDesc('id')
                 ->first();
 
-            if ($existingApplication !== null) {
-                return $this->redirectHomeWithExisting($request, $existingApplication);
+            if ($existingApplication !== null
+                || Application::emailIsAssociated($email, null, (int) $user->id)
+                || ($contactEmail !== null && $contactEmail !== $email && Application::emailIsAssociated($contactEmail))) {
+                return $this->duplicateEmailResponse($request, $existingApplication, (int) $user->id);
             }
 
             $source = (string) $validated['source_method'];
             $application = new Application;
             try {
-                $application->forceFill([
+                DB::transaction(function () use ($application, $user, $email, $validated, $source): void {
+                    $application->forceFill([
                     'user_id' => $user->id,
                     'applicant_email_normalized' => $email,
                     'source_method' => $source,
@@ -272,24 +292,17 @@ class ApplicationController extends Controller
                     'intake_started_at' => now(),
                     'direct_submission_received_at' => $source === 'direct_submission' ? now() : null,
                     'payment_status' => Application::PAYMENT_STATUS_PENDING,
-                    'status' => $source === 'online_interview'
-                        ? Application::STATUS_INTERVIEW_IN_PROGRESS
-                        : Application::STATUS_PAYMENT_PENDING,
-                ])->save();
+                        'status' => $source === 'online_interview'
+                            ? Application::STATUS_INTERVIEW_IN_PROGRESS
+                            : Application::STATUS_PAYMENT_PENDING,
+                    ])->save();
+                });
             } catch (QueryException $exception) {
                 if ((string) ($exception->errorInfo[0] ?? '') !== '23505') {
                     throw $exception;
                 }
 
-                $existingApplication = Application::query()
-                    ->where('applicant_email_normalized', $email)
-                    ->whereIn('status', Application::openLifecycleStatuses())
-                    ->first();
-                if ($existingApplication instanceof Application) {
-                    return $this->redirectHomeWithExisting($request, $existingApplication);
-                }
-
-                throw $exception;
+                return $this->duplicateEmailResponse($request, null, (int) $user->id);
             }
 
             if ($request->expectsJson()) {
@@ -764,23 +777,23 @@ class ApplicationController extends Controller
         return $activePayment->totalPaise() !== (int) $package['amount_incl_paise'];
     }
 
-    /**
-     * A2 — an existing active application wins: the customer is returned to
-     * it instead of being allowed to create a dead-end second application.
-     */
-    private function redirectHomeWithExisting(Request $request, Application $application): JsonResponse|RedirectResponse
+    private function duplicateEmailResponse(Request $request, ?Application $existing, int $currentUserId): JsonResponse|RedirectResponse
     {
-        $message = 'You already have an active Jannayaks application. Continuing with it.';
-
-        if ($request->expectsJson()) {
-            return response()->json([
-                'ok' => false,
-                'error' => $message,
-                'application_id' => $application->id,
-            ], 409);
+        $payload = [
+            'ok' => false,
+            'error' => Application::DUPLICATE_EMAIL_NOTICE,
+        ];
+        if ($existing instanceof Application && (int) $existing->user_id === $currentUserId) {
+            $payload['application_id'] = $existing->id;
         }
 
-        return redirect()->route('applications.show', $application)->with('info', $message);
+        if ($request->expectsJson()) {
+            return response()->json($payload, 409);
+        }
+
+        return redirect()
+            ->route('apply', ['step' => 'tiers'])
+            ->withErrors(['apply' => Application::DUPLICATE_EMAIL_NOTICE]);
     }
 
     private function forbiddenResponse(Request $request, string $message): JsonResponse|RedirectResponse

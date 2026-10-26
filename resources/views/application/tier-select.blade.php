@@ -20,6 +20,9 @@
         </span>
     </div>
     <h1>{{ $ml ? 'നിങ്ങളുടെ പ്രൊഫൈൽ അപേക്ഷ ആരംഭിക്കുക' : 'Begin your profile application' }}</h1>
+    @if(!empty($emailNotice))
+        <div class="warnbox" role="alert">{{ $emailNotice }}</div>
+    @endif
     <p class="sub">
         {{ $ml ? 'ഒരു Standard Profile മാത്രമേയുള്ളൂ. എല്ലാവരും ഒരേ ഓൺലൈൻ അഭിമുഖത്തിന് ഉത്തരം നൽകുന്നു.' : 'There is one Standard Profile. Everyone answers the same Online Interview.' }}
     </p>

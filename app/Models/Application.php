@@ -46,10 +46,12 @@ class Application extends Model
 
     public const STATUS_REFUNDED = 'refunded';
 
+    public const DUPLICATE_EMAIL_NOTICE = 'An application or profile is already associated with this email address. Only one published profile is permitted per email address. For assistance or to discuss an existing application or profile, please contact contactus@jannayaks.in.';
+
     /**
-     * Statuses that still occupy an email address. Cancelled, refunded and
-     * archived applications release the address. A published profile keeps it.
-     * Another email address is a different application and is not blocked.
+     * Statuses that are still moving through intake, payment, or editorial work.
+     * Email occupancy is separate: any stored application occupies its email,
+     * including cancelled, refunded, and archived applications.
      *
      * @return list<string>
      */
@@ -76,6 +78,42 @@ class Application extends Model
         $email = strtolower(trim((string) $email));
 
         return $email === '' ? null : $email;
+    }
+
+    /**
+     * True when this email belongs to another account, or is already stored on
+     * an application in any status. The ignored application and user are the
+     * record currently being edited, so a person is not blocked by their own account.
+     */
+    public static function emailIsAssociated(?string $email, ?int $ignoreApplicationId = null, ?int $ignoreUserId = null): bool
+    {
+        $email = self::normalizeApplicantEmail($email);
+        if ($email === null) {
+            return false;
+        }
+
+        $applications = self::query()->where('applicant_email_normalized', $email);
+        if ($ignoreApplicationId !== null) {
+            $applications->whereKeyNot($ignoreApplicationId);
+        }
+        if ($applications->exists()) {
+            return true;
+        }
+
+        $contact = self::query()->whereRaw('lower(trim(preferred_contact_email)) = ?', [$email]);
+        if ($ignoreApplicationId !== null) {
+            $contact->whereKeyNot($ignoreApplicationId);
+        }
+        if ($contact->exists()) {
+            return true;
+        }
+
+        $users = User::query()->whereRaw('lower(trim(email)) = ?', [$email]);
+        if ($ignoreUserId !== null) {
+            $users->whereKeyNot($ignoreUserId);
+        }
+
+        return $users->exists();
     }
 
     public const PAYMENT_STATUS_PENDING = 'pending';

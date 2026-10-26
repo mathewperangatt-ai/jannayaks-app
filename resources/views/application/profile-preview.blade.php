@@ -64,7 +64,7 @@
             @enderror
             <label class="field" style="display:flex;gap:10px;align-items:flex-start">
                 <input type="checkbox" name="confirm_approval" value="1" required style="margin-top:4px">
-                <span>I have reviewed this updated profile and I approve it.</span>
+                <span>I have reviewed this updated profile. I consent to its publication in English and Malayalam. A Malayalam version is published only after it has been prepared and approved.</span>
             </label>
             <button class="btn primary" type="submit">Approve Profile</button>
         </form>
@@ -97,7 +97,7 @@
             <input type="hidden" name="english_editorial_content_id" value="{{ $english->id }}">
             <label class="field" style="display:flex;gap:10px;align-items:flex-start">
                 <input type="checkbox" name="confirm_approval" value="1" required style="margin-top:4px">
-                <span>I have reviewed this editorially prepared profile and I approve its publication on Jannayaks.</span>
+                <span>I have reviewed this editorially prepared profile. I consent to its publication in English and Malayalam. A Malayalam version is published only after it has been prepared and approved.</span>
             </label>
             <button class="btn primary" type="submit">Approve this profile</button>
         </form>

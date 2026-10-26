@@ -37,7 +37,7 @@ class PaymentsTestingModeTest extends TestCase
             'source_method' => 'online_interview',
             'broad_location' => 'Kozhikode',
             'full_name' => 'Testing Mode Test',
-            'contact_email' => 'testing.mode@example.com',
+            'contact_email' => $user->email,
         ])->assertRedirect();
 
         return Application::query()->latest('id')->first();
