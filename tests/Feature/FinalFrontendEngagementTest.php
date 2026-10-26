@@ -4,10 +4,10 @@ namespace Tests\Feature;
 
 use App\Mail\InvitationRequestMail;
 use App\Mail\ProfileContactMail;
-use App\Mail\RecommendationReceivedMail;
 use App\Models\Application;
 use App\Models\Profile;
 use App\Models\ProfileReaction;
+use App\Models\Recommendation;
 use App\Models\User;
 use App\Services\ApplicationPaymentStateService;
 use Database\Seeders\DemoProfilesSeeder;
@@ -149,28 +149,18 @@ class FinalFrontendEngagementTest extends TestCase
         $this->get('/recommend')
             ->assertOk()
             ->assertSee('Recommend Someone You May Know', false)
-            ->assertSee('does not guarantee inclusion', false);
+            ->assertSee('does not guarantee inclusion', false)
+            ->assertSee('You must press Send yourself.', false)
+            ->assertSee('mailto:', false);
 
         $this->post('/recommend', [
             'recommender_name' => 'Deepa Menon',
-            'recommender_contact' => 'deepa@example.com',
             'recommended_name' => 'Ravi Chandran',
-            'recommended_location' => 'Kollam',
-            'recommended_role' => 'Teacher and youth mentor',
-            'reason' => 'Two decades of quiet community teaching and library work in her town.',
-            'acknowledged_terms' => '1',
-        ])->assertRedirect(route('recommend.show'));
+            'recommended_email' => 'ravi.chandran@example.test',
+        ])->assertStatus(405);
 
-        $this->assertDatabaseHas('recommendations', ['recommended_name' => 'Ravi Chandran']);
-        Mail::assertSent(RecommendationReceivedMail::class, 1);
-
-        // Terms acknowledgement is mandatory.
-        $this->post('/recommend', [
-            'recommender_name' => 'Deepa Menon',
-            'recommender_contact' => 'deepa@example.com',
-            'recommended_name' => 'Someone Else',
-            'reason' => 'A long enough reason statement for validation.',
-        ])->assertSessionHasErrors();
+        $this->assertSame(0, Recommendation::query()->count());
+        Mail::assertNothingSent();
     }
 
     public function test_request_invitation_flow_is_separate_from_recommend(): void

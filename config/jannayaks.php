@@ -257,7 +257,7 @@ return [
         'legal_address' => env('JANNAYAKS_LEGAL_ADDRESS', 'MP 3/532A, PIN 695573'),
         // Shown on every legal page ("Last updated"). Update when the legal
         // text is meaningfully revised.
-        'legal_updated' => env('JANNAYAKS_LEGAL_UPDATED', '19 October 2026'),
+        'legal_updated' => env('JANNAYAKS_LEGAL_UPDATED', '26 October 2026'),
     ],
 
     'geography' => [

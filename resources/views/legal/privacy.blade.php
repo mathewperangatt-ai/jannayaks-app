@@ -37,8 +37,8 @@
         <tr><td>Interview answers, photographs, documents and video links you give us; the district, local body and ward you choose</td><td>To prepare your write-up with you and publish your profile</td><td>See section 9</td></tr>
         <tr><td>Voter ID (EPIC) details</td><td>Only to confirm who you are. Never published</td><td>Only as long as needed to complete and record verification</td></tr>
         <tr><td>Payment confirmations and references (not your card or UPI details, which stay with our payment gateway); invoices we issue</td><td>To take payment, issue invoices and handle refunds and renewals</td><td>As long as tax and accounting law requires</td></tr>
-        <tr><td>Messages you send through the contact box, Recommend Someone form or Request an Invitation form</td><td>To pass on or answer your message</td><td>Until the matter is closed, then deleted unless needed for a dispute</td></tr>
-        <tr><td>Name and contact details of someone you recommend</td><td>Only to send that person one invitation</td><td>Only as long as needed for that invitation. Automatic deletion is not yet in place; you or they may ask us to erase these details at any time</td></tr>
+        <tr><td>Messages you send through the contact box or Request an Invitation form</td><td>To pass on or answer your message</td><td>Until the matter is closed, then deleted unless needed for a dispute</td></tr>
+        <tr><td>Recommend Someone</td><td>The page prepares a draft in your own email application. Jannayaks does not receive or store the names or email address you enter, and does not send the email</td><td>Not stored. Recommendations already recorded are not deleted automatically; you or the person concerned may ask us to erase them</td></tr>
         <tr><td>For In Memoriam: details about the person who has passed away; your name, relationship and contact details</td><td>To prepare and verify the memorial and to contact you</td><td>See section 9</td></tr>
         <tr><td>IP address and basic device and browser information</td><td>To keep the site secure and find faults</td><td>Only as long as needed for security and fault-finding</td></tr>
     </tbody>
@@ -100,7 +100,7 @@
 
 <h2>11. People who have passed away, and people you recommend</h2>
 <p>The DPDP Act protects the data of living people. An In Memoriam page is prepared with the consent of the family member who requests it, whose own details we handle under this notice. If a family member or lawful representative objects to a memorial, we will review it under our grievance process.</p>
-<p>If you recommend someone, we use their details only to send them one invitation. We do not create a profile for them unless they apply and consent themselves.</p>
+<p>If you use Recommend Someone, your email application opens a draft for you to review and send. Jannayaks does not send that email, does not receive the other person’s name or email address, and does not store a new recommendation. No profile or account is created unless that person applies and consents. Recommendations already recorded are not deleted automatically; you or the person concerned may ask us to erase them.</p>
 
 <h2>12. Cookies</h2>
 <p>We use essential cookies to keep you signed in and to protect forms and payments. If you choose a language with the translate option, Google sets a cookie to remember it. We do not use advertising or analytics cookies. Pages that load Google Fonts or the Google translation widget share your IP address with Google.</p>
