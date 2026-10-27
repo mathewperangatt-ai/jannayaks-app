@@ -378,7 +378,9 @@ class ProfileWorkflowGoldenPathTest extends TestCase
          * -------------------------------------------------------------- */
         $admin = User::factory()->admin()->create();
 
-        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin);
+        $workflowService = app(ApplicationWorkflowService::class);
+        $workflowService->publish($application->fresh(), $admin);
+        $workflowService->publishMalayalam($application->fresh(), $admin, $finalMalayalam);
 
         $application->refresh();
         $profile->refresh();

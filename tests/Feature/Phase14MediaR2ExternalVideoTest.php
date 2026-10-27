@@ -179,7 +179,7 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         $this->get(route('profiles.public.photo', [$profile, $photo]))->assertNotFound();
 
         $admin = User::factory()->admin()->create();
-        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false);
+        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false, 'Authorised offline publication for this test.');
         $profile = $profile->fresh();
 
         // Still pending — must not be public even after profile publication.
@@ -227,7 +227,7 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
 
         $photoA = $service->uploadProfilePhoto($profile, $this->jpegUpload('a.jpg'), $member, 'A');
         $service->approve($photoA, $editor);
-        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false);
+        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false, 'Authorised offline publication for this test.');
         $profile = $profile->fresh();
 
         $this->get(route('profiles.public', $profile->slug))

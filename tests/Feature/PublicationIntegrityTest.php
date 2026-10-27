@@ -14,6 +14,7 @@ use App\Services\ApplicationWorkflowService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialContentVersioningService;
 use App\Services\EditorialGenerationService;
+use App\Services\PostPublicationUpdateService;
 use App\Services\PublicProfilePresentationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
@@ -68,14 +69,34 @@ class PublicationIntegrityTest extends TestCase
         [$admin, $editor, $member, $application, $versionA] = $this->publishApprovedVersion();
 
         $versionB = $this->createApprovedSuccessor($versionA, $editor, 'Successor B awaiting approval');
+        $before = $application->fresh();
 
-        app(CustomerEditorialWorkflowService::class)->releaseForCustomerPreview($application->fresh(), $editor);
+        try {
+            app(CustomerEditorialWorkflowService::class)->releaseForCustomerPreview($before, $editor);
+            $this->fail('A published profile cannot be released through the pre-publication preview.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('maintenance workflow', strtolower($e->getMessage()));
+        }
+        $after = $application->fresh();
+        $this->assertSame(Application::STATUS_PUBLISHED, $after->status);
+        $this->assertSame($before->customer_approved_at?->toDateTimeString(), $after->customer_approved_at?->toDateTimeString());
+        $this->assertSame($before->customer_approved_english_editorial_content_id, $after->customer_approved_english_editorial_content_id);
+        $this->assertSame($before->customer_preview_released_at?->toDateTimeString(), $after->customer_preview_released_at?->toDateTimeString());
+        $this->assertSame($before->preview_english_editorial_content_id, $after->preview_english_editorial_content_id);
+        $this->assertSame($before->published_english_editorial_content_id, $after->published_english_editorial_content_id);
+
+        try {
+            app(PostPublicationUpdateService::class)->completePublication($application->fresh(), $admin);
+            $this->fail('Successor B must not publish without customer approval.');
+        } catch (\InvalidArgumentException $e) {
+            $this->assertStringContainsString('customer approval', strtolower($e->getMessage()));
+        }
 
         try {
             app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, true);
             $this->fail('Successor B must not publish without customer approval.');
         } catch (\InvalidArgumentException $e) {
-            $this->assertStringContainsString('customer approval', strtolower($e->getMessage()));
+            $this->assertSame('Replacement publication requires a fresh customer-approved version awaiting publication.', $e->getMessage());
         }
 
         $this->get('/'.$application->profile->fresh()->slug)
@@ -110,10 +131,11 @@ class PublicationIntegrityTest extends TestCase
         [$admin, $editor, $member, $application, $versionA] = $this->publishApprovedVersion();
         $versionB = $this->createApprovedSuccessor($versionA, $editor, 'Exact approved successor B');
 
-        $workflow = app(CustomerEditorialWorkflowService::class);
-        $released = $workflow->releaseForCustomerPreview($application->fresh(), $editor);
+        $maintenance = app(PostPublicationUpdateService::class);
+        $released = $this->releaseMaintenanceSuccessor($application, $member, $admin, $versionB);
         $this->assertSame($versionB->id, (int) $released->preview_english_editorial_content_id);
-        $workflow->approvePreview($released, $member, $versionB->id);
+        $this->assertSame('published', $application->profile->fresh()->status);
+        $maintenance->approveMaintenancePreview($released, $member, $versionB->id);
 
         app(EditorialContentVersioningService::class)->applyEditorUpdate($versionB->fresh(), [
             'title' => $versionB->title,
@@ -132,6 +154,13 @@ class PublicationIntegrityTest extends TestCase
             // Expected: approval was invalidated by the post-approval edit.
         }
 
+        try {
+            app(PostPublicationUpdateService::class)->completePublication($application->fresh(), $admin);
+            $this->fail('Modified-after-approval content must not publish under the old approval.');
+        } catch (\InvalidArgumentException) {
+            // The maintenance request no longer has a live customer approval.
+        }
+
         $this->get('/'.$application->profile->fresh()->slug)
             ->assertOk()
             ->assertSee('Public biography version A', false)
@@ -144,22 +173,23 @@ class PublicationIntegrityTest extends TestCase
         $livePublishedAt = $application->profile->fresh()->published_at;
         $versionB = $this->createApprovedSuccessor($versionA, $editor, 'Replacement biography version B');
 
-        $workflow = app(CustomerEditorialWorkflowService::class);
-        $released = $workflow->releaseForCustomerPreview($application->fresh(), $editor);
+        $maintenance = app(PostPublicationUpdateService::class);
+        $released = $this->releaseMaintenanceSuccessor($application, $member, $admin, $versionB);
         $this->assertSame('published', $application->profile->fresh()->status);
 
-        $workflow->approvePreview($released, $member, $versionB->id);
+        $maintenance->approveMaintenancePreview($released, $member, $versionB->id);
         $this->assertSame('published', $application->profile->fresh()->status);
         $this->get('/'.$application->profile->slug)
             ->assertOk()
             ->assertSee('Public biography version A', false)
             ->assertDontSee('Replacement biography version B', false);
 
-        $published = app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, true);
-        $this->assertSame($versionB->id, (int) $published->published_english_editorial_content_id);
-        $this->assertEquals($livePublishedAt?->toDateTimeString(), $published->profile->fresh()->published_at?->toDateTimeString());
+        $maintenance->completePublication($application->fresh(), $admin);
+        $application->refresh();
+        $this->assertSame($versionB->id, (int) $application->published_english_editorial_content_id);
+        $this->assertEquals($livePublishedAt?->toDateTimeString(), $application->profile->fresh()->published_at?->toDateTimeString());
 
-        $this->get('/'.$published->profile->slug)
+        $this->get('/'.$application->profile->slug)
             ->assertOk()
             ->assertSee('Replacement biography version B', false)
             ->assertDontSee('Public biography version A', false);
@@ -312,5 +342,21 @@ class PublicationIntegrityTest extends TestCase
         ])->save();
 
         return $successor->fresh();
+    }
+
+    private function releaseMaintenanceSuccessor(
+        Application $application,
+        User $member,
+        User $admin,
+        EditorialContent $successor,
+    ): Application {
+        $maintenance = app(PostPublicationUpdateService::class);
+        $request = $maintenance->submit($application->fresh(), $member, 'Please update the published biography.');
+        $request->forceFill([
+            'resulting_english_editorial_content_id' => $successor->id,
+        ])->save();
+        $maintenance->releaseMaintenancePreview($application->fresh(), $admin);
+
+        return $application->fresh();
     }
 }

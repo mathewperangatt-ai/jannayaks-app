@@ -148,7 +148,7 @@ class Phase10AiEditorialTest extends TestCase
             $this->assertStringContainsString('Publish action', $e->getMessage());
         }
 
-        $published = app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false);
+        $published = app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false, 'Authorised offline publication for this test.');
         $this->assertSame(Application::STATUS_PUBLISHED, $published->status);
     }
 

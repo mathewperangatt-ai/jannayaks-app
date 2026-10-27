@@ -533,7 +533,7 @@ class ApplicationInfolist
             Application::STATUS_INTAKE_IN_PROGRESS => ['state' => $state, 'action' => 'Customer: finish intake, then continue to payment.', 'tone' => 'muted'],
             Application::STATUS_INTERVIEW_IN_PROGRESS => ['state' => $state, 'action' => 'Customer: complete the Online Interview.', 'tone' => 'muted'],
             Application::STATUS_INTERVIEW_SUBMITTED, Application::STATUS_DIRECT_SUBMITTED => ['state' => $state, 'action' => 'Customer: complete payment to unlock editorial processing.', 'tone' => 'muted'],
-            Application::STATUS_PAYMENT_PENDING => ['state' => $state, 'action' => 'Customer: pay — or Finance: apply a waiver for this application.', 'tone' => 'warn'],
+            Application::STATUS_PAYMENT_PENDING => ['state' => $state, 'action' => 'Customer: pay — or an administrator: use Apply payment waiver on this application.', 'tone' => 'warn'],
             Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW => ['state' => $state, 'action' => 'Customer: start the Online Interview.', 'tone' => 'muted'],
             Application::STATUS_AWAITING_EDITORIAL_REVIEW => ['state' => $state, 'action' => 'Editorial team: prepare versions (AI draft or editorial writing), then release for customer preview.', 'tone' => 'info'],
             Application::STATUS_IN_EDITORIAL_REVIEW => ['state' => $state, 'action' => 'Editorial team: finish review and release the preview to the customer.', 'tone' => 'info'],

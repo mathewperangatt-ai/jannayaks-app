@@ -260,7 +260,7 @@ class EditorialTestBypassTest extends TestCase
         $this->assertSame($previous->id, $application->fresh()->published_english_editorial_content_id);
 
         $this->settle($application->fresh());
-        $published = $workflow->publish($application->fresh(), $admin, false);
+        $published = $workflow->publish($application->fresh(), $admin, false, 'Authorised offline publication for this test.');
 
         $this->assertSame(Application::STATUS_PUBLISHED, $published->status);
         $this->assertSame($replacement->id, $published->published_english_editorial_content_id);

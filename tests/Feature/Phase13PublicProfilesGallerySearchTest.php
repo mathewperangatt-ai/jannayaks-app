@@ -650,7 +650,17 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
             'status' => Application::STATUS_AWAITING_PUBLICATION,
         ])->save();
 
-        $published = app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, true);
+        $workflow = app(ApplicationWorkflowService::class);
+        $published = $workflow->publish($application->fresh(), $admin, true);
+        $malayalam = EditorialContent::query()
+            ->where('profile_id', $profile->id)
+            ->where('language', EditorialContent::LANGUAGE_ML)
+            ->where('status', EditorialContent::STATUS_APPROVED)
+            ->where('source_editorial_content_id', $english->id)
+            ->first();
+        if ($malayalam instanceof EditorialContent) {
+            $workflow->publishMalayalam($published, $admin, $malayalam);
+        }
         $profile = Profile::query()->findOrFail($published->profile_id);
 
         if (isset($opts['published_at'])) {

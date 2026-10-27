@@ -8,6 +8,8 @@ use App\Models\Profile;
 use App\Models\User;
 use App\Services\PhotoEnhancementService;
 use App\Services\ProfileMediaService;
+use App\Support\AdminFeedback;
+use InvalidArgumentException;
 use Filament\Actions\Action;
 use Filament\Forms\Components\Textarea;
 use Filament\Notifications\Notification;
@@ -167,11 +169,16 @@ class ProfileMediaRelationManager extends RelationManager
                         if (! $user instanceof User) {
                             return;
                         }
-                        app(ProfileMediaService::class)->approve(
-                            $record,
-                            $user,
-                            $data['review_note'] ?? null,
-                        );
+                        try {
+                            app(ProfileMediaService::class)->approve(
+                                $record,
+                                $user,
+                                $data['review_note'] ?? null,
+                            );
+                            AdminFeedback::success('Photograph approved', 'The photograph is now available for the public profile.');
+                        } catch (InvalidArgumentException $e) {
+                            AdminFeedback::danger('Cannot approve photograph', $e->getMessage());
+                        }
                     }),
                 Action::make('reject')
                     ->label('Reject')
@@ -186,11 +193,16 @@ class ProfileMediaRelationManager extends RelationManager
                         if (! $user instanceof User) {
                             return;
                         }
-                        app(ProfileMediaService::class)->reject(
-                            $record,
-                            $user,
-                            $data['review_note'] ?? null,
-                        );
+                        try {
+                            app(ProfileMediaService::class)->reject(
+                                $record,
+                                $user,
+                                $data['review_note'] ?? null,
+                            );
+                            AdminFeedback::success('Photograph rejected', 'The photograph was not approved for the public profile.');
+                        } catch (InvalidArgumentException $e) {
+                            AdminFeedback::danger('Cannot reject photograph', $e->getMessage());
+                        }
                     }),
                 Action::make('makePrimary')
                     ->label('Set primary request')

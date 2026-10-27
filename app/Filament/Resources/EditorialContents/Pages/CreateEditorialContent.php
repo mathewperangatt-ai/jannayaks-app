@@ -5,8 +5,11 @@ namespace App\Filament\Resources\EditorialContents\Pages;
 use App\Filament\Resources\EditorialContents\EditorialContentResource;
 use App\Models\EditorialContent;
 use App\Models\User;
+use App\Services\EditorialContentVersioningService;
 use App\Services\StaffAuditLogger;
 use Filament\Resources\Pages\CreateRecord;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class CreateEditorialContent extends CreateRecord
 {
@@ -24,7 +27,13 @@ class CreateEditorialContent extends CreateRecord
         }
         $data['ai_generated'] = false;
 
-        return $data;
+        try {
+            return app(EditorialContentVersioningService::class)->attributesForNewDraft($data);
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'status' => $e->getMessage(),
+            ]);
+        }
     }
 
     protected function afterCreate(): void

@@ -104,9 +104,12 @@ class PublicProfileSearchService
                                         ->orWhere('body', 'ilike', $like);
                                 })
                                 ->orWhereHas('publishedMalayalamContent', function (Builder $editorial) use ($like): void {
-                                    $editorial->where('title', 'ilike', $like)
-                                        ->orWhere('summary', 'ilike', $like)
-                                        ->orWhere('body', 'ilike', $like);
+                                    app(PublicProfilePresentationService::class)->constrainSearchablePublishedMalayalam($editorial);
+                                    $editorial->where(function (Builder $text) use ($like): void {
+                                        $text->where('title', 'ilike', $like)
+                                            ->orWhere('summary', 'ilike', $like)
+                                            ->orWhere('body', 'ilike', $like);
+                                    });
                                 });
                         });
                     });

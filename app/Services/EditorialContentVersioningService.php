@@ -7,6 +7,7 @@ use App\Models\EditorialContent;
 use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Support\Facades\DB;
+use InvalidArgumentException;
 
 /**
  * Keeps previewed/approved editorial narrative versions immutable.
@@ -50,10 +51,18 @@ class EditorialContentVersioningService
     public function applyEditorUpdate(EditorialContent $content, array $data, User $actor, ?int $sourceEditorialContentId = null): EditorialContent
     {
         $narrativeChanging = $this->narrativeFieldsChanging($content, $data);
+        $approvingInPlace = ($data['status'] ?? null) === EditorialContent::STATUS_APPROVED
+            && ! ($this->isNarrativeImmutable($content) && $narrativeChanging);
+
+        if ($content->language === EditorialContent::LANGUAGE_ML && $approvingInPlace && ! $actor->isAdmin()) {
+            throw new InvalidArgumentException('Only an authorised Admin may approve a Malayalam editorial version.');
+        }
 
         if ($this->isNarrativeImmutable($content) && $narrativeChanging) {
             return $this->createSuccessorVersion($content, $data, $actor, $sourceEditorialContentId);
         }
+
+        $this->assertMalayalamStatusChangeAllowed($content, $data, $actor);
 
         $content->fill($this->attributesForUpdate($content, $data, $actor))->save();
 
@@ -135,6 +144,60 @@ class EditorialContentVersioningService
 
             return $successor;
         });
+    }
+
+    /**
+     * An editor may revise a Malayalam draft, but must not demote, archive,
+     * or otherwise change the status of an approved or currently published
+     * Malayalam row in place. Narrative edits of those rows already create
+     * a draft successor and leave the live row untouched.
+     *
+     * @param  array<string, mixed>  $data
+     */
+    private function assertMalayalamStatusChangeAllowed(EditorialContent $content, array $data, User $actor): void
+    {
+        if ($content->language !== EditorialContent::LANGUAGE_ML || $actor->isAdmin() || ! array_key_exists('status', $data)) {
+            return;
+        }
+
+        if ((string) $data['status'] === (string) $content->status) {
+            return;
+        }
+
+        if ($content->status !== EditorialContent::STATUS_APPROVED && ! $this->isCurrentPublishedMalayalam($content)) {
+            return;
+        }
+
+        throw new InvalidArgumentException('Only an authorised Admin may change the status of an approved or published Malayalam version.');
+    }
+
+    private function isCurrentPublishedMalayalam(EditorialContent $content): bool
+    {
+        return Application::query()
+            ->where('published_malayalam_editorial_content_id', $content->id)
+            ->exists();
+    }
+
+    /**
+     * Admin create must not open an approved row. Approval stays on the
+     * review action so a new record cannot replace a published version.
+     *
+     * @param  array<string, mixed>  $data
+     * @return array<string, mixed>
+     */
+    public function attributesForNewDraft(array $data): array
+    {
+        if (($data['status'] ?? EditorialContent::STATUS_DRAFT) !== EditorialContent::STATUS_DRAFT) {
+            throw new InvalidArgumentException('New editorial records must be created as drafts.');
+        }
+
+        if (! Profile::query()->whereKey($data['profile_id'] ?? 0)->exists()) {
+            throw new InvalidArgumentException('Editorial content must belong to an existing profile.');
+        }
+
+        $data['status'] = EditorialContent::STATUS_DRAFT;
+
+        return $data;
     }
 
     /**

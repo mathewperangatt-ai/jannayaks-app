@@ -26,6 +26,19 @@ class StaffActionLog extends Model
         ];
     }
 
+    public function getRecordedReasonAttribute(): string
+    {
+        $after = is_array($this->after) ? $this->after : [];
+        foreach (['reason', 'exceptional_publication_reason', 'waiver_reason', 'refund_reason', 'failure'] as $key) {
+            $value = $after[$key] ?? null;
+            if (is_string($value) && trim($value) !== '') {
+                return $value;
+            }
+        }
+
+        return '';
+    }
+
     /** @return BelongsTo<User, $this> */
     public function actor(): BelongsTo
     {

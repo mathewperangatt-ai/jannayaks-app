@@ -11,6 +11,8 @@ use App\Services\StaffAuditLogger;
 use Filament\Actions\ViewAction;
 use Filament\Resources\Pages\EditRecord;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
+use InvalidArgumentException;
 
 class EditEditorialContent extends EditRecord
 {
@@ -70,7 +72,13 @@ class EditEditorialContent extends EditRecord
 
         /** @var EditorialContent $record */
         $versioning = app(EditorialContentVersioningService::class);
-        $result = $versioning->applyEditorUpdate($record, $data, $actor);
+        try {
+            $result = $versioning->applyEditorUpdate($record, $data, $actor);
+        } catch (InvalidArgumentException $e) {
+            throw ValidationException::withMessages([
+                'status' => $e->getMessage(),
+            ]);
+        }
 
         if ($result->getKey() !== $record->getKey()) {
             $this->createdSuccessorVersion = true;

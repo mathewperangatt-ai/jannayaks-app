@@ -138,7 +138,7 @@ class ProfileStateAttributeTest extends TestCase
             'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
         ]);
 
-        $published = app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false);
+        $published = app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false, 'Authorised offline publication for this test.');
         $profile = Profile::query()->findOrFail($published->profile_id);
 
         return [$member, $published->fresh(), $profile->fresh()];

@@ -82,7 +82,7 @@ class Phase11CustomerEditorialWorkflowTest extends TestCase
 
         // Exceptional offline path: fresh app without customer approval.
         [, , $offline] = $this->seedApprovedPreviewReady();
-        $exceptional = app(ApplicationWorkflowService::class)->publish($offline->fresh(), $admin, false);
+        $exceptional = app(ApplicationWorkflowService::class)->publish($offline->fresh(), $admin, false, 'Authorised offline publication for this test.');
         $this->assertSame(Application::STATUS_PUBLISHED, $exceptional->status);
     }
 

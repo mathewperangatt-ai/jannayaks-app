@@ -449,7 +449,7 @@ class Phase12ProfileUrlAndQrTest extends TestCase
 
         // Exceptional admin publication path — exercises real slug assignment on publish
         // without the heavy P10/P11 AI + preview fixture stack.
-        $published = app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false);
+        $published = app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, false, 'Authorised offline publication for this test.');
         $profile = Profile::query()->findOrFail($published->profile_id);
 
         return [$member, $published->fresh(), $profile->fresh()];

@@ -6,6 +6,8 @@ use App\Filament\Resources\Applications\ApplicationResource;
 use App\Models\Application;
 use App\Models\EditorialRevisionRequest;
 use App\Models\User;
+use App\Models\EditorialContent;
+use App\Services\ApplicationPaymentStateService;
 use App\Services\ApplicationWorkflowService;
 use App\Services\ProfileAdministrationService;
 use App\Services\CustomerEditorialWorkflowService;
@@ -15,6 +17,7 @@ use App\Support\EditorialTestBypass;
 use App\Support\PublicationTestBypass;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
+use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
 use Filament\Forms\Components\Toggle;
@@ -54,7 +57,7 @@ class ViewApplication extends ViewRecord
                             ->title('Cannot start AI generation')
                             ->body($e->getMessage())
                             ->warning()
-                            ->send();
+                            ->persistent()->send();
 
                         return;
                     }
@@ -64,7 +67,7 @@ class ViewApplication extends ViewRecord
                             ->title('AI generation failed')
                             ->body($run->error_message ?: 'The draft was not marked complete.')
                             ->danger()
-                            ->send();
+                            ->persistent()->send();
 
                         return;
                     }
@@ -73,7 +76,7 @@ class ViewApplication extends ViewRecord
                         ->title('AI editorial drafts created')
                         ->body('English master and Malayalam adaptation stored as draft versions for human review.')
                         ->success()
-                        ->send();
+                        ->persistent()->send();
                 }),
             Action::make('releaseCustomerPreview')
                 ->label('Release for customer preview')
@@ -99,9 +102,9 @@ class ViewApplication extends ViewRecord
                         /** @var Application $application */
                         $application = $this->getRecord();
                         app(CustomerEditorialWorkflowService::class)->releaseForCustomerPreview($application, $actor);
-                        Notification::make()->title('Customer preview released')->success()->send();
+                        Notification::make()->title('Customer preview released')->success()->persistent()->send();
                     } catch (InvalidArgumentException $e) {
-                        Notification::make()->title('Cannot release preview')->body($e->getMessage())->danger()->send();
+                        Notification::make()->title('Cannot release preview')->body($e->getMessage())->danger()->persistent()->send();
                     }
                 }),
             Action::make('approvePublicationTestEnglishDraft')
@@ -131,13 +134,13 @@ class ViewApplication extends ViewRecord
                             ->title('English draft marked editorially approved')
                             ->body('The customer approval was kept. Malayalam was not approved, and no payment was recorded.')
                             ->success()
-                            ->send();
+                            ->persistent()->send();
                     } catch (InvalidArgumentException $e) {
                         Notification::make()
                             ->title('Cannot approve this draft')
                             ->body($e->getMessage())
                             ->danger()
-                            ->send();
+                            ->persistent()->send();
                     }
                 }),
             Action::make('publishApplication')
@@ -159,11 +162,28 @@ class ViewApplication extends ViewRecord
                         ->label('Require customer approval (normal path)')
                         ->default(true)
                         ->helperText('Turn off only for authorised offline/admin exceptional publication.'),
+                    Textarea::make('exceptional_reason')
+                        ->label('Reason for publishing without customer approval')
+                        ->rows(3)
+                        ->helperText('Required when customer approval is turned off. The reason is stored in the audit record.'),
                 ])
                 ->action(function (array $data): void {
                     $actor = auth()->user();
                     if (! $actor instanceof User) {
                         abort(403);
+                    }
+
+                    $requireCustomerApproval = (bool) ($data['require_customer_approval'] ?? true);
+                    $reason = trim((string) ($data['exceptional_reason'] ?? ''));
+                    if (! $requireCustomerApproval && $reason === '') {
+                        Notification::make()
+                            ->title('Cannot publish')
+                            ->body('Publishing without customer approval requires a written reason.')
+                            ->danger()
+                            ->persistent()
+                            ->send();
+
+                        return;
                     }
 
                     try {
@@ -172,11 +192,12 @@ class ViewApplication extends ViewRecord
                         app(ApplicationWorkflowService::class)->publish(
                             $application,
                             $actor,
-                            (bool) ($data['require_customer_approval'] ?? true),
+                            $requireCustomerApproval,
+                            $reason !== '' ? $reason : null,
                         );
-                        Notification::make()->title('Profile published')->success()->send();
+                        Notification::make()->title('Profile published')->success()->persistent()->send();
                     } catch (InvalidArgumentException $e) {
-                        Notification::make()->title('Cannot publish')->body($e->getMessage())->danger()->send();
+                        Notification::make()->title('Cannot publish')->body($e->getMessage())->danger()->persistent()->send();
                     }
                 }),
             Action::make('unpublishPublicationTest')
@@ -202,9 +223,9 @@ class ViewApplication extends ViewRecord
                         /** @var Application $application */
                         $application = $this->getRecord();
                         app(ApplicationWorkflowService::class)->unpublishPublicationTest($application, $actor);
-                        Notification::make()->title('Test profile unpublished')->success()->send();
+                        Notification::make()->title('Test profile unpublished')->success()->persistent()->send();
                     } catch (InvalidArgumentException $e) {
-                        Notification::make()->title('Cannot unpublish')->body($e->getMessage())->danger()->send();
+                        Notification::make()->title('Cannot unpublish')->body($e->getMessage())->danger()->persistent()->send();
                     }
                 }),
             Action::make('savePreparedVersions')
@@ -252,7 +273,7 @@ class ViewApplication extends ViewRecord
                     ], fn ($v): bool => filled($v));
 
                     if ($enData === [] && $mlData === []) {
-                        Notification::make()->title('Nothing to save')->body('Enter the prepared English and/or Malayalam text.')->warning()->send();
+                        Notification::make()->title('Nothing to save')->body('Enter the prepared English and/or Malayalam text.')->warning()->persistent()->send();
 
                         return;
                     }
@@ -268,9 +289,9 @@ class ViewApplication extends ViewRecord
                             ->title('Prepared versions saved')
                             ->body('EN/ML pairing is established. Review and approve the draft versions (Editorial contents), then release for customer approval.')
                             ->success()
-                            ->send();
+                            ->persistent()->send();
                     } catch (InvalidArgumentException $e) {
-                        Notification::make()->title('Cannot save prepared versions')->body($e->getMessage())->danger()->send();
+                        Notification::make()->title('Cannot save prepared versions')->body($e->getMessage())->danger()->persistent()->send();
                     }
                 }),
             Action::make('generateMaintenanceDraft')
@@ -296,9 +317,9 @@ class ViewApplication extends ViewRecord
                             ->title('AI maintenance draft prepared')
                             ->body('Draft EN/ML versions are linked to the maintenance request and await editorial review. AI output is never released to the customer directly.')
                             ->success()
-                            ->send();
+                            ->persistent()->send();
                     } catch (InvalidArgumentException $e) {
-                        Notification::make()->title('Cannot prepare AI draft')->body($e->getMessage())->danger()->send();
+                        Notification::make()->title('Cannot prepare AI draft')->body($e->getMessage())->danger()->persistent()->send();
                     }
                 }),
             Action::make('releaseMaintenancePreview')
@@ -320,9 +341,9 @@ class ViewApplication extends ViewRecord
 
                     try {
                         app(PostPublicationUpdateService::class)->releaseMaintenancePreview($application, $actor);
-                        Notification::make()->title('Maintenance preview released')->body('The customer can now approve the updated profile or request minor corrections.')->success()->send();
+                        Notification::make()->title('Maintenance preview released')->body('The customer can now approve the updated profile or request minor corrections.')->success()->persistent()->send();
                     } catch (InvalidArgumentException $e) {
-                        Notification::make()->title('Cannot release maintenance preview')->body($e->getMessage())->danger()->send();
+                        Notification::make()->title('Cannot release maintenance preview')->body($e->getMessage())->danger()->persistent()->send();
                     }
                 }),
             Action::make('publishMaintenanceUpdate')
@@ -344,9 +365,9 @@ class ViewApplication extends ViewRecord
 
                     try {
                         app(PostPublicationUpdateService::class)->completePublication($application, $actor);
-                        Notification::make()->title('Maintenance update published')->body('The approved EN/ML versions are now the published profile. The maintenance request is completed.')->success()->send();
+                        Notification::make()->title('Maintenance update published')->body('The approved EN/ML versions are now the published profile. The maintenance request is completed.')->success()->persistent()->send();
                     } catch (InvalidArgumentException $e) {
-                        Notification::make()->title('Cannot publish maintenance update')->body($e->getMessage())->danger()->send();
+                        Notification::make()->title('Cannot publish maintenance update')->body($e->getMessage())->danger()->persistent()->send();
                     }
                 }),
             Action::make('changeApplicantEmail')
@@ -391,7 +412,10 @@ class ViewApplication extends ViewRecord
                 ->label('Change profile URL')
                 ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false) && filled($this->getRecord()?->profile_id))
                 ->form([
-                    TextInput::make('slug')->label('New public URL')->required(),
+                    TextInput::make('slug')
+                        ->label('New profile slug')
+                        ->required()
+                        ->helperText('Enter the slug only, for example ratish.ravindra. Do not paste a full web address.'),
                     Textarea::make('reason')->required(),
                 ])
                 ->action(function (array $data): void {
@@ -421,6 +445,110 @@ class ViewApplication extends ViewRecord
                         );
                     }, 'Living profile unpublished. No memorial profile was created.');
                 }),
+            Action::make('applyPaymentWaiver')
+                ->label('Apply payment waiver')
+                ->color('warning')
+                ->visible(function (): bool {
+                    $record = $this->getRecord();
+
+                    return (auth()->user()?->isAdmin() ?? false)
+                        && $record instanceof Application
+                        && ! in_array($record->payment_status, [
+                            Application::PAYMENT_STATUS_PAID,
+                            Application::PAYMENT_STATUS_WAIVED,
+                            Application::PAYMENT_STATUS_REFUNDED,
+                            Application::PAYMENT_STATUS_PARTIALLY_REFUNDED,
+                        ], true);
+                })
+                ->form([
+                    Textarea::make('reason')
+                        ->label('Reason for the waiver')
+                        ->required()
+                        ->helperText('Recorded with the administrator and the time. This does not create a collected payment.'),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User) {
+                        abort(403);
+                    }
+
+                    try {
+                        /** @var Application $application */
+                        $application = $this->getRecord();
+                        app(ApplicationPaymentStateService::class)->recordStaffWaiver(
+                            $application,
+                            $actor,
+                            (string) $data['reason'],
+                        );
+                        Notification::make()
+                            ->title('Payment waiver recorded')
+                            ->body('No gateway payment was collected. The waiver is on the audit record.')
+                            ->success()
+                            ->persistent()
+                            ->send();
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot apply waiver')->body($e->getMessage())->danger()->persistent()->send();
+                    }
+                }),
+            Action::make('publishMalayalam')
+                ->label('Approve and publish Malayalam')
+                ->color('success')
+                ->visible(function (): bool {
+                    $record = $this->getRecord();
+
+                    return (auth()->user()?->isAdmin() ?? false)
+                        && $record instanceof Application
+                        && $record->status === Application::STATUS_PUBLISHED
+                        && $record->published_english_editorial_content_id !== null;
+                })
+                ->form([
+                    Select::make('editorial_content_id')
+                        ->label('Malayalam version')
+                        ->required()
+                        ->options(function (): array {
+                            $record = $this->getRecord();
+                            if (! $record instanceof Application || $record->profile_id === null) {
+                                return [];
+                            }
+
+                            return EditorialContent::query()
+                                ->where('profile_id', $record->profile_id)
+                                ->where('language', EditorialContent::LANGUAGE_ML)
+                                ->where('source_editorial_content_id', $record->published_english_editorial_content_id)
+                                ->whereIn('status', [EditorialContent::STATUS_DRAFT, EditorialContent::STATUS_APPROVED])
+                                ->orderByDesc('version_number')
+                                ->get()
+                                ->mapWithKeys(fn (EditorialContent $content): array => [
+                                    $content->id => 'Version '.$content->version_number.' ('.$content->status.')',
+                                ])
+                                ->all();
+                        })
+                        ->helperText('Publishes this Malayalam version only. The published English version stays as it is.'),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User) {
+                        abort(403);
+                    }
+
+                    try {
+                        /** @var Application $application */
+                        $application = $this->getRecord();
+                        $version = EditorialContent::query()->find($data['editorial_content_id'] ?? 0);
+                        if (! $version instanceof EditorialContent) {
+                            throw new InvalidArgumentException('Choose a Malayalam version for this profile.');
+                        }
+                        app(ApplicationWorkflowService::class)->publishMalayalam($application, $actor, $version);
+                        Notification::make()
+                            ->title('Malayalam version published')
+                            ->body('The Malayalam tab now shows this approved version. The English profile was not changed.')
+                            ->success()
+                            ->persistent()
+                            ->send();
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot publish Malayalam')->body($e->getMessage())->danger()->persistent()->send();
+                    }
+                }),
             EditAction::make()
                 ->visible(fn (): bool => static::getResource()::canEdit($this->getRecord())),
         ];
@@ -438,9 +566,9 @@ class ViewApplication extends ViewRecord
 
         try {
             $operation($application, $actor);
-            Notification::make()->title($success)->success()->send();
+            Notification::make()->title($success)->success()->persistent()->send();
         } catch (InvalidArgumentException $e) {
-            Notification::make()->title('Cannot complete this action')->body($e->getMessage())->danger()->send();
+            Notification::make()->title('Cannot complete this action')->body($e->getMessage())->danger()->persistent()->send();
         }
     }
 

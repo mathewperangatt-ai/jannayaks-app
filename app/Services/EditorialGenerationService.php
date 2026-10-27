@@ -7,6 +7,7 @@ use App\Models\AiEditorialRun;
 use App\Models\Application;
 use App\Models\EditorialClaimTrace;
 use App\Models\EditorialContent;
+use App\Models\EditorialRevisionRequest;
 use App\Models\InterviewAnswer;
 use App\Models\Profile;
 use App\Models\User;
@@ -37,6 +38,10 @@ class EditorialGenerationService
 
         if ($application->package_tier === 'in_memoriam') {
             throw new InvalidArgumentException('In Memoriam applications are excluded from the living-profile AI editorial pipeline.');
+        }
+
+        if ($application->status === Application::STATUS_PUBLISHED && ! $this->hasOpenMaintenanceRequest($application)) {
+            throw new InvalidArgumentException('A published profile cannot receive a new AI draft from this action. Use the maintenance workflow.');
         }
 
         $lockSeconds = max(30, (int) config('jannayaks.ai.openai.timeout_seconds', 60) * 2);
@@ -351,5 +356,19 @@ class EditorialGenerationService
 
         return str_contains($message, 'ai_editorial_runs_one_running_per_application')
             || (str_contains($message, 'Unique violation') && str_contains($message, 'ai_editorial_runs'));
+    }
+
+    private function hasOpenMaintenanceRequest(Application $application): bool
+    {
+        return EditorialRevisionRequest::query()
+            ->where('application_id', $application->id)
+            ->where('request_type', EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE)
+            ->whereIn('status', [
+                EditorialRevisionRequest::STATUS_SUBMITTED,
+                EditorialRevisionRequest::STATUS_IN_PROGRESS,
+                EditorialRevisionRequest::STATUS_CUSTOMER_PREVIEW,
+                EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED,
+            ])
+            ->exists();
     }
 }

@@ -512,12 +512,26 @@ class PostPublicationUpdateService
         }
 
         return DB::transaction(function () use ($application, $actor, $request) {
+            /** @var Application $locked */
+            $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+            /** @var EditorialRevisionRequest $lockedRequest */
+            $lockedRequest = EditorialRevisionRequest::query()->whereKey($request->id)->lockForUpdate()->firstOrFail();
+
+            if ($lockedRequest->status !== EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED
+                || $locked->customer_approved_at === null
+                || (int) $locked->customer_approved_english_editorial_content_id !== (int) $lockedRequest->approved_english_editorial_content_id) {
+                throw new InvalidArgumentException('Customer approval is required before publishing a maintenance update.');
+            }
+
             // No EditorialContent mutation happens here: the EN/ML pairing
             // was established when the proposed versions were created and
             // validated at release. Publication consumes the already-correct
             // approved versions via the existing replacement-publication
             // machinery.
-            app(\App\Services\ApplicationWorkflowService::class)->publish($application, $actor, false);
+            $workflow = app(\App\Services\ApplicationWorkflowService::class);
+            $workflow->publish($locked, $actor, false);
+            $locked->refresh();
+            $this->publishPairedMalayalam($workflow, $locked, $actor, $lockedRequest);
             $application->refresh();
 
             $request->forceFill([
@@ -540,5 +554,35 @@ class PostPublicationUpdateService
 
             return $request->fresh() ?? $request;
         });
+    }
+
+    /**
+     * Publish the Malayalam version the customer approved for this request.
+     * A newer approved Malayalam row is never substituted. When the request
+     * has no approved Malayalam version, the English publication stands alone.
+     */
+    private function publishPairedMalayalam(
+        ApplicationWorkflowService $workflow,
+        Application $application,
+        User $actor,
+        EditorialRevisionRequest $request,
+    ): void {
+        if ($request->approved_malayalam_editorial_content_id === null) {
+            return;
+        }
+
+        $malayalam = EditorialContent::query()->find($request->approved_malayalam_editorial_content_id);
+        $pairedWithPublishedEnglish = $malayalam instanceof EditorialContent
+            && (int) $malayalam->profile_id === (int) $application->profile_id
+            && $malayalam->language === EditorialContent::LANGUAGE_ML
+            && $malayalam->status === EditorialContent::STATUS_APPROVED
+            && $application->published_english_editorial_content_id !== null
+            && (int) $malayalam->source_editorial_content_id === (int) $application->published_english_editorial_content_id;
+
+        if (! $pairedWithPublishedEnglish) {
+            throw new InvalidArgumentException('The customer-approved Malayalam version cannot be published. It must stay approved and paired with the published English version.');
+        }
+
+        $workflow->publishMalayalam($application, $actor, $malayalam);
     }
 }

@@ -2,6 +2,7 @@
 
 namespace App\Filament\Resources\EditorialContents\Schemas;
 
+use App\Models\EditorialContent;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
@@ -25,13 +26,23 @@ class EditorialContentForm
                 ->required()
                 ->native(false),
             Select::make('status')
-                ->options([
-                    'draft' => 'Draft',
-                    'approved' => 'Approved',
-                    'archived' => 'Archived',
-                ])
+                ->options(function (): array {
+                    if (request()->is('admin/editorial-contents/create')) {
+                        return [
+                            EditorialContent::STATUS_DRAFT => 'Draft',
+                        ];
+                    }
+
+                    return [
+                        EditorialContent::STATUS_DRAFT => 'Draft',
+                        EditorialContent::STATUS_APPROVED => 'Approved',
+                        EditorialContent::STATUS_ARCHIVED => 'Archived',
+                    ];
+                })
                 ->required()
-                ->native(false),
+                ->default(EditorialContent::STATUS_DRAFT)
+                ->native(false)
+                ->helperText('New records are saved as drafts. An administrator approves and publishes Malayalam from the application.'),
             TextInput::make('version_number')
                 ->numeric()
                 ->default(1)

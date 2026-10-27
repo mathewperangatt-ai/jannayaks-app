@@ -218,14 +218,44 @@ class PublicProfilePresentationService
             ->where('status', EditorialContent::STATUS_APPROVED)
             ->first();
 
-        if ($english instanceof EditorialContent
-            && $bound instanceof EditorialContent
-            && $bound->source_editorial_content_id !== null
-            && (int) $bound->source_editorial_content_id !== (int) $english->id) {
+        if ($this->malayalamSourceMismatchesPublishedEnglish($bound, $english)) {
             return null;
         }
 
         return $bound;
+    }
+
+    /**
+     * A bound Malayalam row is not the public pair when its source points at
+     * a different English version. A missing source stays displayable, matching
+     * the historical public-page rule.
+     */
+    public function malayalamSourceMismatchesPublishedEnglish(?EditorialContent $bound, ?EditorialContent $english): bool
+    {
+        return $english instanceof EditorialContent
+            && $bound instanceof EditorialContent
+            && $bound->source_editorial_content_id !== null
+            && (int) $bound->source_editorial_content_id !== (int) $english->id;
+    }
+
+    /**
+     * Search may match only the published Malayalam pointer when that row is
+     * approved and paired with the published English version.
+     *
+     * @param  \Illuminate\Database\Eloquent\Builder<EditorialContent>  $editorial
+     */
+    public function constrainSearchablePublishedMalayalam(\Illuminate\Database\Eloquent\Builder $editorial): void
+    {
+        $editorial
+            ->where('editorial_contents.language', EditorialContent::LANGUAGE_ML)
+            ->where('editorial_contents.status', EditorialContent::STATUS_APPROVED)
+            ->where(function (\Illuminate\Database\Eloquent\Builder $paired): void {
+                $paired->whereNull('editorial_contents.source_editorial_content_id')
+                    ->orWhereColumn(
+                        'editorial_contents.source_editorial_content_id',
+                        'applications.published_english_editorial_content_id',
+                    );
+            });
     }
 
     /**

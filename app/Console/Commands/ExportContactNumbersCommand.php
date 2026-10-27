@@ -59,10 +59,10 @@ class ExportContactNumbersCommand extends Command
             ->orderBy('id')
             ->get();
 
-        // Authoritative paid-status check only — never infer settlement from
-        // the mere existence of a payment row.
+        // Collected payments only. A staff waiver settles the application
+        // workflow but is not a paid contact for this export.
         $eligible = $candidates->filter(
-            fn (Application $application): bool => $stateService->isPaymentSettled($application)
+            fn (Application $application): bool => $stateService->hasCollectedPayment($application)
         )->values();
 
         $batchId = (string) Str::uuid();

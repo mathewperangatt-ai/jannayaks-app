@@ -233,6 +233,13 @@ class DemoProfilesSeeder extends Seeder
         }
 
         $application->refresh();
+        if ($malayalam instanceof EditorialContent
+            && $application->status === Application::STATUS_PUBLISHED
+            && (int) $application->published_malayalam_editorial_content_id !== (int) $malayalam->id) {
+            app(ApplicationWorkflowService::class)->publishMalayalam($application, $this->demoAdmin, $malayalam);
+        }
+
+        $application->refresh();
         $profile->refresh();
 
         $this->command?->info(sprintf(
@@ -264,13 +271,20 @@ class DemoProfilesSeeder extends Seeder
 
         DB::transaction(function () use ($application, $entry, $publishedEnglish, $publishedMalayalam): void {
             $english = $this->createRevisionVersion($application, EditorialContent::LANGUAGE_EN, $entry['en'], null, $publishedEnglish);
-            $this->createRevisionVersion($application, EditorialContent::LANGUAGE_ML, $entry['ml'], $english->id, $publishedMalayalam);
+            $malayalam = $this->createRevisionVersion($application, EditorialContent::LANGUAGE_ML, $entry['ml'], $english->id, $publishedMalayalam);
 
             EditorialContent::query()
                 ->whereKey(array_filter([$publishedEnglish?->id, $publishedMalayalam?->id]))
                 ->update(['status' => EditorialContent::STATUS_ARCHIVED]);
 
-            app(ApplicationWorkflowService::class)->publish($application->fresh(), $this->demoAdmin, requireCustomerApproval: false);
+            $workflow = app(ApplicationWorkflowService::class);
+            $workflow->publish(
+                $application->fresh(),
+                $this->demoAdmin,
+                requireCustomerApproval: false,
+                exceptionalReason: 'Demonstration corpus revision. No live payment or refund is involved.',
+            );
+            $workflow->publishMalayalam($application->fresh(), $this->demoAdmin, $malayalam);
         });
 
         return true;

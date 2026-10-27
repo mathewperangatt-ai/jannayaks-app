@@ -5,6 +5,7 @@ namespace App\Services;
 use App\Models\Application;
 use App\Models\EditorialContent;
 use App\Models\EditorialCustomerApproval;
+use App\Models\EditorialRevisionRequest;
 use App\Models\Profile;
 use App\Models\User;
 use App\Support\PublicationTestBypass;
@@ -293,7 +294,7 @@ class ApplicationWorkflowService
      * Admin publication for normal (customer-approved) or exceptional offline/admin workflows.
      * Editors and members cannot publish.
      */
-    public function publish(Application $application, User $actor, bool $requireCustomerApproval = true): Application
+    public function publish(Application $application, User $actor, bool $requireCustomerApproval = true, ?string $exceptionalReason = null): Application
     {
         if (! $actor->isAdmin() || ! $actor->isActiveAccount()) {
             throw new InvalidArgumentException('Only an authorised Admin may publish.');
@@ -303,7 +304,9 @@ class ApplicationWorkflowService
             throw new InvalidArgumentException('In Memoriam publication is outside the living-profile workflow.');
         }
 
-        return DB::transaction(function () use ($application, $actor, $requireCustomerApproval) {
+        $exceptionalReason = trim((string) $exceptionalReason);
+
+        return DB::transaction(function () use ($application, $actor, $requireCustomerApproval, $exceptionalReason) {
             /** @var Application $locked */
             $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
 
@@ -343,23 +346,28 @@ class ApplicationWorkflowService
 
             $english = $this->resolveEnglishVersionToPublish($locked, $requireCustomerApproval);
             $this->assertResolvedVersionMayBePublished($locked, $english, $requireCustomerApproval);
-            $malayalam = $english instanceof EditorialContent
-                ? $this->resolveMalayalamVersionToPublish($profile, $english)
-                : null;
 
             if ($requireCustomerApproval && ! $english instanceof EditorialContent) {
                 throw new InvalidArgumentException('Customer approval of a specific editorial version is required.');
             }
 
+            $maintenanceApproved = $this->customerApprovedMaintenanceCovers($locked);
+            if (! $requireCustomerApproval && ! $maintenanceApproved && $exceptionalReason === '') {
+                throw new InvalidArgumentException('Publishing without customer approval requires a written reason.');
+            }
+
+            $malayalamPointer = $this->malayalamPointerPairedWithEnglish($locked, $english);
+
             $before = [
                 'status' => $locked->status,
                 'published_english_editorial_content_id' => $locked->published_english_editorial_content_id,
+                'published_malayalam_editorial_content_id' => $locked->published_malayalam_editorial_content_id,
             ];
             $locked->forceFill([
                 'status' => Application::STATUS_PUBLISHED,
                 'converted_to_profile_at' => $locked->converted_to_profile_at ?? now(),
                 'published_english_editorial_content_id' => $english?->id,
-                'published_malayalam_editorial_content_id' => $malayalam?->id,
+                'published_malayalam_editorial_content_id' => $malayalamPointer,
             ])->save();
 
             $profile->forceFill([
@@ -393,6 +401,8 @@ class ApplicationWorkflowService
                 after: [
                     'status' => Application::STATUS_PUBLISHED,
                     'require_customer_approval' => $requireCustomerApproval,
+                    'exceptional_publication_reason' => $exceptionalReason !== '' ? $exceptionalReason : null,
+                    'maintenance_customer_approved' => $maintenanceApproved,
                     'published_english_editorial_content_id' => $locked->published_english_editorial_content_id,
                     'published_malayalam_editorial_content_id' => $locked->published_malayalam_editorial_content_id,
                     'customer_approved_english_editorial_content_id' => $locked->customer_approved_english_editorial_content_id,
@@ -417,6 +427,125 @@ class ApplicationWorkflowService
 
             return $locked->fresh() ?? $locked;
         });
+    }
+
+    /**
+     * Approve and publish one Malayalam version onto an already published
+     * English profile. English publication state, slug, and the English
+     * pointer are left unchanged. A later edit of the published Malayalam
+     * row creates a draft successor and does not move this pointer.
+     */
+    public function publishMalayalam(Application $application, User $actor, EditorialContent $malayalam): Application
+    {
+        if (! $actor->isAdmin() || ! $actor->isActiveAccount()) {
+            throw new InvalidArgumentException('Only an authorised Admin may approve and publish Malayalam.');
+        }
+
+        return DB::transaction(function () use ($application, $actor, $malayalam) {
+            /** @var Application $locked */
+            $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+            /** @var EditorialContent $version */
+            $version = EditorialContent::query()->whereKey($malayalam->id)->lockForUpdate()->firstOrFail();
+
+            if ($locked->status !== Application::STATUS_PUBLISHED || $locked->published_english_editorial_content_id === null) {
+                throw new InvalidArgumentException('Malayalam can be published only after the English profile is published.');
+            }
+
+            if ((int) $version->profile_id !== (int) $locked->profile_id
+                || $version->language !== EditorialContent::LANGUAGE_ML) {
+                throw new InvalidArgumentException('That Malayalam version does not belong to this profile.');
+            }
+
+            if ((int) $version->source_editorial_content_id !== (int) $locked->published_english_editorial_content_id) {
+                throw new InvalidArgumentException('Malayalam must be paired with the currently published English version.');
+            }
+
+            if (! in_array($version->status, [EditorialContent::STATUS_DRAFT, EditorialContent::STATUS_APPROVED], true)) {
+                throw new InvalidArgumentException('Only a draft or approved Malayalam version can be published.');
+            }
+
+            if (trim((string) $version->body) === '') {
+                throw new InvalidArgumentException('The Malayalam version has no text to publish.');
+            }
+
+            $profile = Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->firstOrFail();
+            if ($profile->status !== 'published' || $profile->published_at === null || $profile->unpublished_at !== null) {
+                throw new InvalidArgumentException('The living profile must stay published while Malayalam is published.');
+            }
+
+            $beforePointer = $locked->published_malayalam_editorial_content_id;
+            $beforeStatus = $version->status;
+
+            if ($version->status !== EditorialContent::STATUS_APPROVED) {
+                $version->forceFill([
+                    'status' => EditorialContent::STATUS_APPROVED,
+                    'reviewed_by_id' => $actor->id,
+                ])->save();
+            }
+
+            if ((int) $beforePointer === (int) $version->id && $beforeStatus === EditorialContent::STATUS_APPROVED) {
+                return $locked;
+            }
+
+            $locked->forceFill([
+                'published_malayalam_editorial_content_id' => $version->id,
+            ])->save();
+
+            $this->auditLogger->log(
+                action: 'application.malayalam_published',
+                subject: $locked,
+                before: [
+                    'published_english_editorial_content_id' => $locked->published_english_editorial_content_id,
+                    'published_malayalam_editorial_content_id' => $beforePointer,
+                    'malayalam_status' => $beforeStatus,
+                ],
+                after: [
+                    'published_english_editorial_content_id' => $locked->published_english_editorial_content_id,
+                    'published_malayalam_editorial_content_id' => $version->id,
+                    'malayalam_status' => $version->status,
+                    'profile_id' => $locked->profile_id,
+                ],
+                actor: $actor,
+            );
+
+            app(ProfileIntegrityService::class)->refreshSnapshot($profile, 'application.malayalam_published');
+
+            return $locked->fresh() ?? $locked;
+        });
+    }
+
+    /**
+     * Keep a Malayalam pointer only when it still belongs to this profile and
+     * is paired with the English version being published. A mismatched source
+     * is cleared in this same transaction, before the integrity snapshot.
+     */
+    private function malayalamPointerPairedWithEnglish(Application $application, ?EditorialContent $english): ?int
+    {
+        if ($application->published_malayalam_editorial_content_id === null) {
+            return null;
+        }
+
+        $bound = EditorialContent::query()
+            ->whereKey($application->published_malayalam_editorial_content_id)
+            ->lockForUpdate()
+            ->first();
+
+        if (! $bound instanceof EditorialContent
+            || (int) $bound->profile_id !== (int) $application->profile_id
+            || $bound->language !== EditorialContent::LANGUAGE_ML
+            || app(PublicProfilePresentationService::class)->malayalamSourceMismatchesPublishedEnglish($bound, $english)) {
+            return null;
+        }
+
+        return (int) $bound->id;
+    }
+
+    private function customerApprovedMaintenanceCovers(Application $application): bool
+    {
+        $request = app(PostPublicationUpdateService::class)->openRequestFor($application);
+
+        return $request instanceof EditorialRevisionRequest
+            && $request->status === EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED;
     }
 
     /**

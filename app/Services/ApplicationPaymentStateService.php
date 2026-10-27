@@ -75,7 +75,93 @@ class ApplicationPaymentStateService
 
     public function isPaymentSettled(Application $application): bool
     {
+        return $this->hasCollectedPayment($application) || $this->hasTrustedStaffWaiver($application);
+    }
+
+    /**
+     * A collected gateway or manual payment. A staff waiver is not a collected payment.
+     */
+    public function hasCollectedPayment(Application $application): bool
+    {
         return $this->hasSettledPaymentRecord($application);
+    }
+
+    /**
+     * Record an administrative waiver. A trusted waiver settles the
+     * application for workflow and publication without creating a paid
+     * gateway payment. It cannot replace a payment that was already collected.
+     */
+    public function recordStaffWaiver(Application $application, User $actor, string $reason): Application
+    {
+        if (! $actor->isAdmin() || ! $actor->isActiveAccount()) {
+            throw new \InvalidArgumentException('Only an authorised Admin may apply a payment waiver.');
+        }
+
+        $reason = trim($reason);
+        if ($reason === '') {
+            throw new \InvalidArgumentException('A written reason is required to apply a payment waiver.');
+        }
+
+        return DB::transaction(function () use ($application, $actor, $reason) {
+            /** @var Application $locked */
+            $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+
+            if (in_array($locked->payment_status, [Application::PAYMENT_STATUS_REFUNDED, Application::PAYMENT_STATUS_PARTIALLY_REFUNDED], true)) {
+                throw new \InvalidArgumentException('A refunded application cannot be waived.');
+            }
+
+            if ($this->hasSettledPaymentRecord($locked)) {
+                throw new \InvalidArgumentException('A collected payment already exists. A waiver would make the payment state inconsistent.');
+            }
+
+            if ($this->hasTrustedStaffWaiver($locked)) {
+                throw new \InvalidArgumentException('A payment waiver is already recorded for this application.');
+            }
+
+            Payment::query()->create([
+                'application_id' => $locked->id,
+                'profile_id' => $locked->profile_id,
+                'transaction_reference' => 'WAIVER-'.$locked->id.'-'.strtoupper(bin2hex(random_bytes(4))),
+                'gateway' => Payment::GATEWAY_WAIVER,
+                'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
+                'amount' => '0.00',
+                'currency' => 'INR',
+                'status' => Payment::STATUS_WAIVED,
+                'event_type' => Payment::EVENT_WAIVER,
+                'waiver_reason' => mb_substr($reason, 0, 255),
+                'waived_by_user_id' => $actor->id,
+                'waived_at' => now(),
+            ]);
+
+            $cols = [
+                'payment_status' => Application::PAYMENT_STATUS_WAIVED,
+                'waived_by_user_id' => $actor->id,
+                'payment_settled_at' => $locked->payment_settled_at ?? now(),
+            ];
+            $nextWorkflow = $this->nextWorkflowStateAfterPayment($locked);
+            if ($nextWorkflow !== null) {
+                $cols['status'] = $nextWorkflow;
+            }
+            $locked->forceFill($cols)->save();
+
+            app(StaffAuditLogger::class)->log(
+                action: 'application.payment_waived',
+                subject: $locked,
+                before: [
+                    'payment_status' => $application->payment_status,
+                    'status' => $application->status,
+                ],
+                after: [
+                    'payment_status' => Application::PAYMENT_STATUS_WAIVED,
+                    'status' => $locked->status,
+                    'waived_by_user_id' => $actor->id,
+                    'waiver_reason' => mb_substr($reason, 0, 255),
+                ],
+                actor: $actor,
+            );
+
+            return $locked->fresh() ?? $locked;
+        });
     }
 
     /**

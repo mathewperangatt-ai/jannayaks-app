@@ -4,7 +4,9 @@ namespace App\Services;
 
 use App\Models\Application;
 use App\Models\Payment;
+use App\Models\User;
 use App\Support\PricingAmounts;
+use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
 class RefundService
@@ -114,6 +116,76 @@ class RefundService
         }
 
         return $payment->fresh() ?? $payment;
+    }
+
+    /**
+     * Administrative local refund. This records the calculated refund and a
+     * credit note. It does not call Razorpay. A second attempt is refused.
+     * An ineligible attempt leaves the payment unchanged and is audited.
+     */
+    public function recordAdministrativeRefund(Payment $payment, User $actor, string $reason): Payment
+    {
+        $reason = trim($reason);
+
+        try {
+            if (! $actor->isAdmin() || ! $actor->isActiveAccount()) {
+                throw new InvalidArgumentException('Only an authorised Admin may record a refund.');
+            }
+            if ($reason === '') {
+                throw new InvalidArgumentException('A written reason is required to record a refund.');
+            }
+
+            return DB::transaction(function () use ($payment, $actor, $reason) {
+                /** @var Payment $locked */
+                $locked = Payment::query()->whereKey($payment->id)->lockForUpdate()->firstOrFail();
+
+                if ($locked->isRefunded() || $locked->status === Payment::STATUS_PARTIALLY_REFUNDED) {
+                    throw new InvalidArgumentException('A refund is already recorded for this payment.');
+                }
+                if ($locked->status === Payment::STATUS_WAIVED || $locked->gateway === Payment::GATEWAY_WAIVER) {
+                    throw new InvalidArgumentException('A waiver cannot be refunded because no payment was collected.');
+                }
+                if (! $this->isEligible($locked)) {
+                    throw new InvalidArgumentException('This payment is not eligible for a refund. No Razorpay refund was sent.');
+                }
+
+                $note = 'Local record only. Razorpay was not called. '.$reason;
+                $recorded = $this->initiateRefund($locked, $note);
+                $recorded->forceFill([
+                    'event_type' => Payment::EVENT_REFUND_PROCESSED,
+                ])->save();
+
+                app(StaffAuditLogger::class)->log(
+                    action: 'payment.refund_recorded',
+                    subject: $recorded,
+                    after: [
+                        'disposition' => 'recorded_locally',
+                        'refund_reason' => mb_substr($reason, 0, 255),
+                        'refund_amount' => (string) $recorded->refund_amount,
+                        'gateway_refund_executed' => false,
+                        'application_id' => $recorded->application_id,
+                    ],
+                    actor: $actor,
+                );
+
+                return $recorded->fresh() ?? $recorded;
+            });
+        } catch (InvalidArgumentException $e) {
+            app(StaffAuditLogger::class)->log(
+                action: 'payment.refund_failed',
+                subject: $payment,
+                after: [
+                    'disposition' => 'failed',
+                    'refund_reason' => $reason !== '' ? mb_substr($reason, 0, 255) : null,
+                    'failure' => $e->getMessage(),
+                    'gateway_refund_executed' => false,
+                    'payment_status' => $payment->status,
+                ],
+                actor: $actor,
+            );
+
+            throw $e;
+        }
     }
 
     public function refundSummary(Payment $payment): array

@@ -45,11 +45,9 @@ class CustomerEditorialWorkflowService
         }
 
         // Published profiles are maintained through the post-publication
-        // maintenance workflow (Pass 2). While a maintenance cycle is open,
-        // a pre-publication preview release must never interfere with it —
-        // publication of the maintenance update is a separate staff action.
-        // (Without an open cycle, releasing a new preview on a published
-        // profile remains the existing replacement-publication path.)
+        // maintenance workflow. A direct pre-publication preview release
+        // must not rewind a live profile. An open maintenance cycle is
+        // refused first so that cycle keeps its own error.
         $openMaintenance = EditorialRevisionRequest::query()
             ->where('application_id', $application->id)
             ->where('request_type', EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE)
@@ -63,6 +61,10 @@ class CustomerEditorialWorkflowService
 
         if ($openMaintenance) {
             throw new InvalidArgumentException('An open profile-maintenance request exists. Complete it through the maintenance workflow first.');
+        }
+
+        if ($this->isLivePublished($application, $application->profile)) {
+            throw new InvalidArgumentException('A published profile cannot be released for the pre-publication preview. Use the maintenance workflow.');
         }
 
         $testBypass = app(EditorialTestBypass::class)->appliesTo($application);
@@ -83,7 +85,16 @@ class CustomerEditorialWorkflowService
                 throw new InvalidArgumentException('This application cannot enter customer preview from its current state.');
             }
 
-            $profile = $this->requireProfile($locked);
+            $profile = Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->first();
+            if (! $profile instanceof Profile) {
+                throw new InvalidArgumentException($locked->profile_id
+                    ? 'Linked profile was not found.'
+                    : 'Application has no linked profile for preview.');
+            }
+            if ($this->isLivePublished($locked, $profile)) {
+                throw new InvalidArgumentException('A published profile cannot be released for the pre-publication preview. Use the maintenance workflow.');
+            }
+
             // Re-read inside the lock. A profile that became public between
             // the outer check and the lock must not receive the bypass.
             $testBypass = $testBypass && app(EditorialTestBypass::class)->appliesTo($locked);
@@ -579,18 +590,16 @@ class CustomerEditorialWorkflowService
             ]);
     }
 
-    private function requireProfile(Application $application): Profile
+    private function isLivePublished(Application $application, ?Profile $profile): bool
     {
-        if (! $application->profile_id) {
-            throw new InvalidArgumentException('Application has no linked profile for preview.');
+        if ($application->status === Application::STATUS_PUBLISHED) {
+            return true;
         }
 
-        $profile = Profile::query()->find($application->profile_id);
-        if (! $profile) {
-            throw new InvalidArgumentException('Linked profile was not found.');
-        }
-
-        return $profile;
+        return $profile instanceof Profile
+            && $profile->status === 'published'
+            && $profile->published_at !== null
+            && $profile->unpublished_at === null;
     }
 
     private function assertApplicationOwner(Application $application, User $member): void

@@ -35,6 +35,8 @@ class Payment extends Model
 
     public const STATUS_PARTIALLY_REFUNDED = 'partially_refunded';
 
+    public const STATUS_WAIVED = 'waived';
+
     public const ITEM_MEMBERSHIP = 'membership';
 
     public const ITEM_IN_MEMORIAM = 'in_memoriam';
@@ -80,6 +82,7 @@ class Payment extends Model
         self::STATUS_PAID => 10,
         self::STATUS_CAPTURED => 11,
         self::STATUS_SUCCESS => 12,
+        self::STATUS_WAIVED => 13,
         self::STATUS_PARTIALLY_REFUNDED => 20,
         self::STATUS_REFUNDED => 21,
     ];
@@ -263,6 +266,58 @@ class Payment extends Model
             self::STATUS_CAPTURED,
             self::STATUS_SUCCESS,
         ], true);
+    }
+
+    /**
+     * calculated: a paid payment that has not been recorded as refunded.
+     * recorded_locally: the administrative record succeeded and no gateway refund was sent.
+     * failed: the last administrative attempt was rejected and the payment was left unchanged.
+     */
+    public function refundDisposition(): string
+    {
+        if ($this->isRefunded() || $this->status === self::STATUS_PARTIALLY_REFUNDED) {
+            return 'recorded_locally';
+        }
+
+        if ($this->event_type === self::EVENT_REFUND_FAILED || $this->latestRefundAuditFailed()) {
+            return 'failed';
+        }
+
+        if ($this->isPaidOrBetter()) {
+            return 'calculated';
+        }
+
+        return 'not_applicable';
+    }
+
+    /**
+     * A rejected local refund does not change the payment row. The failure
+     * is the latest refund audit for this payment.
+     */
+    private function latestRefundAuditFailed(): bool
+    {
+        if (! $this->exists) {
+            return false;
+        }
+
+        $latestAction = StaffActionLog::query()
+            ->where('subject_type', $this->getMorphClass())
+            ->where('subject_id', $this->getKey())
+            ->whereIn('action', ['payment.refund_failed', 'payment.refund_recorded'])
+            ->orderByDesc('id')
+            ->value('action');
+
+        return $latestAction === 'payment.refund_failed';
+    }
+
+    public function getRefundRecordLabelAttribute(): string
+    {
+        return match ($this->refundDisposition()) {
+            'calculated' => 'Calculated only — not yet recorded',
+            'recorded_locally' => 'Recorded locally — Razorpay was not called',
+            'failed' => 'Last attempt failed — payment unchanged',
+            default => 'Not applicable',
+        };
     }
 
     public function isRefunded(): bool

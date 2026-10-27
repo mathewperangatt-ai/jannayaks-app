@@ -262,7 +262,7 @@ class DemoPopulationTest extends TestCase
 
         $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $revised->id)->firstOrFail();
         $this->assertSame($english->id, $snapshot->english_editorial_content_id);
-        $this->assertSame('application.published.replacement', $snapshot->source_event);
+        $this->assertSame('application.malayalam_published', $snapshot->source_event);
         $this->assertSame($slug, $revised->fresh()->slug);
         $this->assertSame(1, Membership::query()->where('profile_id', $revised->id)->count());
         $this->get('/t.gopalakrishnan?lang=en')->assertOk()
