@@ -922,10 +922,10 @@ class PricingBranchCorrectionsTest extends TestCase
             ->assertDontSee('Locked for this tier', false)
             ->assertDontSee('Recognised', false)
             ->assertDontSee('Acclaimed', false)
-            ->assertSee('Tell us about yourself.', false)
-            ->assertSee('നിങ്ങളെക്കുറിച്ച് പറയാമോ?', false)
-            ->assertSee('Is there anything important we should know to understand your story correctly?', false)
-            ->assertSee('നിങ്ങളുടെ കഥ ശരിയായി മനസ്സിലാക്കാൻ ഞങ്ങൾ അറിയേണ്ട മറ്റേതെങ്കിലും പ്രധാനപ്പെട്ട വിവരമുണ്ടോ?', false);
+            ->assertSee('Tell us about yourself. A brief introduction to your current role or main area of work is enough; the following questions will explore the details.', false)
+            ->assertSee('താങ്കളെക്കുറിച്ച് പറയാമോ? താങ്കളുടെ ഇപ്പോഴത്തെ ചുമതലയെയോ പ്രധാന പ്രവർത്തനമേഖലയെയോ കുറിച്ച് ചുരുക്കമായി പറയാം. തുടർന്നുള്ള ചോദ്യങ്ങളിൽ കൂടുതൽ വിശദാംശങ്ങൾ പങ്കുവെക്കാം.', false)
+            ->assertSee('Is there anything else you would like to add? You may include important details not already covered that would help us understand your story correctly, such as dates, positions, organisations, locations, awards, major initiatives or professional, political or institutional responsibilities.', false)
+            ->assertSee('താങ്കൾക്ക് മറ്റെന്തെങ്കിലും വിവരങ്ങൾ കൂടി ചേർക്കാനുണ്ടോ? താങ്കളുടെ ജീവിതവും പ്രവർത്തനവും ശരിയായി മനസ്സിലാക്കാൻ സഹായിക്കുന്ന, ഇതുവരെ പറഞ്ഞിട്ടില്ലാത്ത പ്രധാന വിവരങ്ങൾ ഇവിടെ ചേർക്കാം. ഉദാഹരണത്തിന്, തീയതികൾ, സ്ഥാനങ്ങൾ, സംഘടനകൾ, സ്ഥലങ്ങൾ, പുരസ്കാരങ്ങൾ, പ്രധാന സംരംഭങ്ങൾ, തൊഴിൽപരമായ വിവരങ്ങൾ, രാഷ്ട്രീയമോ സ്ഥാപനപരമോ ആയ ചുമതലകൾ എന്നിവ.', false);
 
         foreach ($expectedIds as $qid) {
             $html->assertSee('data-qid="'.$qid.'"', false);
