@@ -19,6 +19,9 @@ class IntegrityIncident extends Model
 
     public const TYPE_VIDEO_LINKS = 'video_links';
 
+    /** Published profile has no known-good snapshot; current state was not adopted. */
+    public const TYPE_MISSING_SNAPSHOT = 'missing_snapshot';
+
     public const STATUS_OPEN = 'open';
 
     protected $fillable = [

@@ -326,6 +326,14 @@ PROMPT,
         | size/HEAD check). Default 100 is correct at pre-launch scale
         | (currently a handful of photos); lower it (e.g. 10) as the corpus
         | grows — the rotation is deterministic per profile per day.
+        |
+        | A published profile with no snapshot is reported as missing_snapshot;
+        | the scheduled scan never adopts the live page as a baseline. Operators
+        | establish a first baseline with:
+        |   php artisan jannayaks:verify-profile-integrity --profile=ID --establish-baseline
+        | after reviewing the live public page. Existing snapshots are never
+        | overwritten by that flag. Legitimate publish/approval paths still call
+        | ProfileIntegrityService::refreshSnapshot() as before.
         */
         'integrity' => [
             'mode' => env('JANNAYAKS_INTEGRITY_MODE', 'report'),

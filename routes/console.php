@@ -54,8 +54,9 @@ Schedule::command(ReconcilePaymentCapturesCommand::class)
 | Published Profile Integrity Monitor (Wave 2C) — REPORT-ONLY watchdog.
 | Compares each published profile's live public state against its known-good
 | snapshot; records incidents for unexplained differences. Never suspends or
-| modifies content in this wave. Chunked and circuit-broken (see
-| VerifyProfileIntegrityCommand); runs on the existing scheduler service.
+| modifies content in this wave. Scans every eligible published profile; a
+| mass-mismatch threshold only raises an alert (see VerifyProfileIntegrityCommand).
+| Missing snapshots are reported, not auto-baselined. Runs on the scheduler service.
 */
 Schedule::command(VerifyProfileIntegrityCommand::class)
     ->twiceDaily(0, 12)

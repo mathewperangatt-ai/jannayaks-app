@@ -33,8 +33,13 @@ class ProfileIntegrityMonitorTest extends TestCase
     {
         parent::setUp();
         Storage::fake('public');
-        config(['jannayaks.integrity.mode' => 'report']);
-        config(['jannayaks.integrity.deep_verify_percent' => 100]);
+        config([
+            'jannayaks.security.integrity.mode' => 'report',
+            'jannayaks.security.integrity.deep_verify_percent' => 100,
+            // Legacy keys still read as fallbacks in the command/service.
+            'jannayaks.integrity.mode' => 'report',
+            'jannayaks.integrity.deep_verify_percent' => 100,
+        ]);
     }
 
     /* A. Published profile gets a snapshot. */
@@ -308,8 +313,8 @@ class ProfileIntegrityMonitorTest extends TestCase
         $this->assertSame(0, IntegrityIncident::query()->count());
     }
 
-    /* P. Circuit breaker prevents mass incident creation. */
-    public function test_circuit_breaker_stops_mass_mismatch_handling(): void
+    /* P. Mass-mismatch alert does not stop scanning higher-ID profiles. */
+    public function test_mass_mismatch_alert_continues_scanning_all_profiles(): void
     {
         $profileIds = [];
         for ($i = 0; $i < 6; $i++) {
@@ -317,7 +322,8 @@ class ProfileIntegrityMonitorTest extends TestCase
             $profileIds[] = $pack['profile']->id;
         }
 
-        // Tamper 5 of 6 with no authorizing events. Threshold: max(3, 10%) = 3.
+        // Tamper 5 of 6 (including the highest IDs) with no authorizing events.
+        // Alert threshold: max(3, 10%) = 3 — scan must still finish all six.
         foreach (array_slice($profileIds, 0, 5) as $id) {
             Profile::query()->whereKey($id)->update(['slug' => 'tampered-'.$id]);
         }
@@ -325,11 +331,18 @@ class ProfileIntegrityMonitorTest extends TestCase
         Artisan::call('jannayaks:verify-profile-integrity');
         $output = Artisan::output();
 
-        // Breaker tripped after the 3rd mismatch: at most 3 incidents created.
-        $this->assertSame(3, IntegrityIncident::query()->count());
-        $this->assertStringContainsString('circuit_broken', $output);
-        $this->assertStringContainsString('unscanned_after_breaker', $output);
+        $this->assertSame(5, IntegrityIncident::query()->count());
+        $this->assertStringContainsString('mass_mismatch_alert', $output);
+        $this->assertStringContainsString('scanned', $output);
         $this->assertStringContainsString('REPORT-ONLY', $output);
+        $this->assertStringNotContainsString('unscanned_after_breaker', $output);
+
+        $highestTamperedId = $profileIds[4];
+        $this->assertTrue(
+            IntegrityIncident::query()->where('profile_id', $highestTamperedId)->exists(),
+            'Higher-ID mismatched profiles must still be examined after the alert threshold.',
+        );
+        $this->assertSame(0, IntegrityIncident::query()->where('profile_id', $profileIds[5])->count());
     }
 
     /* Q. REPORT mode never suspends a profile with a confirmed mismatch. */
@@ -403,8 +416,8 @@ class ProfileIntegrityMonitorTest extends TestCase
         $this->assertSame($bytesBefore, Storage::disk('public')->get($photo->storage_path_key));
     }
 
-    /* Bootstrap: missing snapshot for a published profile is created, not flagged. */
-    public function test_missing_snapshot_is_bootstrapped_without_incident(): void
+    /* Missing snapshot: published profile is flagged; live state is not adopted. */
+    public function test_missing_snapshot_is_reported_without_adopting_live_state(): void
     {
         $pack = $this->seedPublishedProfile();
         $profile = $pack['profile']->fresh();
@@ -412,9 +425,686 @@ class ProfileIntegrityMonitorTest extends TestCase
 
         $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
 
-        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_BOOTSTRAP, $result['classification']);
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISSING_SNAPSHOT, $result['classification']);
+        $this->assertCount(1, $result['incidents']);
+        $incident = IntegrityIncident::query()->where('profile_id', $profile->id)->firstOrFail();
+        $this->assertSame(IntegrityIncident::TYPE_MISSING_SNAPSHOT, (string) $incident->type);
+        $this->assertNull(ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->first());
+        $this->assertSame('published', (string) $profile->fresh()->status);
+        $this->assertNull($profile->fresh()->suspended_at);
+    }
+
+    public function test_command_reports_missing_snapshot_in_summary(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        ProfileIntegritySnapshot::query()->where('profile_id', $pack['profile']->id)->delete();
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+        $output = Artisan::output();
+
+        $this->assertStringContainsString('missing_snapshot', $output);
+        $this->assertStringContainsString('REPORT-ONLY', $output);
+        $this->assertSame(1, IntegrityIncident::query()->count());
+        $this->assertSame(0, ProfileIntegritySnapshot::query()->count());
+    }
+
+    public function test_establish_baseline_creates_snapshot_only_when_explicitly_requested(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->delete();
+
+        $exit = Artisan::call('jannayaks:verify-profile-integrity', [
+            '--profile' => (string) $profile->id,
+            '--establish-baseline' => true,
+        ]);
+
+        $this->assertSame(0, $exit);
+        $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->first();
+        $this->assertNotNull($snapshot);
+        $this->assertSame('operator_establish_baseline', (string) $snapshot->source_event);
         $this->assertSame(0, IntegrityIncident::query()->count());
-        $this->assertNotNull(ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->first());
+
+        // Existing baselines are never overwritten by the explicit path.
+        $snapshot->forceFill(['source_event' => 'operator_establish_baseline'])->save();
+        Artisan::call('jannayaks:verify-profile-integrity', [
+            '--profile' => (string) $profile->id,
+            '--establish-baseline' => true,
+        ]);
+        $this->assertSame(1, ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->count());
+    }
+
+    public function test_video_link_event_for_another_profile_does_not_authorise_change(): void
+    {
+        $victim = $this->seedPublishedProfile(slugSuffix: 1);
+        $other = $this->seedPublishedProfile(slugSuffix: 2);
+        $profile = $victim['profile']->fresh();
+        $otherProfile = $other['profile']->fresh();
+        $staff = User::factory()->editor()->create();
+
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        $foreignLink = ProfileExternalLink::query()->create([
+            'profile_id' => $otherProfile->id,
+            'link_type' => ProfileExternalLink::TYPE_VIDEO,
+            'label' => 'Other interview',
+            'url' => 'https://www.youtube.com/watch?v=otherprofile1',
+            'status' => ProfileExternalLink::STATUS_APPROVED,
+            'is_publicly_active' => true,
+            'submitted_by_user_id' => $staff->id,
+        ]);
+
+        // Tamper: inject a public video onto the victim with no own audit trail.
+        ProfileExternalLink::query()->create([
+            'profile_id' => $profile->id,
+            'link_type' => ProfileExternalLink::TYPE_VIDEO,
+            'label' => 'Injected',
+            'url' => 'https://www.youtube.com/watch?v=injectedbad1',
+            'status' => ProfileExternalLink::STATUS_APPROVED,
+            'is_publicly_active' => true,
+            'submitted_by_user_id' => $staff->id,
+        ]);
+
+        StaffActionLog::query()->create([
+            'actor_user_id' => $staff->id,
+            'action' => 'media.external_video_approved',
+            'subject_type' => $foreignLink->getMorphClass(),
+            'subject_id' => $foreignLink->id,
+            'before' => ['status' => 'pending_review'],
+            'after' => ['status' => 'approved', 'is_publicly_active' => true],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $incident = IntegrityIncident::query()->where('profile_id', $profile->id)->firstOrFail();
+        $this->assertSame(IntegrityIncident::TYPE_VIDEO_LINKS, (string) $incident->type);
+        $this->assertNotSame(
+            'watchdog_reconciled',
+            (string) ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('source_event')
+        );
+    }
+
+    public function test_editorial_event_without_matching_content_does_not_authorise_change(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $staff = User::factory()->editor()->create();
+        $englishId = (int) $application->published_english_editorial_content_id;
+
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        // Tamper the published editorial body without a matching narrative audit.
+        EditorialContent::query()->whereKey($englishId)->update([
+            'body' => 'Unauthorised rewrite of the published biography.',
+        ]);
+
+        StaffActionLog::query()->create([
+            'actor_user_id' => $staff->id,
+            'action' => 'editorial_content.updated',
+            'subject_type' => (new EditorialContent)->getMorphClass(),
+            'subject_id' => $englishId,
+            'before' => ['status' => 'approved', 'title' => 'Integrity Monitor Leader'],
+            'after' => [
+                'status' => 'approved',
+                'title' => 'Integrity Monitor Leader',
+                'language' => 'en',
+                'version_number' => 1,
+                // Deliberately omit body/summary/content_hash — ID alone must not authorise.
+            ],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $incident = IntegrityIncident::query()->where('profile_id', $profile->id)->firstOrFail();
+        $this->assertSame(IntegrityIncident::TYPE_EDITORIAL, (string) $incident->type);
+        $this->assertNotSame(
+            'watchdog_reconciled',
+            (string) ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('source_event')
+        );
+    }
+
+    public function test_publication_event_does_not_authorise_inplace_editorial_rewrite(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $englishId = (int) $application->published_english_editorial_content_id;
+
+        // Pull the seed publication audit into the reconciliation window without
+        // adding any editorial_content.* narrative evidence.
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        EditorialContent::query()->whereKey($englishId)->update([
+            'body' => 'Silent in-place rewrite after publication.',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $this->assertSame(IntegrityIncident::TYPE_EDITORIAL, (string) IntegrityIncident::query()
+            ->where('profile_id', $profile->id)
+            ->value('type'));
+        $this->assertSame([], $result['event_ids']);
+    }
+
+    public function test_title_only_editorial_event_does_not_authorise_body_rewrite(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $staff = User::factory()->editor()->create();
+        $englishId = (int) $application->published_english_editorial_content_id;
+
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        EditorialContent::query()->whereKey($englishId)->update([
+            'title' => 'Integrity Monitor Leader',
+            'body' => 'Body changed while title stayed the same.',
+        ]);
+
+        StaffActionLog::query()->create([
+            'actor_user_id' => $staff->id,
+            'action' => 'editorial_content.updated',
+            'subject_type' => (new EditorialContent)->getMorphClass(),
+            'subject_id' => $englishId,
+            'before' => ['status' => 'approved'],
+            'after' => [
+                'status' => 'approved',
+                'title' => 'Integrity Monitor Leader',
+                // No body / content_hash — must not authorise via live-row fallback.
+            ],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $this->assertSame(IntegrityIncident::TYPE_EDITORIAL, (string) IntegrityIncident::query()
+            ->where('profile_id', $profile->id)
+            ->value('type'));
+    }
+
+    public function test_editorial_event_with_matching_narrative_still_authorises(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $staff = User::factory()->editor()->create();
+        $englishId = (int) $application->published_english_editorial_content_id;
+        $newTitle = 'Authorised Revised Title';
+        $newSummary = 'Authorised revised summary.';
+        $newBody = 'Authorised revised English biography body.';
+
+        // Keep the seed publication audit inside the window so authorisation
+        // must come from matching narrative evidence, not from publication alone.
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        EditorialContent::query()->whereKey($englishId)->update([
+            'title' => $newTitle,
+            'summary' => $newSummary,
+            'body' => $newBody,
+        ]);
+
+        $editorialEvent = StaffActionLog::query()->create([
+            'actor_user_id' => $staff->id,
+            'action' => 'editorial_content.updated',
+            'subject_type' => (new EditorialContent)->getMorphClass(),
+            'subject_id' => $englishId,
+            'before' => ['status' => 'approved'],
+            'after' => [
+                'status' => 'approved',
+                'title' => $newTitle,
+                'summary' => $newSummary,
+                'body' => $newBody,
+                'language' => 'en',
+                'version_number' => 1,
+            ],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_AUTHORIZED_CHANGE, $result['classification']);
+        $this->assertSame([], $result['incidents']);
+        $this->assertContains($editorialEvent->id, $result['event_ids']);
+        $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
+        $this->assertSame('watchdog_reconciled', (string) $snapshot->source_event);
+        $this->assertSame($newTitle, EditorialContent::query()->findOrFail($englishId)->title);
+        $this->assertSame($newBody, EditorialContent::query()->findOrFail($englishId)->body);
+    }
+
+    public function test_malayalam_publication_event_does_not_authorise_inplace_rewrite(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $admin = User::factory()->admin()->create();
+        $englishId = (int) $application->published_english_editorial_content_id;
+
+        $malayalam = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => EditorialContent::LANGUAGE_ML,
+            'status' => EditorialContent::STATUS_DRAFT,
+            'version_number' => 1,
+            'title' => 'മലയാളം ശീർഷകം',
+            'body' => 'അംഗീകൃത മലയാളം ജീവചരിത്രം.',
+            'summary' => 'മലയാളം സംഗ്രഹം.',
+            'source_material' => '',
+            'ai_generated' => false,
+            'source_editorial_content_id' => $englishId,
+        ]);
+
+        app(ApplicationWorkflowService::class)->publishMalayalam($application->fresh(), $admin, $malayalam);
+        $malayalamId = (int) $application->fresh()->published_malayalam_editorial_content_id;
+
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        EditorialContent::query()->whereKey($malayalamId)->update([
+            'body' => 'തിരുത്തിയ മലയാളം ജീവചരിത്രം അനധികൃതമായി.',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $this->assertSame(IntegrityIncident::TYPE_EDITORIAL, (string) IntegrityIncident::query()
+            ->where('profile_id', $profile->id)
+            ->value('type'));
+    }
+
+    public function test_malayalam_editorial_event_with_matching_narrative_authorises(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $admin = User::factory()->admin()->create();
+        $staff = User::factory()->editor()->create();
+        $englishId = (int) $application->published_english_editorial_content_id;
+
+        $malayalam = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => EditorialContent::LANGUAGE_ML,
+            'status' => EditorialContent::STATUS_DRAFT,
+            'version_number' => 1,
+            'title' => 'മലയാളം ശീർഷകം',
+            'body' => 'അംഗീകൃത മലയാളം ജീവചരിത്രം.',
+            'summary' => 'മലയാളം സംഗ്രഹം.',
+            'source_material' => '',
+            'ai_generated' => false,
+            'source_editorial_content_id' => $englishId,
+        ]);
+
+        app(ApplicationWorkflowService::class)->publishMalayalam($application->fresh(), $admin, $malayalam);
+        $malayalamId = (int) $application->fresh()->published_malayalam_editorial_content_id;
+        $newTitle = 'പുതുക്കിയ മലയാളം ശീർഷകം';
+        $newSummary = 'പുതുക്കിയ മലയാളം സംഗ്രഹം.';
+        $newBody = 'പുതുക്കിയ അംഗീകൃത മലയാളം ജീവചരിത്രം.';
+
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        EditorialContent::query()->whereKey($malayalamId)->update([
+            'title' => $newTitle,
+            'summary' => $newSummary,
+            'body' => $newBody,
+        ]);
+
+        $editorialEvent = StaffActionLog::query()->create([
+            'actor_user_id' => $staff->id,
+            'action' => 'editorial_content.updated',
+            'subject_type' => (new EditorialContent)->getMorphClass(),
+            'subject_id' => $malayalamId,
+            'before' => ['status' => 'approved'],
+            'after' => [
+                'status' => 'approved',
+                'title' => $newTitle,
+                'summary' => $newSummary,
+                'body' => $newBody,
+                'language' => 'ml',
+                'version_number' => 1,
+            ],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_AUTHORIZED_CHANGE, $result['classification']);
+        $this->assertSame([], $result['incidents']);
+        $this->assertContains($editorialEvent->id, $result['event_ids']);
+        $this->assertSame(
+            'watchdog_reconciled',
+            (string) ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('source_event')
+        );
+        $this->assertSame($newBody, EditorialContent::query()->findOrFail($malayalamId)->body);
+    }
+
+    public function test_malayalam_publication_event_does_not_authorise_english_rewrite(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $admin = User::factory()->admin()->create();
+        $englishId = (int) $application->published_english_editorial_content_id;
+
+        $malayalam = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => EditorialContent::LANGUAGE_ML,
+            'status' => EditorialContent::STATUS_DRAFT,
+            'version_number' => 1,
+            'title' => 'മലയാളം ശീർഷകം',
+            'body' => 'അംഗീകൃത മലയാളം ജീവചരിത്രം.',
+            'summary' => 'മലയാളം സംഗ്രഹം.',
+            'source_material' => '',
+            'ai_generated' => false,
+            'source_editorial_content_id' => $englishId,
+        ]);
+
+        app(ApplicationWorkflowService::class)->publishMalayalam($application->fresh(), $admin, $malayalam);
+
+        $snapshotBefore = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
+        $trustedHash = (string) $snapshotBefore->english_content_hash;
+        $trustedSource = (string) $snapshotBefore->source_event;
+
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        EditorialContent::query()->whereKey($englishId)->update([
+            'body' => 'English rewrite that must not be covered by Malayalam publication evidence.',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $this->assertSame([], $result['event_ids']);
+        $this->assertSame('published', (string) $profile->fresh()->status);
+        $snapshotAfter = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
+        $this->assertSame($trustedHash, (string) $snapshotAfter->english_content_hash);
+        $this->assertSame($trustedSource, (string) $snapshotAfter->source_event);
+        $this->assertNotSame('watchdog_reconciled', (string) $snapshotAfter->source_event);
+        $this->assertSame(IntegrityIncident::TYPE_EDITORIAL, (string) IntegrityIncident::query()
+            ->where('profile_id', $profile->id)
+            ->value('type'));
+    }
+
+    public function test_english_editorial_evidence_does_not_authorise_malayalam_rewrite(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $admin = User::factory()->admin()->create();
+        $staff = User::factory()->editor()->create();
+        $englishId = (int) $application->published_english_editorial_content_id;
+
+        $malayalam = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => EditorialContent::LANGUAGE_ML,
+            'status' => EditorialContent::STATUS_DRAFT,
+            'version_number' => 1,
+            'title' => 'മലയാളം ശീർഷകം',
+            'body' => 'അംഗീകൃത മലയാളം ജീവചരിത്രം.',
+            'summary' => 'മലയാളം സംഗ്രഹം.',
+            'source_material' => '',
+            'ai_generated' => false,
+            'source_editorial_content_id' => $englishId,
+        ]);
+        app(ApplicationWorkflowService::class)->publishMalayalam($application->fresh(), $admin, $malayalam);
+        $malayalamId = (int) $application->fresh()->published_malayalam_editorial_content_id;
+
+        $trustedMlHash = (string) ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->value('malayalam_content_hash');
+
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        EditorialContent::query()->whereKey($malayalamId)->update([
+            'body' => 'മലയാളം മാറ്റം ഇ-only evidence must not cover.',
+        ]);
+
+        $english = EditorialContent::query()->findOrFail($englishId);
+        StaffActionLog::query()->create([
+            'actor_user_id' => $staff->id,
+            'action' => 'editorial_content.updated',
+            'subject_type' => $english->getMorphClass(),
+            'subject_id' => $englishId,
+            'before' => ['status' => 'approved'],
+            'after' => [
+                'status' => 'approved',
+                'title' => $english->title,
+                'summary' => $english->summary,
+                'body' => $english->body,
+                'language' => 'en',
+                'version_number' => 1,
+            ],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $this->assertNotSame(
+            'watchdog_reconciled',
+            (string) ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('source_event')
+        );
+        $this->assertSame(
+            $trustedMlHash,
+            (string) ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('malayalam_content_hash')
+        );
+    }
+
+    public function test_malayalam_editorial_evidence_does_not_authorise_english_rewrite(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $admin = User::factory()->admin()->create();
+        $staff = User::factory()->editor()->create();
+        $englishId = (int) $application->published_english_editorial_content_id;
+
+        $malayalam = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => EditorialContent::LANGUAGE_ML,
+            'status' => EditorialContent::STATUS_DRAFT,
+            'version_number' => 1,
+            'title' => 'മലയാളം ശീർഷകം',
+            'body' => 'അംഗീകൃത മലയാളം ജീവചരിത്രം.',
+            'summary' => 'മലയാളം സംഗ്രഹം.',
+            'source_material' => '',
+            'ai_generated' => false,
+            'source_editorial_content_id' => $englishId,
+        ]);
+        app(ApplicationWorkflowService::class)->publishMalayalam($application->fresh(), $admin, $malayalam);
+        $malayalamId = (int) $application->fresh()->published_malayalam_editorial_content_id;
+
+        $trustedEnHash = (string) ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->value('english_content_hash');
+
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        EditorialContent::query()->whereKey($englishId)->update([
+            'body' => 'English rewrite not covered by Malayalam-only narrative evidence.',
+        ]);
+
+        $ml = EditorialContent::query()->findOrFail($malayalamId);
+        StaffActionLog::query()->create([
+            'actor_user_id' => $staff->id,
+            'action' => 'editorial_content.updated',
+            'subject_type' => $ml->getMorphClass(),
+            'subject_id' => $malayalamId,
+            'before' => ['status' => 'approved'],
+            'after' => [
+                'status' => 'approved',
+                'title' => $ml->title,
+                'summary' => $ml->summary,
+                'body' => $ml->body,
+                'language' => 'ml',
+                'version_number' => 1,
+            ],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $this->assertSame(
+            $trustedEnHash,
+            (string) ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('english_content_hash')
+        );
+        $this->assertNotSame(
+            'watchdog_reconciled',
+            (string) ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('source_event')
+        );
+    }
+
+    public function test_editorial_id_swap_without_publication_evidence_is_mismatch(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $staff = User::factory()->editor()->create();
+        $originalId = (int) $application->published_english_editorial_content_id;
+
+        $replacement = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => EditorialContent::LANGUAGE_EN,
+            'status' => EditorialContent::STATUS_APPROVED,
+            'version_number' => 2,
+            'title' => 'Swapped Title',
+            'body' => 'Swapped body that is not publication-audited.',
+            'summary' => 'Swapped summary.',
+            'source_material' => '',
+            'ai_generated' => false,
+        ]);
+
+        $trustedId = (int) ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->value('english_editorial_content_id');
+        $this->assertSame($originalId, $trustedId);
+
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        // Silent pointer swap on the application — no publish/replacement audit.
+        $application->forceFill([
+            'published_english_editorial_content_id' => $replacement->id,
+            'customer_approved_english_editorial_content_id' => $replacement->id,
+        ])->save();
+
+        StaffActionLog::query()->create([
+            'actor_user_id' => $staff->id,
+            'action' => 'editorial_content.updated',
+            'subject_type' => $replacement->getMorphClass(),
+            'subject_id' => $replacement->id,
+            'before' => ['status' => 'approved'],
+            'after' => [
+                'status' => 'approved',
+                'title' => $replacement->title,
+                'summary' => $replacement->summary,
+                'body' => $replacement->body,
+                'language' => 'en',
+                'version_number' => 2,
+            ],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile, 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $this->assertSame(
+            $trustedId,
+            (int) ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('english_editorial_content_id')
+        );
+        $this->assertNotSame(
+            'watchdog_reconciled',
+            (string) ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('source_event')
+        );
+    }
+
+    public function test_editorial_replacement_publication_evidence_authorises_id_change(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $application = $pack['application']->fresh();
+        $admin = User::factory()->admin()->create();
+
+        $v2 = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => EditorialContent::LANGUAGE_EN,
+            'status' => EditorialContent::STATUS_APPROVED,
+            'version_number' => 2,
+            'title' => 'Replacement Title',
+            'body' => 'Replacement approved body for integrity auth.',
+            'summary' => 'Replacement summary.',
+            'source_material' => 'replacement',
+            'ai_generated' => false,
+        ]);
+
+        // Stale snapshot: publication advances the live pointer, but the
+        // snapshot refresh is skipped so verify must reconcile via the audit.
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        $application->fresh()->forceFill([
+            'customer_approved_at' => now(),
+            'customer_approved_english_editorial_content_id' => $v2->id,
+            'status' => Application::STATUS_AWAITING_PUBLICATION,
+        ])->save();
+
+        // Publish normally (writes audit + snapshot). Then restore the prior
+        // snapshot payload while keeping the replacement audit newer than
+        // updated_at, simulating a missed refresh after a real publication.
+        $before = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail()->getAttributes();
+        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, true);
+
+        $afterPublish = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
+        $this->assertSame((int) $v2->id, (int) $afterPublish->english_editorial_content_id);
+
+        // Roll snapshot back to pre-replacement state but keep updated_at old
+        // so the replacement audit remains in the reconciliation window.
+        ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->update([
+            'english_editorial_content_id' => $before['english_editorial_content_id'],
+            'english_content_hash' => $before['english_content_hash'],
+            'malayalam_editorial_content_id' => $before['malayalam_editorial_content_id'],
+            'malayalam_content_hash' => $before['malayalam_content_hash'],
+            'snapshot_hash' => $before['snapshot_hash'],
+            'source_event' => $before['source_event'],
+            'slug' => $before['slug'],
+            'display_name' => $before['display_name'],
+            'profession' => $before['profession'],
+            'updated_at' => now()->subMinute(),
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile->fresh(), 'run-test', true);
+
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_AUTHORIZED_CHANGE, $result['classification']);
+        $this->assertSame([], $result['incidents']);
+        $reconciled = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
+        $this->assertSame((int) $v2->id, (int) $reconciled->english_editorial_content_id);
+        $this->assertSame('watchdog_reconciled', (string) $reconciled->source_event);
     }
 
     /* Scheduler registration + defaults. */
@@ -424,7 +1114,7 @@ class ProfileIntegrityMonitorTest extends TestCase
         $output = Artisan::output();
 
         $this->assertStringContainsString('verify-profile-integrity', $output);
-        $this->assertSame('report', (string) config('jannayaks.integrity.mode'));
+        $this->assertSame('report', (string) config('jannayaks.security.integrity.mode'));
     }
 
     /* Rerun idempotence of the whole command on a fully healthy corpus. */

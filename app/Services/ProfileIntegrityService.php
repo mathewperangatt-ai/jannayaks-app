@@ -33,6 +33,17 @@ class ProfileIntegrityService
 
     public const CLASSIFICATION_SCAN_ERROR = 'scan_error';
 
+    /**
+     * Published profile has no known-good snapshot. The watchdog records an
+     * incident and does NOT adopt the live state as trusted. Operators must
+     * establish a baseline through establishBaseline() / the command flag.
+     */
+    public const CLASSIFICATION_MISSING_SNAPSHOT = 'missing_snapshot';
+
+    /**
+     * @deprecated Kept for callers that still compare against the old label.
+     * Missing snapshots no longer bootstrap; see CLASSIFICATION_MISSING_SNAPSHOT.
+     */
     public const CLASSIFICATION_BOOTSTRAP = 'bootstrap';
 
     /**
@@ -43,7 +54,9 @@ class ProfileIntegrityService
     private const AUTHORIZED_ACTIONS = [
         'identity' => ['profile_url.slug_assigned', 'profile_url.slug_changed'],
         'editorial' => [
+            'application.published',
             'application.published.replacement',
+            'application.malayalam_published',
             'editorial_content.created',
             'editorial_content.updated',
             'editorial_content.version_created_from_immutable',
@@ -124,6 +137,10 @@ class ProfileIntegrityService
      * Create or refresh the known-good snapshot for a published profile.
      * Must only be called when the profile is publicly visible; unpublished
      * profiles have no known-good PUBLIC state.
+     *
+     * Called from authorised workflow paths (publish, photo approval, etc.)
+     * and from establishBaseline() for an explicit operator baseline.
+     * The scheduled watchdog never uses this to invent a first baseline.
      */
     public function refreshSnapshot(Profile $profile, string $sourceEvent): ?ProfileIntegritySnapshot
     {
@@ -160,6 +177,26 @@ class ProfileIntegrityService
     }
 
     /**
+     * Explicit operator / authorised baseline for a published profile that has
+     * no snapshot yet. Never overwrites an existing snapshot. Does not suspend
+     * or alter public content. Intended for the artisan --establish-baseline
+     * path and equivalent controlled recovery — not for the scheduled scan.
+     */
+    public function establishBaseline(Profile $profile, string $sourceEvent = 'operator_establish_baseline'): ?ProfileIntegritySnapshot
+    {
+        $profile = $profile->fresh() ?? $profile;
+        if (! $this->profileUrls->isPubliclyVisible($profile)) {
+            return null;
+        }
+
+        if (ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->exists()) {
+            return null;
+        }
+
+        return $this->refreshSnapshot($profile, $sourceEvent);
+    }
+
+    /**
      * Verify one published profile against its snapshot.
      *
      * @return array{
@@ -176,17 +213,26 @@ class ProfileIntegrityService
         $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->first();
 
         if ($snapshot === null) {
-            // Published without a snapshot (e.g. predates the monitor):
-            // establish the known-good baseline from current state. This is a
-            // bootstrap, NOT a verification pass.
-            $this->refreshSnapshot($profile, 'watchdog_bootstrap');
+            // Do NOT adopt the live public state as trusted. A missing snapshot
+            // for a published profile is itself a discrepancy: either the
+            // baseline was never established, or it was removed. Operators
+            // establish a baseline only via establishBaseline().
+            $current = $this->canonicalPublicState($profile);
+            $incident = $this->recordIncident(
+                $profile,
+                $runId,
+                IntegrityIncident::TYPE_MISSING_SNAPSHOT,
+                'Published profile has no known-good integrity snapshot. Current public state was not accepted as the trusted baseline.',
+                ['snapshot' => null],
+                ['public_state' => $current],
+            );
 
             return [
-                'classification' => self::CLASSIFICATION_BOOTSTRAP,
-                'incidents' => [],
+                'classification' => self::CLASSIFICATION_MISSING_SNAPSHOT,
+                'incidents' => [$incident],
                 'snapshot_refreshed' => false,
-                'bootstrapped' => true,
-                'reasons' => ['snapshot_bootstrapped'],
+                'bootstrapped' => false,
+                'reasons' => ['missing_snapshot'],
                 'event_ids' => [],
             ];
         }
@@ -452,6 +498,13 @@ class ProfileIntegrityService
             ->orderBy('id')
             ->get();
 
+        // Editorial diffs are multi-dimensional (English/Malayalam id + hash).
+        // Every changed dimension must be covered; one event must not clear
+        // unrelated dimensions.
+        if ($section === 'editorial') {
+            return $this->editorialSectionAuthorized($profile, $events, $expected, $current);
+        }
+
         foreach ($events as $event) {
             if ($this->eventExplainsSection($event, $section, $profile, $expected, $current)) {
                 return [$event->id];
@@ -459,6 +512,76 @@ class ProfileIntegrityService
         }
 
         return null;
+    }
+
+    /**
+     * Require evidence for every changed English/Malayalam id or hash.
+     * Snapshot refresh (watchdog_reconciled) only proceeds when this returns ids.
+     *
+     * @param  \Illuminate\Support\Collection<int, StaffActionLog>  $events
+     * @param  array<string, mixed>  $expected
+     * @param  array<string, mixed>  $current
+     * @return list<int>|null
+     */
+    private function editorialSectionAuthorized(
+        Profile $profile,
+        $events,
+        array $expected,
+        array $current,
+    ): ?array {
+        $remaining = array_fill_keys(
+            $this->editorialChangedDimensions($expected, $current),
+            true,
+        );
+        if ($remaining === []) {
+            return null;
+        }
+
+        $eventIds = [];
+        foreach ($events as $event) {
+            $covered = $this->editorialEventCoversDimensions(
+                $event,
+                $profile,
+                $expected,
+                $current,
+                array_keys($remaining),
+            );
+            foreach ($covered as $dimension) {
+                if (isset($remaining[$dimension])) {
+                    unset($remaining[$dimension]);
+                    $eventIds[] = $event->id;
+                }
+            }
+            if ($remaining === []) {
+                return array_values(array_unique($eventIds));
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * @param  array<string, mixed>  $expected
+     * @param  array<string, mixed>  $current
+     * @return list<string>
+     */
+    private function editorialChangedDimensions(array $expected, array $current): array
+    {
+        $changed = [];
+        if ((int) ($expected['english_editorial_content_id'] ?? 0) !== (int) ($current['english_editorial_content_id'] ?? 0)) {
+            $changed[] = 'english_id';
+        }
+        if (($expected['english_content_hash'] ?? null) !== ($current['english_content_hash'] ?? null)) {
+            $changed[] = 'english_hash';
+        }
+        if ((int) ($expected['malayalam_editorial_content_id'] ?? 0) !== (int) ($current['malayalam_editorial_content_id'] ?? 0)) {
+            $changed[] = 'malayalam_id';
+        }
+        if (($expected['malayalam_content_hash'] ?? null) !== ($current['malayalam_content_hash'] ?? null)) {
+            $changed[] = 'malayalam_hash';
+        }
+
+        return $changed;
     }
 
     private function eventExplainsSection(
@@ -471,7 +594,12 @@ class ProfileIntegrityService
         switch ($section) {
             case 'identity':
                 // Only slug changes have an authorized path; name/profession
-                // have none, so a slug event must explain the exact transition.
+                // have none, so a slug event must explain the exact transition
+                // on THIS profile.
+                if ($event->subject_type !== $profile->getMorphClass()
+                    || (int) $event->subject_id !== (int) $profile->id) {
+                    return false;
+                }
                 $before = (string) ($event->before['slug'] ?? '');
                 $after = (string) ($event->after['slug'] ?? '');
                 if ($after === '') {
@@ -484,18 +612,19 @@ class ProfileIntegrityService
                     && strtolower($after) === (string) $current['slug'];
 
             case 'editorial':
-                $relevantIds = array_filter([
-                    (int) ($current['english_editorial_content_id'] ?? 0),
-                    (int) ($current['malayalam_editorial_content_id'] ?? 0),
-                ]);
-
-                return $event->subject_type === (new \App\Models\EditorialContent)->getMorphClass()
-                    ? in_array((int) $event->subject_id, $relevantIds, true)
-                    : false;
+                // Handled by editorialSectionAuthorized() — never authorize the
+                // whole section from a single coarse boolean.
+                return false;
 
             case 'photos':
                 $mediaMorph = (new MediaItem)->getMorphClass();
                 if ($event->subject_type !== $mediaMorph) {
+                    return false;
+                }
+                $media = MediaItem::query()->find((int) $event->subject_id);
+                if (! $media instanceof MediaItem
+                    || $media->mediable_type !== $profile->getMorphClass()
+                    || (int) $media->mediable_id !== (int) $profile->id) {
                     return false;
                 }
                 $currentIds = array_map(fn (array $p): int => $p['media_id'], $current['photos'] ?? []);
@@ -504,10 +633,245 @@ class ProfileIntegrityService
                 return in_array((int) $event->subject_id, array_merge($currentIds, $expectedIds), true);
 
             case 'video_links':
-                return $event->subject_type === (new \App\Models\ProfileExternalLink)->getMorphClass();
+                $linkMorph = (new \App\Models\ProfileExternalLink)->getMorphClass();
+                if ($event->subject_type !== $linkMorph) {
+                    return false;
+                }
+                $link = \App\Models\ProfileExternalLink::query()->find((int) $event->subject_id);
+                if (! $link instanceof \App\Models\ProfileExternalLink
+                    || (int) $link->profile_id !== (int) $profile->id) {
+                    return false;
+                }
+
+                // The event must concern a link that is part of the observed
+                // public set, or that was removed from the prior set.
+                $currentUrls = array_map(
+                    fn (array $row): string => (string) ($row['url'] ?? ''),
+                    $current['video_links'] ?? [],
+                );
+                $expectedUrls = array_map(
+                    fn (array $row): string => (string) ($row['url'] ?? ''),
+                    $expected['video_links'] ?? [],
+                );
+                $eventUrl = (string) ($event->after['url'] ?? $link->url ?? '');
+                if ($eventUrl !== '' && (in_array($eventUrl, $currentUrls, true) || in_array($eventUrl, $expectedUrls, true))) {
+                    return true;
+                }
+
+                // Approval / rejection events often store host only; the link
+                // row belonging to this profile and appearing in either set
+                // (by matching any current/expected URL for this link id via
+                // the live row URL) is sufficient when the URL moved in/out.
+                $linkUrl = (string) ($link->url ?? '');
+
+                return $linkUrl !== ''
+                    && (in_array($linkUrl, $currentUrls, true) || in_array($linkUrl, $expectedUrls, true));
         }
 
         return false;
+    }
+
+    /**
+     * Dimensions among $needed that this single audit event can cover.
+     * Publication events move pointers; narrative events explain same-id rewrites.
+     *
+     * @param  array<string, mixed>  $expected
+     * @param  array<string, mixed>  $current
+     * @param  list<string>  $needed
+     * @return list<string>
+     */
+    private function editorialEventCoversDimensions(
+        StaffActionLog $event,
+        Profile $profile,
+        array $expected,
+        array $current,
+        array $needed,
+    ): array {
+        if ($needed === []) {
+            return [];
+        }
+
+        $applicationMorph = (new Application)->getMorphClass();
+        $editorialMorph = (new EditorialContent)->getMorphClass();
+
+        $currentEnglishId = (int) ($current['english_editorial_content_id'] ?? 0);
+        $currentMalayalamId = (int) ($current['malayalam_editorial_content_id'] ?? 0);
+        $expectedEnglishId = (int) ($expected['english_editorial_content_id'] ?? 0);
+        $expectedMalayalamId = (int) ($expected['malayalam_editorial_content_id'] ?? 0);
+        $currentEnglishHash = $current['english_content_hash'] ?? null;
+        $currentMalayalamHash = $current['malayalam_content_hash'] ?? null;
+        $englishIdUnchanged = $expectedEnglishId > 0 && $expectedEnglishId === $currentEnglishId;
+        $malayalamIdUnchanged = $expectedMalayalamId > 0 && $expectedMalayalamId === $currentMalayalamId;
+        $englishHashChanged = ($expected['english_content_hash'] ?? null) !== $currentEnglishHash;
+        $malayalamHashChanged = ($expected['malayalam_content_hash'] ?? null) !== $currentMalayalamHash;
+
+        if (in_array($event->action, ['application.published', 'application.published.replacement', 'application.malayalam_published'], true)) {
+            if ($event->subject_type !== $applicationMorph) {
+                return [];
+            }
+            $application = Application::query()->find((int) $event->subject_id);
+            if (! $application instanceof Application
+                || (int) $application->profile_id !== (int) $profile->id) {
+                return [];
+            }
+
+            $afterEnglish = (int) ($event->after['published_english_editorial_content_id'] ?? 0);
+            $afterMalayalam = (int) ($event->after['published_malayalam_editorial_content_id'] ?? 0);
+            $covered = [];
+
+            if ($event->action === 'application.malayalam_published') {
+                // Malayalam publish never authorises English pointer or narrative changes.
+                if ($afterMalayalam <= 0
+                    || $afterMalayalam !== $currentMalayalamId
+                    || ! $this->publishedEditorialHashMatches($currentMalayalamId, $currentMalayalamHash)) {
+                    return [];
+                }
+                // Same Malayalam id with a changed hash is an in-place rewrite —
+                // pointer publication cannot explain it.
+                if ($malayalamIdUnchanged && $malayalamHashChanged) {
+                    return [];
+                }
+                if (in_array('malayalam_id', $needed, true) && ! $malayalamIdUnchanged) {
+                    $covered[] = 'malayalam_id';
+                }
+                if (in_array('malayalam_hash', $needed, true) && ! ($malayalamIdUnchanged && $malayalamHashChanged)) {
+                    $covered[] = 'malayalam_hash';
+                }
+
+                return $covered;
+            }
+
+            // Living publish / replacement: English pointer + hash for the new
+            // id. Never covers same-id English/Malayalam narrative rewrites.
+            if ($currentEnglishId <= 0
+                || $afterEnglish !== $currentEnglishId
+                || ! $this->publishedEditorialHashMatches($currentEnglishId, $currentEnglishHash)) {
+                return [];
+            }
+            if ($currentMalayalamId > 0 && $afterMalayalam > 0 && $afterMalayalam !== $currentMalayalamId) {
+                return [];
+            }
+            if ($currentMalayalamId > 0
+                && ! $this->publishedEditorialHashMatches($currentMalayalamId, $currentMalayalamHash)) {
+                return [];
+            }
+
+            if (in_array('english_id', $needed, true) && ! $englishIdUnchanged) {
+                $covered[] = 'english_id';
+            }
+            if (in_array('english_hash', $needed, true) && ! ($englishIdUnchanged && $englishHashChanged)) {
+                $covered[] = 'english_hash';
+            }
+            if (in_array('malayalam_id', $needed, true)
+                && ! $malayalamIdUnchanged
+                && $afterMalayalam === $currentMalayalamId
+                && $currentMalayalamId > 0) {
+                $covered[] = 'malayalam_id';
+            }
+            if (in_array('malayalam_hash', $needed, true)
+                && ! ($malayalamIdUnchanged && $malayalamHashChanged)
+                && $currentMalayalamId > 0
+                && ($afterMalayalam === 0 || $afterMalayalam === $currentMalayalamId)) {
+                $covered[] = 'malayalam_hash';
+            }
+
+            return $covered;
+        }
+
+        // Narrative / version audits: same-id hash changes only. Never pointer swaps.
+        if ($event->subject_type !== $editorialMorph) {
+            return [];
+        }
+
+        $content = EditorialContent::query()->find((int) $event->subject_id);
+        if (! $content instanceof EditorialContent
+            || (int) $content->profile_id !== (int) $profile->id) {
+            return [];
+        }
+
+        $contentId = (int) $content->id;
+        $isEnglish = $contentId === $currentEnglishId && $currentEnglishId > 0;
+        $isMalayalam = $contentId === $currentMalayalamId && $currentMalayalamId > 0;
+        if (! $isEnglish && ! $isMalayalam) {
+            return [];
+        }
+
+        $liveHash = $this->contentHash($content);
+        $presentationHash = $isEnglish ? $currentEnglishHash : $currentMalayalamHash;
+        if ($liveHash !== $presentationHash) {
+            return [];
+        }
+
+        if (! $this->editorialNarrativePayloadMatchesLive($event, $content, (string) $presentationHash)) {
+            return [];
+        }
+
+        $covered = [];
+        if ($isEnglish
+            && in_array('english_hash', $needed, true)
+            && $englishIdUnchanged
+            && $englishHashChanged
+            && ! in_array('english_id', $needed, true)) {
+            // Same-id English rewrite only. Pointer swaps need publication evidence.
+            $covered[] = 'english_hash';
+        }
+        if ($isMalayalam
+            && in_array('malayalam_hash', $needed, true)
+            && $malayalamIdUnchanged
+            && $malayalamHashChanged
+            && ! in_array('malayalam_id', $needed, true)) {
+            $covered[] = 'malayalam_hash';
+        }
+
+        return $covered;
+    }
+
+    /**
+     * Same-id narrative rewrite evidence: body or content_hash required; no
+     * live-row fallback for missing body.
+     */
+    private function editorialNarrativePayloadMatchesLive(
+        StaffActionLog $event,
+        EditorialContent $content,
+        string $presentationHash,
+    ): bool {
+        $after = is_array($event->after) ? $event->after : [];
+        if (! array_key_exists('body', $after) && ! array_key_exists('content_hash', $after)) {
+            return false;
+        }
+
+        if (isset($after['content_hash']) && is_string($after['content_hash'])) {
+            return hash_equals($presentationHash, $after['content_hash']);
+        }
+
+        $payloadHash = hash('sha256', $this->stable([
+            'title' => (string) ($after['title'] ?? $content->title),
+            'summary' => (string) ($after['summary'] ?? $content->summary),
+            'body' => (string) $after['body'],
+        ]));
+
+        foreach (['title', 'summary', 'body'] as $field) {
+            if (array_key_exists($field, $after)
+                && (string) $after[$field] !== (string) $content->{$field}) {
+                return false;
+            }
+        }
+
+        return hash_equals($presentationHash, $payloadHash);
+    }
+
+    private function publishedEditorialHashMatches(int $editorialContentId, mixed $expectedHash): bool
+    {
+        if ($editorialContentId <= 0 || ! is_string($expectedHash) || $expectedHash === '') {
+            return $editorialContentId <= 0 && ($expectedHash === null || $expectedHash === '');
+        }
+
+        $content = EditorialContent::query()->find($editorialContentId);
+        if (! $content instanceof EditorialContent) {
+            return false;
+        }
+
+        return hash_equals($expectedHash, $this->contentHash($content));
     }
 
     /**
@@ -546,7 +910,10 @@ class ProfileIntegrityService
                 'profile_id' => $profile->id,
                 'run_id' => $runId,
                 'type' => $type,
-                'mode' => (string) config('jannayaks.integrity.mode', 'report'),
+                'mode' => (string) config(
+                    'jannayaks.security.integrity.mode',
+                    config('jannayaks.integrity.mode', 'report'),
+                ),
                 'detection_reason' => $reason,
                 'expected_state' => $expectedState,
                 'observed_state' => $observedState,
@@ -579,6 +946,7 @@ class ProfileIntegrityService
             'identity' => IntegrityIncident::TYPE_IDENTITY,
             'public_offices' => IntegrityIncident::TYPE_OFFICES,
             'video_links' => IntegrityIncident::TYPE_VIDEO_LINKS,
+            'missing_snapshot' => IntegrityIncident::TYPE_MISSING_SNAPSHOT,
             default => 'unknown',
         };
     }

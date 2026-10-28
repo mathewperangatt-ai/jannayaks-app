@@ -3,6 +3,7 @@
 namespace App\Console\Commands;
 
 use App\Models\Profile;
+use App\Models\ProfileIntegritySnapshot;
 use App\Services\ProfileIntegrityService;
 use App\Services\ProfileUrlService;
 use Illuminate\Console\Command;
@@ -14,38 +15,50 @@ use Throwable;
  * Published Profile Integrity Monitor — REPORT-ONLY watchdog.
  *
  * Never suspends, never modifies profile/photo/content data; only snapshots
- * (known-good baselines) and incidents (append-only evidence) are written.
+ * (known-good baselines via authorised workflow or --establish-baseline) and
+ * incidents (append-only evidence) are written.
  * INFRASTRUCTURE FAILURE IS A SCAN ERROR, never an integrity violation.
+ *
+ * Initial baselines for profiles that lack a snapshot are NOT created by the
+ * scheduled scan. Use --establish-baseline with --profile= after reviewing
+ * the live public state. Existing snapshots are never overwritten by that flag.
  */
 class VerifyProfileIntegrityCommand extends Command
 {
     protected $signature = 'jannayaks:verify-profile-integrity
                             {--profile= : Verify a single profile ID (testing/troubleshooting)}
-                            {--deep-percent= : Override deep photo verification percentage (0-100)}';
+                            {--deep-percent= : Override deep photo verification percentage (0-100)}
+                            {--establish-baseline : Create a known-good snapshot for --profile= when none exists. Does not overwrite. Not used by the scheduler.}';
 
     protected $description = 'Verify published profiles against their known-good integrity snapshots (report-only).';
 
     public function handle(ProfileIntegrityService $integrity, ProfileUrlService $profileUrls): int
     {
+        if ((bool) $this->option('establish-baseline')) {
+            return $this->establishBaselineForProfile($integrity, $profileUrls);
+        }
+
         $runId = (string) Str::ulid();
         $startedAt = now();
-        $mode = (string) config('jannayaks.integrity.mode', 'report');
+        $mode = $this->integrityMode();
 
         $deepPercent = is_string($this->option('deep-percent')) && $this->option('deep-percent') !== ''
             ? max(0, min(100, (int) $this->option('deep-percent')))
-            : max(0, min(100, (int) config('jannayaks.integrity.deep_verify_percent', 100)));
+            : max(0, min(100, (int) config(
+                'jannayaks.security.integrity.deep_verify_percent',
+                config('jannayaks.integrity.deep_verify_percent', 100),
+            )));
 
         $counts = [
             'scanned' => 0,
             'healthy' => 0,
             'authorized_change' => 0,
             'integrity_mismatch' => 0,
+            'missing_snapshot' => 0,
             'scan_error' => 0,
-            'bootstrap' => 0,
         ];
         $incidentsCreated = 0;
-        $circuitBroken = false;
-        $unscanned = 0;
+        $massMismatchAlert = false;
 
         $query = Profile::query()
             ->where('status', 'published')
@@ -61,24 +74,27 @@ class VerifyProfileIntegrityCommand extends Command
         }
 
         $totalPublished = (clone $query)->toBase()->count();
-        // Circuit breaker: a mass of suspected mismatches is almost certainly a
-        // systemic issue, not mass compromise. max(3, 10%) matches the reviewed
-        // design and stays conservative at every realistic scale.
-        $breakerThreshold = max(3, (int) ceil($totalPublished * 0.10));
+        // Mass-mismatch alert threshold: surface a systemic warning without
+        // stopping the scan. Every eligible profile is still examined.
+        $alertThreshold = max(3, (int) ceil($totalPublished * 0.10));
 
         // Deterministic deep-verification rotation: stable per profile per run
         // day, so the whole corpus is covered over time when percent < 100.
         $runDay = (int) now()->format('z');
 
         try {
-            $query->chunkById(100, function ($profiles) use (&$counts, &$incidentsCreated, &$circuitBroken, &$unscanned, $integrity, $runId, $deepPercent, $runDay, $breakerThreshold, $profileUrls): void {
+            $query->chunkById(100, function ($profiles) use (
+                &$counts,
+                &$incidentsCreated,
+                &$massMismatchAlert,
+                $integrity,
+                $runId,
+                $deepPercent,
+                $runDay,
+                $alertThreshold,
+                $profileUrls,
+            ): void {
                 foreach ($profiles as $profile) {
-                    if ($circuitBroken) {
-                        $unscanned++;
-
-                        continue;
-                    }
-
                     if (! $profileUrls->isPubliclyVisible($profile)) {
                         continue; // Race with a concurrent suspension/unpublication.
                     }
@@ -101,17 +117,25 @@ class VerifyProfileIntegrityCommand extends Command
                         continue;
                     }
 
-                    $counts[$result['classification']] = ($counts[$result['classification']] ?? 0) + 1;
+                    $classification = $result['classification'];
+                    if ($classification === ProfileIntegrityService::CLASSIFICATION_MISSING_SNAPSHOT) {
+                        $counts['missing_snapshot']++;
+                    } elseif (isset($counts[$classification])) {
+                        $counts[$classification]++;
+                    } else {
+                        $counts['scan_error']++;
+                    }
                     $incidentsCreated += count($result['incidents']);
 
-                    if ($result['classification'] === ProfileIntegrityService::CLASSIFICATION_MISMATCH
-                        && $counts['integrity_mismatch'] >= $breakerThreshold) {
-                        $circuitBroken = true;
-                        Log::error('profile-integrity: CIRCUIT BREAKER tripped — suspected mismatches exceed threshold; remaining profiles left unscanned for administrator review.', [
+                    $discrepancyCount = $counts['integrity_mismatch'] + $counts['missing_snapshot'];
+                    if (! $massMismatchAlert && $discrepancyCount >= $alertThreshold) {
+                        $massMismatchAlert = true;
+                        Log::error('profile-integrity: MASS MISMATCH ALERT — discrepancy count reached threshold; scan continues for every remaining profile.', [
                             'run_id' => $runId,
-                            'mismatches' => $counts['integrity_mismatch'],
-                            'threshold' => $breakerThreshold,
-                            'published_total' => $counts['scanned'],
+                            'integrity_mismatch' => $counts['integrity_mismatch'],
+                            'missing_snapshot' => $counts['missing_snapshot'],
+                            'threshold' => $alertThreshold,
+                            'scanned_so_far' => $counts['scanned'],
                         ]);
                     }
                 }
@@ -125,6 +149,7 @@ class VerifyProfileIntegrityCommand extends Command
         }
 
         $durationSeconds = round(now()->diffInSeconds($startedAt), 1);
+        $discrepancies = $counts['integrity_mismatch'] + $counts['missing_snapshot'];
 
         $summary = [
             'run_id' => $runId,
@@ -134,11 +159,11 @@ class VerifyProfileIntegrityCommand extends Command
             'healthy' => $counts['healthy'],
             'authorized_change' => $counts['authorized_change'],
             'integrity_mismatch' => $counts['integrity_mismatch'],
+            'missing_snapshot' => $counts['missing_snapshot'],
+            'discrepancies' => $discrepancies,
             'scan_error' => $counts['scan_error'],
-            'bootstrap' => $counts['bootstrap'],
             'incidents_created' => $incidentsCreated,
-            'circuit_broken' => $circuitBroken,
-            'unscanned_after_breaker' => $unscanned,
+            'mass_mismatch_alert' => $massMismatchAlert,
             'deep_verify_percent' => $deepPercent,
             'duration_seconds' => $durationSeconds,
         ];
@@ -147,12 +172,68 @@ class VerifyProfileIntegrityCommand extends Command
         $this->info("Integrity watchdog run {$runId} (mode={$mode}):");
         $this->table(array_keys($summary), [array_values($summary)]);
 
-        if ($counts['integrity_mismatch'] > 0 || $circuitBroken) {
+        if ($discrepancies > 0 || $massMismatchAlert) {
             // Report-only: surface for review; exit code stays SUCCESS so the
             // scheduler never treats a security finding as a job failure.
             $this->warn('Integrity findings recorded as incidents — REPORT-ONLY mode: nothing was suspended or modified.');
         }
 
         return self::SUCCESS;
+    }
+
+    /**
+     * Explicit, operator-driven baseline for one published profile that has no
+     * snapshot. Requires --profile=. Never overwrites an existing snapshot.
+     * Never suspends. Not invoked by the scheduler.
+     */
+    private function establishBaselineForProfile(
+        ProfileIntegrityService $integrity,
+        ProfileUrlService $profileUrls,
+    ): int {
+        $targetId = $this->option('profile');
+        if (! is_string($targetId) || $targetId === '') {
+            $this->error('--establish-baseline requires --profile=<id>.');
+
+            return self::FAILURE;
+        }
+
+        $profile = Profile::query()->find((int) $targetId);
+        if (! $profile instanceof Profile) {
+            $this->error("Profile {$targetId} was not found.");
+
+            return self::FAILURE;
+        }
+
+        if (! $profileUrls->isPubliclyVisible($profile)) {
+            $this->error("Profile {$targetId} is not publicly visible; a baseline cannot be established.");
+
+            return self::FAILURE;
+        }
+
+        if (ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->exists()) {
+            $this->warn("Profile {$profile->id} already has an integrity snapshot. Existing baselines are never overwritten.");
+
+            return self::SUCCESS;
+        }
+
+        $snapshot = $integrity->establishBaseline($profile, 'operator_establish_baseline');
+        if ($snapshot === null) {
+            $this->error("Could not establish a baseline for profile {$profile->id}.");
+
+            return self::FAILURE;
+        }
+
+        $this->info("Baseline established for published profile {$profile->id} (snapshot #{$snapshot->id}, source_event=operator_establish_baseline).");
+        $this->comment('Review the live public page before relying on this baseline. The scheduled scan does not create baselines.');
+
+        return self::SUCCESS;
+    }
+
+    private function integrityMode(): string
+    {
+        return (string) config(
+            'jannayaks.security.integrity.mode',
+            config('jannayaks.integrity.mode', 'report'),
+        );
     }
 }
