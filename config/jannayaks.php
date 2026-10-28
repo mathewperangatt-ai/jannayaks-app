@@ -334,10 +334,19 @@ PROMPT,
         | after reviewing the live public page. Existing snapshots are never
         | overwritten by that flag. Legitimate publish/approval paths still call
         | ProfileIntegrityService::refreshSnapshot() as before.
+        |
+        | Founder alert email (report-only). Sent when a run creates new
+        | integrity_incidents (row.run_id = this run) or raises the mass-mismatch
+        | threshold. Healthy runs and re-detections of unchanged open incidents
+        | alone do not email. Delivery failure is logged; the scan still succeeds.
         */
         'integrity' => [
             'mode' => env('JANNAYAKS_INTEGRITY_MODE', 'report'),
             'deep_verify_percent' => (int) env('JANNAYAKS_INTEGRITY_DEEP_PERCENT', 100),
+            'alert_recipient' => env(
+                'JANNAYAKS_INTEGRITY_ALERT_RECIPIENT',
+                'mathew.perangatt@gmail.com',
+            ),
         ],
 
         /*

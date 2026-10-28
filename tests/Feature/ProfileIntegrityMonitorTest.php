@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Mail\ProfileIntegrityAlertMail;
 use App\Models\Application;
 use App\Models\EditorialContent;
 use App\Models\IntegrityIncident;
@@ -19,6 +20,8 @@ use App\Services\ProfileUrlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\Artisan;
+use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
@@ -36,10 +39,13 @@ class ProfileIntegrityMonitorTest extends TestCase
         config([
             'jannayaks.security.integrity.mode' => 'report',
             'jannayaks.security.integrity.deep_verify_percent' => 100,
+            'jannayaks.security.integrity.alert_recipient' => 'mathew.perangatt@gmail.com',
             // Legacy keys still read as fallbacks in the command/service.
             'jannayaks.integrity.mode' => 'report',
             'jannayaks.integrity.deep_verify_percent' => 100,
         ]);
+        // Watchdog may email the founder; never send real mail from this suite.
+        Mail::fake();
     }
 
     /* A. Published profile gets a snapshot. */
@@ -1127,6 +1133,141 @@ class ProfileIntegrityMonitorTest extends TestCase
 
         $this->assertSame(0, IntegrityIncident::query()->count());
         $this->assertSame(1, ProfileIntegritySnapshot::query()->count());
+    }
+
+    public function test_new_incident_sends_founder_alert_with_run_summary(): void
+    {
+        Mail::fake();
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $memberEmail = (string) $pack['member']->email;
+        Profile::query()->whereKey($profile->id)->update(['slug' => 'tampered-alert-'.$profile->id]);
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+
+        Mail::assertSent(ProfileIntegrityAlertMail::class, function (ProfileIntegrityAlertMail $mail) use ($profile, $memberEmail): bool {
+            $mail->assertTo('mathew.perangatt@gmail.com');
+            $this->assertNotSame('', (string) ($mail->summary['run_id'] ?? ''));
+            $this->assertSame('report', (string) $mail->summary['mode']);
+            $this->assertSame(1, (int) $mail->summary['incidents_created']);
+            $this->assertSame(1, (int) $mail->summary['integrity_mismatch']);
+            $this->assertFalse((bool) $mail->summary['mass_mismatch_alert']);
+            $this->assertCount(1, $mail->findings);
+            $this->assertSame((int) $profile->id, (int) $mail->findings[0]['profile_id']);
+            $this->assertSame('tampered-alert-'.$profile->id, (string) $mail->findings[0]['slug']);
+            $this->assertTrue((bool) $mail->findings[0]['newly_created']);
+
+            $rendered = $mail->render();
+            $this->assertStringContainsString((string) $mail->summary['run_id'], $rendered);
+            $this->assertStringContainsString((string) $profile->id, $rendered);
+            $this->assertStringContainsString('tampered-alert-'.$profile->id, $rendered);
+            $this->assertStringNotContainsString($memberEmail, $rendered);
+            $this->assertStringNotContainsString('Approved English biography of the integrity leader.', $rendered);
+            $this->assertStringNotContainsString('preferred_contact', $rendered);
+
+            return true;
+        });
+    }
+
+    public function test_healthy_run_does_not_send_founder_alert(): void
+    {
+        Mail::fake();
+        $this->seedPublishedProfile(withPhoto: true);
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+
+        Mail::assertNothingSent();
+        $this->assertSame(0, IntegrityIncident::query()->count());
+    }
+
+    public function test_unchanged_open_incident_does_not_repeat_founder_alert(): void
+    {
+        Mail::fake();
+        $pack = $this->seedPublishedProfile();
+        Profile::query()->whereKey($pack['profile']->id)->update(['slug' => 'tampered-once-alert']);
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+        Mail::assertSent(ProfileIntegrityAlertMail::class, 1);
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+        Mail::assertSent(ProfileIntegrityAlertMail::class, 1);
+        $this->assertSame(1, IntegrityIncident::query()->count());
+    }
+
+    public function test_mass_mismatch_sends_founder_alert_even_without_new_incidents(): void
+    {
+        Mail::fake();
+        $profileIds = [];
+        for ($i = 0; $i < 6; $i++) {
+            $pack = $this->seedPublishedProfile(slugSuffix: $i);
+            $profileIds[] = $pack['profile']->id;
+        }
+        foreach (array_slice($profileIds, 0, 5) as $id) {
+            Profile::query()->whereKey($id)->update(['slug' => 'tampered-mass-'.$id]);
+        }
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+        Mail::assertSent(ProfileIntegrityAlertMail::class, 1);
+        $this->assertSame(5, IntegrityIncident::query()->count());
+
+        // Second run: fingerprint dedupe creates no new rows, but mass threshold still fires.
+        Artisan::call('jannayaks:verify-profile-integrity');
+        Mail::assertSent(ProfileIntegrityAlertMail::class, 2);
+
+        $second = null;
+        Mail::assertSent(ProfileIntegrityAlertMail::class, function (ProfileIntegrityAlertMail $mail) use (&$second): bool {
+            if ((int) $mail->summary['incidents_created'] === 0
+                && (bool) $mail->summary['mass_mismatch_alert'] === true) {
+                $second = $mail;
+            }
+
+            return true;
+        });
+        $this->assertNotNull($second);
+        $this->assertSame(0, (int) $second->summary['incidents_created']);
+        $this->assertTrue((bool) $second->summary['mass_mismatch_alert']);
+        $this->assertNotEmpty($second->findings);
+        $this->assertFalse((bool) $second->findings[0]['newly_created']);
+        $this->assertSame(5, IntegrityIncident::query()->count());
+    }
+
+    public function test_founder_alert_delivery_failure_is_logged_and_does_not_fail_scan(): void
+    {
+        Log::spy();
+
+        $pending = \Mockery::mock(\Illuminate\Mail\PendingMail::class);
+        $pending->shouldReceive('send')
+            ->once()
+            ->andThrow(new \RuntimeException('SMTP unavailable for integrity alert test'));
+        Mail::swap(\Mockery::mock(\Illuminate\Mail\MailManager::class));
+        Mail::shouldReceive('to')
+            ->once()
+            ->with('mathew.perangatt@gmail.com')
+            ->andReturn($pending);
+
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $snapshotBefore = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail()->toArray();
+        Profile::query()->whereKey($profile->id)->update(['slug' => 'tampered-mail-fail']);
+
+        $exit = Artisan::call('jannayaks:verify-profile-integrity');
+
+        $this->assertSame(0, $exit);
+        $this->assertSame(1, IntegrityIncident::query()->count());
+        $fresh = $profile->fresh();
+        $this->assertSame('published', (string) $fresh->status);
+        $this->assertNull($fresh->suspended_at);
+        $this->assertNull($fresh->unpublished_at);
+        $snapshotAfter = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
+        $this->assertSame($snapshotBefore['slug'], $snapshotAfter->slug);
+        $this->assertSame($snapshotBefore['snapshot_hash'], $snapshotAfter->snapshot_hash);
+        Log::shouldHaveReceived('error')
+            ->withArgs(function (string $message, array $context = []): bool {
+                return str_contains($message, 'founder alert delivery failed')
+                    && isset($context['run_id']);
+            })
+            ->atLeast()
+            ->once();
     }
 
     /**

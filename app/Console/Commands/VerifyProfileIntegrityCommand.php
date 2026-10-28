@@ -2,8 +2,10 @@
 
 namespace App\Console\Commands;
 
+use App\Models\IntegrityIncident;
 use App\Models\Profile;
 use App\Models\ProfileIntegritySnapshot;
+use App\Services\ProfileIntegrityAlertNotifier;
 use App\Services\ProfileIntegrityService;
 use App\Services\ProfileUrlService;
 use Illuminate\Console\Command;
@@ -22,6 +24,11 @@ use Throwable;
  * Initial baselines for profiles that lack a snapshot are NOT created by the
  * scheduled scan. Use --establish-baseline with --profile= after reviewing
  * the live public state. Existing snapshots are never overwritten by that flag.
+ *
+ * After a scan, a founder summary email is sent only when this run created new
+ * incident rows (IntegrityIncident.run_id = this run) or the mass-mismatch
+ * threshold was exceeded. Re-detecting an unchanged open incident does not
+ * create a new row (fingerprint dedupe) and alone does not email.
  */
 class VerifyProfileIntegrityCommand extends Command
 {
@@ -32,8 +39,11 @@ class VerifyProfileIntegrityCommand extends Command
 
     protected $description = 'Verify published profiles against their known-good integrity snapshots (report-only).';
 
-    public function handle(ProfileIntegrityService $integrity, ProfileUrlService $profileUrls): int
-    {
+    public function handle(
+        ProfileIntegrityService $integrity,
+        ProfileUrlService $profileUrls,
+        ProfileIntegrityAlertNotifier $alerts,
+    ): int {
         if ((bool) $this->option('establish-baseline')) {
             return $this->establishBaselineForProfile($integrity, $profileUrls);
         }
@@ -59,6 +69,8 @@ class VerifyProfileIntegrityCommand extends Command
         ];
         $incidentsCreated = 0;
         $massMismatchAlert = false;
+        /** @var list<array{profile_id: int, slug: string|null, type: string, detection_reason: string, newly_created: bool}> */
+        $alertFindings = [];
 
         $query = Profile::query()
             ->where('status', 'published')
@@ -87,6 +99,7 @@ class VerifyProfileIntegrityCommand extends Command
                 &$counts,
                 &$incidentsCreated,
                 &$massMismatchAlert,
+                &$alertFindings,
                 $integrity,
                 $runId,
                 $deepPercent,
@@ -125,7 +138,23 @@ class VerifyProfileIntegrityCommand extends Command
                     } else {
                         $counts['scan_error']++;
                     }
-                    $incidentsCreated += count($result['incidents']);
+
+                    foreach ($result['incidents'] as $incident) {
+                        if (! $incident instanceof IntegrityIncident) {
+                            continue;
+                        }
+                        $newlyCreated = (string) $incident->run_id === $runId;
+                        if ($newlyCreated) {
+                            $incidentsCreated++;
+                        }
+                        $alertFindings[] = [
+                            'profile_id' => (int) $profile->id,
+                            'slug' => $profile->slug !== null ? (string) $profile->slug : null,
+                            'type' => (string) $incident->type,
+                            'detection_reason' => mb_substr((string) $incident->detection_reason, 0, 240),
+                            'newly_created' => $newlyCreated,
+                        ];
+                    }
 
                     $discrepancyCount = $counts['integrity_mismatch'] + $counts['missing_snapshot'];
                     if (! $massMismatchAlert && $discrepancyCount >= $alertThreshold) {
@@ -177,6 +206,8 @@ class VerifyProfileIntegrityCommand extends Command
             // scheduler never treats a security finding as a job failure.
             $this->warn('Integrity findings recorded as incidents — REPORT-ONLY mode: nothing was suspended or modified.');
         }
+
+        $alerts->notifyIfNeeded($summary, $alertFindings);
 
         return self::SUCCESS;
     }
