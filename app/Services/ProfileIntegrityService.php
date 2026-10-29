@@ -9,9 +9,11 @@ use App\Models\MediaItem;
 use App\Models\Profile;
 use App\Models\ProfileIntegritySnapshot;
 use App\Models\StaffActionLog;
+use App\Models\User;
 use App\Services\ProfileUrlService;
 use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Storage;
+use InvalidArgumentException;
 use Throwable;
 
 /**
@@ -149,30 +151,10 @@ class ProfileIntegrityService
             return null;
         }
 
-        $canonical = $this->canonicalPublicState($profile);
-
-        return ProfileIntegritySnapshot::query()->updateOrCreate(
-            ['profile_id' => $profile->id],
-            [
-                'application_id' => $profile->application?->id,
-                'slug' => $canonical['slug'],
-                'display_name' => $canonical['display_name'],
-                'profession' => $canonical['profession'],
-                'english_editorial_content_id' => $canonical['english_editorial_content_id'],
-                'english_content_hash' => $canonical['english_content_hash'],
-                'malayalam_editorial_content_id' => $canonical['malayalam_editorial_content_id'],
-                'malayalam_content_hash' => $canonical['malayalam_content_hash'],
-                'primary_photo_media_id' => $canonical['primary_photo_media_id'],
-                'primary_photo_disk' => $canonical['primary_photo_disk'],
-                'primary_photo_key' => $canonical['primary_photo_key'],
-                'primary_photo_sha256' => $canonical['primary_photo_sha256'],
-                'primary_photo_size_bytes' => $canonical['primary_photo_size_bytes'],
-                'photos' => $canonical['photos'],
-                'public_offices' => $canonical['public_offices'],
-                'video_links' => $canonical['video_links'],
-                'snapshot_hash' => $this->payloadHash($canonical),
-                'source_event' => $sourceEvent,
-            ],
+        return $this->persistCanonicalSnapshot(
+            $profile,
+            $this->canonicalPublicState($profile),
+            $sourceEvent,
         );
     }
 
@@ -194,6 +176,149 @@ class ProfileIntegrityService
         }
 
         return $this->refreshSnapshot($profile, $sourceEvent);
+    }
+
+    /**
+     * Content-mismatch incident types that block ordinary visibility restore.
+     * Infrastructure/scan failures are not included — they are not proof of
+     * tampering and are reported separately by verify() as CLASSIFICATION_SCAN_ERROR
+     * without necessarily opening these rows.
+     *
+     * @return list<string>
+     */
+    public static function contentMismatchIncidentTypes(): array
+    {
+        return [
+            IntegrityIncident::TYPE_PHOTOGRAPH_REFERENCE,
+            IntegrityIncident::TYPE_PHOTOGRAPH_OBJECT,
+            IntegrityIncident::TYPE_EDITORIAL,
+            IntegrityIncident::TYPE_IDENTITY,
+            IntegrityIncident::TYPE_OFFICES,
+            IntegrityIncident::TYPE_VIDEO_LINKS,
+            IntegrityIncident::TYPE_MISSING_SNAPSHOT,
+        ];
+    }
+
+    /**
+     * Compare the profile's current public-facing payload to its trusted snapshot
+     * using the same section model as the integrity monitor. Does not deep-read
+     * photo bytes (avoids treating storage blips as tampering). Does not modify
+     * content, snapshots, or incidents.
+     *
+     * @return array{
+     *     outcome: 'match'|'mismatch'|'missing_snapshot',
+     *     differing_sections: list<string>,
+     *     blocking_incident_ids: list<int>,
+     *     requires_integrity_waiver: bool
+     * }
+     */
+    public function assessPublicContentTrust(Profile $profile): array
+    {
+        $profile = $profile->fresh([
+            'application',
+            'media',
+            'publicOffices',
+            'externalLinks',
+        ]) ?? $profile;
+
+        $blockingIncidentIds = IntegrityIncident::query()
+            ->where('profile_id', $profile->id)
+            ->where('status', IntegrityIncident::STATUS_OPEN)
+            ->whereIn('type', self::contentMismatchIncidentTypes())
+            ->whereNull('resolved_at')
+            ->orderBy('id')
+            ->pluck('id')
+            ->map(fn ($id): int => (int) $id)
+            ->all();
+
+        $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->first();
+        if (! $snapshot instanceof ProfileIntegritySnapshot) {
+            return [
+                'outcome' => 'missing_snapshot',
+                'differing_sections' => [],
+                'blocking_incident_ids' => $blockingIncidentIds,
+                'requires_integrity_waiver' => true,
+            ];
+        }
+
+        $diffs = $this->sectionDiffs($snapshot->canonicalPayload(), $this->canonicalPublicState($profile));
+        $differingSections = array_keys($diffs);
+        $outcome = $differingSections === [] ? 'match' : 'mismatch';
+
+        return [
+            'outcome' => $outcome,
+            'differing_sections' => $differingSections,
+            'blocking_incident_ids' => $blockingIncidentIds,
+            'requires_integrity_waiver' => $outcome !== 'match' || $blockingIncidentIds !== [],
+        ];
+    }
+
+    /**
+     * Sections that an authorised EN/ML publication while hidden may advance
+     * in the trusted snapshot. Non-editorial sections are never blessed by
+     * editorial publication alone.
+     */
+    public const AUTHORIZED_HIDDEN_PUBLICATION_SECTIONS = ['editorial'];
+
+    /**
+     * After an authorised living-profile EN/ML publication that leaves the
+     * profile hidden, advance only the editorial section of the existing
+     * trusted snapshot. Identity, photographs, offices, and video metadata
+     * are preserved from the prior baseline so unrelated drift cannot become
+     * "trusted" merely because editorial pointers moved.
+     *
+     * Fail closed when no prior snapshot exists. Does not resolve incidents
+     * and does not make the profile public.
+     *
+     * @param  list<string>  $authorizedSections
+     */
+    public function advanceTrustedBaselineForAuthorizedPublication(
+        Profile $profile,
+        User $actor,
+        string $sourceEvent,
+        array $authorizedSections,
+    ): ProfileIntegritySnapshot {
+        if (! $actor->isAdmin() || ! $actor->isActiveAccount()) {
+            throw new InvalidArgumentException('Only an active administrator may advance a trusted integrity baseline.');
+        }
+
+        $sections = array_values(array_unique($authorizedSections));
+        if ($sections === []) {
+            throw new InvalidArgumentException('At least one authorised baseline section is required.');
+        }
+
+        foreach ($sections as $section) {
+            if (! in_array($section, self::AUTHORIZED_HIDDEN_PUBLICATION_SECTIONS, true)) {
+                throw new InvalidArgumentException(
+                    'Hidden publication may only advance the editorial integrity baseline section; refusing section: '.$section
+                );
+            }
+        }
+
+        $profile = $profile->fresh() ?? $profile;
+        $existing = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->first();
+        if (! $existing instanceof ProfileIntegritySnapshot) {
+            throw new InvalidArgumentException(
+                'Cannot advance a partial trusted baseline without an existing integrity snapshot. Keep the profile hidden and establish a baseline only through a reviewed public publication path, or restore visibility only with an explicit integrity waiver after review.'
+            );
+        }
+
+        $current = $this->canonicalPublicState($profile);
+        $merged = $existing->canonicalPayload();
+        $editorialFields = [
+            'english_editorial_content_id',
+            'english_content_hash',
+            'malayalam_editorial_content_id',
+            'malayalam_content_hash',
+        ];
+
+        if (in_array('editorial', $sections, true)) {
+            foreach ($editorialFields as $field) {
+                $merged[$field] = $current[$field] ?? null;
+            }
+        }
+
+        return $this->persistCanonicalSnapshot($profile, $merged, $sourceEvent);
     }
 
     /**
@@ -1046,6 +1171,39 @@ class ProfileIntegrityService
         ksort($sorted);
 
         return $sorted;
+    }
+
+    /**
+     * @param  array<string, mixed>  $canonical
+     */
+    private function persistCanonicalSnapshot(
+        Profile $profile,
+        array $canonical,
+        string $sourceEvent,
+    ): ProfileIntegritySnapshot {
+        return ProfileIntegritySnapshot::query()->updateOrCreate(
+            ['profile_id' => $profile->id],
+            [
+                'application_id' => $profile->application?->id,
+                'slug' => $canonical['slug'] ?? null,
+                'display_name' => $canonical['display_name'] ?? null,
+                'profession' => $canonical['profession'] ?? null,
+                'english_editorial_content_id' => $canonical['english_editorial_content_id'] ?? null,
+                'english_content_hash' => $canonical['english_content_hash'] ?? null,
+                'malayalam_editorial_content_id' => $canonical['malayalam_editorial_content_id'] ?? null,
+                'malayalam_content_hash' => $canonical['malayalam_content_hash'] ?? null,
+                'primary_photo_media_id' => $canonical['primary_photo_media_id'] ?? null,
+                'primary_photo_disk' => $canonical['primary_photo_disk'] ?? null,
+                'primary_photo_key' => $canonical['primary_photo_key'] ?? null,
+                'primary_photo_sha256' => $canonical['primary_photo_sha256'] ?? null,
+                'primary_photo_size_bytes' => $canonical['primary_photo_size_bytes'] ?? null,
+                'photos' => $canonical['photos'] ?? [],
+                'public_offices' => $canonical['public_offices'] ?? [],
+                'video_links' => $canonical['video_links'] ?? [],
+                'snapshot_hash' => $this->payloadHash($canonical),
+                'source_event' => $sourceEvent,
+            ],
+        );
     }
 
     /**

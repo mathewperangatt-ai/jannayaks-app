@@ -10,6 +10,7 @@ use App\Models\MediaItem;
 use App\Models\User;
 use App\Services\MembershipLifecycleService;
 use App\Services\PostPublicationUpdateService;
+use App\Services\ProfileAdministrationService;
 use App\Services\ProfileUrlService;
 use App\Support\EditorialTestBypass;
 use App\Support\PublicationTestBypass;
@@ -339,11 +340,31 @@ class ApplicationInfolist
                             if (! filled($profile->slug)) {
                                 return 'No slug assigned';
                             }
-                            if ($profile->status === 'published' && $profile->published_at && ! $profile->unpublished_at) {
+                            $summary = app(ProfileAdministrationService::class)->visibilityAdminSummary($profile);
+                            if ($summary['public']) {
                                 return 'Published — public URL active';
                             }
 
-                            return 'Slug reserved — not publicly exposed (status: '.$profile->status.')';
+                            $detail = $summary['label'];
+                            if (filled($summary['last_reason'])) {
+                                $detail .= ' — '.$summary['last_reason'];
+                            }
+
+                            return $detail.' (status: '.$profile->status.')';
+                        }),
+                    TextEntry::make('profile_visibility_hold')
+                        ->label('Visibility hold')
+                        ->state(function (?Application $record): string {
+                            $profile = $record?->profile;
+                            if (! $profile) {
+                                return '—';
+                            }
+                            $summary = app(ProfileAdministrationService::class)->visibilityAdminSummary($profile);
+                            if ($summary['public']) {
+                                return 'None — publicly visible';
+                            }
+
+                            return $summary['label'];
                         }),
                     TextEntry::make('profile_qr_availability')
                         ->label('QR availability')
@@ -352,11 +373,11 @@ class ApplicationInfolist
                             if (! $profile || ! filled($profile->slug)) {
                                 return 'Unavailable';
                             }
-                            if ($profile->status === 'published' && $profile->published_at && ! $profile->unpublished_at) {
+                            if (app(ProfileUrlService::class)->isPubliclyVisible($profile)) {
                                 return 'Available (encodes current /{slug})';
                             }
 
-                            return 'Unavailable until published';
+                            return 'Unavailable while not publicly visible';
                         }),
                     TextEntry::make('profile_slug_history')
                         ->label('Historical URLs')
@@ -421,8 +442,9 @@ class ApplicationInfolist
                             if (! $profile) {
                                 return '—';
                             }
+                            $summary = app(ProfileAdministrationService::class)->visibilityAdminSummary($profile);
 
-                            return app(ProfileUrlService::class)->isPubliclyVisible($profile) ? 'yes' : 'no';
+                            return $summary['public'] ? 'yes' : 'no — '.$summary['label'];
                         }),
                 ])
                 ->columns(2)

@@ -744,4 +744,122 @@ class PostPublicationMaintenanceProcessingTest extends TestCase
         $this->assertSame('Arun Kumar Nair', $this->application->profile->full_name);
         $this->assertTrue(Str::is('arun.kumar.nair', (string) $this->application->profile->slug));
     }
+
+    public function test_complete_publication_does_not_unhide_temporarily_hidden_profile(): void
+    {
+        $this->prepareAiDraft();
+        $prepared = $this->editorApprovesDraft("He served as Chairman of ABC Foundation from 2019 to 2026.\n\nHe was known for civic dialogue.");
+        $this->maintenance->releaseMaintenancePreview($this->application, $this->admin);
+        $this->maintenance->approveMaintenancePreview($this->application, $this->member, $prepared->id);
+
+        // Fixture profiles are created already-published without going through
+        // ApplicationWorkflowService::publish, so establish a trusted baseline
+        // while still publicly visible before hiding.
+        app(\App\Services\ProfileIntegrityService::class)->refreshSnapshot(
+            $this->application->profile()->firstOrFail(),
+            'test.fixture_baseline',
+        );
+
+        $hiddenAt = now()->subMinute();
+        $this->application->profile->forceFill([
+            'status' => 'inactive',
+            'unpublished_at' => $hiddenAt,
+        ])->save();
+
+        $this->maintenance->completePublication($this->application->fresh(), $this->admin);
+
+        $profile = $this->application->profile()->firstOrFail();
+        $this->application->refresh();
+        $this->assertSame($prepared->id, (int) $this->application->published_english_editorial_content_id);
+        $this->assertSame(EditorialRevisionRequest::STATUS_COMPLETED, $this->openRequest()->status);
+        $this->assertSame('inactive', $profile->status);
+        $this->assertNotNull($profile->unpublished_at);
+        $this->assertFalse(app(\App\Services\ProfileUrlService::class)->isPubliclyVisible($profile));
+    }
+
+    public function test_complete_publication_does_not_republish_officially_unpublished_profile(): void
+    {
+        $this->prepareAiDraft();
+        $prepared = $this->editorApprovesDraft("He served as Chairman of ABC Foundation from 2019 to 2026.\n\nHe was known for civic dialogue.");
+        $this->maintenance->releaseMaintenancePreview($this->application, $this->admin);
+        $this->maintenance->approveMaintenancePreview($this->application, $this->member, $prepared->id);
+
+        app(\App\Services\ProfileIntegrityService::class)->refreshSnapshot(
+            $this->application->profile()->firstOrFail(),
+            'test.fixture_baseline',
+        );
+
+        $this->application->profile->forceFill([
+            'status' => 'inactive',
+            'unpublished_at' => now()->subHour(),
+        ])->save();
+
+        $this->maintenance->completePublication($this->application->fresh(), $this->admin);
+
+        $profile = $this->application->profile()->firstOrFail();
+        $this->assertSame($prepared->id, (int) $this->application->fresh()->published_english_editorial_content_id);
+        $this->assertSame('inactive', $profile->status);
+        $this->assertNotNull($profile->unpublished_at);
+    }
+
+    public function test_complete_publication_refuses_suspended_and_erased_profiles(): void
+    {
+        $this->prepareAiDraft();
+        $prepared = $this->editorApprovesDraft("He served as Chairman of ABC Foundation from 2019 to 2026.\n\nHe was known for civic dialogue.");
+        $this->maintenance->releaseMaintenancePreview($this->application, $this->admin);
+        $this->maintenance->approveMaintenancePreview($this->application, $this->member, $prepared->id);
+
+        $this->application->profile->forceFill([
+            'status' => 'suspended',
+            'suspended_at' => now(),
+        ])->save();
+
+        try {
+            $this->maintenance->completePublication($this->application->fresh(), $this->admin);
+            $this->fail('Suspended profiles must not be published via maintenance.');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('suspended', strtolower($e->getMessage()));
+        }
+
+        $this->application->profile->forceFill([
+            'status' => 'inactive',
+            'suspended_at' => null,
+            'unpublished_at' => now(),
+            'erasure_completed_at' => now(),
+        ])->save();
+
+        try {
+            $this->maintenance->completePublication($this->application->fresh(), $this->admin);
+            $this->fail('Erased profiles must not be published via maintenance.');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('erased', strtolower($e->getMessage()));
+        }
+
+        $this->assertNotSame(
+            $prepared->id,
+            (int) $this->application->fresh()->published_english_editorial_content_id
+        );
+    }
+
+    public function test_customer_approval_alone_does_not_change_published_pointers_or_visibility(): void
+    {
+        $this->prepareAiDraft();
+        $prepared = $this->editorApprovesDraft("He served as Chairman of ABC Foundation from 2019 to 2026.\n\nHe was known for civic dialogue.");
+        $this->maintenance->releaseMaintenancePreview($this->application, $this->admin);
+
+        $beforeEn = (int) $this->application->published_english_editorial_content_id;
+        $this->application->profile->forceFill([
+            'status' => 'inactive',
+            'unpublished_at' => now(),
+        ])->save();
+
+        $this->maintenance->approveMaintenancePreview($this->application->fresh(), $this->member, $prepared->id);
+
+        $this->application->refresh();
+        $this->assertSame($beforeEn, (int) $this->application->published_english_editorial_content_id);
+        $this->assertSame(EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED, $this->openRequest()->status);
+        $profile = $this->application->profile()->firstOrFail();
+        $this->assertSame('inactive', $profile->status);
+        $this->assertNotNull($profile->unpublished_at);
+    }
 }

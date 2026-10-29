@@ -13,6 +13,7 @@ use App\Services\ProfileAdministrationService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
 use App\Services\PostPublicationUpdateService;
+use App\Services\ProfileUrlService;
 use App\Support\EditorialTestBypass;
 use App\Support\PublicationTestBypass;
 use Filament\Actions\Action;
@@ -428,10 +429,70 @@ class ViewApplication extends ViewRecord
                         );
                     }, 'Profile URL updated. The previous URL redirects to the new one.');
                 }),
+            Action::make('temporarilyHideLivingProfile')
+                ->label('Temporarily hide profile')
+                ->color('warning')
+                ->visible(function (): bool {
+                    $profile = $this->getRecord()?->profile;
+
+                    return (auth()->user()?->isAdmin() ?? false)
+                        && $profile !== null
+                        && app(ProfileUrlService::class)->isPubliclyVisible($profile);
+                })
+                ->form([
+                    Textarea::make('reason')->required()
+                        ->helperText('Removes the profile from public view while preserving content. Use for security review or temporary holds. Distinct from official unpublish in the audit log.'),
+                ])
+                ->action(function (array $data): void {
+                    $this->runAdministration(function (Application $application, User $actor) use ($data): void {
+                        app(ProfileAdministrationService::class)->temporarilyHideLivingProfile(
+                            $application,
+                            $actor,
+                            (string) $data['reason'],
+                        );
+                    }, 'Profile temporarily hidden from public view. Content was preserved.');
+                }),
+            Action::make('restoreLivingProfileVisibility')
+                ->label('Restore public visibility')
+                ->color('success')
+                ->visible(function (): bool {
+                    $profile = $this->getRecord()?->profile;
+                    if (! (auth()->user()?->isAdmin() ?? false) || $profile === null) {
+                        return false;
+                    }
+
+                    return app(ProfileAdministrationService::class)->canRestoreLivingProfileVisibility($profile);
+                })
+                ->form([
+                    Textarea::make('reason')->required()
+                        ->helperText('Explicit administrator review is required. This never runs automatically. Erased, suspended, or membership-lapsed profiles cannot be restored here.'),
+                    Textarea::make('integrity_waiver_reason')
+                        ->label('Integrity waiver reason')
+                        ->helperText('Required only when the live public content does not match the trusted integrity snapshot or an open content-mismatch incident exists. Separate from the restoration reason. Does not resolve incidents and cannot bypass erasure, suspension, or membership restrictions.'),
+                ])
+                ->action(function (array $data): void {
+                    $this->runAdministration(function (Application $application, User $actor) use ($data): void {
+                        $waiver = isset($data['integrity_waiver_reason'])
+                            ? trim((string) $data['integrity_waiver_reason'])
+                            : '';
+                        app(ProfileAdministrationService::class)->restoreLivingProfileVisibility(
+                            $application,
+                            $actor,
+                            (string) $data['reason'],
+                            $waiver !== '' ? $waiver : null,
+                        );
+                    }, 'Public visibility restored.');
+                }),
             Action::make('unpublishLivingProfile')
                 ->label('Unpublish living profile')
                 ->color('warning')
-                ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false) && filled($this->getRecord()?->profile_id))
+                ->visible(function (): bool {
+                    $profile = $this->getRecord()?->profile;
+
+                    return (auth()->user()?->isAdmin() ?? false)
+                        && $profile !== null
+                        && app(ProfileUrlService::class)->isPubliclyVisible($profile);
+                })
                 ->form([
                     Textarea::make('reason')->required()
                         ->helperText('Official notice has been received. This only unpublishes the living profile. It does not create a memorial or copy any content.'),

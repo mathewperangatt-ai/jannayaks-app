@@ -358,10 +358,21 @@ class ApplicationWorkflowService
 
             $malayalamPointer = $this->malayalamPointerPairedWithEnglish($locked, $english);
 
+            $this->assertProfileMayReceivePublication($profile);
+
+            // Content publication and visibility restoration are separate decisions.
+            // Previously published profiles that are inactive and/or have
+            // unpublished_at set must remain hidden; an inconsistent inactive
+            // row without unpublished_at must not be treated as publicly publishable.
+            $preserveHiddenVisibility = $this->mustPreserveHiddenVisibility($profile);
+
             $before = [
                 'status' => $locked->status,
                 'published_english_editorial_content_id' => $locked->published_english_editorial_content_id,
                 'published_malayalam_editorial_content_id' => $locked->published_malayalam_editorial_content_id,
+                'profile_status' => $profile->status,
+                'unpublished_at' => $profile->unpublished_at?->toIso8601String(),
+                'visibility_preserved_hidden' => $preserveHiddenVisibility,
             ];
             $locked->forceFill([
                 'status' => Application::STATUS_PUBLISHED,
@@ -371,9 +382,11 @@ class ApplicationWorkflowService
             ])->save();
 
             $profile->forceFill([
-                'status' => 'published',
+                'status' => $preserveHiddenVisibility ? 'inactive' : 'published',
                 'published_at' => $profile->published_at ?? now(),
-                'unpublished_at' => null,
+                'unpublished_at' => $preserveHiddenVisibility
+                    ? ($profile->unpublished_at ?? now())
+                    : null,
                 'updated_at' => now(),
             ])->save();
 
@@ -386,13 +399,21 @@ class ApplicationWorkflowService
             // Living-profile annual membership begins at publication (not In Memoriam).
             app(MembershipLifecycleService::class)->startMembershipForPublishedProfile($profile);
 
-            // Known-good integrity baseline for the newly published public
-            // state (same transaction — a failed snapshot write rolls back
-            // publication rather than leaving a stale baseline).
-            app(ProfileIntegrityService::class)->refreshSnapshot(
-                $profile,
-                $isReplacement ? 'application.published.replacement' : 'application.published',
-            );
+            // Trusted baseline: full refresh only when publicly visible.
+            // While hidden, advance editorial section only — never bless identity/media drift.
+            $integrity = app(ProfileIntegrityService::class);
+            $snapshotEvent = $isReplacement ? 'application.published.replacement' : 'application.published';
+            $freshProfile = $profile->fresh() ?? $profile;
+            if ($preserveHiddenVisibility) {
+                $integrity->advanceTrustedBaselineForAuthorizedPublication(
+                    $freshProfile,
+                    $actor,
+                    $snapshotEvent,
+                    ProfileIntegrityService::AUTHORIZED_HIDDEN_PUBLICATION_SECTIONS,
+                );
+            } else {
+                $integrity->refreshSnapshot($freshProfile, $snapshotEvent);
+            }
 
             $this->auditLogger->log(
                 action: $isReplacement ? 'application.published.replacement' : 'application.published',
@@ -407,6 +428,9 @@ class ApplicationWorkflowService
                     'published_malayalam_editorial_content_id' => $locked->published_malayalam_editorial_content_id,
                     'customer_approved_english_editorial_content_id' => $locked->customer_approved_english_editorial_content_id,
                     'publication_test_bypass' => $publicationBypass,
+                    'visibility_preserved_hidden' => $preserveHiddenVisibility,
+                    'profile_status' => ($profile->fresh() ?? $profile)->status,
+                    'unpublished_at' => ($profile->fresh() ?? $profile)->unpublished_at?->toIso8601String(),
                 ],
                 actor: $actor,
             );
@@ -469,10 +493,16 @@ class ApplicationWorkflowService
             }
 
             $profile = Profile::query()->whereKey($locked->profile_id)->lockForUpdate()->firstOrFail();
-            if ($profile->status !== 'published' || $profile->published_at === null || $profile->unpublished_at !== null) {
-                throw new InvalidArgumentException('The living profile must stay published while Malayalam is published.');
+            $this->assertProfileMayReceivePublication($profile);
+            // Application may remain STATUS_PUBLISHED while the living profile is
+            // temporarily hidden / officially unpublished. Malayalam pointer updates
+            // must not force those profiles back into public view.
+            if ($profile->published_at === null
+                || ! in_array($profile->status, ['published', 'inactive'], true)) {
+                throw new InvalidArgumentException('The living profile must already have been published before Malayalam can be published.');
             }
 
+            $preserveHiddenVisibility = $this->mustPreserveHiddenVisibility($profile);
             $beforePointer = $locked->published_malayalam_editorial_content_id;
             $beforeStatus = $version->status;
 
@@ -491,6 +521,14 @@ class ApplicationWorkflowService
                 'published_malayalam_editorial_content_id' => $version->id,
             ])->save();
 
+            if ($preserveHiddenVisibility) {
+                $profile->forceFill([
+                    'status' => 'inactive',
+                    'unpublished_at' => $profile->unpublished_at ?? now(),
+                    'updated_at' => now(),
+                ])->save();
+            }
+
             $this->auditLogger->log(
                 action: 'application.malayalam_published',
                 subject: $locked,
@@ -504,11 +542,23 @@ class ApplicationWorkflowService
                     'published_malayalam_editorial_content_id' => $version->id,
                     'malayalam_status' => $version->status,
                     'profile_id' => $locked->profile_id,
+                    'visibility_preserved_hidden' => $preserveHiddenVisibility,
                 ],
                 actor: $actor,
             );
 
-            app(ProfileIntegrityService::class)->refreshSnapshot($profile, 'application.malayalam_published');
+            $integrity = app(ProfileIntegrityService::class);
+            $freshProfile = $profile->fresh() ?? $profile;
+            if ($preserveHiddenVisibility) {
+                $integrity->advanceTrustedBaselineForAuthorizedPublication(
+                    $freshProfile,
+                    $actor,
+                    'application.malayalam_published',
+                    ProfileIntegrityService::AUTHORIZED_HIDDEN_PUBLICATION_SECTIONS,
+                );
+            } else {
+                $integrity->refreshSnapshot($freshProfile, 'application.malayalam_published');
+            }
 
             return $locked->fresh() ?? $locked;
         });
@@ -546,6 +596,46 @@ class ApplicationWorkflowService
 
         return $request instanceof EditorialRevisionRequest
             && $request->status === EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED;
+    }
+
+    /**
+     * Refuse publication when lifecycle rules require the profile to stay off the public site.
+     * Visibility restoration remains a separate administrator action.
+     */
+    private function assertProfileMayReceivePublication(Profile $profile): void
+    {
+        if ($profile->erasure_completed_at !== null) {
+            throw new InvalidArgumentException('An erased profile cannot be published.');
+        }
+
+        if ($profile->suspended_at !== null || $profile->status === 'suspended') {
+            throw new InvalidArgumentException('A suspended profile cannot be published.');
+        }
+
+        $membership = $profile->membership;
+        if ($membership === null) {
+            return;
+        }
+
+        $lifecycle = app(MembershipLifecycleService::class);
+        if ($membership->status === 'lapsed' || $lifecycle->isPastGracePeriod($membership)) {
+            throw new InvalidArgumentException(
+                'Membership lifecycle requires this profile to remain unpublished. Renew membership before publishing.'
+            );
+        }
+    }
+
+    /**
+     * Previously published profiles that are inactive or carry unpublished_at
+     * must keep content publication separate from becoming publicly visible.
+     */
+    private function mustPreserveHiddenVisibility(Profile $profile): bool
+    {
+        if ($profile->published_at === null) {
+            return false;
+        }
+
+        return $profile->unpublished_at !== null || $profile->status === 'inactive';
     }
 
     /**
