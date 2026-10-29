@@ -204,6 +204,19 @@ class EditorialSpecificationAcceptanceTest extends TestCase
         $this->assertStringContainsString('english_master', $this->fakeAi->requests[1]['user']);
         $system = $this->fakeAi->requests[1]['system'];
         $this->assertStringContainsString('editorial adaptation, not a literal machine translation', $system);
+        $this->assertStringContainsString('Read and understand the complete English source first', $system);
+        $this->assertStringContainsString('Translate the meaning, not the words or sentence structures', $system);
+        $this->assertStringContainsString('Compose the Malayalam as one coherent editorial narrative', $system);
+        $this->assertStringContainsString('Give particular care to the headline and summary', $system);
+        $this->assertStringContainsString('review the complete Malayalam draft for fluency', $system);
+        $this->assertStringContainsString('NEVER use the Malayalam word "തറവാട്"', $system);
+        $this->assertStringContainsString('Return ONLY valid JSON with keys:', $system);
+        $this->assertStringContainsString('title (string, Malayalam headline)', $system);
+        $this->assertStringContainsString('claims (array of objects', $system);
+        $this->assertStringContainsString('flags (array of strings', $system);
+        $englishSystem = $this->fakeAi->requests[0]['system'];
+        $this->assertStringContainsString('ELEVATED, BUT TRUE', $englishSystem);
+        $this->assertStringNotContainsString('Read and understand the complete English source first', $englishSystem);
         $this->assertNotNull($malayalam->source_editorial_content_id);
     }
 
