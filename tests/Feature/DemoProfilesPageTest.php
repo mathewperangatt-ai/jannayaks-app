@@ -2,8 +2,10 @@
 
 namespace Tests\Feature;
 
+use App\Models\Application;
 use App\Models\InMemoriamProfile;
 use App\Models\Profile;
+use App\Models\User;
 use App\Services\ProfileUrlService;
 use Database\Seeders\DemoProfilesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -91,20 +93,78 @@ class DemoProfilesPageTest extends TestCase
     {
         $this->seed(DemoProfilesSeeder::class);
 
-        $this->get('/t.gopalakrishnan')
-            ->assertOk()
-            ->assertSee('<a href="'.route('demo-profiles.index').'">Demo Profiles</a>', false)
-            ->assertSee('<a href="'.route('demo-profiles.index').'" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a>', false)
-            ->assertDontSee('href="'.route('gallery.index').'">Demo Profiles</a>', false);
+        $demoPage = $this->get('/t.gopalakrishnan')->assertOk()->getContent();
+        $this->assertStringContainsString(
+            '<a href="'.route('demo-profiles.index').'">Demo Profiles</a>',
+            $demoPage
+        );
+        $this->assertStringContainsString(
+            '<a href="'.route('demo-profiles.index').'" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a>',
+            $demoPage
+        );
+        $this->assertStringContainsString('"name":"Demo Profiles"', $demoPage);
+        $this->assertStringNotContainsString('← Back to Gallery', $demoPage);
+        $this->assertStringNotContainsString('"name":"Gallery","item":"'.route('gallery.index').'"', $demoPage);
+        $this->assertStringContainsString(
+            'Fictional demonstration profile — created to show how a Jannayaks profile reads.',
+            $demoPage
+        );
 
         Profile::query()->where('slug', 't.gopalakrishnan')->firstOrFail()
             ->user->forceFill(['email' => 'gopalakrishnan.member@example.com'])->save();
 
-        $this->get('/t.gopalakrishnan')
-            ->assertOk()
-            ->assertSee('<a href="'.route('gallery.index').'">Demo Profiles</a>', false)
-            ->assertSee('<a href="'.route('gallery.index').'" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a>', false)
-            ->assertDontSee('href="'.route('demo-profiles.index').'">Demo Profiles</a>', false);
+        $genuinePage = $this->get('/t.gopalakrishnan')->assertOk()->getContent();
+        $this->assertStringContainsString(
+            '<a href="'.route('gallery.index').'">Gallery</a>',
+            $genuinePage
+        );
+        $this->assertStringContainsString(
+            '<a href="'.route('gallery.index').'" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Gallery</a>',
+            $genuinePage
+        );
+        $this->assertStringContainsString('"name":"Gallery"', $genuinePage);
+        $this->assertStringNotContainsString('← Back to Demo Profiles', $genuinePage);
+        $this->assertStringNotContainsString(
+            '<a href="'.route('demo-profiles.index').'">Demo Profiles</a>',
+            $genuinePage
+        );
+        $this->assertStringNotContainsString(
+            'Fictional demonstration profile — created to show how a Jannayaks profile reads.',
+            $genuinePage
+        );
+    }
+
+    public function test_waived_payment_genuine_profile_is_not_labelled_as_demo(): void
+    {
+        $this->seed(DemoProfilesSeeder::class);
+
+        $profile = Profile::query()->where('slug', 't.gopalakrishnan')->firstOrFail();
+        $admin = User::factory()->admin()->create();
+        $profile->user->forceFill(['email' => 'ratish.tester@example.com'])->save();
+        $profile->application->forceFill([
+            'payment_status' => Application::PAYMENT_STATUS_WAIVED,
+            'waived_by_user_id' => $admin->id,
+            'source_method' => 'online_interview',
+        ])->save();
+
+        $this->assertFalse(str_ends_with(strtolower((string) $profile->user->fresh()->email), '@jannayaks.internal'));
+        $this->assertSame(Application::PAYMENT_STATUS_WAIVED, $profile->application->fresh()->payment_status);
+
+        $page = $this->get('/t.gopalakrishnan')->assertOk()->getContent();
+        $this->assertStringContainsString(
+            '<a href="'.route('gallery.index').'" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Gallery</a>',
+            $page
+        );
+        $this->assertStringContainsString('"name":"Gallery"', $page);
+        $this->assertStringNotContainsString('← Back to Demo Profiles', $page);
+        $this->assertStringNotContainsString(
+            '<a href="'.route('demo-profiles.index').'">Demo Profiles</a>',
+            $page
+        );
+        $this->assertStringNotContainsString(
+            'Fictional demonstration profile — created to show how a Jannayaks profile reads.',
+            $page
+        );
     }
 
     public function test_main_menu_marks_demo_or_gallery_as_current_by_page_type(): void

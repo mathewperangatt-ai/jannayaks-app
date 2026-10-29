@@ -1,5 +1,6 @@
 @extends('layouts.public', ['htmlLang' => $language === 'ml' ? 'ml' : 'en', 'nav' => $isDemonstration ? 'demo-profiles' : 'gallery'])
 @php($listingUrl = $isDemonstration ? route('demo-profiles.index') : route('gallery.index'))
+@php($listingLabel = $isDemonstration ? 'Demo Profiles' : 'Gallery')
 
 @section('title', $displayName.' — Jannayaks')
 
@@ -14,7 +15,7 @@
     trim((string) ($activeEditorial?->summary ?? '')) !== '' ? trim((string) $activeEditorial->summary) : null,
     $photo ? route('profiles.public.photo', [$profile, $photo]) : null,
     filled($profession) ? $profession : null,
-    [['Home', route('home')], ['Demo Profiles', $listingUrl], [$displayName, $canonicalUrl]],
+    [['Home', route('home')], [$listingLabel, $listingUrl], [$displayName, $canonicalUrl]],
 )))
 
 @push('head')
@@ -159,7 +160,7 @@
 <div class="jk-wrap">
 
     <nav class="jk-crumbs" aria-label="Breadcrumb">
-        <a href="{{ route('home') }}">Home</a> / <a href="{{ $listingUrl }}">Demo Profiles</a> /
+        <a href="{{ route('home') }}">Home</a> / <a href="{{ $listingUrl }}">{{ $listingLabel }}</a> /
         <span aria-current="page">{{ $displayName }}</span>
     </nav>
 
@@ -361,7 +362,7 @@
         </div>
     </section>
 
-    <p style="margin-top:56px"><a href="{{ $listingUrl }}" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to Demo Profiles</a></p>
+    <p style="margin-top:56px"><a href="{{ $listingUrl }}" style="font:600 12px var(--jk-ui);letter-spacing:.08em;color:var(--jk-blue)">← Back to {{ $listingLabel }}</a></p>
 
     @if(filled($referenceCode ?? null))
         <p style="margin:14px 0 0;font:500 10px var(--jk-ui);letter-spacing:.18em;text-transform:uppercase;color:#82907f">Profile reference · {{ $referenceCode }}</p>
