@@ -257,6 +257,19 @@ class Application extends Model
             ->orderByDesc('id');
     }
 
+    /**
+     * Malayalam editorial versions for the linked profile only.
+     * Empty when the application has no profile_id.
+     *
+     * @return HasMany<EditorialContent>
+     */
+    public function malayalamEditorialContents(): HasMany
+    {
+        return $this->hasMany(EditorialContent::class, 'profile_id', 'profile_id')
+            ->where('language', EditorialContent::LANGUAGE_ML)
+            ->orderByDesc('version_number');
+    }
+
     public function payments(): MorphMany
     {
         return $this->morphMany(Payment::class, 'payable');

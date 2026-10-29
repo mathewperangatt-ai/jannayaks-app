@@ -567,24 +567,30 @@ class ViewApplication extends ViewRecord
                         ->label('Malayalam version')
                         ->required()
                         ->options(function (): array {
-                            $record = $this->getRecord();
-                            if (! $record instanceof Application || $record->profile_id === null) {
-                                return [];
-                            }
-
-                            return EditorialContent::query()
-                                ->where('profile_id', $record->profile_id)
-                                ->where('language', EditorialContent::LANGUAGE_ML)
-                                ->where('source_editorial_content_id', $record->published_english_editorial_content_id)
-                                ->whereIn('status', [EditorialContent::STATUS_DRAFT, EditorialContent::STATUS_APPROVED])
-                                ->orderByDesc('version_number')
-                                ->get()
+                            return $this->publishableMalayalamVersions()
                                 ->mapWithKeys(fn (EditorialContent $content): array => [
-                                    $content->id => 'Version '.$content->version_number.' ('.$content->status.')',
+                                    $content->id => 'Version '.$content->version_number.' ('.$content->status.')'
+                                        .(((int) $this->getRecord()->published_malayalam_editorial_content_id === (int) $content->id)
+                                            ? ' · currently published'
+                                            : ''),
                                 ])
                                 ->all();
                         })
-                        ->helperText('Publishes this Malayalam version only. The published English version stays as it is.'),
+                        ->default(function (): ?int {
+                            $versions = $this->publishableMalayalamVersions();
+                            if ($versions->isEmpty()) {
+                                return null;
+                            }
+
+                            /** @var Application $application */
+                            $application = $this->getRecord();
+                            $preferred = $versions->first(
+                                fn (EditorialContent $content): bool => (int) $application->published_malayalam_editorial_content_id !== (int) $content->id
+                            );
+
+                            return (int) ($preferred ?? $versions->first())->id;
+                        })
+                        ->helperText('Defaults to the latest corrected draft/approved version paired with the published English biography. Publishing Malayalam does not change English.'),
                 ])
                 ->action(function (array $data): void {
                     $actor = auth()->user();
@@ -641,5 +647,28 @@ class ViewApplication extends ViewRecord
     private function hasOpenMaintenanceRequest(): bool
     {
         return $this->maintenanceRequest() !== null;
+    }
+
+    /**
+     * Malayalam versions eligible for the existing publishMalayalam() path.
+     *
+     * @return \Illuminate\Support\Collection<int, EditorialContent>
+     */
+    private function publishableMalayalamVersions(): \Illuminate\Support\Collection
+    {
+        $record = $this->getRecord();
+        if (! $record instanceof Application
+            || $record->profile_id === null
+            || $record->published_english_editorial_content_id === null) {
+            return collect();
+        }
+
+        return EditorialContent::query()
+            ->where('profile_id', $record->profile_id)
+            ->where('language', EditorialContent::LANGUAGE_ML)
+            ->where('source_editorial_content_id', $record->published_english_editorial_content_id)
+            ->whereIn('status', [EditorialContent::STATUS_DRAFT, EditorialContent::STATUS_APPROVED])
+            ->orderByDesc('version_number')
+            ->get();
     }
 }

@@ -6,6 +6,7 @@ use App\Filament\Resources\Applications\Pages\EditApplication;
 use App\Filament\Resources\Applications\Pages\ListApplications;
 use App\Filament\Resources\Applications\Pages\ViewApplication;
 use App\Filament\Resources\Applications\RelationManagers\InterviewAnswersRelationManager;
+use App\Filament\Resources\Applications\RelationManagers\MalayalamEditorialRelationManager;
 use App\Filament\Resources\Applications\RelationManagers\ProfileExternalLinksRelationManager;
 use App\Filament\Resources\Applications\RelationManagers\ProfileMediaRelationManager;
 use App\Filament\Resources\Applications\RelationManagers\SourceMaterialsRelationManager;
@@ -57,6 +58,7 @@ class ApplicationResource extends Resource
         return [
             InterviewAnswersRelationManager::class,
             SourceMaterialsRelationManager::class,
+            MalayalamEditorialRelationManager::class,
             ProfileMediaRelationManager::class,
             ProfileExternalLinksRelationManager::class,
         ];
