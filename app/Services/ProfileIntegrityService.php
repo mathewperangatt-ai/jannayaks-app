@@ -120,6 +120,7 @@ class ProfileIntegrityService
             'slug' => $profile->slug !== null ? strtolower((string) $profile->slug) : null,
             'display_name' => $this->presentation->displayName($profile),
             'profession' => filled($profile->profession) ? (string) $profile->profession : null,
+            'bio_headline' => filled($profile->bio_headline) ? (string) $profile->bio_headline : null,
             'english_editorial_content_id' => $english?->id,
             'english_content_hash' => $english ? $this->contentHash($english) : null,
             'malayalam_editorial_content_id' => $malayalam?->id,
@@ -570,7 +571,7 @@ class ProfileIntegrityService
     private function sectionDiffs(array $expected, array $current): array
     {
         $sections = [
-            'identity' => ['slug', 'display_name', 'profession'],
+            'identity' => ['slug', 'display_name', 'profession', 'bio_headline'],
             'editorial' => [
                 'english_editorial_content_id', 'english_content_hash',
                 'malayalam_editorial_content_id', 'malayalam_content_hash',
@@ -730,7 +731,8 @@ class ProfileIntegrityService
                 if ($after === '') {
                     return false;
                 }
-                $slugChangedOnly = $this->pick($expected, ['display_name', 'profession']) === $this->pick($current, ['display_name', 'profession']);
+                $slugChangedOnly = $this->pick($expected, ['display_name', 'profession', 'bio_headline'])
+                    === $this->pick($current, ['display_name', 'profession', 'bio_headline']);
 
                 return $slugChangedOnly
                     && strtolower($before) === (string) $expected['slug']
@@ -1188,6 +1190,7 @@ class ProfileIntegrityService
                 'slug' => $canonical['slug'] ?? null,
                 'display_name' => $canonical['display_name'] ?? null,
                 'profession' => $canonical['profession'] ?? null,
+                'bio_headline' => $canonical['bio_headline'] ?? null,
                 'english_editorial_content_id' => $canonical['english_editorial_content_id'] ?? null,
                 'english_content_hash' => $canonical['english_content_hash'] ?? null,
                 'malayalam_editorial_content_id' => $canonical['malayalam_editorial_content_id'] ?? null,

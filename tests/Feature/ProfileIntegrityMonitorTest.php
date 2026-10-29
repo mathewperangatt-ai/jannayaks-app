@@ -76,12 +76,123 @@ class ProfileIntegrityMonitorTest extends TestCase
     /* C. Snapshot identity state. */
     public function test_snapshot_contains_public_identity_state(): void
     {
-        $profile = $this->seedPublishedProfile()['profile'];
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $profile->forceFill(['bio_headline' => 'Trusted public headline'])->save();
+        app(ProfileIntegrityService::class)->refreshSnapshot($profile->fresh(), 'test_identity_headline');
 
         $snapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();
-        $this->assertSame(strtolower((string) $profile->slug), (string) $snapshot->slug);
-        $this->assertSame($profile->display_name, (string) $snapshot->display_name);
-        $this->assertSame($profile->profession, (string) $snapshot->profession);
+        $this->assertSame(strtolower((string) $profile->fresh()->slug), (string) $snapshot->slug);
+        $this->assertSame($profile->fresh()->display_name, (string) $snapshot->display_name);
+        $this->assertSame($profile->fresh()->profession, (string) $snapshot->profession);
+        $this->assertSame('Trusted public headline', (string) $snapshot->bio_headline);
+        $this->assertSame(
+            'Trusted public headline',
+            $snapshot->canonicalPayload()['bio_headline'] ?? null
+        );
+    }
+
+    public function test_bio_headline_change_is_identity_mismatch(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $profile->forceFill(['bio_headline' => 'Baseline headline'])->save();
+        app(ProfileIntegrityService::class)->refreshSnapshot($profile->fresh(), 'test_headline_baseline');
+
+        $profile->forceFill(['bio_headline' => 'Unauthorised headline'])->save();
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile->fresh(), 'run-test', true);
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $incident = IntegrityIncident::query()->where('profile_id', $profile->id)->firstOrFail();
+        $this->assertSame(IntegrityIncident::TYPE_IDENTITY, (string) $incident->type);
+
+        $assessment = app(ProfileIntegrityService::class)->assessPublicContentTrust($profile->fresh());
+        $this->assertSame('mismatch', $assessment['outcome']);
+        $this->assertContains('identity', $assessment['differing_sections']);
+        $this->assertTrue($assessment['requires_integrity_waiver']);
+    }
+
+    public function test_pre_existing_live_headline_without_trusted_snapshot_value_fails_closed(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+
+        // Simulate post-migration state: snapshot column exists but was never
+        // trusted (NULL). Live row already has a headline — do not adopt it.
+        $this->assertNull(
+            ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('bio_headline')
+        );
+        $profile->forceFill(['bio_headline' => 'Pre-existing public headline'])->save();
+
+        $assessment = app(ProfileIntegrityService::class)->assessPublicContentTrust($profile->fresh());
+        $this->assertSame('mismatch', $assessment['outcome']);
+        $this->assertContains('identity', $assessment['differing_sections']);
+        $this->assertNull(
+            ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('bio_headline')
+        );
+    }
+
+    public function test_authorised_public_refresh_captures_reviewed_bio_headline(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $this->assertTrue(app(ProfileUrlService::class)->isPubliclyVisible($profile));
+
+        $profile->forceFill(['bio_headline' => 'Reviewed headline after operator check'])->save();
+        $snapshot = app(ProfileIntegrityService::class)->refreshSnapshot(
+            $profile->fresh(),
+            'operator_reviewed_headline_refresh'
+        );
+
+        $this->assertNotNull($snapshot);
+        $this->assertSame('Reviewed headline after operator check', (string) $snapshot->bio_headline);
+        $this->assertSame(
+            'match',
+            app(ProfileIntegrityService::class)->assessPublicContentTrust($profile->fresh())['outcome']
+        );
+    }
+
+    public function test_slug_authorization_does_not_explain_bio_headline_change(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $profile = $pack['profile']->fresh();
+        $staff = User::factory()->editor()->create();
+
+        $profile->forceFill(['bio_headline' => 'Baseline headline'])->save();
+        app(ProfileIntegrityService::class)->refreshSnapshot($profile->fresh(), 'test_headline_baseline');
+
+        $oldSlug = strtolower((string) $profile->fresh()->slug);
+        $newSlug = 'authorized-slug-with-headline-drift';
+        $profile->forceFill([
+            'previous_slug' => $profile->slug,
+            'slug' => $newSlug,
+            'slug_changed_at' => now(),
+            'bio_headline' => 'Smuggled headline',
+        ])->save();
+        ProfileIntegritySnapshot::query()
+            ->where('profile_id', $profile->id)
+            ->update(['updated_at' => now()->subMinute()]);
+
+        StaffActionLog::query()->create([
+            'actor_user_id' => $staff->id,
+            'action' => 'profile_url.slug_changed',
+            'subject_type' => (new Profile)->getMorphClass(),
+            'subject_id' => $profile->id,
+            'before' => ['slug' => $oldSlug],
+            'after' => ['slug' => $newSlug, 'previous_slug' => $oldSlug],
+            'ip_address' => '127.0.0.1',
+        ]);
+
+        $result = app(ProfileIntegrityService::class)->verifyProfile($profile->fresh(), 'run-test', true);
+        $this->assertSame(ProfileIntegrityService::CLASSIFICATION_MISMATCH, $result['classification']);
+        $this->assertSame(
+            IntegrityIncident::TYPE_IDENTITY,
+            (string) IntegrityIncident::query()->where('profile_id', $profile->id)->value('type')
+        );
+        $this->assertSame(
+            'Baseline headline',
+            ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('bio_headline')
+        );
     }
 
     /* D. Snapshot pinned editorial IDs and content hashes. */

@@ -185,6 +185,53 @@ class MaintenancePublicationVisibilitySafetyTest extends TestCase
         $this->assertFalse(app(ProfileUrlService::class)->isPubliclyVisible($profile->fresh()));
     }
 
+    public function test_hidden_editorial_publication_does_not_trust_changed_bio_headline(): void
+    {
+        $pack = $this->seedPublishedWithSnapshot();
+        $admin = User::factory()->admin()->create();
+        $integrity = app(ProfileIntegrityService::class);
+
+        $pack['profile']->forceFill(['bio_headline' => 'Trusted headline'])->save();
+        $integrity->refreshSnapshot($pack['profile']->fresh(), 'test_trusted_headline');
+
+        $successorId = $this->prepareHiddenCustomerApprovedUpdate(
+            $pack,
+            $admin,
+            'Editorial-only revision while headline was altered.'
+        );
+
+        $pack['profile']->forceFill(['bio_headline' => 'Unreviewed headline drift'])->save();
+
+        app(PostPublicationUpdateService::class)->completePublication($pack['application']->fresh(), $admin);
+
+        $profile = $pack['profile']->fresh();
+        $this->assertFalse(app(ProfileUrlService::class)->isPubliclyVisible($profile));
+        $this->assertSame($successorId, (int) $pack['application']->fresh()->published_english_editorial_content_id);
+        $this->assertSame(
+            'Trusted headline',
+            ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->value('bio_headline')
+        );
+
+        $assessment = $integrity->assessPublicContentTrust($profile);
+        $this->assertSame('mismatch', $assessment['outcome']);
+        $this->assertContains('identity', $assessment['differing_sections']);
+        $this->assertTrue($assessment['requires_integrity_waiver']);
+
+        try {
+            app(ProfileAdministrationService::class)->restoreLivingProfileVisibility(
+                $pack['application']->fresh(),
+                $admin,
+                'Ordinary restore must fail after headline drift.',
+            );
+            $this->fail('Ordinary restore must refuse when bio_headline drifted during hidden publication.');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('trusted integrity snapshot', $e->getMessage());
+        }
+
+        $this->assertSame(0, StaffActionLog::query()->where('action', 'profile.visibility_restored')->count());
+        $this->assertFalse(app(ProfileUrlService::class)->isPubliclyVisible($profile->fresh()));
+    }
+
     public function test_hidden_editorial_publication_does_not_trust_changed_photograph_state(): void
     {
         $pack = $this->seedPublishedWithSnapshot();

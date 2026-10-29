@@ -14,6 +14,7 @@ use App\Models\User;
 use App\Services\ApplicationWorkflowService;
 use App\Services\MembershipLifecycleService;
 use App\Services\ProfileAdministrationService;
+use App\Services\ProfileIntegrityService;
 use App\Services\ProfileMediaService;
 use App\Services\ProfileUrlService;
 use App\Services\PublicProfileSearchService;
@@ -171,6 +172,81 @@ class ProfileVisibilityAdministrationTest extends TestCase
         $hidden = $pack['profile']->fresh();
         $this->assertFalse(app(ProfileUrlService::class)->isPubliclyVisible($hidden));
         $this->assertSame(0, StaffActionLog::query()->where('action', 'profile.visibility_restored')->count());
+    }
+
+    public function test_restore_refuses_when_bio_headline_mismatches_snapshot(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $admin = User::factory()->admin()->create();
+        $service = app(ProfileAdministrationService::class);
+        $integrity = app(ProfileIntegrityService::class);
+
+        $pack['profile']->forceFill(['bio_headline' => 'Trusted headline'])->save();
+        $integrity->refreshSnapshot($pack['profile']->fresh(), 'test_trusted_headline');
+        $service->temporarilyHideLivingProfile($pack['application']->fresh(), $admin, 'Hold.');
+
+        $pack['profile']->forceFill(['bio_headline' => 'Tampered headline'])->save();
+
+        try {
+            $service->restoreLivingProfileVisibility(
+                $pack['application']->fresh(),
+                $admin,
+                'Ordinary restore must fail on headline drift.',
+            );
+            $this->fail('Headline-only mismatch must block ordinary restoration.');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringContainsString('does not match the trusted integrity snapshot', $e->getMessage());
+        }
+
+        $this->assertFalse(app(ProfileUrlService::class)->isPubliclyVisible($pack['profile']->fresh()));
+        $this->assertSame(0, StaffActionLog::query()->where('action', 'profile.visibility_restored')->count());
+        $this->assertSame(
+            'Trusted headline',
+            ProfileIntegritySnapshot::query()->where('profile_id', $pack['profile']->id)->value('bio_headline')
+        );
+    }
+
+    public function test_integrity_waiver_allows_bio_headline_mismatch_and_is_audited(): void
+    {
+        $pack = $this->seedPublishedProfile();
+        $admin = User::factory()->admin()->create();
+        $service = app(ProfileAdministrationService::class);
+        $integrity = app(ProfileIntegrityService::class);
+
+        $pack['profile']->forceFill(['bio_headline' => 'Trusted headline'])->save();
+        $integrity->refreshSnapshot($pack['profile']->fresh(), 'test_trusted_headline');
+        $service->temporarilyHideLivingProfile($pack['application']->fresh(), $admin, 'Hold.');
+        $pack['profile']->forceFill(['bio_headline' => 'Reviewed replacement headline'])->save();
+
+        $incident = IntegrityIncident::query()->create([
+            'profile_id' => $pack['profile']->id,
+            'run_id' => 'test-run-headline',
+            'type' => IntegrityIncident::TYPE_IDENTITY,
+            'mode' => 'report',
+            'detection_reason' => 'bio_headline mismatch',
+            'expected_state' => ['bio_headline' => 'Trusted headline'],
+            'observed_state' => ['bio_headline' => 'Reviewed replacement headline'],
+            'detection_fingerprint' => hash('sha256', 'headline-test-fingerprint'),
+            'detected_at' => now(),
+            'status' => IntegrityIncident::STATUS_OPEN,
+        ]);
+
+        $service->restoreLivingProfileVisibility(
+            $pack['application']->fresh(),
+            $admin,
+            'Restore after headline review.',
+            'Founder reviewed bio_headline change; temporary public restore authorised.',
+        );
+
+        $this->assertTrue(app(ProfileUrlService::class)->isPubliclyVisible($pack['profile']->fresh()));
+        $audit = StaffActionLog::query()->where('action', 'profile.visibility_restored')->firstOrFail();
+        $this->assertTrue((bool) ($audit->after['integrity_waiver_used'] ?? false));
+        $this->assertSame(
+            'Founder reviewed bio_headline change; temporary public restore authorised.',
+            $audit->after['integrity_waiver_reason'] ?? null
+        );
+        $this->assertContains($incident->id, $audit->after['integrity_blocking_incident_ids'] ?? []);
+        $this->assertNull($incident->fresh()->resolved_at);
     }
 
     public function test_restore_refuses_when_trusted_snapshot_is_missing(): void

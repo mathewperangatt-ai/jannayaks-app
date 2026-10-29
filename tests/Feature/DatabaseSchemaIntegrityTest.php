@@ -439,6 +439,41 @@ class DatabaseSchemaIntegrityTest extends TestCase
         );
     }
 
+    public function test_profile_integrity_snapshots_include_bio_headline_column(): void
+    {
+        $this->assertTrue(Schema::hasTable('profile_integrity_snapshots'));
+        $this->assertTrue(
+            Schema::hasColumn('profile_integrity_snapshots', 'bio_headline'),
+            'profile_integrity_snapshots.bio_headline required for identity monitoring'
+        );
+
+        $column = collect(DB::select(
+            "SELECT character_maximum_length, is_nullable
+             FROM information_schema.columns
+             WHERE table_schema = 'public'
+               AND table_name = 'profile_integrity_snapshots'
+               AND column_name = 'bio_headline'"
+        ))->first();
+
+        $this->assertNotNull($column);
+        $this->assertSame(255, (int) $column->character_maximum_length);
+        $this->assertSame('YES', $column->is_nullable);
+    }
+
+    public function test_bio_headline_integrity_snapshot_migration_rolls_back_safely(): void
+    {
+        $this->assertTrue(Schema::hasColumn('profile_integrity_snapshots', 'bio_headline'));
+
+        $migration = require database_path(
+            'migrations/2026_10_29_000001_add_bio_headline_to_profile_integrity_snapshots_table.php'
+        );
+        $migration->down();
+        $this->assertFalse(Schema::hasColumn('profile_integrity_snapshots', 'bio_headline'));
+
+        $migration->up();
+        $this->assertTrue(Schema::hasColumn('profile_integrity_snapshots', 'bio_headline'));
+    }
+
     public function test_staff_action_logs_table_exists(): void
     {
         $this->assertTrue(Schema::hasTable('staff_action_logs'));
