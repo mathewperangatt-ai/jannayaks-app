@@ -3,6 +3,8 @@
 namespace Tests\Feature;
 
 use App\Contracts\EditorialAiClient;
+use App\Filament\Resources\Applications\Pages\ListApplications;
+use App\Filament\Widgets\PendingAttentionWidget;
 use App\Models\Application;
 use App\Models\EditorialContent;
 use App\Models\EditorialRevisionRequest;
@@ -16,6 +18,7 @@ use App\Services\EditorialContentVersioningService;
 use App\Services\EditorialGenerationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Config;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class Phase11CustomerEditorialWorkflowTest extends TestCase
@@ -342,6 +345,220 @@ class Phase11CustomerEditorialWorkflowTest extends TestCase
 
         $this->expectException(\InvalidArgumentException::class);
         app(CustomerEditorialWorkflowService::class)->releaseForCustomerPreview($application, $editor);
+    }
+
+    /**
+     * Option A: Pending Attention revision "View all" lists applications that
+     * have an open pre-publication revision request, even after editorial
+     * invalidation moves the application off editorial_revision_requested.
+     */
+    public function test_pending_attention_revision_view_all_includes_open_request_after_editorial_invalidate(): void
+    {
+        $admin = User::factory()->admin()->create(['email_verified_at' => now()]);
+        [$editor, $member, $application] = $this->seedApprovedPreviewReady();
+        $workflow = app(CustomerEditorialWorkflowService::class);
+
+        $released = $workflow->releaseForCustomerPreview($application, $editor);
+        $revision = $workflow->requestRevision(
+            $released,
+            $member,
+            'Please soften the opening paragraph for clarity.',
+            EditorialRevisionRequest::TYPE_REVISION,
+        );
+
+        $application = $application->fresh();
+        $this->assertSame(Application::STATUS_EDITORIAL_REVISION_REQUESTED, $application->status);
+        $this->assertSame(EditorialRevisionRequest::STATUS_SUBMITTED, $revision->fresh()->status);
+
+        $widgetBefore = Livewire::actingAs($admin)->test(PendingAttentionWidget::class);
+        $revisionCategoryBefore = collect($widgetBefore->get('categories'))->firstWhere('key', 'revision');
+        $this->assertNotNull($revisionCategoryBefore);
+        $this->assertSame(1, $revisionCategoryBefore['total']);
+        $this->assertStringContainsString(
+            'filters%5Bprepublication_revision_queue%5D%5Bvalue%5D=open',
+            (string) $revisionCategoryBefore['viewAllUrl'],
+        );
+        $widgetBefore->assertSee('Pre-publication revision requests — 1');
+
+        Livewire::actingAs($admin)
+            ->test(ListApplications::class)
+            ->filterTable('prepublication_revision_queue', 'open')
+            ->assertSee($application->full_name);
+
+        $english = EditorialContent::query()->findOrFail(
+            (int) $application->preview_english_editorial_content_id,
+        );
+        app(EditorialContentVersioningService::class)->applyEditorUpdate(
+            $english,
+            [
+                'title' => $english->title,
+                'summary' => $english->summary,
+                'body' => $english->body."\n\nEditor revised while a customer revision request is still open.",
+                'status' => EditorialContent::STATUS_DRAFT,
+                'source_material' => $english->source_material,
+            ],
+            $editor,
+        );
+
+        $application = $application->fresh();
+        $revision = $revision->fresh();
+        $this->assertSame(Application::STATUS_IN_EDITORIAL_REVIEW, $application->status);
+        $this->assertSame(EditorialRevisionRequest::STATUS_SUBMITTED, $revision->status);
+        $this->assertNull($application->customer_preview_released_at);
+
+        $widgetAfter = Livewire::actingAs($admin)->test(PendingAttentionWidget::class);
+        $revisionCategoryAfter = collect($widgetAfter->get('categories'))->firstWhere('key', 'revision');
+        $this->assertNotNull($revisionCategoryAfter);
+        $this->assertSame(1, $revisionCategoryAfter['total']);
+        $widgetAfter->assertSee('Pre-publication revision requests — 1');
+
+        Livewire::actingAs($admin)
+            ->test(ListApplications::class)
+            ->filterTable('prepublication_revision_queue', 'open')
+            ->assertSee($application->full_name);
+
+        Livewire::actingAs($admin)
+            ->test(ListApplications::class)
+            ->filterTable('status', [Application::STATUS_EDITORIAL_REVISION_REQUESTED])
+            ->assertDontSee($application->full_name);
+    }
+
+    public function test_prepublication_revision_queue_excludes_completed_maintenance_and_status_only_matches(): void
+    {
+        $admin = User::factory()->admin()->create(['email_verified_at' => now()]);
+        [$editor, $member, $withOpen] = $this->seedApprovedPreviewReady();
+        $workflow = app(CustomerEditorialWorkflowService::class);
+
+        $released = $workflow->releaseForCustomerPreview($withOpen, $editor);
+        $workflow->requestRevision(
+            $released,
+            $member,
+            'Please adjust the second paragraph.',
+            EditorialRevisionRequest::TYPE_REVISION,
+        );
+        $withOpenName = $withOpen->fresh()->full_name;
+
+        [$editor2, $member2, $completedApp] = $this->seedApprovedPreviewReady();
+        $completedApp->forceFill(['full_name' => 'Completed Revision Person'])->save();
+        $releasedCompleted = $workflow->releaseForCustomerPreview($completedApp->fresh(), $editor2);
+        $workflow->requestRevision(
+            $releasedCompleted,
+            $member2,
+            'Please fix a typo in the headline.',
+            EditorialRevisionRequest::TYPE_REVISION,
+        );
+        $workflow->releaseForCustomerPreview($completedApp->fresh(), $editor2);
+        $this->assertSame(
+            EditorialRevisionRequest::STATUS_COMPLETED,
+            EditorialRevisionRequest::query()
+                ->where('application_id', $completedApp->id)
+                ->latest('id')
+                ->value('status'),
+        );
+
+        $statusOnly = Application::factory()->paid()->create([
+            'full_name' => 'Status Only Revision Person',
+            'status' => Application::STATUS_EDITORIAL_REVISION_REQUESTED,
+        ]);
+        $this->assertSame(0, EditorialRevisionRequest::query()->where('application_id', $statusOnly->id)->count());
+
+        $memberMaint = User::factory()->create(['email_verified_at' => now()]);
+        $profileMaint = \App\Models\Profile::query()->create([
+            'user_id' => $memberMaint->id,
+            'status' => 'published',
+            'full_name' => 'Maintenance Queue Person',
+            'profession' => '',
+            'display_phone_consent' => false,
+            'display_email_consent' => false,
+        ]);
+        $profileMaint->forceFill([
+            'slug' => 'maintenance.queue.person',
+            'published_at' => now()->subMonth(),
+            'slug_generated_at' => now(),
+        ])->save();
+        $maintenanceApp = Application::factory()->paid()->create([
+            'user_id' => $memberMaint->id,
+            'profile_id' => $profileMaint->id,
+            'full_name' => 'Maintenance Queue Person',
+            'status' => Application::STATUS_PUBLISHED,
+            'source_method' => 'admin_test_demo',
+        ]);
+        EditorialRevisionRequest::query()->create([
+            'application_id' => $maintenanceApp->id,
+            'profile_id' => $profileMaint->id,
+            'requested_by_user_id' => $memberMaint->id,
+            'request_type' => EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE,
+            'billing_classification' => EditorialRevisionRequest::BILLING_COMPLIMENTARY,
+            'status' => EditorialRevisionRequest::STATUS_SUBMITTED,
+            'request_text' => 'Please update the published biography.',
+        ]);
+
+        $widget = Livewire::actingAs($admin)->test(PendingAttentionWidget::class);
+        $revisionCategory = collect($widget->get('categories'))->firstWhere('key', 'revision');
+        $this->assertNotNull($revisionCategory);
+        $this->assertSame(1, $revisionCategory['total']);
+
+        Livewire::actingAs($admin)
+            ->test(ListApplications::class)
+            ->filterTable('prepublication_revision_queue', 'open')
+            ->assertSee($withOpenName)
+            ->assertDontSee('Completed Revision Person')
+            ->assertDontSee('Status Only Revision Person')
+            ->assertDontSee('Maintenance Queue Person');
+    }
+
+    /**
+     * Customer Review View all must require preview release, matching the widget
+     * count (not the generic editorial_approved status filter alone).
+     */
+    public function test_customer_review_view_all_requires_released_preview(): void
+    {
+        $admin = User::factory()->admin()->create(['email_verified_at' => now()]);
+
+        [$editorReleased, $memberReleased, $releasedApp] = $this->seedApprovedPreviewReady();
+        $releasedApp->forceFill(['full_name' => 'Released Preview Person'])->save();
+        app(CustomerEditorialWorkflowService::class)->releaseForCustomerPreview(
+            $releasedApp->fresh(),
+            $editorReleased,
+        );
+        $releasedApp = $releasedApp->fresh();
+        $this->assertSame(Application::STATUS_EDITORIAL_APPROVED, $releasedApp->status);
+        $this->assertNotNull($releasedApp->customer_preview_released_at);
+
+        [$editorUnreleased, , $unreleasedApp] = $this->seedApprovedPreviewReady();
+        $unreleasedApp->forceFill(['full_name' => 'Unreleased Approved Person'])->save();
+        app(ApplicationWorkflowService::class)->updateStaffFields(
+            $unreleasedApp->fresh(),
+            ['status' => Application::STATUS_EDITORIAL_APPROVED],
+            $editorUnreleased,
+        );
+        $unreleasedApp = $unreleasedApp->fresh();
+        $this->assertSame(Application::STATUS_EDITORIAL_APPROVED, $unreleasedApp->status);
+        $this->assertNull($unreleasedApp->customer_preview_released_at);
+
+        $widget = Livewire::actingAs($admin)->test(PendingAttentionWidget::class);
+        $customerCategory = collect($widget->get('categories'))->firstWhere('key', 'customer');
+        $this->assertNotNull($customerCategory);
+        $this->assertSame(1, $customerCategory['total']);
+        $this->assertStringContainsString(
+            'filters%5Bcustomer_preview_queue%5D%5Bvalue%5D=awaiting_review',
+            (string) $customerCategory['viewAllUrl'],
+        );
+        $widget->assertSee('Awaiting customer review (pre-publication) — 1');
+        $widget->assertSee('Released Preview Person');
+        $widget->assertDontSee('Unreleased Approved Person');
+
+        Livewire::actingAs($admin)
+            ->test(ListApplications::class)
+            ->filterTable('customer_preview_queue', 'awaiting_review')
+            ->assertSee('Released Preview Person')
+            ->assertDontSee('Unreleased Approved Person');
+
+        Livewire::actingAs($admin)
+            ->test(ListApplications::class)
+            ->filterTable('status', [Application::STATUS_EDITORIAL_APPROVED])
+            ->assertSee('Released Preview Person')
+            ->assertSee('Unreleased Approved Person');
     }
 
     /**
