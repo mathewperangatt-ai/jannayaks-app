@@ -376,6 +376,14 @@ class AdminAuditRemediationTest extends TestCase
         $publishedPage = $this->actingAs($editor)->get('/admin/applications/'.$published->id.'/edit')->assertOk()->getContent();
         $this->assertDoesNotMatchRegularExpression('/Generate\s+AI\s+editorial\s+draft/', $publishedPage);
         $this->assertDoesNotMatchRegularExpression('/Release for customer preview/', $publishedPage);
+
+        $openView = $this->actingAs($editor)->get('/admin/applications/'.$open->id)->assertOk()->getContent();
+        $this->assertMatchesRegularExpression('/Generate\s+AI\s+editorial\s+draft/', $openView);
+        $this->assertMatchesRegularExpression('/Release for customer preview/', $openView);
+
+        $publishedView = $this->actingAs($editor)->get('/admin/applications/'.$published->id)->assertOk()->getContent();
+        $this->assertDoesNotMatchRegularExpression('/Generate\s+AI\s+editorial\s+draft/', $publishedView);
+        $this->assertDoesNotMatchRegularExpression('/Release for customer preview/', $publishedView);
     }
 
     /**

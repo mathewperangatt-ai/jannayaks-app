@@ -3,6 +3,7 @@
 namespace App\Filament\Resources\Applications\Pages;
 
 use App\Filament\Resources\Applications\ApplicationResource;
+use App\Filament\Resources\Applications\Pages\Concerns\HasPrePublicationEditorialActions;
 use App\Models\Application;
 use App\Models\EditorialRevisionRequest;
 use App\Models\User;
@@ -10,11 +11,8 @@ use App\Models\EditorialContent;
 use App\Services\ApplicationPaymentStateService;
 use App\Services\ApplicationWorkflowService;
 use App\Services\ProfileAdministrationService;
-use App\Services\CustomerEditorialWorkflowService;
-use App\Services\EditorialGenerationService;
 use App\Services\PostPublicationUpdateService;
 use App\Services\ProfileUrlService;
-use App\Support\EditorialTestBypass;
 use App\Support\PublicationTestBypass;
 use Filament\Actions\Action;
 use Filament\Actions\EditAction;
@@ -29,85 +27,15 @@ use InvalidArgumentException;
 
 class ViewApplication extends ViewRecord
 {
+    use HasPrePublicationEditorialActions;
+
     protected static string $resource = ApplicationResource::class;
 
     protected function getHeaderActions(): array
     {
         return [
-            Action::make('generateAiEditorial')
-                ->label('Generate AI editorial draft')
-                ->requiresConfirmation()
-                ->modalHeading('Generate English + Malayalam AI draft')
-                ->modalDescription('Creates new draft editorial versions from interview/source material. Approved content is not overwritten. AI cannot publish.')
-                ->visible(fn (): bool => (auth()->user()?->canManageEditorial() ?? false)
-                    && $this->getRecord()?->status !== Application::STATUS_PUBLISHED
-                    && ! $this->hasOpenMaintenanceRequest())
-                ->action(function (): void {
-                    $actor = auth()->user();
-                    if (! $actor instanceof User) {
-                        abort(403);
-                    }
-
-                    /** @var Application $application */
-                    $application = $this->getRecord();
-
-                    try {
-                        $run = app(EditorialGenerationService::class)->generateForApplication($application, $actor);
-                    } catch (InvalidArgumentException $e) {
-                        Notification::make()
-                            ->title('Cannot start AI generation')
-                            ->body($e->getMessage())
-                            ->warning()
-                            ->persistent()->send();
-
-                        return;
-                    }
-
-                    if ($run->isFailed()) {
-                        Notification::make()
-                            ->title('AI generation failed')
-                            ->body($run->error_message ?: 'The draft was not marked complete.')
-                            ->danger()
-                            ->persistent()->send();
-
-                        return;
-                    }
-
-                    Notification::make()
-                        ->title('AI editorial drafts created')
-                        ->body('English master and Malayalam adaptation stored as draft versions for human review.')
-                        ->success()
-                        ->persistent()->send();
-                }),
-            Action::make('releaseCustomerPreview')
-                ->label('Release for customer preview')
-                ->requiresConfirmation()
-                ->modalHeading('Release profile for customer preview')
-                ->modalDescription(function (): string {
-                    $record = $this->getRecord();
-
-                    return app(EditorialTestBypass::class)->releaseModalDescription(
-                        $record instanceof Application ? $record : null,
-                    );
-                })
-                ->visible(fn (): bool => (auth()->user()?->canManageEditorial() ?? false)
-                    && $this->getRecord()?->status !== Application::STATUS_PUBLISHED
-                    && ! $this->hasOpenMaintenanceRequest())
-                ->action(function (): void {
-                    $actor = auth()->user();
-                    if (! $actor instanceof User) {
-                        abort(403);
-                    }
-
-                    try {
-                        /** @var Application $application */
-                        $application = $this->getRecord();
-                        app(CustomerEditorialWorkflowService::class)->releaseForCustomerPreview($application, $actor);
-                        Notification::make()->title('Customer preview released')->success()->persistent()->send();
-                    } catch (InvalidArgumentException $e) {
-                        Notification::make()->title('Cannot release preview')->body($e->getMessage())->danger()->persistent()->send();
-                    }
-                }),
+            $this->generateAiEditorialHeaderAction(),
+            $this->releaseCustomerPreviewHeaderAction(),
             Action::make('approvePublicationTestEnglishDraft')
                 ->label('Approve unchanged English draft')
                 ->color('warning')
@@ -657,18 +585,10 @@ class ViewApplication extends ViewRecord
     private function publishableMalayalamVersions(): \Illuminate\Support\Collection
     {
         $record = $this->getRecord();
-        if (! $record instanceof Application
-            || $record->profile_id === null
-            || $record->published_english_editorial_content_id === null) {
+        if (! $record instanceof Application) {
             return collect();
         }
 
-        return EditorialContent::query()
-            ->where('profile_id', $record->profile_id)
-            ->where('language', EditorialContent::LANGUAGE_ML)
-            ->where('source_editorial_content_id', $record->published_english_editorial_content_id)
-            ->whereIn('status', [EditorialContent::STATUS_DRAFT, EditorialContent::STATUS_APPROVED])
-            ->orderByDesc('version_number')
-            ->get();
+        return app(ApplicationWorkflowService::class)->publishableMalayalamVersions($record);
     }
 }

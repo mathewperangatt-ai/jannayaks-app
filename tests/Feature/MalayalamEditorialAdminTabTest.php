@@ -357,6 +357,117 @@ class MalayalamEditorialAdminTabTest extends TestCase
         $this->assertSame($english->id, $application->fresh()->published_english_editorial_content_id);
     }
 
+    public function test_shared_publishable_malayalam_versions_lists_draft_approved_and_live_plus_newer_draft(): void
+    {
+        [$admin, $application, $profile, $english] = $this->seedPublishedEnglish();
+        $workflow = app(ApplicationWorkflowService::class);
+
+        $draftOnly = $this->malayalam($profile, $english, 1, EditorialContent::STATUS_DRAFT, 'Draft-only Malayalam.');
+        $this->assertSame(
+            [$draftOnly->id],
+            $workflow->publishableMalayalamVersions($application->fresh())->pluck('id')->all(),
+        );
+
+        $draftOnly->forceFill(['status' => EditorialContent::STATUS_APPROVED, 'reviewed_by_id' => $admin->id])->save();
+        $this->assertSame(
+            [$draftOnly->id],
+            $workflow->publishableMalayalamVersions($application->fresh())->pluck('id')->all(),
+        );
+
+        $workflow->publishMalayalam($application->fresh(), $admin, $draftOnly->fresh());
+        $newerDraft = $this->malayalam($profile, $english, 2, EditorialContent::STATUS_DRAFT, 'Newer corrected Malayalam.');
+
+        $this->assertSame(
+            [$newerDraft->id, $draftOnly->id],
+            $workflow->publishableMalayalamVersions($application->fresh())->pluck('id')->all(),
+        );
+    }
+
+    public function test_shared_publishable_malayalam_versions_excludes_archived_and_incorrect_pairs(): void
+    {
+        [$admin, $application, $profile, $english] = $this->seedPublishedEnglish();
+        $eligible = $this->malayalam($profile, $english, 1, EditorialContent::STATUS_DRAFT, 'Eligible Malayalam.');
+        $archived = $this->malayalam($profile, $english, 2, EditorialContent::STATUS_ARCHIVED, 'Archived Malayalam.');
+
+        $otherEnglish = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => EditorialContent::LANGUAGE_EN,
+            'status' => EditorialContent::STATUS_APPROVED,
+            'version_number' => 2,
+            'title' => 'Other English',
+            'summary' => 'Other',
+            'body' => 'Other English biography.',
+            'created_by_id' => $admin->id,
+            'reviewed_by_id' => $admin->id,
+        ]);
+        $wrongPair = $this->malayalam($profile, $otherEnglish, 3, EditorialContent::STATUS_DRAFT, 'Paired to other English.');
+
+        $ids = app(ApplicationWorkflowService::class)
+            ->publishableMalayalamVersions($application->fresh())
+            ->pluck('id')
+            ->all();
+
+        $this->assertSame([$eligible->id], $ids);
+        $this->assertNotContains($archived->id, $ids);
+        $this->assertNotContains($wrongPair->id, $ids);
+    }
+
+    public function test_shared_publishable_malayalam_versions_empty_when_application_unpublished(): void
+    {
+        [$admin, $application] = $this->seedApplicationWithProfile([
+            'status' => Application::STATUS_AWAITING_EDITORIAL_REVIEW,
+        ]);
+        $profile = $application->profile;
+        $english = EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => EditorialContent::LANGUAGE_EN,
+            'status' => EditorialContent::STATUS_APPROVED,
+            'version_number' => 1,
+            'title' => 'Unpublished English',
+            'summary' => 'Summary',
+            'body' => 'English not yet published via workflow.',
+            'created_by_id' => $admin->id,
+            'reviewed_by_id' => $admin->id,
+        ]);
+        $this->malayalam($profile, $english, 1, EditorialContent::STATUS_DRAFT, 'Malayalam before English publish.');
+
+        $this->assertNotSame(Application::STATUS_PUBLISHED, $application->fresh()->status);
+        $this->assertTrue(
+            app(ApplicationWorkflowService::class)->publishableMalayalamVersions($application->fresh())->isEmpty(),
+        );
+    }
+
+    public function test_view_and_relation_manager_use_the_same_publishable_malayalam_eligibility_ids(): void
+    {
+        [$admin, $application, $profile, $english] = $this->seedPublishedEnglish();
+        $live = $this->malayalam($profile, $english, 1, EditorialContent::STATUS_DRAFT, 'Live Malayalam.');
+        app(ApplicationWorkflowService::class)->publishMalayalam($application->fresh(), $admin, $live->fresh());
+        $this->malayalam($profile, $english, 2, EditorialContent::STATUS_DRAFT, 'Successor Malayalam.');
+        $this->malayalam($profile, $english, 3, EditorialContent::STATUS_ARCHIVED, 'Archived Malayalam.');
+
+        $expected = app(ApplicationWorkflowService::class)
+            ->publishableMalayalamVersions($application->fresh())
+            ->pluck('id')
+            ->all();
+        $this->assertCount(2, $expected);
+
+        $page = Livewire::actingAs($admin)
+            ->test(ViewApplication::class, ['record' => $application->fresh()->getRouteKey()]);
+        $pageMethod = new \ReflectionMethod(ViewApplication::class, 'publishableMalayalamVersions');
+        $pageIds = $pageMethod->invoke($page->instance())->pluck('id')->all();
+
+        $tab = Livewire::actingAs($admin)
+            ->test(MalayalamEditorialRelationManager::class, [
+                'ownerRecord' => $application->fresh(),
+                'pageClass' => ViewApplication::class,
+            ]);
+        $tabMethod = new \ReflectionMethod(MalayalamEditorialRelationManager::class, 'publishableMalayalamVersions');
+        $tabIds = $tabMethod->invoke($tab->instance())->pluck('id')->all();
+
+        $this->assertSame($expected, $pageIds);
+        $this->assertSame($expected, $tabIds);
+    }
+
     public function test_publish_malayalam_still_enforces_pairing_and_language_safeguards(): void
     {
         [$admin, $application, $profile, $english] = $this->seedPublishedEnglish();
