@@ -57,9 +57,16 @@ Schedule::command(ReconcilePaymentCapturesCommand::class)
 | modifies content in this wave. Scans every eligible published profile; a
 | mass-mismatch threshold only raises an alert (see VerifyProfileIntegrityCommand).
 | Missing snapshots are reported, not auto-baselined. Runs on the scheduler service.
+|
+| Cadence: every four hours in Asia/Kolkata (00:00, 04:00, 08:00, 12:00, 16:00,
+| 20:00 IST). App timezone remains UTC; do not rely on server local time.
+| withoutOverlapping(60) is minutes and only suppresses overlap within one run.
 */
+$integrityTz = (string) config('jannayaks.membership_lifecycle.business_timezone', 'Asia/Kolkata');
+
 Schedule::command(VerifyProfileIntegrityCommand::class)
-    ->twiceDaily(0, 12)
+    ->everyFourHours()
+    ->timezone($integrityTz !== '' ? $integrityTz : 'Asia/Kolkata')
     ->withoutOverlapping(60)
     ->name('verify-profile-integrity');
 

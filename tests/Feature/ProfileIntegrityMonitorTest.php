@@ -1225,12 +1225,22 @@ class ProfileIntegrityMonitorTest extends TestCase
     }
 
     /* Scheduler registration + defaults. */
-    public function test_watchdog_is_registered_on_twelve_hour_schedule(): void
+    public function test_watchdog_is_registered_every_four_hours_in_business_timezone(): void
     {
-        Artisan::call('schedule:list');
-        $output = Artisan::output();
+        Artisan::call('schedule:list'); // boots routes/console.php scheduling
 
-        $this->assertStringContainsString('verify-profile-integrity', $output);
+        $events = collect(app(\Illuminate\Console\Scheduling\Schedule::class)->events())
+            ->filter(fn ($event) => str_contains((string) $event->command, 'jannayaks:verify-profile-integrity'));
+
+        $this->assertSame(1, $events->count(), 'integrity watchdog schedule must be declared exactly once');
+
+        $event = $events->first();
+        $this->assertSame('0 */4 * * *', $event->expression);
+        $this->assertSame(
+            (string) config('jannayaks.membership_lifecycle.business_timezone', 'Asia/Kolkata'),
+            (string) $event->timezone,
+        );
+        $this->assertTrue((bool) $event->withoutOverlapping);
         $this->assertSame('report', (string) config('jannayaks.security.integrity.mode'));
     }
 
