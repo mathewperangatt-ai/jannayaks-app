@@ -119,6 +119,49 @@ class PaymentsTestingModeTest extends TestCase
             ->assertDontSee('Pay to unlock interview');
     }
 
+    /**
+     * Stringy "false"/"off"/"no"/"0" must not enable global payment testing.
+     * A raw (bool) cast would treat several of these as true.
+     */
+    public function test_string_false_representations_cannot_enable_payments_testing_mode(): void
+    {
+        foreach (['false', 'FALSE', 'False', '0', 'off', 'OFF', 'no', 'NO', ''] as $raw) {
+            config(['jannayaks.payments.testing_mode' => $raw]);
+            $this->assertFalse(
+                ApplicationPaymentStateService::testingModeActive(),
+                'Expected testing mode off for raw value '.var_export($raw, true),
+            );
+        }
+
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        config(['jannayaks.payments.testing_mode' => 'false']);
+        $app = $this->makeApplicationFor($user);
+
+        $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
+        $this->actingAs($user)
+            ->postJson(route('applications.payment.initiate', ['application' => $app->id]))
+            ->assertForbidden();
+        $this->assertSame(0, Payment::query()->where('application_id', $app->id)->count());
+        $this->assertSame('pending', (string) $app->fresh()->payment_status);
+    }
+
+    public function test_string_true_representations_still_enable_payments_testing_mode(): void
+    {
+        foreach (['true', 'TRUE', '1', 'on', 'yes', 'ON'] as $raw) {
+            config(['jannayaks.payments.testing_mode' => $raw]);
+            $this->assertTrue(
+                ApplicationPaymentStateService::testingModeActive(),
+                'Expected testing mode on for raw value '.var_export($raw, true),
+            );
+        }
+
+        config(['jannayaks.payments.testing_mode' => true]);
+        $this->assertTrue(ApplicationPaymentStateService::testingModeActive());
+
+        config(['jannayaks.payments.testing_mode' => false]);
+        $this->assertFalse(ApplicationPaymentStateService::testingModeActive());
+    }
+
     /* Testing mode OFF: the normal payment-required workflow is restored. */
     public function test_disabling_testing_mode_restores_payment_required_workflow(): void
     {

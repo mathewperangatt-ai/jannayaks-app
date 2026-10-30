@@ -18,7 +18,29 @@ class ApplicationPaymentStateService
      */
     public static function testingModeActive(): bool
     {
-        return (bool) config('jannayaks.payments.testing_mode', false);
+        return self::configFlagEnabled(config('jannayaks.payments.testing_mode', false));
+    }
+
+    /**
+     * Interpret env/config flag values the same way as EditorialTestBypass /
+     * PublicationTestBypass. A raw (bool) cast treats the strings "false",
+     * "off", and "no" as true; filter_var does not.
+     */
+    private static function configFlagEnabled(mixed $value): bool
+    {
+        if (is_bool($value)) {
+            return $value;
+        }
+
+        if (is_int($value) || is_float($value)) {
+            return (int) $value === 1;
+        }
+
+        if (is_string($value)) {
+            return filter_var($value, FILTER_VALIDATE_BOOLEAN);
+        }
+
+        return false;
     }
 
     public function afterSettled(Payment $payment): Application

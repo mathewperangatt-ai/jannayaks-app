@@ -106,7 +106,22 @@ server-side only) before authenticating the MSG91-verified mobile number.
 Until the two widget variables are set, the OTP page shows a safe
 "temporarily unavailable" state (fail-closed; Google sign-in unaffected).
 
-## 5. Post-deploy verification checklist
+## 5. Temporary test safety switches (must stay off in production)
+
+Three temporary switches exist for synthetic testing. Full detail:
+[temporary-test-safety-switches.md](./temporary-test-safety-switches.md).
+
+| Variable | Safe production value | Blast radius |
+|---|---|---|
+| `JANNAYAKS_PAYMENTS_TESTING_MODE` | `false` or unset | **Global** — suspends payment for every application |
+| `JANNAYAKS_EDITORIAL_TEST_BYPASS_ENABLED` | `false` or unset | Allowlist only (`…_REFERENCES` must stay empty) |
+| `JANNAYAKS_PUBLICATION_TEST_BYPASS_ENABLED` | `false` or unset | Allowlist only (`…_REFERENCES` must stay empty) |
+
+Docs and code defaults are **not** a runtime `APP_ENV=production` hard guard.
+Verify the live Railway variable names/booleans (do not dump secrets). After
+env edits, clear or rebuild config cache if the deploy uses `config:cache`.
+
+## 6. Post-deploy verification checklist
 
 - [ ] Web service: `/up` returns 200; login page shows Google only (OTP hidden).
 - [ ] Scheduler service: running; logs show `schedule:work` output, including the
@@ -121,3 +136,5 @@ Until the two widget variables are set, the OTP page shows a safe
       are redirected to login with the suspension message on next request.
 - [ ] Admin panel: an application moved to `awaiting_publication` increments
       the Applications nav badge.
+- [ ] Temporary test switches: payments testing mode false/unset; both bypass
+      enabled flags false/unset; both `…_REFERENCES` empty (see §5).
