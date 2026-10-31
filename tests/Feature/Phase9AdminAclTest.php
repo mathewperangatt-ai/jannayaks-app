@@ -2,6 +2,7 @@
 
 namespace Tests\Feature;
 
+use App\Filament\Resources\Applications\Pages\EditApplication;
 use App\Models\Application;
 use App\Models\Payment;
 use App\Models\SourceMaterial;
@@ -12,6 +13,7 @@ use App\Support\OnlineInterviewCatalog;
 use Filament\Facades\Filament;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Support\Facades\Storage;
+use Livewire\Livewire;
 use Tests\TestCase;
 
 class Phase9AdminAclTest extends TestCase
@@ -328,6 +330,32 @@ class Phase9AdminAclTest extends TestCase
             ->assertSee('applicant-account@example.com', false)
             ->assertSee('preferred-private@example.com', false)
             ->assertSee('919876543210', false);
+
+        $this->actingAs($editor)
+            ->get('/admin/applications/'.$application->id.'/edit')
+            ->assertOk();
+
+        Livewire::actingAs($editor)
+            ->test(EditApplication::class, ['record' => $application->getRouteKey()])
+            ->assertSuccessful()
+            ->assertFormFieldHidden('preferred_contact_email')
+            ->assertFormFieldHidden('preferred_contact_mobile')
+            ->assertFormFieldHidden('preferred_whatsapp_mobile');
+
+        $this->actingAs($admin)
+            ->get('/admin/applications/'.$application->id.'/edit')
+            ->assertOk();
+
+        Livewire::actingAs($admin)
+            ->test(EditApplication::class, ['record' => $application->getRouteKey()])
+            ->assertSuccessful()
+            ->assertFormFieldVisible('preferred_contact_email')
+            ->assertFormFieldVisible('preferred_contact_mobile')
+            ->assertFormFieldVisible('preferred_whatsapp_mobile')
+            ->assertFormSet([
+                'preferred_contact_email' => 'preferred-private@example.com',
+                'preferred_contact_mobile' => '919876543210',
+            ]);
     }
 
     public function test_admin_can_set_publication_terminal_statuses_and_is_audited(): void

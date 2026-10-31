@@ -111,6 +111,8 @@ class ApplicationsTable
                 self::maintenanceStageFilter(),
                 self::maintenanceBillingFilter(),
                 self::photoQueueFilter(),
+                self::prepublicationRevisionQueueFilter(),
+                self::customerPreviewQueueFilter(),
             ])
             ->recordActions([
                 ViewAction::make(),
@@ -189,6 +191,57 @@ class ApplicationsTable
                     ->where('media_type', MediaItem::TYPE_PROFILE_PHOTO)
                     ->where('review_status', MediaItem::REVIEW_PENDING))
                 : $query);
+    }
+
+    /**
+     * Pre-publication revision queue: applications with an open customer
+     * revision/factual-correction request. Matches PendingAttentionWidget's
+     * revision category (submitted/in_progress, not published_update),
+     * regardless of the application's current workflow status.
+     */
+    private static function prepublicationRevisionQueueFilter(): SelectFilter
+    {
+        return SelectFilter::make('prepublication_revision_queue')
+            ->label('Pre-publication revision queue')
+            ->indicator('Pre-pub revisions')
+            ->options([
+                'open' => 'Open pre-publication revision requests',
+            ])
+            ->query(fn (Builder $query, array $data): Builder => ($data['value'] ?? null) === 'open'
+                ? $query->whereHas('editorialRevisionRequests', fn (Builder $q) => self::openPrepublicationRevision($q))
+                : $query);
+    }
+
+    /**
+     * Customer-preview queue: applications whose preview has been released and
+     * which are awaiting customer review. Matches PendingAttentionWidget's
+     * customer category (editorial_approved + customer_preview_released_at set).
+     * Distinct from the generic workflow status filter.
+     */
+    private static function customerPreviewQueueFilter(): SelectFilter
+    {
+        return SelectFilter::make('customer_preview_queue')
+            ->label('Customer preview queue')
+            ->indicator('Customer review')
+            ->options([
+                'awaiting_review' => 'Awaiting customer review (preview released)',
+            ])
+            ->query(fn (Builder $query, array $data): Builder => ($data['value'] ?? null) === 'awaiting_review'
+                ? $query
+                    ->where('status', Application::STATUS_EDITORIAL_APPROVED)
+                    ->whereNotNull('customer_preview_released_at')
+                : $query);
+    }
+
+    /** @param Builder<EditorialRevisionRequest> $query */
+    private static function openPrepublicationRevision(Builder $query): Builder
+    {
+        return $query
+            ->where('request_type', '!=', EditorialRevisionRequest::TYPE_PUBLISHED_UPDATE)
+            ->whereIn('status', [
+                EditorialRevisionRequest::STATUS_SUBMITTED,
+                EditorialRevisionRequest::STATUS_IN_PROGRESS,
+            ]);
     }
 
     /** @param Builder<EditorialRevisionRequest> $query */

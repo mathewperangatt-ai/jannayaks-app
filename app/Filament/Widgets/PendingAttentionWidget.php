@@ -117,7 +117,9 @@ class PendingAttentionWidget extends Widget
             'key' => 'revision',
             'label' => 'Pre-publication revision requests',
             'total' => $revisionQuery->clone()->toBase()->count(),
-            'viewAllUrl' => self::filteredApplicationsUrl(['status' => ['values' => [Application::STATUS_EDITORIAL_REVISION_REQUESTED]]]),
+            // Applications with a qualifying open request (same definition as
+            // $revisionQuery), not merely status = editorial_revision_requested.
+            'viewAllUrl' => self::filteredApplicationsUrl(['prepublication_revision_queue' => ['value' => 'open']]),
             'items' => $revisionItems,
         ];
 
@@ -198,6 +200,8 @@ class PendingAttentionWidget extends Widget
             itemMeta: fn (Application $application): string => 'Released '.($application->customer_preview_released_at?->format('d M Y, H:i') ?? '—'),
             tone: '#52758a',
             extraWhere: fn (Builder $query): Builder => $query->whereNotNull('customer_preview_released_at'),
+            // Same criteria as count/extraWhere — not the generic status filter alone.
+            viewAllFilters: ['customer_preview_queue' => ['value' => 'awaiting_review']],
         );
 
         return array_values(array_filter(
@@ -210,6 +214,7 @@ class PendingAttentionWidget extends Widget
      * @param  list<string>  $statuses
      * @param  callable(Application): string  $itemMeta
      * @param  (callable(Builder): Builder)|null  $extraWhere
+     * @param  array<string, mixed>|null  $viewAllFilters  When set, overrides the default status View-all URL so destinations stay aligned with extraWhere.
      * @return array<string, mixed>
      */
     private function applicationStatusCategory(
@@ -221,6 +226,7 @@ class PendingAttentionWidget extends Widget
         callable $itemMeta,
         string $tone,
         ?callable $extraWhere = null,
+        ?array $viewAllFilters = null,
     ): array {
         $query = Application::query()->whereIn('status', $statuses);
         if ($extraWhere !== null) {
@@ -247,7 +253,9 @@ class PendingAttentionWidget extends Widget
             'key' => $key,
             'label' => $label,
             'total' => $query->clone()->toBase()->count(),
-            'viewAllUrl' => self::filteredApplicationsUrl(['status' => ['values' => $statuses]]),
+            'viewAllUrl' => self::filteredApplicationsUrl(
+                $viewAllFilters ?? ['status' => ['values' => $statuses]],
+            ),
             'items' => $items,
         ];
     }

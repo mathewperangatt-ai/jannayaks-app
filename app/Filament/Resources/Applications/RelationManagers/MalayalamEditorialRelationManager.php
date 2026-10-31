@@ -585,19 +585,8 @@ class MalayalamEditorialRelationManager extends RelationManager
     {
         /** @var Application $application */
         $application = $this->getOwnerRecord();
-        if ($application->status !== Application::STATUS_PUBLISHED
-            || $application->published_english_editorial_content_id === null
-            || $application->profile_id === null) {
-            return collect();
-        }
 
-        return EditorialContent::query()
-            ->where('profile_id', $application->profile_id)
-            ->where('language', EditorialContent::LANGUAGE_ML)
-            ->where('source_editorial_content_id', $application->published_english_editorial_content_id)
-            ->whereIn('status', [EditorialContent::STATUS_DRAFT, EditorialContent::STATUS_APPROVED])
-            ->orderByDesc('version_number')
-            ->get();
+        return app(ApplicationWorkflowService::class)->publishableMalayalamVersions($application);
     }
 
     private function isCurrentlyPublished(EditorialContent $record): bool

@@ -9,6 +9,7 @@ use App\Models\EditorialRevisionRequest;
 use App\Models\Profile;
 use App\Models\User;
 use App\Support\PublicationTestBypass;
+use Illuminate\Support\Collection;
 use Illuminate\Support\Facades\DB;
 use InvalidArgumentException;
 
@@ -451,6 +452,32 @@ class ApplicationWorkflowService
 
             return $locked->fresh() ?? $locked;
         });
+    }
+
+    /**
+     * Malayalam editorial versions eligible for the Filament "Approve and
+     * publish Malayalam" selectors. Shared by the application view header and
+     * the Malayalam editorial relation manager so both screens use one rule.
+     *
+     * Does not publish and does not replace publishMalayalam() validation.
+     *
+     * @return Collection<int, EditorialContent>
+     */
+    public function publishableMalayalamVersions(Application $application): Collection
+    {
+        if ($application->status !== Application::STATUS_PUBLISHED
+            || $application->profile_id === null
+            || $application->published_english_editorial_content_id === null) {
+            return collect();
+        }
+
+        return EditorialContent::query()
+            ->where('profile_id', $application->profile_id)
+            ->where('language', EditorialContent::LANGUAGE_ML)
+            ->where('source_editorial_content_id', $application->published_english_editorial_content_id)
+            ->whereIn('status', [EditorialContent::STATUS_DRAFT, EditorialContent::STATUS_APPROVED])
+            ->orderByDesc('version_number')
+            ->get();
     }
 
     /**
