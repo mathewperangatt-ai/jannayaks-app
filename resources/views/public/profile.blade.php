@@ -37,7 +37,9 @@
     .jk-hero{display:grid;grid-template-columns:minmax(0,42fr) minmax(0,58fr);gap:clamp(28px,4.5vw,58px);align-items:center;padding:8px 0 64px;border-bottom:1px solid var(--jk-line)}
     .jk-portrait-wrap{position:relative;padding:10px;border:1px solid #bdcfba;max-width:430px;background:var(--jk-surface)}
     .jk-portrait{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;border:1px solid #aab9a6;background:var(--jk-surface2)}
-    /* Demonstration portraits carry a diagonal "AI GENERATED" watermark that must stay fully visible. */
+    /* --whole: keep the full photograph (no cover crop). Used for demonstration
+       portraits (watermark must stay visible) and when the biography side feature
+       reuses the only available photograph. */
     .jk-portrait.jk-portrait--whole,.jk-side-feature.jk-portrait--whole{aspect-ratio:auto;height:auto;object-fit:contain}
     .jk-portrait-mono{width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;border:1px solid #aab9a6;background:linear-gradient(160deg,#e7efe4,#dbe7d7);font:500 clamp(64px,7vw,110px) var(--jk-serif);color:#9db3a4}
     .jk-caption{display:flex;justify-content:space-between;gap:12px;font:500 9.5px var(--jk-ui);letter-spacing:.18em;text-transform:uppercase;color:#82907f;padding-top:13px}
@@ -234,7 +236,9 @@
                 </div>
                 <aside>
                     @if($photo)
-                        <img class="jk-side-feature{{ $isDemonstration ? ' jk-portrait--whole' : '' }}" src="{{ route('profiles.public.photo', [$profile, $photo]) }}" alt="{{ $photo->alt_text ?: ($displayName.' — documentary photograph') }}">
+                        {{-- Single-photo profiles reuse the primary image here; contain it fully
+                             instead of forcing the 16/10 cover crop that clips heads/faces. --}}
+                        <img class="jk-side-feature{{ ($isDemonstration || $photos->count() <= 1) ? ' jk-portrait--whole' : '' }}" src="{{ route('profiles.public.photo', [$profile, $photo]) }}" alt="{{ $photo->alt_text ?: ($displayName.' — documentary photograph') }}">
                         <p class="jk-figcap">{{ strtoupper($displayName) }} · DOCUMENTARY RECORD</p>
                     @else
                         <div class="jk-summary-quote"><p>{{ $activeEditorial->summary ?: ($headline ?: 'A carefully prepared record of a life of public contribution.') }}</p></div>
