@@ -1,4 +1,4 @@
-@extends('legal.base', ['legalActive' => 'privacy'])
+@extends('legal.base', ['legalActive' => 'privacy', 'legalUpdated' => '1 November 2026'])
 
 @section('title', 'Privacy Policy — Jannayaks')
 @section('seoDescription', 'How Jannayaks, operated by Aurex Network, collects, uses, shares and protects personal data under the Digital Personal Data Protection Act, 2023, and the rights you have.')
@@ -103,7 +103,8 @@
 <p>If you use Recommend Someone, your email application opens a draft for you to review and send. Jannayaks does not send that email, does not receive the other person’s name or email address, and does not store a new recommendation. No profile or account is created unless that person applies and consents. Recommendations already recorded are not deleted automatically; you or the person concerned may ask us to erase them.</p>
 
 <h2>12. Cookies</h2>
-<p>We use essential cookies to keep you signed in and to protect forms and payments. If you choose a language with the translate option, Google sets a cookie to remember it. We do not use advertising or analytics cookies. Pages that load Google Fonts or the Google translation widget share your IP address with Google.</p>
+<p>We use essential cookies to keep you signed in and to protect forms and payments. If you choose a language with the translate option, Google sets a cookie to remember it. Pages that load Google Fonts or the Google translation widget share your IP address with Google. We do not use advertising cookies.</p>
+<p>When Google Analytics 4 is switched on for the public website (it is off unless our operators configure it), Google may set analytics cookies and receive the page address you visit together with ordinary technical data such as approximate location derived from IP address. We configure Analytics without Google Signals, advertising personalisation, or advertising features. We do not send profile display names, email addresses, telephone numbers, application reference numbers, or account identifiers through Analytics. Public profile pages are reported with a generic page title rather than the person's name. Analytics is not loaded on the signed-in application, payment, interview, or administration areas.</p>
 
 <h2>13. Changes to this notice</h2>
 <p>We may update this notice. The date at the top shows the latest version. If a change significantly affects how we use your data, we will tell you by email or on the site and ask for your consent again where the law requires.</p>
