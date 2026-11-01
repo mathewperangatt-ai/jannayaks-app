@@ -117,18 +117,34 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee(route('apply', absolute: false), false);
         $response->assertSee(route('in-memoriam.index', absolute: false), false);
         $response->assertSee(route('search.index', absolute: false), false);
-        // Footer: no phone numbers, no directory link, Google Translate offers EN.
+        // Footer: no phone numbers, no directory link.
+        // Google Translate control is temporarily omitted from the homepage.
         $response->assertDontSee('public_phone', false);
         $response->assertDontSee('>Directories<', false);
-        $response->assertSee("setLang('en')", false);
-        $response->assertSee("'en,ml,hi,ta,kn,te,bn,gu,mr'", false);
+        $response->assertDontSee('class="translate-btn"', false);
+        $response->assertDontSee('class="translate-wrap"', false);
+        $response->assertDontSee("setLang('en')", false);
+        $response->assertDontSee('google_translate_element', false);
+    }
+
+    public function test_homepage_temporarily_hides_google_translate_control(): void
+    {
+        $html = $this->get(route('home'))->assertOk()->getContent();
+
+        $this->assertSame(0, substr_count($html, 'class="translate-wrap"'));
+        $this->assertSame(0, substr_count($html, 'class="translate-btn"'));
+        $this->assertSame(0, substr_count($html, 'id="google_translate_element"'));
+        $this->assertSame(0, substr_count($html, 'translate_a/element.js'));
+        $this->assertStringNotContainsString('aria-label="Translate"', $html);
+        // Native bilingual homepage intro tabs remain.
+        $this->assertStringContainsString('intro-tabs', $html);
     }
 
     public function test_google_translate_control_renders_once_with_https_loader_on_public_pages(): void
     {
         $loader = '<script src="https://translate.google.com/translate_a/element.js?cb=googleTranslateElementInit"></script>';
 
-        foreach ([route('home'), route('faq-charges'), route('search.index')] as $url) {
+        foreach ([route('faq-charges'), route('search.index')] as $url) {
             $html = $this->get($url)->assertOk()->getContent();
 
             $this->assertSame(1, substr_count($html, 'class="translate-wrap"'), $url);

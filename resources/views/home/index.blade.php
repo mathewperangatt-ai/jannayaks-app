@@ -53,8 +53,6 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .nav-links a:hover{color:var(--navy);}
 .nav-links .nav-login-mobile{display:none;}
 .nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.translate-btn{background:transparent;border:1px solid var(--border);color:var(--gray);padding:6px 12px;border-radius:4px;font-size:12px;font-family:var(--fb);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;min-height:40px;}
-.translate-btn:hover{border-color:var(--navy);color:var(--navy);}
 .nav-login{background:transparent;border:1.5px solid var(--navy);color:var(--navy);padding:7px 16px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
 .nav-login:hover{background:var(--navy);color:white;}
 .nav-cta{background:var(--saffron);color:white;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:background .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
@@ -198,14 +196,6 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .mem-btn{background:var(--navy);color:white;border:none;padding:12px 28px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;text-decoration:none;display:inline-block;min-height:44px;line-height:1.4;}
 .mem-btn:hover{background:#9d5e22;}
 /* FOOTER */
-/* TRANSLATE DROPDOWN */
-.translate-wrap{position:relative;}
-.translate-dropdown{display:none;position:absolute;top:calc(100% + 6px);right:0;background:white;border:1px solid var(--border);border-radius:8px;box-shadow:0 4px 20px rgba(0,0,0,.1);min-width:160px;z-index:200;}
-.translate-dropdown.open{display:block;}
-.translate-dropdown a{display:block;padding:12px 16px;font-size:13px;color:var(--charcoal);text-decoration:none;transition:background .15s;min-height:44px;}
-.translate-dropdown a:hover{background:var(--light);}
-.translate-dropdown a:first-child{border-radius:8px 8px 0 0;}
-.translate-dropdown a:last-child{border-radius:0 0 8px 8px;}
 /* MOBILE */
 @media(max-width:899px){
   .container{padding:0 16px;}
@@ -217,10 +207,6 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .nav-links{order:4;width:100%;flex-direction:column;gap:0;padding:6px 0 4px;border-top:1px solid var(--border);margin-top:4px;}
   nav.nav-open .nav-links{display:flex;}
   .nav-links a{display:flex;align-items:center;min-height:44px;padding:10px 4px;font-size:14px;color:var(--navy);}
-  .translate-label{display:none;}
-  .translate-btn{padding:8px 10px;min-width:44px;justify-content:center;}
-  /* Translated labels can push the button to the row's left edge; open rightwards so the menu stays on screen. */
-  .translate-dropdown{right:auto;left:0;}
   .nav-login,.nav-cta{padding:8px 12px;font-size:12px;}
   .hero{padding:36px 16px 36px;}
   .hero-main-heading{margin-bottom:0;}
@@ -279,8 +265,9 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 <noscript><style>.intro-tabs{display:none;}.intro-block[hidden]{display:block;margin-top:32px;}</style></noscript>
 </head>
 <body>
-<!-- GOOGLE TRANSLATE (hidden, triggered by button) -->
-@include('partials.google-translate')
+{{-- Google Translate control temporarily omitted from the homepage only.
+     Shared partials (partials.translate-control / partials.google-translate)
+     remain for other public pages and future multilingual work. --}}
 <script>
 function toggleNavMenu(){
   var nav=document.getElementById('site-nav');
@@ -321,7 +308,6 @@ document.addEventListener('click',function(e){
       <li><a class="nav-login-mobile" href="{{ route('login') }}">Sign In</a></li>
     </ul>
     <div class="nav-right">
-      @include('partials.translate-control')
       <a class="nav-login" href="{{ route('login') }}">Sign In</a>
       <a class="nav-cta" href="{{ route('apply') }}">Create Profile</a>
     </div>
