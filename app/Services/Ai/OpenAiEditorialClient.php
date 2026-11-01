@@ -32,20 +32,30 @@ class OpenAiEditorialClient implements EditorialAiClient
 
         $endpoint = (string) config('jannayaks.ai.openai.endpoint', 'https://api.openai.com/v1/chat/completions');
         $timeout = (int) config('jannayaks.ai.openai.timeout_seconds', 60);
+        $model = $this->modelName();
+
+        $payload = [
+            'model' => $model,
+            'response_format' => ['type' => 'json_object'],
+            'messages' => [
+                ['role' => 'system', 'content' => (string) $request['system']],
+                ['role' => 'user', 'content' => (string) $request['user']],
+            ],
+        ];
+
+        // gpt-6-luna rejects temperature on Chat Completions; it uses reasoning_effort instead.
+        // All other models (including gpt-4.1-mini) keep temperature so rollback stays one env change.
+        if ($this->isGpt6LunaModel($model)) {
+            $payload['reasoning_effort'] = 'medium';
+        } else {
+            $payload['temperature'] = 0.2;
+        }
 
         try {
             $response = Http::withToken($apiKey)
                 ->timeout($timeout)
                 ->acceptJson()
-                ->post($endpoint, [
-                    'model' => $this->modelName(),
-                    'temperature' => 0.2,
-                    'response_format' => ['type' => 'json_object'],
-                    'messages' => [
-                        ['role' => 'system', 'content' => (string) $request['system']],
-                        ['role' => 'user', 'content' => (string) $request['user']],
-                    ],
-                ]);
+                ->post($endpoint, $payload);
         } catch (ConnectionException $e) {
             Log::warning('editorial.ai.timeout', [
                 'provider' => $this->providerName(),
@@ -73,6 +83,11 @@ class OpenAiEditorialClient implements EditorialAiClient
         }
 
         return $this->parseJsonContent($content);
+    }
+
+    private function isGpt6LunaModel(string $model): bool
+    {
+        return strtolower(trim($model)) === 'gpt-6-luna';
     }
 
     /**
