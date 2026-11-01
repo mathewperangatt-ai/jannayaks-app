@@ -22,6 +22,8 @@ class SecurityHeadersTest extends TestCase
             'Permissions-Policy',
             'camera=(), microphone=(), geolocation=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), interest-cohort=()'
         );
+        $response->assertHeader('Cross-Origin-Opener-Policy', 'same-origin');
+        $response->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
     }
 
     public function test_headers_are_applied_to_homepage_and_404s_alike(): void
@@ -29,12 +31,35 @@ class SecurityHeadersTest extends TestCase
         $this->get(route('home'))
             ->assertOk()
             ->assertHeader('X-Content-Type-Options', 'nosniff')
-            ->assertHeader('X-Frame-Options', 'DENY');
+            ->assertHeader('X-Frame-Options', 'DENY')
+            ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin')
+            ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
 
         $this->get('/this-route-does-not-exist-9x7')
             ->assertNotFound()
             ->assertHeader('X-Frame-Options', 'DENY')
-            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin');
+            ->assertHeader('Referrer-Policy', 'strict-origin-when-cross-origin')
+            ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin')
+            ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
+    }
+
+    public function test_coop_and_corp_apply_consistently_to_admin_and_member_pages(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin')
+            ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
+
+        $this->get(route('login'))
+            ->assertOk()
+            ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin')
+            ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
+
+        // Filament admin login is public; no staff session required.
+        $this->get(route('filament.admin.auth.login'))
+            ->assertOk()
+            ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin')
+            ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
     }
 
     public function test_csp_ships_report_only_by_default(): void
