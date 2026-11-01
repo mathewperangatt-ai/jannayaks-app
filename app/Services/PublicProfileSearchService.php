@@ -13,13 +13,20 @@ class PublicProfileSearchService
     public const PER_PAGE = 12;
 
     /**
-     * Gallery: published profiles only, newest published first (deterministic, non-evaluative).
+     * Gallery: genuine published profiles only, newest published first
+     * (deterministic, non-evaluative). Demonstration profiles (owner email
+     * under SitemapService::DEMO_EMAIL_DOMAIN — same rule as /demo-profiles
+     * and the sitemap) are excluded here and listed separately.
      *
      * @param  array{district_id?: int|null, state?: string|null, country?: string|null}  $filters
      */
     public function gallery(array $filters = [], int $perPage = self::PER_PAGE): LengthAwarePaginator
     {
         $query = $this->publishedBaseQuery()
+            ->whereDoesntHave(
+                'user',
+                fn (Builder $q) => $q->where('email', 'like', '%'.SitemapService::DEMO_EMAIL_DOMAIN)
+            )
             ->with([
                 'geography.district.state',
                 'geography.localBody',

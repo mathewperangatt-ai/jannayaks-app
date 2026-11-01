@@ -89,6 +89,26 @@ class DemoProfilesPageTest extends TestCase
             ->assertSee('Dr. Saroja Nair (Late)', false);
     }
 
+    public function test_gallery_excludes_seeded_demo_profiles_that_remain_on_demo_page(): void
+    {
+        $this->seed(DemoProfilesSeeder::class);
+
+        $demo = Profile::query()->where('full_name', 'T. Gopalakrishnan')->firstOrFail();
+        $this->assertStringEndsWith('@jannayaks.internal', strtolower((string) $demo->user->email));
+
+        $this->get(route('gallery.index'))
+            ->assertOk()
+            ->assertDontSee('T. Gopalakrishnan', false)
+            ->assertDontSee('Arjun Menon', false)
+            ->assertDontSee('Meera Krishnan', false);
+
+        $this->get(route('demo-profiles.index'))
+            ->assertOk()
+            ->assertSee('T. Gopalakrishnan', false)
+            ->assertSee('Arjun Menon', false)
+            ->assertSee('Meera Krishnan', false);
+    }
+
     public function test_demo_profile_pages_link_back_to_the_demo_collection_and_real_profiles_to_the_gallery(): void
     {
         $this->seed(DemoProfilesSeeder::class);

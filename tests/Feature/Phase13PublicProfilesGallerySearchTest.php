@@ -213,6 +213,34 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
         $this->assertSame($older->id > 0, true);
     }
 
+    public function test_gallery_excludes_demo_profiles_while_demo_page_and_public_urls_remain(): void
+    {
+        [$genuine] = $this->makePublishedProfile([
+            'user' => User::factory()->create(['email' => 'genuine.gallery.leader@example.com']),
+            'display_name' => 'Genuine Gallery Leader',
+        ]);
+        [$demo] = $this->makePublishedProfile([
+            'user' => User::factory()->create(['email' => 'demo.gallery.leader@jannayaks.internal']),
+            'display_name' => 'Demo Gallery Leader',
+        ]);
+
+        $this->assertSame('published', $genuine->fresh()->status);
+        $this->assertSame('published', $demo->fresh()->status);
+
+        $this->get(route('gallery.index'))
+            ->assertOk()
+            ->assertSee('Genuine Gallery Leader', false)
+            ->assertDontSee('Demo Gallery Leader', false);
+
+        $this->get(route('demo-profiles.index'))
+            ->assertOk()
+            ->assertSee('Demo Gallery Leader', false)
+            ->assertDontSee('Genuine Gallery Leader', false);
+
+        $this->get(route('profiles.public', $genuine->slug))->assertOk()->assertSee('Genuine Gallery Leader', false);
+        $this->get(route('profiles.public', $demo->slug))->assertOk()->assertSee('Demo Gallery Leader', false);
+    }
+
     public function test_primary_text_search_finds_by_name_profession_location_and_multi_word(): void
     {
         $this->seedGeo();
