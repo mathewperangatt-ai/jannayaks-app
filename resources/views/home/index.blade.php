@@ -263,6 +263,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 }
 </style>
 <noscript><style>.intro-tabs{display:none;}.intro-block[hidden]{display:block;margin-top:32px;}</style></noscript>
+@include('partials.ga4')
 </head>
 <body>
 {{-- Google Translate control temporarily omitted from the homepage only.

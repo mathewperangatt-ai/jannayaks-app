@@ -64,6 +64,13 @@ class SecurityHeadersTest extends TestCase
 
         $this->assertContains('https://translate-pa.googleapis.com', $directives['script-src']);
         $this->assertContains('https://translate-pa.googleapis.com', $directives['connect-src']);
+        $this->assertContains('https://www.googletagmanager.com', $directives['script-src']);
+        $this->assertContains('https://www.google-analytics.com', $directives['connect-src']);
+        $this->assertContains('https://analytics.google.com', $directives['connect-src']);
+        $this->assertContains('https://region1.google-analytics.com', $directives['connect-src']);
+        $this->assertContains('https://www.googletagmanager.com', $directives['connect-src']);
+        $this->assertContains('https://www.googletagmanager.com', $directives['img-src']);
+        $this->assertContains('https://www.google-analytics.com', $directives['img-src']);
         $this->assertContains('https://www.gstatic.com', $directives['style-src']);
         $this->assertContains('https://www.gstatic.com', $directives['img-src']);
         $this->assertSame(["'self'"], $directives['default-src']);
@@ -77,6 +84,8 @@ class SecurityHeadersTest extends TestCase
 
         $admin = (string) config('jannayaks.security.headers.csp_admin');
         $this->assertStringNotContainsString('translate-pa.googleapis.com', $admin);
+        $this->assertStringNotContainsString('googletagmanager.com', $admin);
+        $this->assertStringNotContainsString('google-analytics.com', $admin);
         $this->assertStringContainsString("'unsafe-eval'", $admin);
     }
 

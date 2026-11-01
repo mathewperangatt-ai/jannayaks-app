@@ -74,6 +74,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   .translate-btn{padding:8px 10px;min-width:44px;justify-content:center;}
 }
 </style>
+@include('partials.ga4')
 </head>
 <body>
 <nav>

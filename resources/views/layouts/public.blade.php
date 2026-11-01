@@ -109,6 +109,7 @@
             .nav-logo img{height:48px}
         }
     </style>
+    @include('partials.ga4')
     @stack('head')
 </head>
 <body>

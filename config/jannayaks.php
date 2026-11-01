@@ -22,6 +22,23 @@ return [
     ],
 
     /*
+    | Google Analytics 4 (public marketing pages only).
+    |
+    | Empty / unset disables every analytics script. A value must match the
+    | GA4 Measurement ID pattern G-XXXXXXXX; anything else is treated as empty.
+    | Do not load this on Filament, authenticated application/payment/interview
+    | shells, or admin pages. Page views use the default full-page MPA hit —
+    | no SPA navigation listeners.
+    */
+    'ga4' => [
+        'measurement_id' => (static function (): string {
+            $raw = strtoupper(trim((string) env('JANNAYAKS_GA4_MEASUREMENT_ID', '')));
+
+            return preg_match('/^G-[A-Z0-9]+$/', $raw) === 1 ? $raw : '';
+        })(),
+    ],
+
+    /*
     | Temporary editorial test bypass (DISABLED by default).
     |
     | Unlike payments.testing_mode, this never applies to every application.
@@ -352,8 +369,9 @@ PROMPT,
         /*
         | HTTP response security headers (app/Http/Middleware/SetSecurityHeaders.php).
         | The CSP below is derived from the resources the application actually loads:
-        | self-hosted assets, Google Fonts stylesheets + gstatic font files, and the
-        | Google Translate widget on the homepage (see docs/security-headers-csp.md).
+        | self-hosted assets, Google Fonts stylesheets + gstatic font files, the
+        | Google Translate widget on public pages, and (when configured) GA4 gtag
+        | hosts (see docs/security-headers-csp.md).
         | 'unsafe-eval' is deliberately absent from the member policy; the admin
         | policy adds it because Filament's Alpine build evaluates expressions via
         | the Function constructor, which an enforced CSP blocks without it.
@@ -371,12 +389,13 @@ PROMPT,
                 "form-action 'self'",
                 // Google Translate (public pages): translate-pa serves the translation
                 // script + translateHtml requests; gstatic/google hosts style and
-                // decorate Google's "Translated into…" bar.
-                "img-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com https://www.google.com https://translate.googleapis.com https://translate.google.com",
+                // decorate Google's "Translated into…" bar. GA4 collect/pixel hosts
+                // are listed only as the minimum needed for gtag.js when enabled.
+                "img-src 'self' data: https://fonts.gstatic.com https://www.gstatic.com https://www.google.com https://translate.googleapis.com https://translate.google.com https://www.googletagmanager.com https://www.google-analytics.com",
                 "style-src 'self' 'unsafe-inline' https://fonts.googleapis.com https://www.gstatic.com",
                 "font-src 'self' https://fonts.gstatic.com",
-                "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com",
-                "connect-src 'self' https://translate.googleapis.com https://translate-pa.googleapis.com",
+                "script-src 'self' 'unsafe-inline' https://translate.google.com https://translate.googleapis.com https://translate-pa.googleapis.com https://www.googletagmanager.com",
+                "connect-src 'self' https://translate.googleapis.com https://translate-pa.googleapis.com https://www.google-analytics.com https://analytics.google.com https://region1.google-analytics.com https://www.googletagmanager.com",
                 'frame-src https://translate.googleapis.com',
             ]),
             // Filament admin panel (Livewire + Alpine): script-src gains
