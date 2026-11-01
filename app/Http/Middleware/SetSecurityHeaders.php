@@ -19,6 +19,11 @@ use Symfony\Component\HttpFoundation\Response;
  *   docs/security-headers-csp.md.
  * - X-Powered-By is removed at the application layer because expose_php is a
  *   PHP_INI_SYSTEM setting that cannot be changed at runtime.
+ * - COOP is same-origin: Google sign-in is a top-level Socialite redirect
+ *   (not a popup), and external links already use rel=noopener.
+ * - CORP is same-origin: public photographs are streamed same-origin through
+ *   Laravel (not hotlinked from R2). This does not block the page from loading
+ *   cross-origin Google Fonts / Translate / GA4 resources.
  */
 class SetSecurityHeaders
 {
@@ -36,6 +41,8 @@ class SetSecurityHeaders
             'Permissions-Policy',
             'camera=(), microphone=(), geolocation=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), interest-cohort=()'
         );
+        $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
+        $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
 
         $csp = $this->policyFor($request);
         if ($csp !== '') {
