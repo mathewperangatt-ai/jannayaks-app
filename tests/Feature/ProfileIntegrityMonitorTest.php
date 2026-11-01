@@ -1391,6 +1391,84 @@ class ProfileIntegrityMonitorTest extends TestCase
             ->once();
     }
 
+    public function test_demo_page_profile_mismatch_is_recorded_but_omitted_from_founder_alert(): void
+    {
+        Mail::fake();
+        $pack = $this->seedPublishedProfile();
+        $demoEmail = 'demo.integrity.'.$this->randomSuffix().'@jannayaks.internal';
+        $pack['member']->forceFill(['email' => $demoEmail])->save();
+        Profile::query()->whereKey($pack['profile']->id)->update(['slug' => 'tampered-demo-'.$pack['profile']->id]);
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+
+        $this->assertSame(1, IntegrityIncident::query()->where('profile_id', $pack['profile']->id)->count());
+        Mail::assertNothingSent();
+    }
+
+    public function test_genuine_customer_mismatch_still_sends_founder_alert(): void
+    {
+        Mail::fake();
+        $pack = $this->seedPublishedProfile();
+        $this->assertStringNotContainsString('@jannayaks.internal', strtolower((string) $pack['member']->email));
+        Profile::query()->whereKey($pack['profile']->id)->update(['slug' => 'tampered-customer-'.$pack['profile']->id]);
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+
+        Mail::assertSent(ProfileIntegrityAlertMail::class, function (ProfileIntegrityAlertMail $mail) use ($pack): bool {
+            $this->assertCount(1, $mail->findings);
+            $this->assertSame((int) $pack['profile']->id, (int) $mail->findings[0]['profile_id']);
+
+            return true;
+        });
+    }
+
+    public function test_waived_payment_genuine_profile_remains_reportable_in_founder_alert(): void
+    {
+        Mail::fake();
+        $pack = $this->seedPublishedProfile();
+        $pack['application']->forceFill([
+            'payment_status' => 'waived',
+            'waived_by_user_id' => User::factory()->admin()->create()->id,
+        ])->save();
+        $this->assertStringNotContainsString('@jannayaks.internal', strtolower((string) $pack['member']->fresh()->email));
+        Profile::query()->whereKey($pack['profile']->id)->update(['slug' => 'tampered-waived-'.$pack['profile']->id]);
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+
+        $this->assertSame(1, IntegrityIncident::query()->where('profile_id', $pack['profile']->id)->count());
+        Mail::assertSent(ProfileIntegrityAlertMail::class, function (ProfileIntegrityAlertMail $mail) use ($pack): bool {
+            $this->assertCount(1, $mail->findings);
+            $this->assertSame((int) $pack['profile']->id, (int) $mail->findings[0]['profile_id']);
+
+            return true;
+        });
+    }
+
+    public function test_mixed_corpus_founder_alert_lists_only_non_demo_findings(): void
+    {
+        Mail::fake();
+        $demo = $this->seedPublishedProfile(slugSuffix: 1);
+        $demo['member']->forceFill(['email' => 'demo.mixed.'.$this->randomSuffix().'@jannayaks.internal'])->save();
+        $customer = $this->seedPublishedProfile(slugSuffix: 2);
+
+        Profile::query()->whereKey($demo['profile']->id)->update(['slug' => 'tampered-mixed-demo-'.$demo['profile']->id]);
+        Profile::query()->whereKey($customer['profile']->id)->update(['slug' => 'tampered-mixed-customer-'.$customer['profile']->id]);
+
+        Artisan::call('jannayaks:verify-profile-integrity');
+
+        $this->assertSame(1, IntegrityIncident::query()->where('profile_id', $demo['profile']->id)->count());
+        $this->assertSame(1, IntegrityIncident::query()->where('profile_id', $customer['profile']->id)->count());
+
+        Mail::assertSent(ProfileIntegrityAlertMail::class, function (ProfileIntegrityAlertMail $mail) use ($demo, $customer): bool {
+            $ids = array_map(static fn (array $row): int => (int) $row['profile_id'], $mail->findings);
+            $this->assertSame([(int) $customer['profile']->id], $ids);
+            $this->assertNotContains((int) $demo['profile']->id, $ids);
+            $this->assertSame(1, (int) $mail->summary['incidents_created']);
+
+            return true;
+        });
+    }
+
     /**
      * Seed a fully published living profile (optionally with an approved
      * public photograph and its object on the fake disk).
