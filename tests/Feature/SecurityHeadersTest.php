@@ -54,6 +54,12 @@ class SecurityHeadersTest extends TestCase
             ->assertOk()
             ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin')
             ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
+
+        // Filament admin login is public; no staff session required.
+        $this->get(route('filament.admin.auth.login'))
+            ->assertOk()
+            ->assertHeader('Cross-Origin-Opener-Policy', 'same-origin')
+            ->assertHeader('Cross-Origin-Resource-Policy', 'same-origin');
     }
 
     public function test_csp_ships_report_only_by_default(): void
