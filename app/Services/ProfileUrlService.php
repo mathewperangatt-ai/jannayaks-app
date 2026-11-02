@@ -24,6 +24,35 @@ class ProfileUrlService
 
     private const MAX_GENERATION_ATTEMPTS = 32;
 
+    /**
+     * Persist the applicant's chosen public hosting destination on the
+     * application (single source of truth). Does not change slug or publication.
+     *
+     * Member updates must not run after the linked profile is published.
+     * Pass $allowAfterPublication = true only for future exceptional staff tooling.
+     */
+    public function setHostingDestination(
+        Application $application,
+        string $destination,
+        bool $allowAfterPublication = false,
+    ): void {
+        $normalized = strtolower(trim($destination));
+        if (! in_array($normalized, Application::hostingDestinations(), true)) {
+            throw new InvalidArgumentException('Choose either Jannayaks or IconsHerald as the hosting destination.');
+        }
+
+        if (! $allowAfterPublication) {
+            $profile = $application->relationLoaded('profile')
+                ? $application->profile
+                : $application->profile()->first();
+            if ($profile && ($profile->status === 'published' || $profile->published_at !== null)) {
+                throw new InvalidArgumentException('Hosting destination cannot be changed after publication.');
+            }
+        }
+
+        $application->forceFill(['hosting_destination' => $normalized])->save();
+    }
+
     public function __construct(
         private PersonalSlugGenerator $personalSlugs,
         private StaffAuditLogger $auditLogger,

@@ -57,6 +57,7 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $before = $profile->fresh()->slug;
 
         $this->actingAs($member)->post(route('applications.profile-url.update', $application), [
+            'hosting_destination' => 'jannayaks',
             'slug' => 'mathew-perangatt',
         ])->assertSessionHasErrors('slug');
 
@@ -97,6 +98,7 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         [$member, $application, $profile] = $this->prepareUnpublishedLiving('accomplished');
 
         $this->actingAs($member)->post(route('applications.profile-url.update', $application), [
+            'hosting_destination' => 'jannayaks',
             'slug' => 'arun.kumar',
         ])->assertRedirect(route('applications.profile-url', $application));
 
@@ -137,6 +139,7 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $before = $profile->fresh()->slug;
 
         $this->actingAs($member)->post(route('applications.profile-url.update', $application), [
+            'hosting_destination' => 'jannayaks',
             'slug' => 'post-publish-change',
         ])->assertSessionHasErrors('slug');
 
@@ -168,7 +171,8 @@ class Phase12ProfileUrlAndQrTest extends TestCase
 
         foreach (['admin', 'login', 'applications', 'search', 'in-memoriam'] as $reserved) {
             $this->actingAs($member)->post(route('applications.profile-url.update', $application), [
-                'slug' => $reserved,
+            'hosting_destination' => 'jannayaks',
+            'slug' => $reserved,
             ])->assertSessionHasErrors('slug');
         }
     }
@@ -190,6 +194,7 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $intruder = User::factory()->create();
 
         $this->actingAs($intruder)->post(route('applications.profile-url.update', $application), [
+            'hosting_destination' => 'jannayaks',
             'slug' => 'stolen-slug',
             'profile_id' => $profile->id,
             'application_id' => $application->id,
@@ -324,10 +329,12 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $support = User::factory()->support()->create();
 
         $this->actingAs($editor)->post(route('applications.profile-url.update', $application), [
+            'hosting_destination' => 'jannayaks',
             'slug' => 'editor-hijack',
         ])->assertForbidden();
 
         $this->actingAs($support)->post(route('applications.profile-url.update', $application), [
+            'hosting_destination' => 'jannayaks',
             'slug' => 'support-hijack',
         ])->assertForbidden();
 

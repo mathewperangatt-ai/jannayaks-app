@@ -173,6 +173,9 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::post('/applications/{application}/profile-url', [ProfileUrlController::class, 'update'])
         ->middleware('throttle:20,1')
         ->name('applications.profile-url.update');
+    Route::post('/applications/{application}/profile-url/hosting', [ProfileUrlController::class, 'updateHosting'])
+        ->middleware('throttle:20,1')
+        ->name('applications.profile-url.hosting');
     Route::get('/applications/{application}/profile-url/availability', [ProfileUrlController::class, 'availability'])
         ->middleware('throttle:30,1')
         ->name('applications.profile-url.availability');

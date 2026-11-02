@@ -83,6 +83,7 @@ class PersonalProfileUrlSystemTest extends TestCase
         $prepared = $this->prepareUnpublishedLiving('accomplished', 'Indian National Congress');
 
         $this->actingAs($prepared['user'])->post(route('applications.profile-url.update', $prepared['application']), [
+            'hosting_destination' => Application::HOSTING_DESTINATION_JANNAYAKS,
             'slug' => 'indian-national-congress',
         ])->assertSessionHasErrors('slug');
     }
@@ -161,6 +162,7 @@ class PersonalProfileUrlSystemTest extends TestCase
         app(ProfileUrlService::class)->selectPersonalSlug($prepared['profile'], $prepared['user'], 'arun.kumar', 'accomplished');
 
         $this->actingAs($prepared['user'])->post(route('applications.profile-url.update', $prepared['application']), [
+            'hosting_destination' => Application::HOSTING_DESTINATION_JANNAYAKS,
             'slug' => 'arun.kumar.nair',
         ])->assertSessionHasErrors('slug');
 

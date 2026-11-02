@@ -3,6 +3,7 @@
 namespace App\Http\Controllers;
 
 use App\Http\Requests\SelectPersonalProfileUrlRequest;
+use App\Http\Requests\UpdateHostingDestinationRequest;
 use App\Models\Application;
 use App\Models\User;
 use App\Services\ProfileQrCodeService;
@@ -49,6 +50,11 @@ class ProfileUrlController extends Controller
             ? $this->profileUrls->suggestPersonalSlugs($verifiedName, (int) $profile->id)
             : [];
 
+        $hostingDestination = (string) (
+            $application->hosting_destination
+            ?: Application::HOSTING_DESTINATION_JANNAYAKS
+        );
+
         return view('application.profile-url', [
             'application' => $application,
             'member' => $member,
@@ -62,6 +68,8 @@ class ProfileUrlController extends Controller
             'personalSlugLocked' => $personalSlugLocked,
             'verifiedName' => $verifiedName,
             'suggestions' => $suggestions,
+            'hostingDestination' => $hostingDestination,
+            'hostingDestinationLocked' => $isPublished,
         ]);
     }
 
@@ -93,13 +101,58 @@ class ProfileUrlController extends Controller
                 (string) $request->validated('slug'),
                 (string) $application->package_tier,
             );
+            $this->profileUrls->setHostingDestination(
+                $application->fresh(),
+                (string) $request->validated('hosting_destination'),
+            );
         } catch (InvalidArgumentException $e) {
-            return back()->withErrors(['slug' => $e->getMessage()])->withInput();
+            $field = str_contains($e->getMessage(), 'Hosting destination')
+                ? 'hosting_destination'
+                : 'slug';
+
+            return back()->withErrors([$field => $e->getMessage()])->withInput();
         }
 
         return redirect()
             ->route('applications.profile-url', $application)
             ->with('status', 'Your personal profile URL has been reserved. It becomes public after approval.');
+    }
+
+    public function updateHosting(UpdateHostingDestinationRequest $request, Application $application): RedirectResponse
+    {
+        $member = $this->authenticatedOwner($application);
+        $profile = $application->profile;
+
+        if (! $profile) {
+            $tier = strtolower((string) $application->package_tier);
+            if ($this->profileUrls->packageTierAllowsPersonalSlug($tier)) {
+                $profile = $this->profileUrls->ensureDraftProfileForApplication($application);
+                $application->refresh();
+            }
+        }
+
+        if (! $profile) {
+            return redirect()
+                ->route('applications.show', $application)
+                ->withErrors(['hosting_destination' => 'Your profile is not ready yet.']);
+        }
+
+        if ((int) $profile->user_id !== (int) $member->id) {
+            abort(403);
+        }
+
+        try {
+            $this->profileUrls->setHostingDestination(
+                $application->fresh(),
+                (string) $request->validated('hosting_destination'),
+            );
+        } catch (InvalidArgumentException $e) {
+            return back()->withErrors(['hosting_destination' => $e->getMessage()])->withInput();
+        }
+
+        return redirect()
+            ->route('applications.profile-url', $application)
+            ->with('status', 'Your hosting destination has been saved.');
     }
 
     public function qr(Request $request, Application $application): Response|RedirectResponse

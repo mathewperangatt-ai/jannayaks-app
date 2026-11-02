@@ -39,14 +39,48 @@
         <p class="lead" style="margin:0">No canonical URL has been assigned yet.</p>
     @endif
 
+    @php
+        $selectedHosting = old('hosting_destination', $hostingDestination);
+        $hostPrefix = $selectedHosting === \App\Models\Application::HOSTING_DESTINATION_ICONSHERALD
+            ? 'iconsherald.com/'
+            : 'jannayaks.in/';
+    @endphp
+
+    <h2 style="margin-top:14px;font-size:16px">Where should your profile be hosted?</h2>
+    @if($hostingDestinationLocked)
+        <p class="lead" style="margin:0">
+            @if($hostingDestination === \App\Models\Application::HOSTING_DESTINATION_ICONSHERALD)
+                IconsHerald — <code>iconsherald.com/{{ $profile->slug }}</code>
+            @else
+                Jannayaks — <code>jannayaks.in/{{ $profile->slug }}</code>
+            @endif
+        </p>
+        <p class="sub" style="margin:0">Hosting destination is locked after publication.</p>
+    @else
+        <p class="sub" style="margin:0">
+            Choose one public address. Your profile content, editorial and publication stay on Jannayaks either way.
+        </p>
+    @endif
+
     @if($canSelectPersonal)
-        <h2 style="margin-top:14px;font-size:16px">Choose your Jannayaks URL</h2>
+        <h2 style="margin-top:14px;font-size:16px">Choose your personal URL</h2>
         <p class="sub" style="margin:0">
             Name on the profile: <b>{{ $verifiedName }}</b>.
             These suggestions are derived from that name. Arbitrary usernames are not allowed.
         </p>
         @if($personalSlugLocked)
             <p class="lead" style="margin:0">Your personal URL is permanent and cannot be changed from this page.</p>
+            @unless($hostingDestinationLocked)
+                <form method="post" action="{{ route('applications.profile-url.hosting', $application) }}" class="stack" style="margin-top:10px">
+                    @csrf
+                    @include('application.partials.hosting-destination-fields', [
+                        'selectedHosting' => $selectedHosting,
+                        'hostPrefix' => $hostPrefix,
+                        'slugPreview' => $profile->slug,
+                    ])
+                    <button type="submit" class="btn primary">Save hosting destination</button>
+                </form>
+            @endunless
         @else
             @if(count($suggestions))
                 <ul class="stack" style="margin:10px 0 0;padding-left:0;list-style:none">
@@ -65,9 +99,14 @@
             @endif
             <form method="post" action="{{ route('applications.profile-url.update', $application) }}" class="stack" style="margin-top:10px">
                 @csrf
+                @include('application.partials.hosting-destination-fields', [
+                    'selectedHosting' => $selectedHosting,
+                    'hostPrefix' => $hostPrefix,
+                    'slugPreview' => null,
+                ])
                 <label for="slug">Personal URL</label>
                 <div class="row" style="gap:8px;align-items:center">
-                    <span class="sub">jannayaks.in/</span>
+                    <span class="sub" id="hosting-prefix">{{ $hostPrefix }}</span>
                     <input id="slug" name="slug" type="text" maxlength="64" required
                            value="{{ old('slug', $preferredSlug ?: $profile->slug) }}"
                            pattern="[a-z0-9]+(?:[.\-][a-z0-9]+)*"
@@ -83,6 +122,17 @@
         <p class="lead" style="margin:0">
             This profile has a six-character system address. A personal name-based address is not available for this application.
         </p>
+        @unless($hostingDestinationLocked)
+            <form method="post" action="{{ route('applications.profile-url.hosting', $application) }}" class="stack" style="margin-top:10px">
+                @csrf
+                @include('application.partials.hosting-destination-fields', [
+                    'selectedHosting' => $selectedHosting,
+                    'hostPrefix' => $hostPrefix,
+                    'slugPreview' => $profile->slug,
+                ])
+                <button type="submit" class="btn primary">Save hosting destination</button>
+            </form>
+        @endunless
     @endif
 
     @if($isPublished && $canonicalUrl)
@@ -102,9 +152,37 @@
         </ul>
     @endif
 </section>
-@if($canSelectPersonal && ! $personalSlugLocked)
 <script>
 (() => {
+    const prefixes = {
+        jannayaks: 'jannayaks.in/',
+        iconsherald: 'iconsherald.com/',
+    };
+    const prefixEl = document.getElementById('hosting-prefix');
+    const previewEl = document.getElementById('hosting-preview');
+    const slugInput = document.getElementById('slug');
+
+    const syncHostingPrefix = () => {
+        const selected = document.querySelector('input[name="hosting_destination"]:checked');
+        const key = selected ? selected.value : 'jannayaks';
+        const prefix = prefixes[key] || prefixes.jannayaks;
+        if (prefixEl) {
+            prefixEl.textContent = prefix;
+        }
+        if (previewEl && slugInput) {
+            previewEl.textContent = prefix + (slugInput.value.trim() || {{ json_encode((string) ($profile->slug ?? '')) }});
+        } else if (previewEl) {
+            const slug = {{ json_encode((string) ($profile->slug ?? '')) }};
+            previewEl.textContent = prefix + slug;
+        }
+    };
+
+    document.querySelectorAll('.js-hosting-choice').forEach((input) => {
+        input.addEventListener('change', syncHostingPrefix);
+    });
+    syncHostingPrefix();
+
+    @if($canSelectPersonal && ! $personalSlugLocked)
     const input = document.getElementById('slug');
     const status = document.getElementById('slug-availability');
     const endpoint = @json(route('applications.profile-url.availability', $application));
@@ -118,6 +196,7 @@
     });
 
     input.addEventListener('input', () => {
+        syncHostingPrefix();
         const value = input.value.trim();
         window.clearTimeout(timer);
         if (value === '') {
@@ -136,7 +215,7 @@
             status.style.color = payload.available ? 'var(--ok)' : 'var(--bad)';
         }, 250);
     });
+    @endif
 })();
 </script>
-@endif
 @endsection
