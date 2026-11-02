@@ -88,6 +88,10 @@ class PublicProfileUrlController extends Controller
             abort(404);
         }
 
+        if ($this->profileUrls->isHostedOnIconsHerald($target)) {
+            abort(404);
+        }
+
         return redirect()->route('profiles.public', [
             'slug' => $target->slug,
             'lang' => $request->query('lang'),
@@ -104,6 +108,11 @@ class PublicProfileUrlController extends Controller
             abort(404);
         }
 
+        // IconsHerald-hosted profiles are not served (or redirected) on Jannayaks.
+        if ($this->profileUrls->isHostedOnIconsHerald($profile)) {
+            abort(404);
+        }
+
         return redirect()->route('profiles.public', [
             'slug' => $profile->slug,
             'lang' => $request->query('lang'),
@@ -113,6 +122,11 @@ class PublicProfileUrlController extends Controller
     private function renderOrHide(Request $request, Profile $profile): View|Response
     {
         if (! $this->profileUrls->isPubliclyVisible($profile)) {
+            abort(404);
+        }
+
+        // Detailed pages for IconsHerald-hosted profiles live only on IconsHerald.
+        if ($this->profileUrls->isHostedOnIconsHerald($profile)) {
             abort(404);
         }
 
