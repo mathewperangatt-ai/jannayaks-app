@@ -308,6 +308,19 @@ class ApplicationInfolist
                     TextEntry::make('profile.slug')
                         ->label('Canonical slug')
                         ->placeholder('—'),
+                    TextEntry::make('hosting_destination')
+                        ->label('Hosting destination')
+                        ->state(function (?Application $record): string {
+                            $destination = (string) (
+                                $record?->hosting_destination
+                                ?: Application::HOSTING_DESTINATION_JANNAYAKS
+                            );
+
+                            return match ($destination) {
+                                Application::HOSTING_DESTINATION_ICONSHERALD => 'IconsHerald (iconsherald.com)',
+                                default => 'Jannayaks (jannayaks.in)',
+                            };
+                        }),
                     TextEntry::make('profile_canonical_url')
                         ->label('Canonical public URL')
                         ->state(function (?Application $record): string {

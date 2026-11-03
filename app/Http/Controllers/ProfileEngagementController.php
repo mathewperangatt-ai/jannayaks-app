@@ -38,7 +38,7 @@ class ProfileEngagementController extends Controller
         ]);
 
         $profile = Profile::query()->whereRaw('lower(slug) = ?', [strtolower(trim($slug))])->firstOrFail();
-        if (! $this->profileUrls->isPubliclyVisible($profile)) {
+        if (! $this->profileUrls->isPubliclyVisible($profile) || $this->profileUrls->isHostedOnIconsHerald($profile)) {
             abort(404);
         }
 
@@ -101,7 +101,7 @@ class ProfileEngagementController extends Controller
         }
 
         $profile = Profile::query()->whereRaw('lower(slug) = ?', [strtolower(trim($slug))])->firstOrFail();
-        if (! $this->profileUrls->isPubliclyVisible($profile)) {
+        if (! $this->profileUrls->isPubliclyVisible($profile) || $this->profileUrls->isHostedOnIconsHerald($profile)) {
             abort(404);
         }
 

@@ -4,7 +4,10 @@
     $descriptor = $presentation->conciseDescriptor($item);
     $location = $presentation->publicLocationLabel($item);
     $photo = $presentation->publicProfilePhoto($item);
-    $url = route('profiles.public', array_filter(['slug' => $item->slug, 'lang' => $cardLanguage ?? null]));
+    $url = app(\App\Services\ProfileUrlService::class)->publicListingUrl(
+        $item,
+        isset($cardLanguage) ? (string) $cardLanguage : null,
+    );
 @endphp
 <a class="card-link" href="{{ $url }}">
     <div class="card-photo" aria-hidden="{{ $photo ? 'false' : 'true' }}">

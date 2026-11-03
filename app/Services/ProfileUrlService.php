@@ -24,6 +24,35 @@ class ProfileUrlService
 
     private const MAX_GENERATION_ATTEMPTS = 32;
 
+    /**
+     * Persist the applicant's chosen public hosting destination on the
+     * application (single source of truth). Does not change slug or publication.
+     *
+     * Member updates must not run after the linked profile is published.
+     * Pass $allowAfterPublication = true only for future exceptional staff tooling.
+     */
+    public function setHostingDestination(
+        Application $application,
+        string $destination,
+        bool $allowAfterPublication = false,
+    ): void {
+        $normalized = strtolower(trim($destination));
+        if (! in_array($normalized, Application::hostingDestinations(), true)) {
+            throw new InvalidArgumentException('Choose either Jannayaks or IconsHerald as the hosting destination.');
+        }
+
+        if (! $allowAfterPublication) {
+            $profile = $application->relationLoaded('profile')
+                ? $application->profile
+                : $application->profile()->first();
+            if ($profile && ($profile->status === 'published' || $profile->published_at !== null)) {
+                throw new InvalidArgumentException('Hosting destination cannot be changed after publication.');
+            }
+        }
+
+        $application->forceFill(['hosting_destination' => $normalized])->save();
+    }
+
     public function __construct(
         private PersonalSlugGenerator $personalSlugs,
         private StaffAuditLogger $auditLogger,
@@ -448,6 +477,8 @@ class ProfileUrlService
         return $redirect;
     }
 
+    public const ICONSHERALD_PUBLIC_ORIGIN = 'https://iconsherald.com';
+
     public function canonicalPublicPath(Profile $profile): ?string
     {
         if (! filled($profile->slug)) {
@@ -457,6 +488,33 @@ class ProfileUrlService
         return '/'.$profile->slug;
     }
 
+    /**
+     * Hosting destination from the linked application (Phase 1 SoT).
+     * Defaults to Jannayaks when missing or unknown.
+     */
+    public function hostingDestination(Profile $profile): string
+    {
+        $application = $profile->relationLoaded('application')
+            ? $profile->application
+            : $profile->application()->first();
+
+        $destination = strtolower(trim((string) ($application?->hosting_destination
+            ?: Application::HOSTING_DESTINATION_JANNAYAKS)));
+
+        return in_array($destination, Application::hostingDestinations(), true)
+            ? $destination
+            : Application::HOSTING_DESTINATION_JANNAYAKS;
+    }
+
+    public function isHostedOnIconsHerald(Profile $profile): bool
+    {
+        return $this->hostingDestination($profile) === Application::HOSTING_DESTINATION_ICONSHERALD;
+    }
+
+    /**
+     * Absolute public profile URL for the selected hosting destination.
+     * IconsHerald-hosted profiles use https://iconsherald.com/{slug}.
+     */
     public function canonicalPublicUrl(Profile $profile): ?string
     {
         $path = $this->canonicalPublicPath($profile);
@@ -464,7 +522,30 @@ class ProfileUrlService
             return null;
         }
 
+        if ($this->isHostedOnIconsHerald($profile)) {
+            return self::ICONSHERALD_PUBLIC_ORIGIN.$path;
+        }
+
         return url($path);
+    }
+
+    /**
+     * Gallery/search card href. Optional language applies only on Jannayaks.
+     */
+    public function publicListingUrl(Profile $profile, ?string $lang = null): ?string
+    {
+        $url = $this->canonicalPublicUrl($profile);
+        if ($url === null) {
+            return null;
+        }
+
+        if ($lang !== null && $lang !== '' && ! $this->isHostedOnIconsHerald($profile)) {
+            $separator = str_contains($url, '?') ? '&' : '?';
+
+            return $url.$separator.'lang='.rawurlencode($lang);
+        }
+
+        return $url;
     }
 
     public function isPubliclyVisible(Profile $profile): bool

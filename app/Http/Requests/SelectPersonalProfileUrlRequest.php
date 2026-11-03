@@ -6,6 +6,7 @@ use App\Models\Application;
 use App\Models\User;
 use App\Services\ProfileUrlService;
 use Illuminate\Foundation\Http\FormRequest;
+use Illuminate\Validation\Rule;
 use Illuminate\Validation\Validator;
 
 class SelectPersonalProfileUrlRequest extends FormRequest
@@ -30,10 +31,26 @@ class SelectPersonalProfileUrlRequest extends FormRequest
     {
         return [
             'slug' => ['required', 'string', 'max:64'],
+            'hosting_destination' => [
+                'required',
+                'string',
+                Rule::in(Application::hostingDestinations()),
+            ],
             // Explicitly ignore any client-supplied ownership fields.
             'profile_id' => ['prohibited'],
             'application_id' => ['prohibited'],
             'user_id' => ['prohibited'],
+        ];
+    }
+
+    /**
+     * @return array<string, string>
+     */
+    public function messages(): array
+    {
+        return [
+            'hosting_destination.required' => 'Choose where your public profile should be hosted.',
+            'hosting_destination.in' => 'Choose either Jannayaks or IconsHerald as the hosting destination.',
         ];
     }
 

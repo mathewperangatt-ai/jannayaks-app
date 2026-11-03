@@ -2,6 +2,7 @@
 
 namespace App\Services;
 
+use App\Models\Application;
 use App\Models\InMemoriamProfile;
 use App\Models\Profile;
 use Illuminate\Support\Collection;
@@ -71,6 +72,12 @@ class SitemapService
         return $this->profileSearch
             ->publishedBaseQuery()
             ->whereDoesntHave('user', fn ($q) => $q->where('email', 'like', '%'.self::DEMO_EMAIL_DOMAIN))
+            // Sitemap lists Jannayaks-hosted detail pages only — not IconsHerald URLs.
+            ->whereDoesntHave(
+                'application',
+                fn ($q) => $q->where('hosting_destination', Application::HOSTING_DESTINATION_ICONSHERALD)
+            )
+            ->with('application')
             ->orderBy('published_at')
             ->get(['id', 'slug', 'published_at'])
             ->map(fn (Profile $profile): array => [

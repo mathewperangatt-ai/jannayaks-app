@@ -69,6 +69,48 @@ class PublicProfilePhotoLayoutTest extends TestCase
         );
     }
 
+    public function test_primary_photograph_leads_regardless_of_display_order_and_id(): void
+    {
+        [$profile, $photos] = $this->publishWithPhotos([
+            ['name' => 'secondary-created-first.jpg', 'width' => 400, 'height' => 600, 'primary' => false],
+            ['name' => 'primary-high-order.jpg', 'width' => 400, 'height' => 600, 'primary' => true],
+            ['name' => 'secondary-tie.jpg', 'width' => 400, 'height' => 600, 'primary' => false],
+        ]);
+
+        // The primary photograph carries the HIGHEST display order; the two
+        // non-primary photographs tie on display order with ascending ids.
+        $photos[0]->forceFill(['display_order' => 5])->save();
+        $photos[1]->forceFill(['display_order' => 9])->save();
+        $photos[2]->forceFill(['display_order' => 5])->save();
+
+        $ordered = app(PublicProfilePresentationService::class)->publicProfilePhotos($profile->fresh());
+        $this->assertSame(
+            [$photos[1]->id, $photos[0]->id, $photos[2]->id],
+            $ordered->pluck('id')->all(),
+            'Primary photograph leads; remaining photographs order display_order asc then id asc.',
+        );
+
+        $html = $this->get(route('profiles.public', $profile->slug))->assertOk()->getContent();
+
+        // The hero (side feature) must show the primary photograph even though
+        // a non-primary photograph has a lower display order and a lower id.
+        $this->assertStringContainsString(
+            'class="jk-side-feature" src="'.route('profiles.public.photo', [$profile, $photos[1]]).'"',
+            $html,
+        );
+        $this->assertStringNotContainsString(
+            'class="jk-side-feature" src="'.route('profiles.public.photo', [$profile, $photos[0]]).'"',
+            $html,
+        );
+
+        // The gallery starts after the first ordered photograph, and the
+        // display-order tie resolves deterministically by id ascending.
+        $this->assertStringContainsString(
+            'href="'.route('profiles.public.photo', [$profile, $photos[2]]).'"',
+            $html,
+        );
+    }
+
     public function test_three_and_four_photographs_adapt_gallery_without_changing_side_feature_rule(): void
     {
         foreach ([3, 4] as $count) {
