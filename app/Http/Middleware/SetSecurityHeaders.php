@@ -21,9 +21,12 @@ use Symfony\Component\HttpFoundation\Response;
  *   PHP_INI_SYSTEM setting that cannot be changed at runtime.
  * - COOP is same-origin: Google sign-in is a top-level Socialite redirect
  *   (not a popup), and external links already use rel=noopener.
- * - CORP is same-origin: public photographs are streamed same-origin through
- *   Laravel (not hotlinked from R2). This does not block the page from loading
- *   cross-origin Google Fonts / Translate / GA4 resources.
+ * - CORP is same-origin by default (photographs are not generally hotlinkable
+ *   from third-party origins; R2 is never exposed). A narrow carve-out may set
+ *   Cross-Origin-Resource-Policy: cross-origin on the public photo stream for
+ *   IconsHerald-hosted, publicly visible profiles only — see
+ *   PublicProfileMediaController. This middleware preserves that value when
+ *   already set to cross-origin and does not relax CORP globally.
  */
 class SetSecurityHeaders
 {
@@ -42,7 +45,10 @@ class SetSecurityHeaders
             'camera=(), microphone=(), geolocation=(), usb=(), magnetometer=(), accelerometer=(), gyroscope=(), interest-cohort=()'
         );
         $response->headers->set('Cross-Origin-Opener-Policy', 'same-origin');
-        $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+        $existingCorp = strtolower((string) $response->headers->get('Cross-Origin-Resource-Policy', ''));
+        if ($existingCorp !== 'cross-origin') {
+            $response->headers->set('Cross-Origin-Resource-Policy', 'same-origin');
+        }
 
         $csp = $this->policyFor($request);
         if ($csp !== '') {

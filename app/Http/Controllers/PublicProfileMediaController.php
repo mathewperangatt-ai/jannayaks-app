@@ -45,10 +45,19 @@ class PublicProfileMediaController extends Controller
 
         $mime = filled($media->mime_type) ? (string) $media->mime_type : 'image/jpeg';
 
-        return $disk->response($media->storage_path_key, null, [
+        $headers = [
             'Content-Type' => $mime,
             'Cache-Control' => 'public, max-age=300',
             'X-Content-Type-Options' => 'nosniff',
-        ]);
+        ];
+
+        // IconsHerald Hosting embeds these URLs cross-origin. Global CORP remains
+        // same-origin; SetSecurityHeaders preserves this carve-out when present.
+        // Visibility and approval checks above already passed.
+        if ($this->profileUrls->isHostedOnIconsHerald($profile)) {
+            $headers['Cross-Origin-Resource-Policy'] = 'cross-origin';
+        }
+
+        return $disk->response($media->storage_path_key, null, $headers);
     }
 }

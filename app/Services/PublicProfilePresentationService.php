@@ -171,10 +171,12 @@ class PublicProfilePresentationService
     {
         return $profile->media
             ->filter(fn (MediaItem $item): bool => $item->isApprovedForPublicDisplay())
-            ->sortBy([
-                fn (MediaItem $item) => $item->is_primary ? 0 : 1,
-                fn (MediaItem $item) => $item->display_order,
-                fn (MediaItem $item) => $item->id,
+            // Composite sort key (asort compares arrays element-wise):
+            // primary first, then display_order asc, then id as the tie-breaker.
+            ->sortBy(fn (MediaItem $item): array => [
+                $item->is_primary ? 0 : 1,
+                $item->display_order,
+                $item->id,
             ])
             ->values();
     }
