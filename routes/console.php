@@ -103,3 +103,16 @@ Schedule::command(sprintf(
     ->everyMinute()
     ->withoutOverlapping(5)
     ->name('process-photo-enhancement-queue');
+
+/*
+| Encrypted R2 backups (config/backup.php). The command itself checks
+| BACKUP_ENABLED, so deploying or registering this schedule never starts
+| backups on its own. 03:15 IST daily; the run promotes the verified
+| archive to weekly/ (Sundays) and monthly/ (1st) via bucket-side copies.
+| Pruning only runs when BACKUP_PRUNE_ENABLED is separately enabled.
+*/
+Schedule::command('backup:run')
+    ->dailyAt('03:15')
+    ->timezone('Asia/Kolkata')
+    ->withoutOverlapping(60)
+    ->name('jannayaks-backup');
