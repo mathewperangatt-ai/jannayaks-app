@@ -162,6 +162,25 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     <strong>Where can I see example profiles?</strong>
     <p><a href="{{ route('demo-profiles.index') }}">View Demo Profiles</a> opens a collection of fictional demonstration profiles showing how finished pages read. Published profiles appear in the <a href="{{ route('gallery.index') }}">Gallery</a>.</p>
   </div>
+  <div class="faq">
+    <strong>How is my personal profile URL created?</strong>
+    <p>
+      Your profile URL is based on your verified name.
+      For example:
+      https://jannayaks.in/arun.kumar
+      or https://jannayaks.in/arun.kumar12
+      A short number is added only if the name-based address is already taken.
+      Your profile address remains permanent while your membership is active.
+    </p>
+  </div>
+  <div class="faq">
+    <strong>Can I have my profile hosted on IconsHerald instead?</strong>
+    <p>
+      Yes. You can choose to have your profile hosted at a different domain address:
+      https://iconsherald.com/arun.kumar
+      Your profile will continue to be managed through Jannayaks. Only the public hosting address changes. The applicable price for your selected hosting option will be displayed before payment.
+    </p>
+  </div>
 
   <p class="back"><a href="{{ route('home') }}">← Back to homepage</a></p>
 </main>
