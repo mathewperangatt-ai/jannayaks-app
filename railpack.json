@@ -1,0 +1,9 @@
+{
+    "$schema": "https://railpack.com/schema.json",
+    "packages": {
+        "apt": [
+            "postgresql-client",
+            "age"
+        ]
+    }
+}
