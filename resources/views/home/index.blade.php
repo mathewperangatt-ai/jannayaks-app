@@ -467,6 +467,29 @@ document.addEventListener('click',function(e){
         <span class="url-custom-text-ml">വിലാസം പരിശോധിച്ച പേരിൽ നിന്നാണ് — arun.kumar പോലെ. അത് ലഭ്യമല്ലെങ്കിൽ arun.kumar12 പോലെ ഒരു ചെറിയ സംഖ്യ ചേർക്കാം.</span>
       </div>
     </div>
+    <div class="url-custom">
+      <div class="url-custom-title">Choose where your profile will appear</div>
+      <div class="url-custom-text">
+        Your Jannayaks profile can be published on either of our two platforms.
+      </div>
+    </div>
+    <div class="url-examples" style="margin-bottom:12px;">
+      <div class="url-example">
+        <span><strong>Option 1 — Jannayaks.</strong> Your profile will appear on Jannayaks, our digital gallery celebrating Malayalees who have excelled in various fields.</span>
+      </div>
+      <div class="url-example">
+        https://jannayaks.in/<strong>your.profile.slug</strong>
+      </div>
+      <div class="url-example">
+        <span><strong>Option 2 — IconsHerald.</strong> Prefer to have your profile hosted at a different domain address?</span>
+      </div>
+      <div class="url-example">
+        https://iconsherald.com/<strong>your.profile.slug</strong>
+      </div>
+    </div>
+    <div class="url-note" style="margin-bottom:0;">
+      <strong>Please note:</strong> Your profile will still be managed through Jannayaks. Only its public hosting address will change. Your selected hosting destination will determine which website displays your profile.
+    </div>
   </div>
 </section>
 <!-- IN MEMORIAM -->
