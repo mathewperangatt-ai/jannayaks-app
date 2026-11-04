@@ -83,6 +83,83 @@ class PersonalUrlEligibilityTest extends TestCase
             ->assertSee('iconsherald.com/', false);
     }
 
+    public function test_hosting_destination_prices_are_displayed_from_configuration(): void
+    {
+        $prepared = $this->prepareApplication('distinguished');
+
+        $response = $this->actingAs($prepared['user'])
+            ->get(route('applications.profile-url', $prepared['application']))
+            ->assertOk();
+
+        $prices = (array) config('jannayaks.hosting_destinations');
+        $standard = \App\Support\PricingAmounts::forStandardProfile();
+        $jannayaksLine = '₹'.number_format($standard['base_paise'] / 100).' + GST'
+            .' (total ₹'.number_format($standard['amount_incl_paise'] / 100).' including GST)';
+        $iconsheraldLine = (string) ($prices['iconsherald']['price_line'] ?? '');
+
+        $this->assertNotSame('', $iconsheraldLine);
+        $response->assertSee($jannayaksLine, false);
+        $response->assertSee($iconsheraldLine, false);
+        // Amounts come from configuration — never invented in the view.
+        $this->assertStringNotContainsString('₹5,000', $response->getContent());
+    }
+
+    public function test_each_available_suggestion_shows_both_domain_previews(): void
+    {
+        $prepared = $this->prepareApplication('distinguished', 'Meera Nair');
+
+        $html = $this->actingAs($prepared['user'])
+            ->get(route('applications.profile-url', $prepared['application']))
+            ->assertOk()
+            ->getContent();
+
+        $this->assertStringContainsString('https://jannayaks.in/meera.nair', $html);
+        $this->assertStringContainsString('https://iconsherald.com/meera.nair', $html);
+        // Both previews carry the same slug and are tagged for the active-domain sync.
+        $this->assertSame(2, substr_count($html, 'data-slug="meera.nair" data-domain='));
+    }
+
+    public function test_hosting_choice_updates_preview_without_changing_the_slug(): void
+    {
+        // Structural check: the JS keeps per-slug previews in sync with the
+        // hosting radio, and reservation keeps one slug across destinations.
+        $html = $this->bladePreviewHtml('emerging', 'Domain Sync Person');
+        $this->assertStringContainsString('js-domain-preview', $html);
+        $this->assertStringContainsString("data-domain') === key", $html);
+        $this->assertStringContainsString("input.addEventListener('change', syncHostingPrefix)", $html);
+    }
+
+    public function test_updating_hosting_destination_preserves_the_selected_slug(): void
+    {
+        $prepared = $this->prepareApplication('emerging', 'Domain Preserve Person');
+        $urls = app(ProfileUrlService::class);
+        // Name-derived slug (tokens: domain, preserve, person) reserved first;
+        // then only the hosting destination changes and the slug is preserved.
+        $urls->selectPersonalSlug($prepared['profile'], $prepared['user'], 'domain.preserve.person', 'emerging');
+
+        $this->actingAs($prepared['user'])
+            ->post(route('applications.profile-url.hosting', $prepared['application']), [
+                'hosting_destination' => 'iconsherald',
+            ])
+            ->assertRedirect(route('applications.profile-url', $prepared['application']))
+            ->assertSessionHas('status');
+
+        $prepared['profile']->refresh();
+        $prepared['application']->refresh();
+        $this->assertSame('domain.preserve.person', $prepared['profile']->slug, 'The slug must not change when only the destination changes.');
+        $this->assertSame('iconsherald', $prepared['application']->hosting_destination);
+    }
+
+    private function bladePreviewHtml(string $tier, string $fullName): string
+    {
+        $prepared = $this->prepareApplication($tier, $fullName);
+
+        return $this->actingAs($prepared['user'])
+            ->get(route('applications.profile-url', $prepared['application']))
+            ->assertOk()
+            ->getContent();
+    }
+
     public function test_historical_emerging_application_receives_suggestions_and_can_reserve(): void
     {
         $prepared = $this->prepareApplication('emerging', 'Meera Nair');

@@ -55,6 +55,20 @@ class ProfileUrlController extends Controller
             ?: Application::HOSTING_DESTINATION_JANNAYAKS
         );
 
+        // Hosting-option price lines, shown before reservation. The Jannayaks
+        // line comes from the authoritative Standard Profile pricing; the
+        // IconsHerald line mirrors the IconsHerald production configuration.
+        $standard = \App\Support\PricingAmounts::forStandardProfile();
+        $hostingPrices = [
+            'jannayaks' => [
+                'price_line' => '₹'.number_format($standard['base_paise'] / 100).' + GST'
+                    .' (total ₹'.number_format($standard['amount_incl_paise'] / 100).' including GST)',
+            ],
+            'iconsherald' => [
+                'price_line' => (string) config('jannayaks.hosting_destinations.iconsherald.price_line'),
+            ],
+        ];
+
         return view('application.profile-url', [
             'application' => $application,
             'member' => $member,
@@ -70,6 +84,7 @@ class ProfileUrlController extends Controller
             'suggestions' => $suggestions,
             'hostingDestination' => $hostingDestination,
             'hostingDestinationLocked' => $isPublished,
+            'hostingPrices' => $hostingPrices,
         ]);
     }
 

@@ -79,6 +79,22 @@ return [
         'reference_codes' => env('JANNAYAKS_PUBLICATION_TEST_BYPASS_REFERENCES', ''),
     ],
 
+    /*
+    | Applicant-facing hosting-destination price lines shown on the
+    | profile-URL page next to each option. The Jannayaks line is computed in
+    | ProfileUrlController from the authoritative Standard Profile pricing
+    | (tier_pricing above). The IconsHerald line mirrors the IconsHerald
+    | production configuration (config/iconsherald.php: single offering
+    | ₹6,000 inclusive of GST for the first year; ₹2,400 per year renewal
+    | from year 2, also GST-inclusive) and must be reviewed whenever that
+    | configuration changes.
+    */
+    'hosting_destinations' => [
+        'iconsherald' => [
+            'price_line' => '₹6,000 inclusive of GST (first year)',
+        ],
+    ],
+
     'tier_pricing' => [
         'currency' => 'INR',
         'gst_percent' => 18,

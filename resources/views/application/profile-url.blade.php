@@ -77,18 +77,24 @@
                         'selectedHosting' => $selectedHosting,
                         'hostPrefix' => $hostPrefix,
                         'slugPreview' => $profile->slug,
+                        'hostingPrices' => $hostingPrices,
                     ])
                     <button type="submit" class="btn primary">Save hosting destination</button>
                 </form>
             @endunless
         @else
             @if(count($suggestions))
+                <p class="sub" style="margin:10px 0 0">Suggested profile addresses — the highlighted line follows your chosen hosting destination:</p>
                 <ul class="stack" style="margin:10px 0 0;padding-left:0;list-style:none">
                     @foreach($suggestions as $suggestion)
-                        <li style="display:flex;gap:8px;align-items:center">
+                        <li style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
                             @if($suggestion['available'])
                                 <span aria-hidden="true">✓</span>
-                                <button type="button" class="btn ghost js-slug-choice" data-slug="{{ $suggestion['slug'] }}" style="padding:6px 10px;min-height:36px">{{ $suggestion['slug'] }}</button>
+                                <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:200px">
+                                    <button type="button" class="btn ghost js-slug-choice" data-slug="{{ $suggestion['slug'] }}" style="padding:6px 10px;min-height:36px">{{ $suggestion['slug'] }}</button>
+                                    <span class="sub js-domain-preview" data-slug="{{ $suggestion['slug'] }}" data-domain="jannayaks">https://jannayaks.in/{{ $suggestion['slug'] }}</span>
+                                    <span class="sub js-domain-preview" data-slug="{{ $suggestion['slug'] }}" data-domain="iconsherald">https://iconsherald.com/{{ $suggestion['slug'] }}</span>
+                                </div>
                             @else
                                 <span aria-hidden="true">✗</span>
                                 <span class="sub"><code>{{ $suggestion['slug'] }}</code> (already taken)</span>
@@ -103,6 +109,7 @@
                     'selectedHosting' => $selectedHosting,
                     'hostPrefix' => $hostPrefix,
                     'slugPreview' => null,
+                    'hostingPrices' => $hostingPrices,
                 ])
                 <label for="slug">Personal URL</label>
                 <div class="row" style="gap:8px;align-items:center">
@@ -129,6 +136,7 @@
                     'selectedHosting' => $selectedHosting,
                     'hostPrefix' => $hostPrefix,
                     'slugPreview' => $profile->slug,
+                    'hostingPrices' => $hostingPrices,
                 ])
                 <button type="submit" class="btn primary">Save hosting destination</button>
             </form>
@@ -175,6 +183,11 @@
             const slug = {{ json_encode((string) ($profile->slug ?? '')) }};
             previewEl.textContent = prefix + slug;
         }
+        document.querySelectorAll('.js-domain-preview').forEach((line) => {
+            const active = line.getAttribute('data-domain') === key;
+            line.style.fontWeight = active ? '700' : '400';
+            line.style.color = active ? '' : 'inherit';
+        });
     };
 
     document.querySelectorAll('.js-hosting-choice').forEach((input) => {
