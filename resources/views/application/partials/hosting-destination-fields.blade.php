@@ -10,6 +10,9 @@
         <span>
             <b>Jannayaks</b>
             <span class="sub" style="display:block">jannayaks.in/your.name</span>
+            @if(isset($hostingPrices[$jannayaks]['price_line']))
+                <span class="sub" style="display:block">{{ $hostingPrices[$jannayaks]['price_line'] }}</span>
+            @endif
         </span>
     </label>
     <label class="row" style="gap:8px;align-items:flex-start;margin:0">
@@ -18,6 +21,9 @@
         <span>
             <b>IconsHerald</b>
             <span class="sub" style="display:block">iconsherald.com/your.name</span>
+            @if(isset($hostingPrices[$iconsherald]['price_line']))
+                <span class="sub" style="display:block">{{ $hostingPrices[$iconsherald]['price_line'] }}</span>
+            @endif
         </span>
     </label>
     @if(! empty($slugPreview))

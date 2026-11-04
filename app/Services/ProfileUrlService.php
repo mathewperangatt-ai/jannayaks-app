@@ -9,6 +9,7 @@ use App\Models\ReservedSlug;
 use App\Models\SlugRedirect;
 use App\Models\SlugReservation;
 use App\Models\User;
+use App\Support\PricingAmounts;
 use Illuminate\Database\QueryException;
 use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Str;
@@ -17,8 +18,6 @@ use InvalidArgumentException;
 class ProfileUrlService
 {
     public const EMERGING_LENGTH = 6;
-
-    public const PERSONAL_TIERS = ['accomplished', 'distinguished'];
 
     private const EMERGING_ALPHABET = 'ABCDEFGHIJKLMNOPQRSTUVWXYZ0123456789';
 
@@ -104,7 +103,10 @@ class ProfileUrlService
 
     public function packageTierAllowsPersonalSlug(string $packageTier): bool
     {
-        return in_array(strtolower($packageTier), self::PERSONAL_TIERS, true);
+        // Every living (Standard Profile) application may choose a name-based
+        // personal URL, irrespective of the historical package-tier identifier
+        // stored on the row. In Memoriam and unknown identifiers are excluded.
+        return PricingAmounts::isLivingTier(strtolower(trim($packageTier)));
     }
 
     public function normalizePersonalSlug(string $raw): string
@@ -293,7 +295,7 @@ class ProfileUrlService
     }
 
     /**
-     * Member selects or changes a personal/name-based canonical URL (Accomplished/Distinguished only).
+     * Member selects or changes a personal/name-based canonical URL (living Standard Profile applications; In Memoriam excluded).
      */
     public function selectPersonalSlug(Profile $profile, User $actor, string $rawSlug, string $packageTier): Profile
     {
