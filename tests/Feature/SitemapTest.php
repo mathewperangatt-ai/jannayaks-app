@@ -47,13 +47,14 @@ class SitemapTest extends TestCase
         foreach ([
             $home,
             $home.'/gallery',
-            $home.'/in-memoriam',
             $home.'/recommend',
             $home.'/request-invitation',
             $home.'/faq-charges',
         ] as $expected) {
             $this->assertContains($expected, $locs);
         }
+        // The In Memoriam landing page is presentation-gated and excluded.
+        $this->assertNotContains($home.'/in-memoriam', $locs);
 
         $this->assertNotContains(url('/search'), $locs);
         $this->assertFalse(collect($locs)->contains(fn ($loc) => str_contains($loc, '/search')), 'no /search URLs at all');
@@ -104,9 +105,9 @@ class SitemapTest extends TestCase
         $locs = $this->fetchLocs();
 
         // In Memoriam public presentation is disabled: published or not,
-        // memorial records are excluded from the public sitemap.
+        // memorial records AND the landing page are excluded from the sitemap.
         $this->assertNotContains(route('in-memoriam.show', ['slug' => $published->slug]), $locs);
-        $this->assertNotContains(route('in-memoriam.show', ['slug' => 'unpublished-memorial-record']), $locs);
+        $this->assertNotContains(route('in-memoriam.index'), $locs);
     }
 
     public function test_demonstration_content_is_excluded_from_sitemap(): void
@@ -129,7 +130,9 @@ class SitemapTest extends TestCase
 
         $locs = $this->fetchLocs();
 
-        $this->assertGreaterThanOrEqual(6, count($locs));
+        // 5 URLs: home, gallery, recommend, request-invitation, faq-charges
+        // (the In Memoriam landing is presentation-gated and excluded).
+        $this->assertGreaterThanOrEqual(5, count($locs));
         foreach ($locs as $loc) {
             $this->assertStringStartsWith('http', $loc, $loc);
             $this->assertStringNotContainsString('?', $loc, $loc.' must carry no query string');
