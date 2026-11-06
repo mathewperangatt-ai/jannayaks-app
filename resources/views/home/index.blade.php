@@ -10,13 +10,13 @@
 <link rel="preload" as="image" type="image/webp" href="{{ asset('images/jannayaks-hero-2.webp') }}" imagesrcset="{{ asset('images/jannayaks-hero-2-800.webp') }} 800w, {{ asset('images/jannayaks-hero-2.webp') }} 1600w" imagesizes="(max-width: 899px) 100vw, 800px" fetchpriority="high">
 <title>Jannayaks™ — Kerala's Public Presence Platform</title>
 @php($schemaJson = app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->websiteGraph(
-    'Jannayaks is a digital biographical archive of profiles and In Memoriam records. Profiles are prepared in English, with Malayalam available for those who need it.',
+    'Jannayaks is a digital biographical archive of profiles of distinguished Malayalees. Profiles are prepared in English, with Malayalam available for those who need it.',
     url('/search'),
 )))
 @include('partials.schema-ld', ['json' => $schemaJson])
 @include('partials.seo-meta', [
     'title' => 'Jannayaks™ — A Digital Gallery of People’s Leaders',
-    'description' => 'Jannayaks is a digital biographical archive of profiles and In Memoriam records. Profiles are prepared in English, with Malayalam available for those who need it.',
+    'description' => 'Jannayaks is a digital biographical archive of profiles of distinguished Malayalees. Profiles are prepared in English, with Malayalam available for those who need it.',
     'canonical' => url('/'),
 ])
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -188,13 +188,6 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .recommend-strip strong{display:inline-block;font-size:15px;font-weight:600;border-bottom:1px dotted var(--navy);padding-bottom:2px;}
 .recommend-strip a:hover strong{border-color:var(--saffron);}
 .recommend-strip span{display:block;font-size:12.5px;color:var(--gray);margin-top:6px;}
-.mem-section{padding:56px 22px;background:var(--light);border-top:1px solid var(--border);border-bottom:1px solid var(--border);text-align:center;}
-.mem-title{font-family:var(--fd);font-size:26px;font-weight:600;color:var(--navy);margin-bottom:4px;}
-.mem-title-ml{font-family:var(--fm);font-size:16px;color:var(--gray);display:block;margin-bottom:14px;}
-.mem-text{font-size:14px;color:#46554d;line-height:1.75;max-width:560px;margin:0 auto 6px;overflow-wrap:anywhere;}
-.mem-text-ml{font-family:var(--fm);font-size:12px;color:var(--gray);line-height:1.75;display:block;max-width:560px;margin:0 auto 24px;overflow-wrap:anywhere;}
-.mem-btn{background:var(--navy);color:white;border:none;padding:12px 28px;border-radius:6px;font-size:13px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;text-decoration:none;display:inline-block;min-height:44px;line-height:1.4;}
-.mem-btn:hover{background:#9d5e22;}
 /* FOOTER */
 /* MOBILE */
 @media(max-width:899px){
@@ -232,10 +225,6 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .url-section{padding:40px 16px;}
   .url-box{padding:22px 16px;}
   .url-example{font-size:12px;padding:12px 14px;}
-  .mem-section{padding:44px 16px;}
-  .mem-title{font-size:clamp(22px,6vw,26px);}
-  .mem-text,.mem-text-ml{font-size:14px;}
-  .mem-text-ml{font-size:13px;}
   footer{padding:40px 16px 24px;}
   .f-more-note{max-width:100%;}
 }
@@ -490,16 +479,6 @@ document.addEventListener('click',function(e){
     <div class="url-note" style="margin-bottom:0;">
       <strong>Please note:</strong> Your profile will still be managed through Jannayaks. Only its public hosting address will change. Your selected hosting destination will determine which website displays your profile.
     </div>
-  </div>
-</section>
-<!-- IN MEMORIAM -->
-<section class="mem-section" id="memoriam">
-  <h2 class="mem-title">In Memoriam</h2>
-  <span class="mem-title-ml">ഓർമ്മയ്ക്കായി</span>
-  <p class="mem-text">A special section is provided for popular personalities who have passed away. A dignified memorial page for someone who has passed — open to anyone, prepared with the same editorial care as a living profile. For details, write to founder@jannayaks.in.</p>
-  <span class="mem-text-ml">യശശരീരുടെ ഓർമക്കായ്‌ ഒരു സ്ഥിരവും അന്തസ്സുള്ളതുമായ അനുസ്മരണ താൾ — ജീവിച്ചിരിക്കുന്ന പ്രൊഫൈലിന്റെ അതേ എഡിറ്റോറിയൽ ശ്രദ്ധയോടെ തയ്യാറാക്കുന്നത്.</span>
-  <div>
-    <a class="mem-btn" href="{{ route('in-memoriam.index') }}">In Memoriam</a>
   </div>
 </section>
 <!-- FOOTER -->

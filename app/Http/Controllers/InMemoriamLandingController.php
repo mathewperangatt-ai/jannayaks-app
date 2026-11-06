@@ -15,8 +15,9 @@ class InMemoriamLandingController extends Controller
         private InMemoriamMediaService $media,
     ) {}
 
-    public function __invoke(): View
+        public function __invoke(): View
     {
+        abort_unless((bool) config('jannayaks.in_memoriam.public_enabled', false), 404);
         $pricing = PricingAmounts::forInMemoriam5yr();
 
         // Published, publicly hosted memorial records (sombre cards).

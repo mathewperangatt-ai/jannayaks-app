@@ -51,12 +51,10 @@ class FinalFrontendEngagementTest extends TestCase
             ->assertSee('T. Gopalakrishnan', false)
             ->assertDontSee('tier-mark--distinguished', false);
 
-        // Memorial demos render with the sombre treatment and the approved designation.
-        foreach (['k.v.mathew' => 'K. V. Mathew', 'dr.saroja.nair' => 'Dr. Saroja Nair'] as $slug => $name) {
-            $response = $this->get('/in-memoriam/'.$slug);
-            $response->assertOk()->assertSee($name, false);
-            $this->assertStringContainsString('ഓർമ്മയ്ക്കായി', $response->getContent());
-            $this->assertStringContainsString('im-page', $response->getContent()); // sombre memorial stylesheet
+        // In Memoriam public presentation is disabled: memorial demo pages 404.
+        foreach (['k.v.mathew', 'dr.saroja.nair'] as $slug) {
+            $this->get('/in-memoriam/'.$slug)->assertNotFound();
+            $this->assertDatabaseHas('in_memoriam_profiles', ['slug' => $slug]); // records intact, just not public
         }
 
         // Old reference memorial identities are NOT published.

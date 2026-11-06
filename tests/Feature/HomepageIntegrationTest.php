@@ -29,7 +29,8 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee('View Demo Profiles', false);
         $response->assertSee('Create Profile', false);
         $response->assertSee('Sign In', false);
-        $response->assertSee('In Memoriam', false);
+        // In Memoriam section removed from the public homepage.
+        $response->assertDontSee('In Memoriam', false);
         $response->assertSee('Choose a name-based address', false);
         $response->assertSee('arun.kumar', false);
         $response->assertSee('arun.kumar12', false);
@@ -58,12 +59,12 @@ class HomepageIntegrationTest extends TestCase
         $intro = strpos($html, 'class="intro-section"');
         $recommend = strpos($html, 'class="recommend-strip"');
         $howItWorks = strpos($html, 'id="hiw"');
-        $memoriam = strpos($html, 'id="memoriam"');
         $this->assertNotFalse($intro);
         $this->assertNotFalse($recommend);
         $this->assertNotFalse($howItWorks);
-        $this->assertNotFalse($memoriam);
-        $this->assertTrue($banner < $intro && $intro < $recommend && $recommend < $howItWorks && $howItWorks < $search && $search < $memoriam);
+        // In Memoriam section removed from the public homepage.
+        $this->assertFalse(strpos($html, 'id="memoriam') !== false);
+        $this->assertTrue($banner < $intro && $intro < $recommend && $recommend < $howItWorks && $howItWorks < $search);
         $malayalamBlock = strpos($html, 'class="intro-block intro-block-ml" lang="ml"');
         $englishBlock = strpos($html, 'class="intro-block intro-block-en" lang="en"');
         $this->assertNotFalse($malayalamBlock);
@@ -115,7 +116,8 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee(route('faq-charges', absolute: false), false);
         $response->assertSee(route('login', absolute: false), false);
         $response->assertSee(route('apply', absolute: false), false);
-        $response->assertSee(route('in-memoriam.index', absolute: false), false);
+        // In Memoriam links are removed from public navigation.
+        $response->assertDontSee(route('in-memoriam.index', absolute: false), false);
         $response->assertSee(route('search.index', absolute: false), false);
         // Footer: no phone numbers, no directory link.
         // Google Translate control is temporarily omitted from the homepage.
@@ -179,7 +181,7 @@ class HomepageIntegrationTest extends TestCase
         $profile = PricingAmounts::forStandardProfile();
         $renewal = PricingAmounts::forTierRenewal(PricingAmounts::STANDARD_INTERNAL_TIER);
         $rewrite = PricingAmounts::forRevisionUpdate();
-        $inMemoriam = PricingAmounts::forInMemoriam5yr();
+        // In Memoriam card removed from the charges page.
 
         $response = $this->get(route('faq-charges'));
 
@@ -189,13 +191,14 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee($profile['base_formatted'], false);
         $response->assertSee($renewal['base_formatted'], false);
         $response->assertSee($rewrite['base_formatted'], false);
-        $response->assertSee($inMemoriam['base_formatted'], false);
-        $response->assertSee('3 years', false);
+        $response->assertDontSee('In Memoriam', false);
+        $response->assertDontSee('3 years hosting', false);
         $response->assertDontSee('പ്രഗൽഭർ', false);
         $response->assertDontSee('₹6,000', false);
         $response->assertDontSee('₹2,400', false);
         $response->assertSee('+ GST', false);
-        $response->assertSee(route('in-memoriam.index', absolute: false), false);
+        // In Memoriam links are removed from public navigation.
+        $response->assertDontSee(route('in-memoriam.index', absolute: false), false);
         $response->assertSee(route('gallery.index', absolute: false), false);
         $response->assertDontSee('QR', false);
         $response->assertDontSee('visiting card', false);
@@ -225,11 +228,8 @@ class HomepageIntegrationTest extends TestCase
     {
         $this->get(route('gallery.index'))->assertOk();
         $this->get(route('search.index'))->assertOk();
-        $this->get(route('in-memoriam.index'))
-            ->assertOk()
-            ->assertSee('₹24,000', false)
-            ->assertSee('3 years', false)
-            ->assertDontSee('₹29,500', false);
+        // In Memoriam public presentation is disabled; the landing 404s.
+        $this->get(route('in-memoriam.index'))->assertNotFound();
         $this->get(route('login'))->assertOk();
         $this->get(route('apply'))->assertOk();
     }

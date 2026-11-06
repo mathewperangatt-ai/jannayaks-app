@@ -42,7 +42,7 @@ class SitemapService
         return collect()
             ->merge($this->staticEntries())
             ->merge($this->profileEntries())
-            ->merge($this->memorialEntries())
+            ->merge($this->memorialEntriesEnabled() ? $this->memorialEntries() : collect())
             ->values();
     }
 
@@ -86,6 +86,11 @@ class SitemapService
                 'lastmod' => $profile->published_at?->toAtomString(),
             ])
             ->filter(fn (array $entry): bool => $entry['loc'] !== '');
+    }
+
+    public function memorialEntriesEnabled(): bool
+    {
+        return (bool) config('jannayaks.in_memoriam.public_enabled', false);
     }
 
     /**

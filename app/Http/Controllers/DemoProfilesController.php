@@ -43,18 +43,22 @@ class DemoProfilesController extends Controller
             ])
             ->values();
 
-        $memorials = InMemoriamProfile::query()
-            ->where('status', InMemoriamProfile::STATUS_PUBLISHED_ARCHIVED)
-            ->whereNotNull('slug')
-            ->where('commissioner_contact_email', 'like', '%'.SitemapService::DEMO_EMAIL_DOMAIN)
-            ->orderBy('id')
-            ->get()
-            ->filter(fn (InMemoriamProfile $memorial): bool => $this->memorialLifecycle->isPubliclyVisible($memorial))
-            ->map(fn (InMemoriamProfile $memorial): array => [
-                'profile' => $memorial,
-                'photo' => $this->memorialMedia->primaryApprovedPhotograph($memorial),
-            ])
-            ->values();
+        // In Memoriam presentation is disabled publicly (config gate).
+        $memorials = collect();
+        if ((bool) config('jannayaks.in_memoriam.public_enabled', false)) {
+            $memorials = InMemoriamProfile::query()
+                ->where('status', InMemoriamProfile::STATUS_PUBLISHED_ARCHIVED)
+                ->whereNotNull('slug')
+                ->where('commissioner_contact_email', 'like', '%'.SitemapService::DEMO_EMAIL_DOMAIN)
+                ->orderBy('id')
+                ->get()
+                ->filter(fn (InMemoriamProfile $memorial): bool => $this->memorialLifecycle->isPubliclyVisible($memorial))
+                ->map(fn (InMemoriamProfile $memorial): array => [
+                    'profile' => $memorial,
+                    'photo' => $this->memorialMedia->primaryApprovedPhotograph($memorial),
+                ])
+                ->values();
+        }
 
         return view('public.demo-profiles', [
             'profiles' => $profiles,
