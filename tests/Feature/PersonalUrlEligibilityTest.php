@@ -74,13 +74,15 @@ class PersonalUrlEligibilityTest extends TestCase
     {
         $prepared = $this->prepareApplication('distinguished');
 
-        $this->actingAs($prepared['user'])
+        $response = $this->actingAs($prepared['user'])
             ->get(route('applications.profile-url', $prepared['application']))
             ->assertOk()
             ->assertSee('Choose your personal URL')
             ->assertSee('ratish.ravindra', false)
-            ->assertSee('jannayaks.in/', false)
-            ->assertSee('iconsherald.com/', false);
+            ->assertSee('jannayaks.in/', false);
+        // IconsHerald cross-hosting is no longer offered on this page.
+        $response->assertDontSee('IconsHerald</b>', false);
+        $response->assertDontSee('iconsherald.com/your.name', false);
     }
 
     public function test_hosting_destination_prices_are_displayed_from_configuration(): void
@@ -99,12 +101,13 @@ class PersonalUrlEligibilityTest extends TestCase
 
         $this->assertNotSame('', $iconsheraldLine);
         $response->assertSee($jannayaksLine, false);
-        $response->assertSee($iconsheraldLine, false);
+        // The IconsHerald hosting option is no longer offered to applicants.
+        $response->assertDontSee($iconsheraldLine, false);
         // Amounts come from configuration — never invented in the view.
         $this->assertStringNotContainsString('₹5,000', $response->getContent());
     }
 
-    public function test_each_available_suggestion_shows_both_domain_previews(): void
+    public function test_each_available_suggestion_shows_the_jannayaks_preview_only(): void
     {
         $prepared = $this->prepareApplication('distinguished', 'Meera Nair');
 
@@ -114,9 +117,10 @@ class PersonalUrlEligibilityTest extends TestCase
             ->getContent();
 
         $this->assertStringContainsString('https://jannayaks.in/meera.nair', $html);
-        $this->assertStringContainsString('https://iconsherald.com/meera.nair', $html);
-        // Both previews carry the same slug and are tagged for the active-domain sync.
-        $this->assertSame(2, substr_count($html, 'data-slug="meera.nair" data-domain='));
+        // Cross-hosting previews are no longer offered to applicants.
+        $this->assertStringNotContainsString('https://iconsherald.com/meera.nair', $html);
+        // The remaining preview carries the same slug and is tagged for the active-domain sync.
+        $this->assertSame(1, substr_count($html, 'data-slug="meera.nair" data-domain='));
     }
 
     public function test_hosting_choice_updates_preview_without_changing_the_slug(): void

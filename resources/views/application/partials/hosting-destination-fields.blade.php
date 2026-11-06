@@ -15,17 +15,6 @@
             @endif
         </span>
     </label>
-    <label class="row" style="gap:8px;align-items:flex-start;margin:0">
-        <input type="radio" name="hosting_destination" value="{{ $iconsherald }}" class="js-hosting-choice"
-               @checked($selectedHosting === $iconsherald) required>
-        <span>
-            <b>IconsHerald</b>
-            <span class="sub" style="display:block">iconsherald.com/your.name</span>
-            @if(isset($hostingPrices[$iconsherald]['price_line']))
-                <span class="sub" style="display:block">{{ $hostingPrices[$iconsherald]['price_line'] }}</span>
-            @endif
-        </span>
-    </label>
     @if(! empty($slugPreview))
         <p class="sub" style="margin:0">
             Preview:

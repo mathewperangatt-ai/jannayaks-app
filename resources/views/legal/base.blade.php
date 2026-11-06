@@ -19,6 +19,10 @@
     .legal-box{display:block;background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:16px 18px;margin:0 0 18px;font-style:normal;font-size:14.5px;line-height:1.75}
     .legal-box p:last-child{margin-bottom:0}
     .legal-box-title{display:block;color:var(--navy);font-size:13px;letter-spacing:.04em;margin:0 0 6px}
+    .legal-table{width:100%;border-collapse:collapse;background:#fff;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;font-size:14.5px;margin:0 0 16px}
+    .legal-table th,.legal-table td{border-bottom:1px solid var(--border);padding:10px 14px;text-align:left;line-height:1.6;color:var(--charcoal);vertical-align:top}
+    .legal-table th{color:var(--navy);font-size:13px;letter-spacing:.04em}
+    .legal-table tr:last-child td{border-bottom:0}
     @media(max-width:640px){.legal h1{font-size:28px}.legal h2{font-size:19px}}
 </style>
 @endpush
@@ -39,7 +43,7 @@
 
     <p class="eyebrow">Legal</p>
     <h1>@yield('legal_heading')</h1>
-    <p class="legal-updated">Last revised: {{ $legalUpdated ?? '9 October 2026' }}</p>
+    <p class="legal-updated">Effective date: {{ $legalEffectiveDate ?? $legalUpdated ?? '9 October 2026' }}</p>
     <p class="lede">@yield('legal_intro')</p>
 
     @yield('legal_body')
