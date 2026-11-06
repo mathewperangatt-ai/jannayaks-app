@@ -51,14 +51,21 @@ class SitemapService
      */
     private function staticEntries(): Collection
     {
-        return collect([
+        $entries = collect([
             ['loc' => route('home'), 'lastmod' => null],
             ['loc' => route('gallery.index'), 'lastmod' => null],
-            ['loc' => route('in-memoriam.index'), 'lastmod' => null],
             ['loc' => route('recommend.show'), 'lastmod' => null],
             ['loc' => route('invitation-request.show'), 'lastmod' => null],
             ['loc' => route('faq-charges'), 'lastmod' => null],
         ]);
+
+        // The In Memoriam landing page is listed only while its public
+        // presentation is enabled; it 404s otherwise.
+        if ((bool) config('jannayaks.in_memoriam.public_enabled', false)) {
+            $entries->splice(2, 0, [['loc' => route('in-memoriam.index'), 'lastmod' => null]]);
+        }
+
+        return $entries->values();
     }
 
     /**
