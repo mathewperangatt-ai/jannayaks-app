@@ -17,6 +17,8 @@ class PublicInMemoriamMediaController extends Controller
 
     public function show(string $slug, MediaItem $media): StreamedResponse
     {
+        abort_unless((bool) config('jannayaks.in_memoriam.public_enabled', false), 404);
+
         $profile = $this->urls->findByPublicSlug($slug);
         if ($profile === null || ! $this->lifecycle->isPubliclyVisible($profile)) {
             abort(404);

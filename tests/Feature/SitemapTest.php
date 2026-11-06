@@ -86,7 +86,7 @@ class SitemapTest extends TestCase
         $this->assertNotContains(url('/hidden.person'), $locs);
     }
 
-    public function test_sitemap_contains_publicly_visible_memorials_only(): void
+    public function test_sitemap_excludes_all_memorial_records(): void
     {
         $admin = User::factory()->admin()->create();
         $memorial = InMemoriamProfile::factory()->paid()->create([
@@ -103,7 +103,9 @@ class SitemapTest extends TestCase
 
         $locs = $this->fetchLocs();
 
-        $this->assertContains(route('in-memoriam.show', ['slug' => $published->slug]), $locs);
+        // In Memoriam public presentation is disabled: published or not,
+        // memorial records are excluded from the public sitemap.
+        $this->assertNotContains(route('in-memoriam.show', ['slug' => $published->slug]), $locs);
         $this->assertNotContains(route('in-memoriam.show', ['slug' => 'unpublished-memorial-record']), $locs);
     }
 

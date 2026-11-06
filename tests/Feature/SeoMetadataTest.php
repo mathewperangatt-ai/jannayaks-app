@@ -57,7 +57,6 @@ class SeoMetadataTest extends TestCase
             '/' => '/',
             '/gallery?foo=bar' => '/gallery',
             '/search?q=mathew' => '/search',
-            '/in-memoriam' => '/in-memoriam',
             '/recommend' => '/recommend',
             '/request-invitation' => '/request-invitation',
             '/faq-charges' => '/faq-charges',
@@ -121,26 +120,10 @@ class SeoMetadataTest extends TestCase
         $this->assertStringNotContainsString('noindex', $content);
     }
 
-    public function test_memorial_page_seo_uses_memorial_metadata(): void
-    {
-        $this->seed(DemoProfilesSeeder::class);
-
-        $response = $this->get('/in-memoriam/k.v.mathew');
-        $response->assertOk();
-        $content = $response->getContent();
-
-        $this->assertMatchesRegularExpression('#<meta name="description" content="[^"]+">#i', $content);
-        $this->assertMatchesRegularExpression('#<meta property="og:url" content="[^"]+/in-memoriam/k\.v\.mathew">#i', $content);
-        $this->assertMatchesRegularExpression('#<meta property="og:title" content="K\. V\. Mathew \(Late\) — In Memoriam — Jannayaks">#i', $content);
-        $this->assertStringContainsString('property="og:type" content="profile"', $content);
-        $this->assertStringNotContainsString('noindex', $content);
-    }
-
     public function test_static_pages_have_descriptions_and_social_tags(): void
     {
         foreach ([
             '/gallery' => 'Browse published Jannayaks profiles',
-            '/in-memoriam' => 'In Memoriam on Jannayaks',
             '/recommend' => 'Recommend someone whose life',
             '/request-invitation' => 'Request an invitation to create a Jannayaks profile',
             '/faq-charges' => 'Jannayaks Standard Profile charges',

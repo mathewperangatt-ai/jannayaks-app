@@ -41,7 +41,6 @@
                 <li><a href="{{ route('search.index') }}">Search</a></li>
                 <li><a href="{{ route('apply') }}">Create Profile</a></li>
                 <li><a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a></li>
-                <li><a href="{{ route('in-memoriam.index') }}">In Memoriam</a></li>
             </ul>
         </div>
         <div class="jf-col" role="navigation" aria-label="Support">

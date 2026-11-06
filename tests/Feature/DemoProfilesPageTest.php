@@ -22,7 +22,7 @@ class DemoProfilesPageTest extends TestCase
         Storage::fake('public');
     }
 
-    public function test_listing_links_every_demo_profile_and_memorial_with_tier_marks(): void
+    public function test_listing_links_every_living_demo_profile_with_tier_marks_and_hides_memorials(): void
     {
         $this->seed(DemoProfilesSeeder::class);
 
@@ -41,15 +41,15 @@ class DemoProfilesPageTest extends TestCase
         ] as $retired) {
             $response->assertDontSee($retired, false);
         }
-        foreach (['k.v.mathew' => 'K. V. Mathew (Late)', 'dr.saroja.nair' => 'Dr. Saroja Nair (Late)'] as $slug => $name) {
-            $response->assertSee('href="'.route('in-memoriam.show', $slug).'"', false);
-            $response->assertSee($name, false);
-        }
+        // In Memoriam demos are hidden from the public demo listing.
+        $response->assertDontSee('in-memoriam.show', false);
+        $response->assertDontSee('K. V. Mathew (Late)', false);
+        $response->assertDontSee('Dr. Saroja Nair (Late)', false);
 
         $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--emerging'));
         $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--accomplished'));
         $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--distinguished'));
-        $this->assertSame(2, substr_count($content, 'tier-mark tier-mark--in_memoriam'));
+        $this->assertSame(0, substr_count($content, 'tier-mark tier-mark--in_memoriam'));
         $this->assertStringNotContainsString('class="card-tier', $content);
         foreach (['Recognised', 'Acclaimed', 'Distinguished'] as $tierWord) {
             $this->assertStringNotContainsString($tierWord, $content);
@@ -69,7 +69,7 @@ class DemoProfilesPageTest extends TestCase
             ->assertSee('<html lang="ml">', false)
             ->assertSee('ഡെമോ പ്രൊഫൈലുകൾ', false)
             ->assertSee('href="'.route('profiles.public', ['slug' => $profile->slug, 'lang' => 'ml']).'"', false)
-            ->assertSee('href="'.route('in-memoriam.show', ['slug' => 'k.v.mathew', 'lang' => 'ml']).'"', false);
+            ->assertDontSee('in-memoriam.show', false);
     }
 
     public function test_records_outside_the_demo_domain_are_not_listed(): void
@@ -86,7 +86,7 @@ class DemoProfilesPageTest extends TestCase
             ->assertDontSee('T. Gopalakrishnan', false)
             ->assertDontSee('K. V. Mathew', false)
             ->assertSee('Arjun Menon', false)
-            ->assertSee('Dr. Saroja Nair (Late)', false);
+            ->assertDontSee('Dr. Saroja Nair (Late)', false);
     }
 
     public function test_gallery_excludes_seeded_demo_profiles_that_remain_on_demo_page(): void

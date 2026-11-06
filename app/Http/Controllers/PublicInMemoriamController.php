@@ -19,8 +19,9 @@ class PublicInMemoriamController extends Controller
         private InMemoriamMediaService $media,
     ) {}
 
-    public function show(Request $request, string $slug): View|RedirectResponse
+        public function show(Request $request, string $slug): View|RedirectResponse
     {
+        abort_unless((bool) config('jannayaks.in_memoriam.public_enabled', false), 404);
         $normalized = strtolower(trim($slug));
         $profile = $this->urls->findByPublicSlug($normalized);
 

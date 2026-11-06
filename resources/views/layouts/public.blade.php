@@ -126,7 +126,6 @@
                 <li><a href="{{ route('faq-charges') }}" @if(($nav ?? '') === 'faq') aria-current="page" @endif data-nav-close>FAQ &amp; Charges</a></li>
                 <li><a href="{{ route('gallery.index') }}" @if(($nav ?? '') === 'gallery') aria-current="page" @endif data-nav-close>Gallery</a></li>
                 <li><a href="{{ route('demo-profiles.index') }}" @if(($nav ?? '') === 'demo-profiles' || request()->routeIs('demo-profiles.index')) aria-current="page" @endif data-nav-close>View Demo Profiles</a></li>
-                <li><a href="{{ route('in-memoriam.index') }}" @if(($nav ?? '') === 'in-memoriam') aria-current="page" @endif data-nav-close>In Memoriam</a></li>
                 <li><a href="{{ route('login') }}" data-nav-close>Sign In</a></li>
             </ul>
             <div class="nav-right">

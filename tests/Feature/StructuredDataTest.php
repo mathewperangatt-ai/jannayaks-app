@@ -127,37 +127,10 @@ class StructuredDataTest extends TestCase
         $this->assertSame(route('gallery.index'), $crumbs[1]['item']);
     }
 
-    public function test_memorial_schema_only_displayed_facts(): void
-    {
-        $this->seed(DemoProfilesSeeder::class);
-
-        $nodes = $this->nodesByType('/in-memoriam/k.v.mathew');
-
-        $person = $nodes['Person'];
-        // The approved memorial display convention appends "(Late)" to the
-        // displayed name (underlying full name is untouched).
-        $this->assertSame('K. V. Mathew (Late)', $person['name']);
-        $this->assertSame(url('/in-memoriam/k.v.mathew'), $person['url']);
-
-        // No years are displayed for the demo memorial, so none are represented.
-        $this->assertArrayNotHasKey('birthDate', $person);
-        $this->assertArrayNotHasKey('deathDate', $person);
-
-        // The role line is displayed; nothing else is fabricated.
-        $this->assertSame('Teacher, Institution Builder, Mentor', $person['jobTitle']);
-        $this->assertArrayNotHasKey('causeOfDeath', $person);
-        $this->assertArrayNotHasKey('sameAs', $person);
-
-        $crumbs = $nodes['BreadcrumbList']['itemListElement'];
-        $this->assertSame('In Memoriam', $crumbs[1]['name']);
-        $this->assertSame(url('/in-memoriam/k.v.mathew'), $crumbs[2]['item']);
-    }
-
     public function test_static_pages_have_webpage_schema_and_faq_has_no_faqpage(): void
     {
         foreach ([
             '/gallery' => 'Gallery — Jannayaks',
-            '/in-memoriam' => 'In Memoriam — Jannayaks',
             '/recommend' => 'Recommend Someone You May Know — Jannayaks',
             '/request-invitation' => 'Request an Invitation — Jannayaks',
             '/faq-charges' => 'FAQ & Charges — Jannayaks',

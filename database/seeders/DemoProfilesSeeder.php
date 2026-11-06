@@ -120,7 +120,9 @@ class DemoProfilesSeeder extends Seeder
         // 2. Profile — matched by the owning user (profiles.user_id is the
         //    natural unique key; emerging demos change slug at publication,
         //    so the slug is not a stable lookup key across re-runs).
-        $personalSlug = in_array($tier, ProfileUrlService::PERSONAL_TIERS, true) ? $slug : null;
+        // Living demos all use the Standard Profile flow; every living tier
+        // is personal-slug eligible (see ProfileUrlService::packageTierAllowsPersonalSlug).
+        $personalSlug = \App\Support\PricingAmounts::isLivingTier($tier) ? $slug : null;
 
         $profile = Profile::query()->firstOrCreate(
             ['user_id' => $owner->id],

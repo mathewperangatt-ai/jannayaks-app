@@ -95,6 +95,17 @@ return [
         ],
     ],
 
+    /*
+    | In Memoriam public presentation is disabled. The internal memorial
+    | workflow (records, media, admin upload tooling) is untouched — only the
+    | public landing/listing/detail pages, sitemap inclusion and demo exposure
+    | are gated by this flag. Set JANNAYAKS_IN_MEMORIAM_PUBLIC=true to restore
+    | the public experience.
+    */
+    'in_memoriam' => [
+        'public_enabled' => env('JANNAYAKS_IN_MEMORIAM_PUBLIC', false),
+    ],
+
     'tier_pricing' => [
         'currency' => 'INR',
         'gst_percent' => 18,

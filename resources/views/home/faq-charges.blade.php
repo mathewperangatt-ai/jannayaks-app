@@ -115,18 +115,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     </ul>
   </div>
 
-  <div class="card">
-    <div class="tier-name">In Memoriam</div>
-    <span class="tier-name-ml">ഓർമ്മയ്ക്കായി</span>
-    <div class="price">{{ $inMemoriam['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">
-      {{ $hostingYears }} years hosting · arranged offline with Jannayaks · see
-      <a href="{{ route('in-memoriam.index') }}">/in-memoriam</a>
-    </div>
-    <div class="who">
-      A dignified memorial page prepared with editorial care for the agreed hosting period. There is no online memorial application.
-    </div>
-  </div>
+
 
   <h2>Frequently asked questions</h2>
 
@@ -153,10 +142,6 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <div class="faq">
     <strong>What about profile revisions after publication?</strong>
     <p>A full profile rewrite is priced at {{ $revision['base_formatted'] }} plus GST. Submitting a maintenance request does not collect that payment. Jannayaks arranges a rewrite charge separately. The published profile stays unchanged until you approve a reviewed update.</p>
-  </div>
-  <div class="faq">
-    <strong>Is there an online In Memoriam checkout?</strong>
-    <p>No. In Memoriam is arranged directly with Jannayaks. Details and contact information are on the In Memoriam service page.</p>
   </div>
   <div class="faq">
     <strong>Where can I see example profiles?</strong>
