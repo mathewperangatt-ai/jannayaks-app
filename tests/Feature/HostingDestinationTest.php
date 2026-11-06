@@ -27,14 +27,16 @@ class HostingDestinationTest extends TestCase
             array_key_exists('hosting_destination', $prepared['profile']->getAttributes()),
         );
 
-        $this->actingAs($prepared['user'])
+        $response = $this->actingAs($prepared['user'])
             ->get(route('applications.profile-url', $prepared['application']))
             ->assertOk()
             ->assertSee('name="hosting_destination"', false)
             ->assertSee('value="jannayaks"', false)
-            ->assertSee('value="iconsherald"', false)
-            ->assertSee('jannayaks.in/your.name', false)
-            ->assertSee('iconsherald.com/your.name', false);
+            ->assertSee('jannayaks.in/your.name', false);
+        // Cross-publication is paused: the IconsHerald choice is no longer
+        // offered to applicants, while the backend capability is retained.
+        $response->assertDontSee('value="iconsherald"', false);
+        $response->assertDontSee('iconsherald.com/your.name', false);
     }
 
     public function test_applicant_can_select_and_save_jannayaks_or_iconsherald(): void
@@ -78,7 +80,10 @@ class HostingDestinationTest extends TestCase
         $this->actingAs($prepared['user'])
             ->get(route('applications.profile-url', $prepared['application']))
             ->assertOk()
-            ->assertSee('value="iconsherald"', false);
+            // The stored destination is still reflected; the IconsHerald
+            // radio itself is no longer offered while cross-publication is paused.
+            ->assertSee('iconsherald.com/arun.kumar', false)
+            ->assertDontSee('value="iconsherald"', false);
 
         $this->assertDatabaseHas('applications', [
             'id' => $prepared['application']->id,

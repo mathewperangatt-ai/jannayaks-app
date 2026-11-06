@@ -158,14 +158,6 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
       Your profile address remains permanent while your membership is active.
     </p>
   </div>
-  <div class="faq">
-    <strong>Can I have my profile hosted on IconsHerald instead?</strong>
-    <p>
-      Yes. You can choose to have your profile hosted at a different domain address:
-      https://iconsherald.com/arun.kumar
-      Your profile will continue to be managed through Jannayaks. Only the public hosting address changes. The applicable price for your selected hosting option will be displayed before payment.
-    </p>
-  </div>
 
   <p class="back"><a href="{{ route('home') }}">← Back to homepage</a></p>
 </main>

@@ -58,7 +58,7 @@
         <p class="sub" style="margin:0">Hosting destination is locked after publication.</p>
     @else
         <p class="sub" style="margin:0">
-            Choose one public address. Your profile content, editorial and publication stay on Jannayaks either way.
+            Choose one public address. Your profile content, editorial and publication stay on Jannayaks.
         </p>
     @endif
 
@@ -93,7 +93,6 @@
                                 <div style="display:flex;flex-direction:column;gap:2px;flex:1;min-width:200px">
                                     <button type="button" class="btn ghost js-slug-choice" data-slug="{{ $suggestion['slug'] }}" style="padding:6px 10px;min-height:36px">{{ $suggestion['slug'] }}</button>
                                     <span class="sub js-domain-preview" data-slug="{{ $suggestion['slug'] }}" data-domain="jannayaks">https://jannayaks.in/{{ $suggestion['slug'] }}</span>
-                                    <span class="sub js-domain-preview" data-slug="{{ $suggestion['slug'] }}" data-domain="iconsherald">https://iconsherald.com/{{ $suggestion['slug'] }}</span>
                                 </div>
                             @else
                                 <span aria-hidden="true">✗</span>

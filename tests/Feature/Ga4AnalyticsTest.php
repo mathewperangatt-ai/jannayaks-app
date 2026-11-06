@@ -100,9 +100,9 @@ class Ga4AnalyticsTest extends TestCase
         config(['jannayaks.ga4.measurement_id' => '']);
 
         $html = $this->get(route('legal.privacy'))->assertOk()->getContent();
-        $this->assertStringContainsString('When Google Analytics 4 is switched on', $html);
-        $this->assertStringContainsString('it is off unless our operators configure it', $html);
         $this->assertStringContainsString('We do not use advertising cookies', $html);
+        $this->assertStringContainsString('If we later add analytics or marketing technologies', $html);
+        $this->assertStringContainsString('ask for your consent where the law requires', $html);
         $this->assertStringNotContainsString('We do not use advertising or analytics cookies', $html);
     }
 

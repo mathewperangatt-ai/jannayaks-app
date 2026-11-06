@@ -18,9 +18,9 @@ class LegalPagesTest extends TestCase
     {
         return [
             'privacy' => ['legal.privacy', '/privacy', 'Privacy Policy'],
-            'terms' => ['legal.terms', '/terms', 'Terms &amp; Conditions'],
-            'refund' => ['legal.refund', '/refund-policy', 'Refund &amp; Cancellation'],
-            'grievance' => ['legal.grievance', '/grievance', 'Grievance Redressal'],
+            'terms' => ['legal.terms', '/terms', 'Terms and Conditions'],
+            'refund' => ['legal.refund', '/refund-policy', 'Refund and Cancellation Policy'],
+            'grievance' => ['legal.grievance', '/grievance', 'Grievance, Complaints and Takedown Policy'],
             'disclaimer' => ['legal.disclaimer', '/disclaimer', 'Disclaimer'],
         ];
     }
@@ -34,7 +34,8 @@ class LegalPagesTest extends TestCase
             ->assertOk()
             ->assertSee('<h1>'.$heading.'</h1>', false)
             ->assertSee('Aurex Network', false)
-            ->assertSee('mailto:hello@jannayaks.in', false)
+            ->assertSee('Effective date: 10 November 2026', false)
+            ->assertSee('mailto:founder@jannayaks.in', false)
             ->assertSee('<link rel="canonical" href="'.route($routeName).'">', false)
             ->assertSee('jf-footer', false);
 
@@ -44,30 +45,14 @@ class LegalPagesTest extends TestCase
         );
     }
 
-    public function test_legal_pages_show_the_confirmed_contact_details(): void
-    {
-        $this->get('/privacy')
-            ->assertOk()
-            ->assertSee('MP 3/532A, PIN 695573', false)
-            ->assertSee('Name of the person who answers: Mathew', false)
-            ->assertSee('tel:+919495949399', false);
-
-        $this->get('/grievance')
-            ->assertOk()
-            ->assertSee('MP 3/532A, PIN 695573', false)
-            ->assertSee('Name: Mathew Perangatt, Founder', false);
-    }
-
-    public function test_legal_pages_omit_retired_providers_and_draft_markers(): void
+    public function test_legal_pages_carry_no_tariff_amounts_or_draft_markers(): void
     {
         foreach (self::legalPages() as [, $path]) {
             $this->get($path)
                 ->assertOk()
-                ->assertSee('Last revised: '.config('jannayaks.contact.legal_updated'), false)
-                ->assertDontSee('Razorpay', false)
-                ->assertDontSee('MSG91', false)
-                ->assertDontSee('one-time password', false)
-                ->assertDontSee('overseas', false)
+                ->assertDontSee('₹', false)
+                ->assertDontSee('GST', false)
+                ->assertDontSee('registered trademark', false)
                 ->assertDontSee('legal-pending', false)
                 ->assertDontSee('PENDING CONFIRMATION', false)
                 ->assertDontSee('to be named before launch', false)
@@ -75,34 +60,72 @@ class LegalPagesTest extends TestCase
         }
     }
 
-    public function test_refund_page_states_the_configured_before_publication_percent(): void
-    {
-        config(['jannayaks.refund.before_publication_percent' => 45]);
-
-        $this->get('/refund-policy')
-            ->assertOk()
-            ->assertSee('refund of 45% of the fee you paid', false)
-            ->assertDontSee('full refund</strong> of what you paid', false)
-            ->assertSee('Refunds are not processed automatically.', false)
-            ->assertSee('A renewal fee, once paid, is not refundable.', false)
-            ->assertDontSee('for the period it is offline', false);
-    }
-
-    public function test_terms_make_no_gst_status_claim_and_state_memorial_hosting_period(): void
+    public function test_terms_state_the_paused_cross_publication_position_and_trademark_status(): void
     {
         $this->get('/terms')
             ->assertOk()
-            ->assertSee('including any applicable tax, is shown before you pay', false)
-            ->assertDontSee('does not charge GST', false)
-            ->assertDontSee('registered for GST', false)
-            ->assertSee('hosted for three years from the date it is published', false);
+            ->assertSee('Jannayaks does not currently offer applicants an option to have a profile published on IconsHerald.', false)
+            ->assertSee('A trademark application has been filed and is pending. Registration has not been granted.', false)
+            ->assertSee('You must be at least 18 years old', false)
+            ->assertDontSee('In Memoriam', false)
+            ->assertDontSee('Voter ID', false);
+    }
+
+    public function test_privacy_policy_names_the_fiduciary_processors_and_paused_cross_publication(): void
+    {
+        $this->get('/privacy')
+            ->assertOk()
+            ->assertSee('Digital Personal Data Protection Act, 2023', false)
+            ->assertSee('Data Fiduciary', false)
+            ->assertSee('Railway', false)
+            ->assertSee('Cloudflare', false)
+            ->assertSee('Razorpay', false)
+            ->assertSee('Google Translate', false)
+            ->assertSee('Jannayaks does not currently offer applicants an option to have profiles cross-published on IconsHerald.', false)
+            ->assertSee('kept for at least six months after publication', false)
+            ->assertSee('Grievance Officer, Aurex Network (Proprietor)', false)
+            ->assertDontSee('Voter ID', false);
+    }
+
+    public function test_refund_page_states_the_three_refund_stages(): void
+    {
+        $this->get('/refund-policy')
+            ->assertOk()
+            ->assertSee('Before the profile is submitted for approval', false)
+            ->assertSee('Full refund', false)
+            ->assertSee('From submission for approval until 7 days after submission', false)
+            ->assertSee('60% refund', false)
+            ->assertSee('After you approve the profile, or after the 7-day period ends', false)
+            ->assertSee('No refund', false);
+    }
+
+    public function test_grievance_page_names_the_designated_grievance_officer(): void
+    {
+        $this->get('/grievance')
+            ->assertOk()
+            ->assertSee('<strong>Designated Grievance Officer:</strong> Grievance Officer, Aurex Network (Proprietor).', false)
+            ->assertSee('Grievance / Profile Complaint', false);
+    }
+
+    public function test_disclaimer_states_no_endorsement_and_political_neutrality(): void
+    {
+        $this->get('/disclaimer')
+            ->assertOk()
+            ->assertSee('No endorsement and political neutrality', false)
+            ->assertSee('prepared first using artificial intelligence tools and then checked by human editors', false);
     }
 
     public function test_footer_links_point_to_every_legal_page(): void
     {
         $response = $this->get(route('home'))->assertOk();
 
-        foreach (self::legalPages() as [$routeName, , $label]) {
+        foreach ([
+            'legal.privacy' => 'Privacy Policy',
+            'legal.terms' => 'Terms &amp; Conditions',
+            'legal.grievance' => 'Grievance Redressal',
+            'legal.refund' => 'Refund &amp; Cancellation',
+            'legal.disclaimer' => 'Disclaimer',
+        ] as $routeName => $label) {
             $response->assertSee('<a href="'.route($routeName).'">'.$label.'</a>', false);
             $response->assertDontSee('<a href="#">'.$label.'</a>', false);
         }
