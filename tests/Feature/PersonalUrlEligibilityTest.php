@@ -8,6 +8,7 @@ use App\Models\User;
 use App\Services\ProfileUrlService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use InvalidArgumentException;
+use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
 /**
@@ -85,28 +86,6 @@ class PersonalUrlEligibilityTest extends TestCase
         $response->assertDontSee('iconsherald.com/your.name', false);
     }
 
-    public function test_hosting_destination_prices_are_displayed_from_configuration(): void
-    {
-        $prepared = $this->prepareApplication('distinguished');
-
-        $response = $this->actingAs($prepared['user'])
-            ->get(route('applications.profile-url', $prepared['application']))
-            ->assertOk();
-
-        $prices = (array) config('jannayaks.hosting_destinations');
-        $standard = \App\Support\PricingAmounts::forStandardProfile();
-        $jannayaksLine = '₹'.number_format($standard['base_paise'] / 100).' + GST'
-            .' (total ₹'.number_format($standard['amount_incl_paise'] / 100).' including GST)';
-        $iconsheraldLine = (string) ($prices['iconsherald']['price_line'] ?? '');
-
-        $this->assertNotSame('', $iconsheraldLine);
-        $response->assertSee($jannayaksLine, false);
-        // The IconsHerald hosting option is no longer offered to applicants.
-        $response->assertDontSee($iconsheraldLine, false);
-        // Amounts come from configuration — never invented in the view.
-        $this->assertStringNotContainsString('₹5,000', $response->getContent());
-    }
-
     public function test_each_available_suggestion_shows_the_jannayaks_preview_only(): void
     {
         $prepared = $this->prepareApplication('distinguished', 'Meera Nair');
@@ -123,35 +102,63 @@ class PersonalUrlEligibilityTest extends TestCase
         $this->assertSame(1, substr_count($html, 'data-slug="meera.nair" data-domain='));
     }
 
-    public function test_hosting_choice_updates_preview_without_changing_the_slug(): void
+    /**
+     * Regression guard for the Ratish Ravindra application scenario: a
+     * historical legacy tier on the application must not block the preferred
+     * name/URL selection, change the questionnaire question set, or alter
+     * required-field validation. Every historical tier walks the identical
+     * Standard Profile flow.
+     *
+     * @dataProvider legacyTierProvider
+     */
+    #[DataProvider('legacyTierProvider')]
+    public function test_legacy_tier_applications_walk_the_standard_url_and_interview_flow(string $tier): void
     {
-        // Structural check: the JS keeps per-slug previews in sync with the
-        // hosting radio, and reservation keeps one slug across destinations.
-        $html = $this->bladePreviewHtml('emerging', 'Domain Sync Person');
-        $this->assertStringContainsString('js-domain-preview', $html);
-        $this->assertStringContainsString("data-domain') === key", $html);
-        $this->assertStringContainsString("input.addEventListener('change', syncHostingPrefix)", $html);
-    }
+        $prepared = $this->prepareApplication($tier, 'Ratish Ravindra');
 
-    public function test_updating_hosting_destination_preserves_the_selected_slug(): void
-    {
-        $prepared = $this->prepareApplication('emerging', 'Domain Preserve Person');
-        $urls = app(ProfileUrlService::class);
-        // Name-derived slug (tokens: domain, preserve, person) reserved first;
-        // then only the hosting destination changes and the slug is preserved.
-        $urls->selectPersonalSlug($prepared['profile'], $prepared['user'], 'domain.preserve.person', 'emerging');
-
+        // 1. URL selection page offers the personal (name-based) flow — never
+        //    the six-character system-address dead end.
         $this->actingAs($prepared['user'])
-            ->post(route('applications.profile-url.hosting', $prepared['application']), [
-                'hosting_destination' => 'iconsherald',
+            ->get(route('applications.profile-url', $prepared['application']))
+            ->assertOk()
+            ->assertSee('Choose your personal URL', false)
+            ->assertSee('https://jannayaks.in/ratish.ravindra', false)
+            ->assertDontSee('six-character system address', false)
+            ->assertDontSee('System-assigned URL', false);
+
+        // 2. Reservation succeeds and stores the preferred name-derived slug.
+        $this->actingAs($prepared['user'])
+            ->post(route('applications.profile-url.update', $prepared['application']), [
+                'slug' => 'ratish.ravindra',
             ])
             ->assertRedirect(route('applications.profile-url', $prepared['application']))
             ->assertSessionHas('status');
+        $this->assertSame('ratish.ravindra', $prepared['profile']->fresh()->slug);
 
-        $prepared['profile']->refresh();
-        $prepared['application']->refresh();
-        $this->assertSame('domain.preserve.person', $prepared['profile']->slug, 'The slug must not change when only the destination changes.');
-        $this->assertSame('iconsherald', $prepared['application']->hosting_destination);
+        // 3. The questionnaire question set is identical for every tier.
+        $ids = \App\Support\OnlineInterviewCatalog::idsForTier($tier);
+        $this->assertSame(
+            \App\Support\OnlineInterviewCatalog::idsForTier('distinguished'),
+            $ids,
+            "Tier [{$tier}] must not change the Online Interview questions.",
+        );
+
+        // 4. Required-field validation is identical: an empty submission is
+        //    missing the same required questions on every tier.
+        $this->assertSame(
+            \App\Support\OnlineInterviewCatalog::missingRequired('distinguished', []),
+            \App\Support\OnlineInterviewCatalog::missingRequired($tier, []),
+            "Tier [{$tier}] must not change required-field validation.",
+        );
+    }
+
+    public static function legacyTierProvider(): array
+    {
+        return [
+            'emerging' => ['emerging'],
+            'accomplished' => ['accomplished'],
+            'distinguished' => ['distinguished'],
+        ];
     }
 
     private function bladePreviewHtml(string $tier, string $fullName): string
@@ -177,7 +184,6 @@ class PersonalUrlEligibilityTest extends TestCase
         $this->actingAs($prepared['user'])
             ->post(route('applications.profile-url.update', $prepared['application']), [
                 'slug' => 'meera.nair',
-                'hosting_destination' => 'iconsherald',
             ])
             ->assertRedirect(route('applications.profile-url', $prepared['application']))
             ->assertSessionHas('status');
@@ -185,7 +191,6 @@ class PersonalUrlEligibilityTest extends TestCase
         $prepared['profile']->refresh();
         $prepared['application']->refresh();
         $this->assertSame('meera.nair', $prepared['profile']->slug);
-        $this->assertSame('iconsherald', $prepared['application']->hosting_destination);
     }
 
     public function test_historical_accomplished_application_is_eligible(): void
@@ -197,28 +202,6 @@ class PersonalUrlEligibilityTest extends TestCase
             ->assertOk()
             ->assertSee('Choose your personal URL')
             ->assertSee('vishnu.prasad', false);
-    }
-
-    public function test_in_memoriam_application_is_excluded_from_url_selection(): void
-    {
-        $prepared = $this->prepareApplication('in_memoriam', 'Late Memorial Person');
-
-        $this->actingAs($prepared['user'])
-            ->get(route('applications.profile-url', $prepared['application']))
-            ->assertOk()
-            ->assertSee('System-assigned URL')
-            ->assertDontSee('Choose your personal URL');
-
-        // Reservation attempt fails validation under the slug key.
-        $this->actingAs($prepared['user'])
-            ->post(route('applications.profile-url.update', $prepared['application']), [
-                'slug' => 'late.person',
-                'hosting_destination' => 'iconsherald',
-            ])
-            ->assertSessionHasErrors('slug');
-
-        $prepared['profile']->refresh();
-        $this->assertNull($prepared['profile']->slug);
     }
 
     public function test_existing_permanent_slug_remains_locked_regardless_of_tier(): void

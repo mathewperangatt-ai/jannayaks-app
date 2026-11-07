@@ -246,7 +246,7 @@ class Phase9AdminAclTest extends TestCase
         ])->assertOk();
 
         $this->actingAs($user)
-            ->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true])
+            ->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true, 'accuracy_confirmed' => true])
             ->assertOk()
             ->assertJson([
                 'ok' => true,

@@ -31,7 +31,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         // the package must equal the plain tier amount with no addon data.
         $package = PricingAmounts::forStandardProfile();
 
-        $this->assertSame(472000, $package['amount_incl_paise']);
+        $this->assertSame(566400, $package['amount_incl_paise']);
         $this->assertArrayNotHasKey('includes_addon', $package);
         $this->assertArrayNotHasKey('addon', $package);
     }
@@ -49,7 +49,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         $res->assertStatus(201);
 
         $payment = Payment::query()->where('application_id', $app->id)->latest('id')->firstOrFail();
-        $this->assertSame(472000, $payment->totalPaise());
+        $this->assertSame(566400, $payment->totalPaise());
     }
 
     public function test_payment_initiation_without_addon_charges_base_only(): void
@@ -63,7 +63,7 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $this->actingAs($user)->postJson(route('applications.payment.initiate', $app))->assertStatus(201);
         $payment = Payment::query()->where('application_id', $app->id)->latest('id')->firstOrFail();
-        $this->assertSame(472000, $payment->totalPaise());
+        $this->assertSame(566400, $payment->totalPaise());
     }
 
     public function test_reinitiating_payment_reuses_unchanged_amount(): void
@@ -77,13 +77,13 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $this->actingAs($user)->postJson(route('applications.payment.initiate', $app))->assertStatus(201);
         $first = Payment::query()->where('application_id', $app->id)->activeAttempts()->firstOrFail();
-        $this->assertSame(472000, $first->totalPaise());
+        $this->assertSame(566400, $first->totalPaise());
 
         $this->actingAs($user)->postJson(route('applications.payment.initiate', $app))->assertStatus(201);
 
         $actives = Payment::query()->where('application_id', $app->id)->activeAttempts()->get();
         $this->assertCount(1, $actives);
-        $this->assertSame(472000, $actives->first()->totalPaise());
+        $this->assertSame(566400, $actives->first()->totalPaise());
         $this->assertSame($first->id, $actives->first()->id);
     }
 
@@ -303,7 +303,7 @@ class Phase8PaymentDocumentsTest extends TestCase
                     'entity' => [
                         'id' => 'pay_super_old',
                         'status' => 'captured',
-                        'amount' => 472000,
+                        'amount' => 566400,
                         'currency' => 'INR',
                         'notes' => [
                             'payment_id' => (string) $old->id,
@@ -314,7 +314,7 @@ class Phase8PaymentDocumentsTest extends TestCase
                 'payment_link' => [
                     'entity' => [
                         'id' => 'plink_old_super',
-                        'amount' => 472000,
+                        'amount' => 566400,
                         'currency' => 'INR',
                         'reference_id' => $old->transaction_reference,
                     ],
@@ -364,7 +364,7 @@ class Phase8PaymentDocumentsTest extends TestCase
 
         $actives = Payment::query()->where('application_id', $app->id)->activeAttempts()->get();
         $this->assertCount(1, $actives);
-        $this->assertSame(472000, $actives->first()->totalPaise());
+        $this->assertSame(566400, $actives->first()->totalPaise());
         $this->assertSame($firstId, $actives->first()->id);
         $this->assertFalse((bool) $app->fresh()->distinguished_interview_addon);
     }
@@ -396,7 +396,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         ])->assertStatus(201);
 
         $payment = Payment::query()->where('application_id', $app->id)->activeAttempts()->firstOrFail();
-        $this->assertSame(472000, $payment->totalPaise());
+        $this->assertSame(566400, $payment->totalPaise());
         $this->assertFalse((bool) $app->fresh()->distinguished_interview_addon);
     }
 

@@ -124,6 +124,19 @@
             <span>I confirm that these answers are the questionnaire I am submitting.</span>
         </label>
         @error('questionnaire_confirmed')<p class="hint" style="color:#7a1414">{{ $message }}</p>@enderror
+        <label class="hint" style="display:flex;gap:8px;align-items:flex-start;margin:0 0 12px">
+            <input type="checkbox" name="accuracy_confirmed" value="1" @checked(old('accuracy_confirmed')) @if($isSubmitted) disabled @endif>
+            <span>
+                I confirm that the information and material I am providing are true and accurate to the best of my knowledge, and that I have the right to share them. I understand that Jannayaks does not independently verify them and that I am responsible for their accuracy.
+                <span style="display:block;margin-top:6px">
+                    ഞാൻ സമർപ്പിക്കുന്ന വിവരങ്ങളും രേഖകളും എന്റെ അറിവിലും വിശ്വാസത്തിലും സത്യവും കൃത്യവുമാണെന്ന് ഇതിനാൽ സ്ഥിരീകരിക്കുന്നു. ഈ വിവരങ്ങളും രേഖകളും സമർപ്പിക്കുന്നതിനും പ്രസിദ്ധീകരണത്തിനായി ഉപയോഗിക്കുന്നതിനും എനിക്ക് ആവശ്യമായ അവകാശമുണ്ടെന്നും സ്ഥിരീകരിക്കുന്നു.
+                    <span style="display:block;margin-top:4px">
+                        Jannayaks ഈ വിവരങ്ങൾ സ്വതന്ത്രമായി സ്ഥിരീകരിക്കുന്നില്ലെന്നും അവയുടെ കൃത്യതയുടെ ഉത്തരവാദിത്തം എനിക്കാണെന്നും ഞാൻ മനസ്സിലാക്കുന്നു.
+                    </span>
+                </span>
+            </span>
+        </label>
+        @error('accuracy_confirmed')<p class="hint" style="color:#7a1414">{{ $message }}</p>@enderror
         <div class="actions">
             <button class="btn ghost" type="submit" form="interview-form" formaction="{{ route('online-interview.save', $application) }}" formmethod="POST" @if($isSubmitted) disabled @endif>
                 💾 Save and continue (partial)

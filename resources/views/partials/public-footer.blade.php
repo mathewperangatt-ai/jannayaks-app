@@ -47,7 +47,7 @@
             <h3 class="jf-title">Support</h3>
             <ul class="jf-links">
                 <li><a href="mailto:{{ config('jannayaks.contact.public_email') }}">Contact Us</a></li>
-                <li><a href="#">Help Centre</a></li>
+
                 <li><a href="{{ route('legal.privacy') }}">Privacy Policy</a></li>
                 <li><a href="{{ route('legal.terms') }}">Terms &amp; Conditions</a></li>
                 <li><a href="{{ route('legal.grievance') }}">Grievance Redressal</a></li>

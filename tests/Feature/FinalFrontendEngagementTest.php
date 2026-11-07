@@ -45,17 +45,14 @@ class FinalFrontendEngagementTest extends TestCase
             ->assertSee('Fictional demonstration profile', false)
             ->assertSee('should eventually become participants in creating opportunities for others', false);
 
-        // Gallery lists the demo with the tier corner marker.
-        $this->get('/gallery')
-            ->assertOk()
-            ->assertSee('T. Gopalakrishnan', false)
-            ->assertDontSee('tier-mark--distinguished', false);
+        // Gallery lists demos across its pages (12 per page), badge-labelled.
+        $gallery = $this->get('/gallery')->assertOk()->getContent()
+            .$this->get('/gallery?page=2')->assertOk()->getContent();
+        $this->assertStringContainsString('T. Gopalakrishnan', $gallery);
+        $this->assertStringNotContainsString('tier-mark--distinguished', $gallery);
 
-        // In Memoriam public presentation is disabled: memorial demo pages 404.
-        foreach (['k.v.mathew', 'dr.saroja.nair'] as $slug) {
-            $this->get('/in-memoriam/'.$slug)->assertNotFound();
-            $this->assertDatabaseHas('in_memoriam_profiles', ['slug' => $slug]); // records intact, just not public
-        }
+        // The separate In Memoriam product is discontinued: no memorial pages.
+        $this->get('/in-memoriam/k.v.mathew')->assertNotFound();
 
         // Old reference memorial identities are NOT published.
         $this->assertDatabaseMissing('in_memoriam_profiles', ['slug' => 't.v.ramanathan']);

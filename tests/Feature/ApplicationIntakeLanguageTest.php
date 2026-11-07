@@ -151,7 +151,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertDontSee('ദയവായി ഒരു അംഗത്വ ശ്രേണി തിരഞ്ഞെടുക്കുക.')
             ->assertSee('Arun Kumar', false)
             ->assertSee('Standard Profile', false)
-            ->assertSee('₹4,720.00', false);
+            ->assertSee('₹5,664.00', false);
 
         $this->assertSame(
             'distinguished',

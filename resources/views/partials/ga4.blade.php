@@ -6,8 +6,6 @@
         if (request()->routeIs('profiles.public', 'profiles.public.legacy')) {
             // Never send the profile person's display name as page_title.
             $ga4PageTitle = 'Public profile';
-        } elseif (request()->routeIs('in-memoriam.show')) {
-            $ga4PageTitle = 'In Memoriam profile';
         }
     }
 

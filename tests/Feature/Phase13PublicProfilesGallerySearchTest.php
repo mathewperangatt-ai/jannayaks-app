@@ -213,7 +213,7 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
         $this->assertSame($older->id > 0, true);
     }
 
-    public function test_gallery_excludes_demo_profiles_while_demo_page_and_public_urls_remain(): void
+    public function test_gallery_shows_demos_labelled_and_genuine_profiles_first(): void
     {
         [$genuine] = $this->makePublishedProfile([
             'user' => User::factory()->create(['email' => 'genuine.gallery.leader@example.com']),
@@ -227,10 +227,19 @@ class Phase13PublicProfilesGallerySearchTest extends TestCase
         $this->assertSame('published', $genuine->fresh()->status);
         $this->assertSame('published', $demo->fresh()->status);
 
-        $this->get(route('gallery.index'))
+        $gallery = $this->get(route('gallery.index'))
             ->assertOk()
+            // Both are listed; genuine profiles are not hidden behind demos.
             ->assertSee('Genuine Gallery Leader', false)
-            ->assertDontSee('Demo Gallery Leader', false);
+            ->assertSee('Demo Gallery Leader', false)
+            ->getContent();
+        $this->assertLessThan(
+            (int) mb_strpos($gallery, 'Demo Gallery Leader'),
+            (int) mb_strpos($gallery, 'Genuine Gallery Leader'),
+            'Genuine profiles must be listed before demonstrations.',
+        );
+        // Every demo is clearly labelled on its card.
+        $this->assertStringContainsString('demo-badge', $gallery);
 
         $this->get(route('demo-profiles.index'))
             ->assertOk()

@@ -35,7 +35,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $payment = $this->openAttempt('plink_recovered', 'pay_recovered');
         $this->enableGateway();
         $this->fakeLink('plink_recovered', 'paid', [
-            $this->paymentBody('pay_recovered', 'captured', 472000),
+            $this->paymentBody('pay_recovered', 'captured', 566400),
         ]);
 
         $this->assertSame(RazorpayPaymentService::OUTCOME_SETTLED, $this->reconcile($payment));
@@ -56,7 +56,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $payment = $this->openAttempt('plink_auth', 'pay_auth');
         $this->enableGateway();
         $this->fakeLink('plink_auth', 'created', [
-            $this->paymentBody('pay_auth', 'authorized', 472000),
+            $this->paymentBody('pay_auth', 'authorized', 566400),
         ]);
 
         $this->assertSame(RazorpayPaymentService::OUTCOME_PENDING, $this->reconcile($payment));
@@ -104,7 +104,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $this->enableGateway();
 
         $this->fakeLink('plink_expired_clear', 'expired', [
-            $this->paymentBody('pay_expired_failed', 'failed', 472000),
+            $this->paymentBody('pay_expired_failed', 'failed', 566400),
         ]);
         $this->assertSame(RazorpayPaymentService::OUTCOME_CLOSED, $this->reconcile($expired));
         $expired->refresh();
@@ -113,13 +113,13 @@ class PaymentCaptureReconciliationTest extends TestCase
         $this->assertSame(0, $this->invoiceCount($expired));
 
         $this->fakeLink('plink_cancelled_clear', 'cancelled', [
-            $this->paymentBody('pay_cancelled_failed', 'failed', 472000),
+            $this->paymentBody('pay_cancelled_failed', 'failed', 566400),
         ]);
         $this->assertSame(RazorpayPaymentService::OUTCOME_CLOSED, $this->reconcile($cancelled));
         $this->assertSame(Payment::STATUS_CANCELLED, $cancelled->fresh()->status);
 
         $this->fakeLink('plink_expired_auth', 'expired', [
-            $this->paymentBody('pay_expired_auth', 'authorized', 472000),
+            $this->paymentBody('pay_expired_auth', 'authorized', 566400),
         ]);
         $this->assertSame(RazorpayPaymentService::OUTCOME_PENDING, $this->reconcile($expiredAuthorized));
         $expiredAuthorized->refresh();
@@ -133,7 +133,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $payment = $this->openAttempt('plink_cancelled_paid', 'pay_cancelled_paid');
         $this->enableGateway();
         $this->fakeLink('plink_cancelled_paid', 'cancelled', [
-            $this->paymentBody('pay_cancelled_paid', 'captured', 472000),
+            $this->paymentBody('pay_cancelled_paid', 'captured', 566400),
         ]);
 
         $this->assertSame(RazorpayPaymentService::OUTCOME_SETTLED, $this->reconcile($payment));
@@ -156,7 +156,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $this->assertSame(RazorpayPaymentService::OUTCOME_MISMATCH, $this->reconcile($amount));
 
         $this->fakeLink('plink_currency', 'paid', [
-            $this->paymentBody('pay_currency', 'captured', 472000, 'USD'),
+            $this->paymentBody('pay_currency', 'captured', 566400, 'USD'),
         ]);
         $this->assertSame(RazorpayPaymentService::OUTCOME_MISMATCH, $this->reconcile($currency));
 
@@ -165,13 +165,13 @@ class PaymentCaptureReconciliationTest extends TestCase
                 return Http::response([
                     'id' => 'plink_other',
                     'status' => 'paid',
-                    'amount' => 472000,
+                    'amount' => 566400,
                     'currency' => 'INR',
                     'payments' => [['id' => 'pay_link']],
                 ], 200);
             }
 
-            return Http::response($this->paymentBody('pay_link', 'captured', 472000), 200);
+            return Http::response($this->paymentBody('pay_link', 'captured', 566400), 200);
         });
         $this->assertSame(RazorpayPaymentService::OUTCOME_MISMATCH, $this->reconcile($link));
 
@@ -189,7 +189,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $payment = $this->openAttempt('plink_repeat', 'pay_repeat');
         $this->enableGateway();
         $this->fakeLink('plink_repeat', 'created', [
-            $this->paymentBody('pay_repeat', 'authorized', 472000),
+            $this->paymentBody('pay_repeat', 'authorized', 566400),
         ]);
 
         Artisan::call('jannayaks:reconcile-payment-captures');
@@ -213,7 +213,7 @@ class PaymentCaptureReconciliationTest extends TestCase
             app(RazorpayPaymentService::class)->reconcileOpenAttempt($payment->fresh());
 
             return $this->gatewayResponse($request->url(), 'plink_concurrent', 'paid', [
-                $this->paymentBody('pay_concurrent', 'captured', 472000),
+                $this->paymentBody('pay_concurrent', 'captured', 566400),
             ]);
         });
 
@@ -242,7 +242,7 @@ class PaymentCaptureReconciliationTest extends TestCase
             }
 
             return $this->gatewayResponse($request->url(), 'plink_race', 'paid', [
-                $this->paymentBody('pay_race', 'captured', 472000),
+                $this->paymentBody('pay_race', 'captured', 566400),
             ]);
         });
 
@@ -270,7 +270,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $second = $this->openAttempt('plink_second', 'pay_second', $first->application);
         $this->enableGateway();
         $this->fakeLink('plink_second', 'paid', [
-            $this->paymentBody('pay_second', 'captured', 472000),
+            $this->paymentBody('pay_second', 'captured', 566400),
         ]);
 
         $this->assertSame(RazorpayPaymentService::OUTCOME_DUPLICATE, $this->reconcile($second));
@@ -314,7 +314,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $payment->forceFill(['created_at' => now()])->save();
         $this->enableGateway();
         $this->fakeLink('plink_staff', 'created', [
-            $this->paymentBody('pay_staff', 'authorized', 472000),
+            $this->paymentBody('pay_staff', 'authorized', 566400),
         ]);
 
         $this->assertSame(RazorpayPaymentService::OUTCOME_SKIPPED, $this->reconcile($payment));
@@ -335,7 +335,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $payment = $this->terminalAttempt('plink_term_failed', Payment::STATUS_FAILED);
         $this->enableGateway();
         $this->fakeLink('plink_term_failed', 'paid', [
-            $this->paymentBody('pay_term_failed', 'captured', 472000),
+            $this->paymentBody('pay_term_failed', 'captured', 566400),
         ]);
 
         Artisan::call('jannayaks:reconcile-payment-captures');
@@ -354,7 +354,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $payment = $this->terminalAttempt('plink_term_expired', Payment::STATUS_EXPIRED);
         $this->enableGateway();
         $this->fakeLink('plink_term_expired', 'paid', [
-            $this->paymentBody('pay_term_expired', 'captured', 472000),
+            $this->paymentBody('pay_term_expired', 'captured', 566400),
         ]);
 
         $this->assertSame(RazorpayPaymentService::OUTCOME_SETTLED, $this->reconcile($payment));
@@ -369,7 +369,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $payment = $this->terminalAttempt('plink_term_clear', Payment::STATUS_EXPIRED);
         $this->enableGateway();
         $this->fakeLink('plink_term_clear', 'expired', [
-            $this->paymentBody('pay_term_clear', 'failed', 472000),
+            $this->paymentBody('pay_term_clear', 'failed', 566400),
         ]);
 
         $this->assertSame(RazorpayPaymentService::OUTCOME_CLOSED, $this->reconcile($payment));
@@ -419,7 +419,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         ])->save();
         $this->enableGateway();
         $this->fakeLink('plink_term_staff', 'paid', [
-            $this->paymentBody('pay_term_staff', 'captured', 472000),
+            $this->paymentBody('pay_term_staff', 'captured', 566400),
         ]);
 
         $service = app(RazorpayPaymentService::class);
@@ -454,7 +454,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $second = $this->terminalAttempt('plink_term_dup', Payment::STATUS_FAILED, $first->application);
         $this->enableGateway();
         $this->fakeLink('plink_term_dup', 'paid', [
-            $this->paymentBody('pay_term_dup', 'captured', 472000),
+            $this->paymentBody('pay_term_dup', 'captured', 566400),
         ]);
 
         $this->assertSame(RazorpayPaymentService::OUTCOME_DUPLICATE, $this->reconcile($second));
@@ -493,7 +493,7 @@ class PaymentCaptureReconciliationTest extends TestCase
         $this->enableGateway();
         Http::fake(fn () => Http::response([
             'status' => 'created',
-            'amount' => 472000,
+            'amount' => 566400,
             'currency' => 'INR',
             'payments' => [],
         ], 200));
@@ -586,7 +586,7 @@ class PaymentCaptureReconciliationTest extends TestCase
             return Http::response([
                 'id' => $linkId,
                 'status' => $linkStatus,
-                'amount' => 472000,
+                'amount' => 566400,
                 'currency' => 'INR',
                 'payments' => array_map(fn (array $payment): array => ['id' => $payment['id']], $payments),
             ], 200);

@@ -51,13 +51,6 @@ class PublicProfileMediaController extends Controller
             'X-Content-Type-Options' => 'nosniff',
         ];
 
-        // IconsHerald Hosting embeds these URLs cross-origin. Global CORP remains
-        // same-origin; SetSecurityHeaders preserves this carve-out when present.
-        // Visibility and approval checks above already passed.
-        if ($this->profileUrls->isHostedOnIconsHerald($profile)) {
-            $headers['Cross-Origin-Resource-Policy'] = 'cross-origin';
-        }
-
         return $disk->response($media->storage_path_key, null, $headers);
     }
 }

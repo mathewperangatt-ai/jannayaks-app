@@ -339,7 +339,11 @@ class ViewApplication extends ViewRecord
                 }),
             Action::make('changeProfileUrl')
                 ->label('Change profile URL')
-                ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false) && filled($this->getRecord()?->profile_id))
+                // Published URLs are permanent; this corrects a URL before publication only.
+                ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false)
+                    && filled($this->getRecord()?->profile_id)
+                    && $this->getRecord()?->profile?->published_at === null
+                    && $this->getRecord()?->profile?->status !== 'published')
                 ->form([
                     TextInput::make('slug')
                         ->label('New profile slug')
@@ -355,7 +359,7 @@ class ViewApplication extends ViewRecord
                             (string) $data['slug'],
                             (string) $data['reason'],
                         );
-                    }, 'Profile URL updated. The previous URL redirects to the new one.');
+                    }, 'Profile URL updated before publication.');
                 }),
             Action::make('temporarilyHideLivingProfile')
                 ->label('Temporarily hide profile')

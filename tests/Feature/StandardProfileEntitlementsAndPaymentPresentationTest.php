@@ -116,11 +116,11 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
 
         Config::set('jannayaks.tier_pricing.billing.state', 'Kerala');
         $quote = PricingAmounts::forApplication($app, 'Kerala');
-        $this->assertSame(400000, $quote['base_paise']);
-        $this->assertSame(36000, $quote['cgst_paise']);
-        $this->assertSame(36000, $quote['sgst_paise']);
-        $this->assertSame(72000, $quote['gst_paise']);
-        $this->assertSame(472000, $quote['amount_incl_paise']);
+        $this->assertSame(480000, $quote['base_paise']);
+        $this->assertSame(43200, $quote['cgst_paise']);
+        $this->assertSame(43200, $quote['sgst_paise']);
+        $this->assertSame(86400, $quote['gst_paise']);
+        $this->assertSame(566400, $quote['amount_incl_paise']);
         $this->assertSame('intra_state', $quote['gst_classification']);
         $this->assertSame(
             $quote['amount_incl_paise'],
@@ -132,16 +132,16 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
             ->get(route('applications.payment', ['application' => $app, 'lang' => 'en']))
             ->assertOk()
             ->assertSee('Package Price Breakdown', false)
-            ->assertSee('₹4,000.00', false)
+            ->assertSee('₹4,800.00', false)
             ->assertSee('GST (added)', false)
-            ->assertSee('₹720.00', false)
+            ->assertSee('₹864.00', false)
             ->assertSee('Total (incl. GST)', false)
-            ->assertSee('₹4,720.00', false)
+            ->assertSee('₹5,664.00', false)
             ->assertDontSee('CGST (added)', false)
             ->getContent();
 
-        $this->assertSame(1, substr_count($html, '₹4,720.00'));
-        $this->assertGreaterThanOrEqual(1, substr_count($html, '₹4,000.00'));
+        $this->assertSame(1, substr_count($html, '₹5,664.00'));
+        $this->assertGreaterThanOrEqual(1, substr_count($html, '₹4,800.00'));
     }
 
     public function test_new_standard_profile_payment_initiation_uses_standard_amount(): void
@@ -155,8 +155,8 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
 
         $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
 
-        $this->assertSame(472000, $payment->totalPaise());
-        $this->assertSame('4000.00', (string) $payment->base_amount);
+        $this->assertSame(566400, $payment->totalPaise());
+        $this->assertSame('4800.00', (string) $payment->base_amount);
         // Place of supply is not collected yet — tax is stored unclassified (total GST only).
         $this->assertNull($payment->cgst_amount);
         $this->assertNull($payment->sgst_amount);

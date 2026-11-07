@@ -25,7 +25,16 @@
 <p>Your request must reach us within the relevant stage. If you approve the profile within the 7-day period, your right to a refund ends on approval. Approval is your confirmation that you have reviewed and accepted the profile, so please review it carefully before approving.</p>
 
 <h2>3. Cases where a full refund applies</h2>
-<p>A full refund will be made where we decline your application after payment, where we are unable to provide the service you paid for, or where a payment was debited more than once for the same transaction, was collected in error, or was received without a corresponding order being created. Send the transaction reference so that we can verify the payment.</p>
+<p>A full refund will be made where we decline your application after payment — in that case the full payment, including applicable taxes, is refunded — where we are unable to provide the service you paid for, or where a payment was debited more than once for the same transaction, was collected in error, or was received without a corresponding order being created. Send the transaction reference so that we can verify the payment.</p>
+
+<h2>Editorial Acceptance and Refunds</h2>
+<p>All applications to Jannayaks are subject to editorial acceptance. Jannayaks reserves the right to accept or reject an application in accordance with its editorial guidelines.</p>
+<p>Payment of the profile fee does not guarantee publication.</p>
+<p>If Jannayaks rejects an application before publication, the full amount paid, including applicable taxes, will be refunded to the original payment method.</p>
+<p><strong>Editorial Acceptance-ഉം Refund-ഉം</strong></p>
+<p>Jannayaks-ലേക്കുള്ള എല്ലാ അപേക്ഷകളും Editorial Acceptance-ന് വിധേയമാണ്. Editorial Guidelines അനുസരിച്ച് അപേക്ഷ സ്വീകരിക്കാനോ നിരസിക്കാനോ Jannayaks-ന് അധികാരമുണ്ട്.</p>
+<p>Profile Fee അടയ്ക്കുന്നത് പ്രൊഫൈൽ പ്രസിദ്ധീകരിക്കപ്പെടുമെന്ന ഉറപ്പല്ല.</p>
+<p>പ്രസിദ്ധീകരണത്തിന് മുമ്പ് Jannayaks ഒരു അപേക്ഷ നിരസിക്കുകയാണെങ്കിൽ, ബാധകമായ നികുതികൾ ഉൾപ്പെടെ അടച്ച മുഴുവൻ തുകയും യഥാർത്ഥ Payment Method-ലേക്ക് Refund ചെയ്യുന്നതാണ്.</p>
 
 <h2>4. Cancellation requests</h2>
 <p>To cancel, email <a href="mailto:founder@jannayaks.in">founder@jannayaks.in</a> from your registered email address, quoting your application or transaction reference. We may ask for reasonable information to verify the request. We will confirm the stage reached and the refund due.</p>

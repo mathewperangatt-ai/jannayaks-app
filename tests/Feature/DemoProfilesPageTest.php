@@ -3,7 +3,6 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
-use App\Models\InMemoriamProfile;
 use App\Models\Profile;
 use App\Models\User;
 use App\Services\ProfileUrlService;
@@ -30,16 +29,10 @@ class DemoProfilesPageTest extends TestCase
         $content = $response->getContent();
 
         $living = Profile::query()->with('user')->where('status', 'published')->get();
-        $this->assertCount(7, $living);
+        $this->assertCount(14, $living);
         foreach ($living as $profile) {
             $response->assertSee('href="'.route('profiles.public', $profile->slug).'"', false);
             $response->assertSee($profile->full_name, false);
-        }
-        foreach ([
-            'Fr. Joseph Mathew', 'P. Rajeev Menon', 'S. Beena Kumari',
-            'K. Shafiq Rahman', 'R. Leelamma', 'C. Manoj Kumar', 'A. Mariamma',
-        ] as $retired) {
-            $response->assertDontSee($retired, false);
         }
         // In Memoriam demos are hidden from the public demo listing.
         $response->assertDontSee('in-memoriam.show', false);
@@ -68,8 +61,7 @@ class DemoProfilesPageTest extends TestCase
             ->assertOk()
             ->assertSee('<html lang="ml">', false)
             ->assertSee('ഡെമോ പ്രൊഫൈലുകൾ', false)
-            ->assertSee('href="'.route('profiles.public', ['slug' => $profile->slug, 'lang' => 'ml']).'"', false)
-            ->assertDontSee('in-memoriam.show', false);
+            ->assertSee('href="'.route('profiles.public', ['slug' => $profile->slug, 'lang' => 'ml']).'"', false);
     }
 
     public function test_records_outside_the_demo_domain_are_not_listed(): void
@@ -78,29 +70,26 @@ class DemoProfilesPageTest extends TestCase
 
         $profile = Profile::query()->where('full_name', 'T. Gopalakrishnan')->firstOrFail();
         $profile->user->forceFill(['email' => 'gopalakrishnan.member@example.com'])->save();
-        InMemoriamProfile::query()->where('slug', 'k.v.mathew')->firstOrFail()
-            ->forceFill(['commissioner_contact_email' => 'family@example.com'])->save();
 
         $this->get(route('demo-profiles.index'))
             ->assertOk()
             ->assertDontSee('T. Gopalakrishnan', false)
-            ->assertDontSee('K. V. Mathew', false)
-            ->assertSee('Arjun Menon', false)
-            ->assertDontSee('Dr. Saroja Nair (Late)', false);
+            ->assertSee('Arjun Menon', false);
     }
 
-    public function test_gallery_excludes_seeded_demo_profiles_that_remain_on_demo_page(): void
+    public function test_gallery_shows_seeded_demo_profiles_labelled_and_they_remain_on_demo_page(): void
     {
         $this->seed(DemoProfilesSeeder::class);
 
         $demo = Profile::query()->where('full_name', 'T. Gopalakrishnan')->firstOrFail();
         $this->assertStringEndsWith('@jannayaks.internal', strtolower((string) $demo->user->email));
 
-        $this->get(route('gallery.index'))
-            ->assertOk()
-            ->assertDontSee('T. Gopalakrishnan', false)
-            ->assertDontSee('Arjun Menon', false)
-            ->assertDontSee('Meera Krishnan', false);
+        // Pre-Launch Refinement Part 6: the gallery keeps labelled demo
+        // profiles visible until sufficient genuine profiles exist.
+        $gallery = $this->get(route('gallery.index'))->assertOk()->getContent()
+            .$this->get(route('gallery.index', ['page' => 2]))->assertOk()->getContent();
+        $this->assertGreaterThanOrEqual(14, substr_count($gallery, 'demo-badge'));
+        $this->assertStringContainsString('T. Gopalakrishnan', $gallery);
 
         $this->get(route('demo-profiles.index'))
             ->assertOk()
@@ -187,16 +176,19 @@ class DemoProfilesPageTest extends TestCase
         );
     }
 
-    public function test_main_menu_marks_demo_or_gallery_as_current_by_page_type(): void
+    public function test_main_menu_marks_gallery_as_current_and_hides_demo_item(): void
     {
         $this->seed(DemoProfilesSeeder::class);
+        // Part 5: the simplified primary nav carries Gallery / How It Works /
+        // Pricing / Sign In / Create Profile; supporting pages live in the footer.
         $demoCurrent = '#href="[^"]*/demo-profiles"\s+aria-current="page"#';
         $galleryCurrent = '#href="[^"]*/gallery"\s+aria-current="page"#';
 
         foreach (['/demo-profiles', '/t.gopalakrishnan'] as $path) {
             $content = $this->get($path)->assertOk()->getContent();
-            $this->assertMatchesRegularExpression($demoCurrent, $content, $path);
+            // Demo pages are not the Gallery: nothing is marked current for them.
             $this->assertDoesNotMatchRegularExpression($galleryCurrent, $content, $path);
+            $this->assertStringNotContainsString('aria-current', $this->navLinksExtract($content), $path);
         }
 
         Profile::query()->where('slug', 'arjun.menon')->firstOrFail()
@@ -207,6 +199,19 @@ class DemoProfilesPageTest extends TestCase
             $this->assertMatchesRegularExpression($galleryCurrent, $content, $path);
             $this->assertDoesNotMatchRegularExpression($demoCurrent, $content, $path);
         }
+    }
+
+    /**
+     * The simplified nav no longer lists Demo Profiles; assert the marked
+     * item (if any) is the Gallery link.
+     */
+    private function navLinksExtract(string $content): string
+    {
+        if (preg_match('#<ul class="nav-links".*?</ul>#s', $content, $m) !== 1) {
+            return '';
+        }
+
+        return $m[0];
     }
 
     public function test_demo_profile_opens_in_malayalam_unless_english_is_requested(): void

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Models\Payment;
 use App\Services\ApplicationPaymentStateService;
+use App\Services\InvoiceDeliveryService;
 use App\Services\InvoiceService;
 use App\Services\MembershipLifecycleService;
 use App\Services\RazorpayPaymentService;
@@ -22,6 +23,7 @@ class RazorpayWebhookController extends Controller
         private readonly RazorpayPaymentService $razorpay,
         private readonly ApplicationPaymentStateService $stateService,
         private readonly InvoiceService $invoices,
+        private readonly InvoiceDeliveryService $delivery,
     ) {}
 
     public function handle(Request $request): JsonResponse
@@ -673,6 +675,15 @@ class RazorpayWebhookController extends Controller
             $this->invoices->assignSettlementDocuments($payment);
         } catch (\Throwable $e) {
             Log::warning('Razorpay webhook: settlement document assignment failed.', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
+
+        try {
+            $this->delivery->sendSettlementDocuments($payment->fresh() ?? $payment);
+        } catch (\Throwable $e) {
+            Log::warning('Razorpay webhook: settlement document email dispatch failed.', [
                 'payment_id' => $payment->id,
                 'error' => $e->getMessage(),
             ]);

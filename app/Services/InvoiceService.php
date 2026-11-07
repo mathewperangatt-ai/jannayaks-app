@@ -15,6 +15,22 @@ class InvoiceService
 
     public const CREDIT_NOTE_PREFIX = 'JNK-CN-';
 
+    /** Configurable document series (defaulting to the established prefixes). */
+    public function receiptPrefix(): string
+    {
+        return (string) (config('jannayaks.tier_pricing.billing.receipt_prefix') ?: self::RECEIPT_PREFIX);
+    }
+
+    public function invoicePrefix(): string
+    {
+        return (string) (config('jannayaks.tier_pricing.billing.invoice_prefix') ?: self::INVOICE_PREFIX);
+    }
+
+    public function creditNotePrefix(): string
+    {
+        return (string) (config('jannayaks.tier_pricing.billing.credit_note_prefix') ?: self::CREDIT_NOTE_PREFIX);
+    }
+
     public function assignSettlementDocuments(Payment $payment): Payment
     {
         $this->assignReceiptReference($payment);
@@ -33,7 +49,7 @@ class InvoiceService
             return $payment->invoice_number;
         }
 
-        $ref = $this->generateUniqueReference(self::RECEIPT_PREFIX, 'invoice_number');
+        $ref = $this->generateUniqueReference($this->receiptPrefix(), 'invoice_number');
         $payment->invoice_number = $ref;
         if ($payment->invoice_issued_at === null) {
             $payment->invoice_issued_at = $payment->paid_at ?? now();
@@ -53,7 +69,7 @@ class InvoiceService
             return $payment->tax_invoice_number;
         }
 
-        $ref = $this->generateUniqueReference(self::INVOICE_PREFIX, 'tax_invoice_number');
+        $ref = $this->generateUniqueReference($this->invoicePrefix(), 'tax_invoice_number');
         $payment->tax_invoice_number = $ref;
         if ($payment->tax_invoice_issued_at === null) {
             $payment->tax_invoice_issued_at = $payment->paid_at ?? now();
@@ -73,7 +89,7 @@ class InvoiceService
             return $payment->credit_note_number;
         }
 
-        $ref = $this->generateUniqueReference(self::CREDIT_NOTE_PREFIX, 'credit_note_number');
+        $ref = $this->generateUniqueReference($this->creditNotePrefix(), 'credit_note_number');
         $payment->credit_note_number = $ref;
         if ($payment->credit_note_issued_at === null) {
             $payment->credit_note_issued_at = $payment->refunded_at ?? now();
@@ -85,17 +101,17 @@ class InvoiceService
 
     public function generateReceiptReference(): string
     {
-        return $this->prefixedReference(self::RECEIPT_PREFIX);
+        return $this->prefixedReference($this->receiptPrefix());
     }
 
     public function generateTaxInvoiceReference(): string
     {
-        return $this->prefixedReference(self::INVOICE_PREFIX);
+        return $this->prefixedReference($this->invoicePrefix());
     }
 
     public function generateCreditNoteReference(): string
     {
-        return $this->prefixedReference(self::CREDIT_NOTE_PREFIX);
+        return $this->prefixedReference($this->creditNotePrefix());
     }
 
     /**

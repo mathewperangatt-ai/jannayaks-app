@@ -880,6 +880,18 @@ class RazorpayPaymentService
                 'error' => $e->getMessage(),
             ]);
         }
+
+        // Email the issued documents to the customer's registered address.
+        // Non-fatal: a delivery failure keeps the issued documents and leaves
+        // the payment retryable (invoice_emailed_at stays null).
+        try {
+            app(InvoiceDeliveryService::class)->sendSettlementDocuments($payment->fresh() ?? $payment);
+        } catch (\Throwable $e) {
+            Log::warning('Settlement document email dispatch failed.', [
+                'payment_id' => $payment->id,
+                'error' => $e->getMessage(),
+            ]);
+        }
     }
 
     public function http(): PendingRequest

@@ -3,7 +3,9 @@
 namespace Tests\Feature;
 
 use App\Services\ProfileUrlService;
+use Database\Seeders\DemoProfilesSeeder;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Storage;
 use PHPUnit\Framework\Attributes\DataProvider;
 use Tests\TestCase;
 
@@ -107,12 +109,37 @@ class LegalPagesTest extends TestCase
             ->assertSee('Grievance / Profile Complaint', false);
     }
 
-    public function test_disclaimer_states_no_endorsement_and_political_neutrality(): void
+    public function test_disclaimer_carries_the_bilingual_editorial_disclosure(): void
     {
         $this->get('/disclaimer')
             ->assertOk()
-            ->assertSee('No endorsement and political neutrality', false)
-            ->assertSee('prepared first using artificial intelligence tools and then checked by human editors', false);
+            ->assertSee('Information on Jannayaks', false)
+            ->assertSee('It is not a certificate, recommendation or endorsement.', false)
+            ->assertSee('we do not independently verify every statement in them', false)
+            ->assertSee('Grievance Redressal page', false)
+            ->assertSee('Jannayaks-ലെ വിവരങ്ങളെക്കുറിച്ച്', false)
+            ->assertSee('അത് ഒരു സാക്ഷ്യപത്രമോ ശുപാർശയോ ഔദ്യോഗിക അംഗീകാരമോ അല്ല.', false);
+    }
+
+    public function test_homepage_carries_the_compact_editorial_disclosure_with_disclaimer_link(): void
+    {
+        $this->get(route('home'))
+            ->assertOk()
+            ->assertSee('Editorial and Information Notice', false)
+            ->assertSee('If Jannayaks declines an application before publication, the full amount paid, including applicable taxes, will be refunded.', false)
+            ->assertSee('Editorial, വിവര അറിയിപ്പ്', false)
+            ->assertSee('<a href="'.route('legal.disclaimer').'"', false);
+    }
+
+    public function test_published_profiles_disclose_supplied_information_near_contact(): void
+    {
+        Storage::fake('public');
+        $this->seed(DemoProfilesSeeder::class);
+
+        $this->get('/t.gopalakrishnan')
+            ->assertOk()
+            ->assertSee('Prepared from information supplied by the profile owner. Not independently verified.', false)
+            ->assertSee('വിവരങ്ങൾ സ്വതന്ത്രമായി സ്ഥിരീകരിച്ചിട്ടില്ല', false);
     }
 
     public function test_footer_links_point_to_every_legal_page(): void

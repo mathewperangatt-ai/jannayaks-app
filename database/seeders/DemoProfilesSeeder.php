@@ -4,10 +4,6 @@ namespace Database\Seeders;
 
 use App\Models\Application;
 use App\Models\EditorialContent;
-use App\Models\InMemoriamEditorialContent;
-use App\Models\InMemoriamGeography;
-use App\Models\InMemoriamProfile;
-use App\Models\InMemoriamPublicOffice;
 use App\Models\MediaItem;
 use App\Models\Profile;
 use App\Models\User;
@@ -26,7 +22,7 @@ use Illuminate\Support\Str;
 /**
  * FINAL DEMONSTRATION POPULATION (corrected demonstration corpus).
  *
- * Living demonstrations (7) — seeded through the application's REAL
+ * Demonstration profiles (14) — seeded through the application's REAL
  * editorial/publication workflow so each record is structurally identical
  * to a legitimately published profile (approval, version-pinned customer
  * approval, durable consent, admin publication, membership, reserved slug,
@@ -35,18 +31,16 @@ use Illuminate\Support\Str;
  *   T. Gopalakrishnan, P. Sreedharan, V. Suresh Babu,
  *   Arjun Menon, Nanditha Das, Fahim Yousuf, Meera Krishnan
  *
- * Short Recognised / Acclaimed demonstration profiles were retired from the
- * public demo set. Re-seeding unpublishes any leftover demo-domain living
- * profiles that are no longer in demo-profiles-living.php (demo emails only).
+ * All approved demonstration profiles are seeded idempotently; re-running
+
  *
- * Memorial demonstrations (2) — K. V. Mathew (Late) and Dr. Saroja Nair
  * (Late), with the supplied English and Malayalam descriptions. The corpus
  * supplies no dates or locations, so none are recorded.
  *
- * Content lives in demo-profiles-living.php and demo-profiles-memorial.php;
+ * Content lives in demo-profiles-living.php;
  * portraits (each carrying the visible "AI GENERATED" watermark) live in
  * database/seeders/demo-media/. Missing files render the monogram
- * placeholder. Living portraits are attached before publication so the
+ * placeholder. Portraits are attached before publication so the
  * publication integrity snapshot already includes them.
  *
  * Demo exclusion from the sitemap uses the established internal-email
@@ -71,7 +65,7 @@ class DemoProfilesSeeder extends Seeder
 
     public function run(): void
     {
-        $living = require database_path('seeders/demo-profiles-living.php');
+        $demos = require database_path('seeders/demo-profiles-living.php');
 
         $this->demoAdmin = User::query()->updateOrCreate(
             ['email' => 'demo.admin@jannayaks.internal'],
@@ -83,15 +77,10 @@ class DemoProfilesSeeder extends Seeder
             ],
         );
 
-        foreach ($living as $slug => $entry) {
+        foreach ($demos as $slug => $entry) {
             $this->seedLivingDemo($slug, $entry);
         }
 
-        $result = app(\App\Services\ObsoleteLivingDemoRetirementService::class)->retire(false);
-        foreach ($result['retired'] as $row) {
-            $this->command?->info('Retired obsolete living demo: '.$row['full_name']);
-        }
-        $this->seedMemorials();
         $this->seedTestAccounts();
     }
 
@@ -350,63 +339,6 @@ class DemoProfilesSeeder extends Seeder
     }
 
     /* -----------------------------------------------------------------
-     * Memorial demonstrations (supplied corpus text — see notes).
-     * ----------------------------------------------------------------- */
-    private function seedMemorials(): void
-    {
-        $memorials = require database_path('seeders/demo-profiles-memorial.php');
-
-        foreach ($memorials as $slug => $m) {
-            $profile = InMemoriamProfile::query()->updateOrCreate(
-                ['slug' => $slug],
-                [
-                    'deceased_full_name' => $m['name'],
-                    // "(Late)" is the approved memorial presentation suffix, applied
-                    // at the display-name layer only.
-                    'deceased_display_name' => $m['display'],
-                    'status' => InMemoriamProfile::STATUS_PUBLISHED_ARCHIVED,
-                    'profession' => $m['profession'],
-                    'bio_headline' => $m['headline'],
-                    'deceased_date_of_birth' => null,
-                    'deceased_date_of_death' => null,
-                    'verification_status' => InMemoriamProfile::VERIFICATION_WAIVED, // fictional demonstration profile
-                    'commissioner_display_consent' => false,
-                    'commissioner_contact_name' => 'Jannayaks Demonstration Records',
-                    'commissioner_contact_mobile' => '0000000000',
-                    'commissioner_contact_email' => 'demo.profiles@jannayaks.internal',
-                    'commissioner_relation' => 'Fictional demonstration record',
-                    'published_at' => now()->subDays(20),
-                    'hosting_starts_on' => now()->subYears(2)->startOfYear(),
-                    'hosting_ends_on' => now()->addYears(10)->endOfYear(),
-                ],
-            );
-
-            // The corpus supplies no location for either memorial. Public
-            // offices require a location, so the role is carried by the
-            // headline alone.
-            InMemoriamGeography::query()->where('in_memoriam_profile_id', $profile->id)->delete();
-            InMemoriamPublicOffice::query()->where('in_memoriam_profile_id', $profile->id)->delete();
-
-            foreach ([InMemoriamEditorialContent::LANGUAGE_EN => $m['en'], InMemoriamEditorialContent::LANGUAGE_ML => $m['ml']] as $language => $content) {
-                InMemoriamEditorialContent::query()->updateOrCreate(
-                    ['in_memoriam_profile_id' => $profile->id, 'language' => $language, 'version_number' => 1],
-                    [
-                        'title' => $content['title'],
-                        'summary' => $content['summary'],
-                        'body' => $content['body'],
-                        'status' => InMemoriamEditorialContent::STATUS_APPROVED,
-                        'ai_generated' => false,
-                    ],
-                );
-            }
-
-            $this->attachMemorialPortrait($profile, $m['portrait'], 'Portrait of '.$m['name']);
-
-            $this->command?->info(sprintf('Demo memorial: %s (slug: %s).', $m['display'], $slug));
-        }
-    }
-
-    /* -----------------------------------------------------------------
      * Internal test accounts (controlled payment-waiver lane).
      * ----------------------------------------------------------------- */
     private function seedTestAccounts(): void
@@ -505,58 +437,7 @@ class DemoProfilesSeeder extends Seeder
         return true;
     }
 
-    private function attachMemorialPortrait(InMemoriamProfile $profile, string $filename, string $alt): void
-    {
-        $source = database_path('seeders/demo-media/'.$filename);
-        if (! is_file($source)) {
-            $this->command?->warn("Memorial portrait not bundled yet: {$filename} (skipping — placeholder will be shown).");
-
-            return;
-        }
-
-        $bytes = file_get_contents($source);
-        if ($bytes === false) {
-            return;
-        }
-
-        if ($this->primaryPortraitHash($profile) === hash('sha256', $bytes)) {
-            return;
-        }
-
-        $disk = (string) config('jannayaks.media.public_disk', 'public');
-        $prefix = trim((string) config('jannayaks.media.object_prefix', 'profile-media'), '/');
-        $key = $prefix.'/in-memoriam/'.$profile->id.'/'.Str::lower((string) Str::ulid()).'.jpg';
-        Storage::disk($disk)->put($key, $bytes);
-
-        $dimensions = @getimagesizefromstring($bytes);
-        [$width, $height] = $dimensions ?: [null, null];
-
-        // Memorial photographs share the polymorphic MediaItem table
-        // (InMemoriamMediaService writes the same shape).
-        MediaItem::query()->updateOrCreate(
-            [
-                'mediable_type' => $profile->getMorphClass(),
-                'mediable_id' => $profile->id,
-                'media_type' => MediaItem::TYPE_PROFILE_PHOTO,
-                'is_primary' => true,
-            ],
-            [
-                'storage_path_key' => $key,
-                'disk' => $disk,
-                'alt_text' => $alt,
-                'display_order' => 1,
-                'privacy' => MediaItem::PRIVACY_PUBLIC,
-                'review_status' => MediaItem::REVIEW_APPROVED,
-                'mime_type' => 'image/jpeg',
-                'size_bytes' => strlen($bytes),
-                'photo_sha256' => hash('sha256', $bytes),
-                'width' => $width,
-                'height' => $height,
-            ],
-        );
-    }
-
-    private function primaryPortraitHash(Profile|InMemoriamProfile $owner): ?string
+    private function primaryPortraitHash(Profile $owner): ?string
     {
         return MediaItem::query()
             ->where('mediable_type', $owner->getMorphClass())

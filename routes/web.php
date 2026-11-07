@@ -10,7 +10,6 @@ use App\Http\Controllers\CustomerProfilePreviewController;
 use App\Http\Controllers\DemoProfilesController;
 use App\Http\Controllers\FaqChargesController;
 use App\Http\Controllers\HomeController;
-use App\Http\Controllers\InMemoriamLandingController;
 use App\Http\Controllers\InvitationRequestController;
 use App\Http\Controllers\MembershipController;
 use App\Http\Controllers\OnlineInterviewController;
@@ -22,8 +21,6 @@ use App\Http\Controllers\ProfileMaintenanceController;
 use App\Http\Controllers\ProfileMediaController;
 use App\Http\Controllers\ProfileUrlController;
 use App\Http\Controllers\PublicGalleryController;
-use App\Http\Controllers\PublicInMemoriamController;
-use App\Http\Controllers\PublicInMemoriamMediaController;
 use App\Http\Controllers\PublicProfileMediaController;
 use App\Http\Controllers\PublicProfileUrlController;
 use App\Http\Controllers\PublicSearchController;
@@ -67,15 +64,6 @@ Route::post('/profiles/{slug}/react', [ProfileEngagementController::class, 'reac
     ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
     ->middleware(['auth', 'throttle:30,1'])
     ->name('profiles.react');
-
-Route::get('/in-memoriam', InMemoriamLandingController::class)->name('in-memoriam.index');
-Route::get('/in-memoriam/{slug}', [PublicInMemoriamController::class, 'show'])
-    ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
-    ->name('in-memoriam.show');
-Route::get('/in-memoriam/{slug}/photo/{media}', [PublicInMemoriamMediaController::class, 'show'])
-    ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
-    ->whereNumber('media')
-    ->name('in-memoriam.photo');
 
 Route::get('/p/{slug}', [PublicProfileUrlController::class, 'legacyShow'])
     ->where('slug', '[A-Za-z0-9][A-Za-z0-9.\-]*')
@@ -173,9 +161,6 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::post('/applications/{application}/profile-url', [ProfileUrlController::class, 'update'])
         ->middleware('throttle:20,1')
         ->name('applications.profile-url.update');
-    Route::post('/applications/{application}/profile-url/hosting', [ProfileUrlController::class, 'updateHosting'])
-        ->middleware('throttle:20,1')
-        ->name('applications.profile-url.hosting');
     Route::get('/applications/{application}/profile-url/availability', [ProfileUrlController::class, 'availability'])
         ->middleware('throttle:30,1')
         ->name('applications.profile-url.availability');
@@ -203,6 +188,9 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::get('/payments/{payment}/receipt', [PaymentDocumentController::class, 'receipt'])->name('payments.receipt');
     Route::get('/payments/{payment}/tax-invoice', [PaymentDocumentController::class, 'taxInvoice'])->name('payments.tax-invoice');
     Route::get('/payments/{payment}/credit-note', [PaymentDocumentController::class, 'creditNote'])->name('payments.credit-note');
+    Route::get('/payments/{payment}/documents/{kind}', [PaymentDocumentController::class, 'pdfDownload'])
+        ->where('kind', 'receipt|tax-invoice|credit-note')
+        ->name('payments.document.pdf');
 
     Route::get('/profiles/{profile}/membership', [MembershipController::class, 'show'])
         ->name('membership.show');
@@ -212,6 +200,16 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
 });
 
 Route::get('/payments/razorpay/callback', [RazorpayCallbackController::class, 'show'])->name('payments.razorpay.callback');
+
+// Finance administration: document downloads and document-email resend.
+Route::middleware(['auth'])->group(function () {
+    Route::get('/admin/payments/{payment}/documents/{kind}', [PaymentDocumentController::class, 'adminPdfDownload'])
+        ->where('kind', 'receipt|tax-invoice|credit-note')
+        ->name('admin.payments.document.pdf');
+    Route::post('/admin/payments/{payment}/documents/resend', [PaymentDocumentController::class, 'adminResendDocuments'])
+        ->middleware('throttle:10,1')
+        ->name('admin.payments.documents.resend');
+});
 
 Route::middleware(['throttle:30,1'])->group(function () {
     Route::post('/payments/razorpay/webhook', [RazorpayWebhookController::class, 'handle'])->name('payments.razorpay.webhook');

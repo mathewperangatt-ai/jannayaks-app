@@ -79,33 +79,6 @@ return [
         'reference_codes' => env('JANNAYAKS_PUBLICATION_TEST_BYPASS_REFERENCES', ''),
     ],
 
-    /*
-    | Applicant-facing hosting-destination price lines shown on the
-    | profile-URL page next to each option. The Jannayaks line is computed in
-    | ProfileUrlController from the authoritative Standard Profile pricing
-    | (tier_pricing above). The IconsHerald line mirrors the IconsHerald
-    | production configuration (config/iconsherald.php: single offering
-    | ₹6,000 inclusive of GST for the first year; ₹2,400 per year renewal
-    | from year 2, also GST-inclusive) and must be reviewed whenever that
-    | configuration changes.
-    */
-    'hosting_destinations' => [
-        'iconsherald' => [
-            'price_line' => '₹6,000 inclusive of GST (first year)',
-        ],
-    ],
-
-    /*
-    | In Memoriam public presentation is disabled. The internal memorial
-    | workflow (records, media, admin upload tooling) is untouched — only the
-    | public landing/listing/detail pages, sitemap inclusion and demo exposure
-    | are gated by this flag. Set JANNAYAKS_IN_MEMORIAM_PUBLIC=true to restore
-    | the public experience.
-    */
-    'in_memoriam' => [
-        'public_enabled' => env('JANNAYAKS_IN_MEMORIAM_PUBLIC', false),
-    ],
-
     'tier_pricing' => [
         'currency' => 'INR',
         'gst_percent' => 18,
@@ -116,14 +89,15 @@ return [
         | Historical emerging/accomplished/distinguished rows keep null
         | pricing_generation and their original package base amounts / media
         | entitlements below. Do not reprice those rows from standard_profile.
-        | There is no launch discount and no crossed-out comparison price.
+        | Standard Profile ₹4,800 = profile preparation ₹3,000 + first-year
+        | hosting ₹1,800. No launch discount and no crossed-out comparison price.
         */
         'standard_profile' => [
             'internal_tier' => 'distinguished',
             'label' => 'Standard Profile',
-            'base_amount' => 4000,
-            'description' => 'Standard Profile fee, exclusive of GST.',
-            'photo_slots' => 4,
+            'base_amount' => 4800,
+            'description' => 'Standard Profile: profile preparation and editorial presentation (₹3,000) and first-year hosting (₹1,800), exclusive of GST.',
+            'photo_slots' => 3,
             'includes_video_link' => false,
         ],
         'packages' => [
@@ -160,6 +134,13 @@ return [
             'state' => env('JANNAYAKS_BILLING_STATE', ''),
             'place_of_supply' => env('JANNAYAKS_BILLING_PLACE_OF_SUPPLY', ''),
             'support_email' => env('JANNAYAKS_BILLING_SUPPORT_EMAIL', ''),
+            // Document delivery: emails settlement documents after trusted payment
+            // confirmation. Prefixes stay configurable without changing existing
+            // issued document numbers.
+            'document_emails' => env('JANNAYAKS_DOCUMENT_EMAILS', true),
+            'receipt_prefix' => env('JANNAYAKS_RECEIPT_PREFIX', 'JNK-RCPT-'),
+            'invoice_prefix' => env('JANNAYAKS_INVOICE_PREFIX', 'JNK-INV-'),
+            'credit_note_prefix' => env('JANNAYAKS_CREDIT_NOTE_PREFIX', 'JNK-CN-'),
         ],
         'in_memoriam' => [
             'label' => 'In Memoriam (3 years hosting)',

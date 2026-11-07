@@ -63,7 +63,7 @@ class StructuredDataTest extends TestCase
         $site = $nodes['WebSite'];
         $this->assertSame('Jannayaks', $site['name']);
         $this->assertSame(url('/'), $site['url']);
-        $this->assertStringContainsString('digital biographical archive', $site['description']);
+        $this->assertStringContainsString('A Digital Gallery of Notable People Across All Fields', $site['description']);
 
         // The existing /search?q= GET interface is real, so the SearchAction
         // represents it accurately.

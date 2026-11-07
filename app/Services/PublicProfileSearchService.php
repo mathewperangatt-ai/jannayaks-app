@@ -13,20 +13,18 @@ class PublicProfileSearchService
     public const PER_PAGE = 12;
 
     /**
-     * Gallery: genuine published profiles only, newest published first
-     * (deterministic, non-evaluative). Demonstration profiles (owner email
-     * under SitemapService::DEMO_EMAIL_DOMAIN — same rule as /demo-profiles
-     * and the sitemap) are excluded here and listed separately.
+     * Gallery: published profiles, newest published first (deterministic,
+     * non-evaluative). Demonstration profiles (owner email under
+     * SitemapService::DEMO_EMAIL_DOMAIN — same rule as /demo-profiles and the
+     * sitemap) are retained and clearly identified so the gallery is not
+     * empty while genuine published profiles are still few; genuine profiles
+     * sort ahead of demonstrations.
      *
      * @param  array{district_id?: int|null, state?: string|null, country?: string|null}  $filters
      */
     public function gallery(array $filters = [], int $perPage = self::PER_PAGE): LengthAwarePaginator
     {
         $query = $this->publishedBaseQuery()
-            ->whereDoesntHave(
-                'user',
-                fn (Builder $q) => $q->where('email', 'like', '%'.SitemapService::DEMO_EMAIL_DOMAIN)
-            )
             ->with([
                 'geography.district.state',
                 'geography.localBody',
@@ -40,6 +38,7 @@ class PublicProfileSearchService
         $this->applyOptionalFilters($query, $filters);
 
         return $query
+            ->orderByRaw('case when exists (select 1 from users u where u.id = profiles.user_id and u.email like ?) then 1 else 0 end asc', ['%'.SitemapService::DEMO_EMAIL_DOMAIN])
             ->orderByDesc('published_at')
             ->orderByDesc('id')
             ->paginate($perPage)

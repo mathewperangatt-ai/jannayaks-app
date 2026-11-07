@@ -17,8 +17,8 @@
 <p>Jannayaks does not currently offer applicants an option to have a profile published on IconsHerald. Any profile already authorised for display there under an earlier, specific arrangement remains subject to the terms of that authorisation and the <a href="{{ route('legal.privacy') }}">Privacy Policy</a>.</p>
 
 <h2>3. Applications, identity and authority</h2>
-<p>You must give information that is accurate, current and not misleading. You must have authority to submit the information, photographs, documents, quotations and other materials you provide. Where an application concerns another living person, you must obtain that person’s informed permission and any permission needed for the materials supplied. We may contact that person to confirm, and may ask for evidence of your authority.</p>
-<p>We may decline, pause or request changes to an application where information is incomplete, rights are unclear, identity or consent is disputed, or publication may create legal, safety or reputational concerns.</p>
+<p>You must give information that is accurate, current and not misleading. You must have authority to submit the information, photographs, documents, quotations and other materials you provide. Where an application concerns another person, you must obtain that person’s informed permission and any permission needed for the materials supplied. We may contact that person to confirm, and may ask for evidence of your authority.</p>
+<p>We may decline, pause or request changes to an application where information is incomplete, rights are unclear, identity or consent is disputed, or publication may create legal, safety or reputational concerns. Jannayaks reserves the right to accept or reject applications according to its editorial guidelines, and payment does not guarantee publication.</p>
 
 <h2>4. Editorial review, approval and publication</h2>
 <p>We may edit, organise, translate, format or adapt submitted material for clarity, consistency, length, style and presentation. A profile is “submitted for approval” when we make the prepared version available to you for review, and “approved” when you confirm it for publication.</p>
@@ -37,6 +37,15 @@
 <h2>7. Cancellation, refunds and renewals</h2>
 <p>Cancellation and refund requests are governed by the <a href="{{ route('legal.refund') }}">Refund and Cancellation Policy</a>, the service terms disclosed before payment and applicable law. In summary, the Policy provides a full refund until your profile is submitted for approval, a 60% refund for up to seven days after submission, and no refund once the profile is approved or the seven days have passed. The Policy contains the full terms and exceptions.</p>
 <p>Any renewal will be subject to the renewal terms disclosed before the renewal transaction. A payment method is charged automatically only where you have given an express recurring-payment authorisation. Nothing in these Terms excludes consumer rights that cannot lawfully be excluded.</p>
+
+<h2>Editorial Acceptance and Refunds</h2>
+<p>All applications to Jannayaks are subject to editorial acceptance. Jannayaks reserves the right to accept or reject an application in accordance with its editorial guidelines.</p>
+<p>Payment of the profile fee does not guarantee publication.</p>
+<p>If Jannayaks rejects an application before publication, the full amount paid, including applicable taxes, will be refunded to the original payment method.</p>
+<p><strong>Editorial Acceptance-ഉം Refund-ഉം</strong></p>
+<p>Jannayaks-ലേക്കുള്ള എല്ലാ അപേക്ഷകളും Editorial Acceptance-ന് വിധേയമാണ്. Editorial Guidelines അനുസരിച്ച് അപേക്ഷ സ്വീകരിക്കാനോ നിരസിക്കാനോ Jannayaks-ന് അധികാരമുണ്ട്.</p>
+<p>Profile Fee അടയ്ക്കുന്നത് പ്രൊഫൈൽ പ്രസിദ്ധീകരിക്കപ്പെടുമെന്ന ഉറപ്പല്ല.</p>
+<p>പ്രസിദ്ധീകരണത്തിന് മുമ്പ് Jannayaks ഒരു അപേക്ഷ നിരസിക്കുകയാണെങ്കിൽ, ബാധകമായ നികുതികൾ ഉൾപ്പെടെ അടച്ച മുഴുവൻ തുകയും യഥാർത്ഥ Payment Method-ലേക്ക് Refund ചെയ്യുന്നതാണ്.</p>
 
 <h2>8. Public display, suspension and removal</h2>
 <p>A published profile may be accessible to the public and may be indexed, cached, linked to or copied by third parties beyond our control.</p>

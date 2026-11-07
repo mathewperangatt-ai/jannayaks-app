@@ -15,11 +15,11 @@ class GstClassificationTest extends TestCase
 
         $quote = PricingAmounts::forStandardProfile('Keralam');
         $this->assertSame('intra_state', $quote['gst_classification']);
-        $this->assertSame(72000, $quote['gst_paise']);
-        $this->assertSame(36000, $quote['cgst_paise']);
-        $this->assertSame(36000, $quote['sgst_paise']);
+        $this->assertSame(86400, $quote['gst_paise']);
+        $this->assertSame(43200, $quote['cgst_paise']);
+        $this->assertSame(43200, $quote['sgst_paise']);
         $this->assertNull($quote['igst_paise']);
-        $this->assertSame(472000, $quote['amount_incl_paise']);
+        $this->assertSame(566400, $quote['amount_incl_paise']);
         $this->assertSame(
             $quote['amount_incl_paise'],
             $quote['base_paise'] + $quote['cgst_paise'] + $quote['sgst_paise'],
@@ -32,11 +32,11 @@ class GstClassificationTest extends TestCase
 
         $quote = PricingAmounts::forStandardProfile('Maharashtra');
         $this->assertSame('inter_state', $quote['gst_classification']);
-        $this->assertSame(72000, $quote['gst_paise']);
-        $this->assertSame(72000, $quote['igst_paise']);
+        $this->assertSame(86400, $quote['gst_paise']);
+        $this->assertSame(86400, $quote['igst_paise']);
         $this->assertNull($quote['cgst_paise']);
         $this->assertNull($quote['sgst_paise']);
-        $this->assertSame(472000, $quote['amount_incl_paise']);
+        $this->assertSame(566400, $quote['amount_incl_paise']);
         $this->assertSame($quote['amount_incl_paise'], $quote['base_paise'] + $quote['igst_paise']);
     }
 
@@ -47,7 +47,7 @@ class GstClassificationTest extends TestCase
         $this->assertSame('unclassified', $noSeller['gst_classification']);
         $this->assertNull($noSeller['cgst_paise']);
         $this->assertNull($noSeller['igst_paise']);
-        $this->assertSame(472000, $noSeller['amount_incl_paise']);
+        $this->assertSame(566400, $noSeller['amount_incl_paise']);
 
         Config::set('jannayaks.tier_pricing.billing.state', 'Kerala');
         $noPlace = PricingAmounts::forApplication(new Application([
@@ -57,7 +57,7 @@ class GstClassificationTest extends TestCase
         $this->assertSame('unclassified', $noPlace['gst_classification']);
         $this->assertNull($noPlace['cgst_paise']);
         $this->assertNull($noPlace['igst_paise']);
-        $this->assertSame(472000, $noPlace['amount_incl_paise']);
+        $this->assertSame(566400, $noPlace['amount_incl_paise']);
     }
 
     public function test_historical_tiers_preserve_totals_under_each_classification(): void

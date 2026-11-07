@@ -86,15 +86,6 @@ class AppServiceProvider extends ServiceProvider
             return \Illuminate\Cache\RateLimiting\Limit::perMinute(10)->by('pay-init:'.$request->user()?->id ?: $request->ip());
         });
 
-        // IconsHerald Hosting signed read API — IP-keyed; limit reads config so
-        // tests can lower it. Applied before HMAC verification.
-        \Illuminate\Support\Facades\RateLimiter::for('hosting-integration', function ($request) {
-            $perMinute = max(1, (int) config('hosting_integration.rate_limit_per_minute', 60));
-
-            return \Illuminate\Cache\RateLimiting\Limit::perMinute($perMinute)
-                ->by('hosting-integration:'.$request->ip());
-        });
-
         // S2 — password strength baseline. Password::defaults() was never
         // configured, so registration and reset accepted any non-empty
         // password. Length + letters + numbers keeps friction low for the

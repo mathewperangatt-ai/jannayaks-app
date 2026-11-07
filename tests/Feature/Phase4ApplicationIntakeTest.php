@@ -207,7 +207,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'answers' => $answers,
         ])->assertOk();
 
-        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true]);
+        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true, 'accuracy_confirmed' => true]);
         $res->assertOk()->assertJson(['ok' => true, 'next_step' => 'editorial_processing']);
 
         $app->refresh();
@@ -226,7 +226,7 @@ class Phase4ApplicationIntakeTest extends TestCase
             'full_name'     => 'Incomplete',
         ])->paid()->create();
 
-        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true]);
+        $res = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true, 'accuracy_confirmed' => true]);
         $res->assertStatus(422)->assertJson(['ok' => false, 'error' => 'Please complete all required questions before submitting.']);
         $this->assertArrayHasKey('missing_required', $res->json());
         $app->refresh();
@@ -290,11 +290,11 @@ class Phase4ApplicationIntakeTest extends TestCase
         foreach ($ids as $id) { $answers[$id] = 'a'; }
         $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), ['answers' => $answers]);
 
-        $first = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true]);
+        $first = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true, 'accuracy_confirmed' => true]);
         $first->assertOk();
         $t1 = (string) $first->json('submitted_at');
 
-        $second = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true]);
+        $second = $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true, 'accuracy_confirmed' => true]);
         $second->assertOk()->assertJson(['ok' => true, 'already_submitted' => true]);
         $this->assertSame($t1, (string) $second->json('submitted_at'));
     }
@@ -399,7 +399,7 @@ class Phase4ApplicationIntakeTest extends TestCase
         $ids = OnlineInterviewCatalog::progress('emerging', [])['missing_required'];
         $answers = []; foreach ($ids as $id) { $answers[$id] = 'answer'; }
         $this->actingAs($user)->patchJson(route('online-interview.save', ['application' => $app->id]), ['answers' => $answers]);
-        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true])->assertOk();
+        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $app->id]), ['questionnaire_confirmed' => true, 'accuracy_confirmed' => true])->assertOk();
         $app->refresh();
         $this->assertNull($app->profile_id);
         $this->assertSame(0, \App\Models\Profile::query()->count());

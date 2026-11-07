@@ -1,14 +1,14 @@
 @extends('layouts.public')
 
 @section('title', 'Gallery — Jannayaks')
-@section('seoDescription', 'Browse published Jannayaks profiles — verified biographical records of people in public life.')
+@section('seoDescription', 'Browse published Jannayaks profiles — editorially prepared profiles of people in public life.')
 @section('seoCanonical', route('gallery.index'))
 @section('schemaJson', app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->webPageGraph(route('gallery.index'), 'Gallery — Jannayaks')))
 
 @section('content')
 <p class="eyebrow">Public gallery</p>
 <h1 style="font-family:var(--serif);font-size:clamp(1.8rem,4vw,2.4rem);line-height:1.15;margin:0 0 10px;font-weight:700">People in public life</h1>
-<p class="lede">A digital gallery of people's leaders from all walks of life, documenting their lives and contributions.</p>
+<p class="lede">A Digital Gallery of Notable People Across All Fields.</p>
 
 <section class="search-panel" aria-label="Find people">
     <form method="get" action="{{ route('search.index') }}" role="search">

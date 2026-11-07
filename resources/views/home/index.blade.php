@@ -8,15 +8,15 @@
 <link rel="apple-touch-icon" sizes="180x180" href="{{ asset('branding/favicon-180.png') }}">
 <link rel="icon" href="{{ asset('branding/favicon.ico') }}">
 <link rel="preload" as="image" type="image/webp" href="{{ asset('images/jannayaks-hero-2.webp') }}" imagesrcset="{{ asset('images/jannayaks-hero-2-800.webp') }} 800w, {{ asset('images/jannayaks-hero-2.webp') }} 1600w" imagesizes="(max-width: 899px) 100vw, 800px" fetchpriority="high">
-<title>Jannayaks™ — Kerala's Public Presence Platform</title>
+<title>Jannayaks™ — A Digital Gallery of Notable People Across All Fields</title>
 @php($schemaJson = app(\App\Services\StructuredDataService::class)->encode(app(\App\Services\StructuredDataService::class)->websiteGraph(
-    'Jannayaks is a digital biographical archive of profiles of distinguished Malayalees. Profiles are prepared in English, with Malayalam available for those who need it.',
+    'A Digital Gallery of Notable People Across All Fields. Jannayaks presents editorially prepared biographical profiles in English and Malayalam.',
     url('/search'),
 )))
 @include('partials.schema-ld', ['json' => $schemaJson])
 @include('partials.seo-meta', [
-    'title' => 'Jannayaks™ — A Digital Gallery of People’s Leaders',
-    'description' => 'Jannayaks is a digital biographical archive of profiles of distinguished Malayalees. Profiles are prepared in English, with Malayalam available for those who need it.',
+    'title' => 'Jannayaks™ — A Digital Gallery of Notable People Across All Fields',
+    'description' => 'A Digital Gallery of Notable People Across All Fields. Jannayaks presents editorially prepared biographical profiles — കർമ്മപഥങ്ങളിൽ ശ്രദ്ധേയരായ വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.',
     'canonical' => url('/'),
 ])
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -55,8 +55,8 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
 .nav-login{background:transparent;border:1.5px solid var(--navy);color:var(--navy);padding:7px 16px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
 .nav-login:hover{background:var(--navy);color:white;}
-.nav-cta{background:var(--saffron);color:white;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:background .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
-.nav-cta:hover{background:#9d5e22;}
+.nav-cta{background:var(--navy);color:white;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:background .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
+.nav-cta:hover{background:var(--saffron);}
 /* HERO */
 .hero{background:var(--off);padding:56px 22px 48px;text-align:center;border-bottom:1px solid var(--border);position:relative;overflow:hidden;}
 .hero::before{display:none;}
@@ -188,6 +188,111 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .recommend-strip strong{display:inline-block;font-size:15px;font-weight:600;border-bottom:1px dotted var(--navy);padding-bottom:2px;}
 .recommend-strip a:hover strong{border-color:var(--saffron);}
 .recommend-strip span{display:block;font-size:12.5px;color:var(--gray);margin-top:6px;}
+/* HERO CTAS */
+.hero-ctas{display:flex;gap:14px;flex-wrap:wrap;justify-content:center;margin:20px 0 26px;}
+.hero-cta{display:inline-flex;flex-direction:column;align-items:center;justify-content:center;gap:2px;min-height:52px;padding:12px 26px;border-radius:8px;font-size:15px;font-weight:600;font-family:var(--fb);text-decoration:none;transition:all .2s;}
+.hero-cta .cta-ml{font-family:var(--fm);font-size:12.5px;font-weight:500;opacity:.85;}
+.hero-cta-primary{background:var(--navy);color:white;border:1.5px solid var(--navy);}
+.hero-cta-primary:hover{background:var(--saffron);border-color:var(--saffron);color:white;}
+.hero-cta-secondary{background:white;color:var(--navy);border:1.5px solid var(--navy);}
+.hero-cta-secondary:hover{background:var(--navy);color:white;}
+/* SAMPLE PROFILES */
+.demo-section{padding:56px 22px;background:transparent;border-top:1px solid var(--border);}
+.demo-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1000px;margin:26px auto 18px;}
+.demo-card{position:relative;display:block;background:white;border:1.5px solid var(--border);border-radius:10px;overflow:hidden;text-decoration:none;transition:all .2s;}
+.demo-card:hover{border-color:var(--navy);box-shadow:0 4px 18px rgba(15,31,61,.08);}
+.demo-card-photo{aspect-ratio:4/3;background:linear-gradient(145deg,#eaf2e7,#f3f8f0);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative;}
+.demo-card-photo img{width:100%;height:100%;object-fit:cover;}
+.demo-card-photo .demo-initial{font-family:var(--fd);font-size:44px;color:var(--gray);}
+.demo-badge{position:absolute;top:10px;left:10px;z-index:2;background:var(--navy);color:white;font:700 10px/1 var(--fb);letter-spacing:.14em;text-transform:uppercase;padding:5px 10px;border-radius:4px;}
+.demo-card-body{padding:14px 16px 16px;}
+.demo-card-body h3{font-family:var(--fd);font-size:17px;font-weight:700;color:var(--navy);margin:0 0 2px;}
+.demo-card-body p{font-size:12px;color:var(--gray);margin:0;line-height:1.55;}
+.demo-more{text-align:center;}
+.demo-more a{font-size:13.5px;font-weight:600;color:var(--navy);text-decoration:none;border-bottom:1.5px solid var(--navy);padding-bottom:2px;}
+.demo-more a:hover{color:var(--saffron);border-color:var(--saffron);}
+/* WHY JANNAYAKS */
+.why-grid{display:grid;grid-template-columns:repeat(3,1fr);gap:16px;max-width:1000px;margin:26px auto 0;}
+.why-card{background:white;border:1.5px solid var(--border);border-radius:10px;padding:24px 22px;text-align:center;}
+.why-icon{font-size:30px;display:block;margin-bottom:10px;}
+.why-hd{font-family:var(--fd);font-size:17px;font-weight:700;color:var(--navy);margin:0 0 2px;}
+.why-hd-ml{font-family:var(--fm);font-size:13px;color:var(--gray);display:block;margin-bottom:8px;}
+.why-text{font-size:13px;color:var(--gray);line-height:1.7;margin:0;}
+.why-text-ml{font-family:var(--fm);font-size:12px;color:var(--gray);line-height:1.75;display:block;margin-top:4px;}
+/* PRICING */
+.price-section{padding:56px 22px;border-top:1px solid var(--border);}
+.price-card{background:white;border:1.5px solid var(--navy);border-radius:12px;padding:34px 28px;max-width:560px;margin:26px auto 0;text-align:center;}
+.price-pop{display:inline-block;font-size:10px;font-weight:700;letter-spacing:1.4px;text-transform:uppercase;background:var(--green);color:white;padding:4px 12px;border-radius:10px;margin-bottom:14px;}
+.price-amount{font-family:var(--fd);font-size:52px;font-weight:700;color:var(--navy);line-height:1;}
+.price-includes{font-size:14px;color:var(--charcoal);margin:10px 0 2px;line-height:1.6;}
+.price-includes-ml{font-family:var(--fm);font-size:12.5px;color:var(--gray);display:block;line-height:1.7;}
+.price-renewal{font-size:13px;color:var(--gray);margin-top:12px;}
+.price-renewal-ml{font-family:var(--fm);font-size:12px;color:var(--gray);display:block;margin-top:2px;}
+.price-faq{display:inline-block;margin-top:16px;font-size:13.5px;font-weight:600;color:var(--navy);text-decoration:none;border-bottom:1.5px solid var(--navy);padding-bottom:2px;}
+.price-faq:hover{color:var(--saffron);border-color:var(--saffron);}
+/* EDITORIAL CARE */
+.care-section{padding:56px 22px;border-top:1px solid var(--border);}
+.care-box{background:white;border:1.5px solid var(--border);border-radius:12px;padding:30px 28px;max-width:760px;margin:26px auto 0;}
+.care-text{font-size:14px;color:var(--charcoal);line-height:1.8;margin:0;}
+.care-text-ml{font-family:var(--fm);font-size:13px;color:var(--gray);line-height:1.85;display:block;margin-top:10px;}
+/* RECOMMEND */
+.rec-section{padding:56px 22px;border-top:1px solid var(--border);}
+.rec-box{max-width:680px;margin:26px auto 0;text-align:center;background:var(--light);border:1.5px solid var(--border);border-radius:12px;padding:32px 26px;}
+.rec-text{font-size:14px;color:var(--charcoal);line-height:1.7;margin:8px 0 18px;}
+.rec-text-ml{font-family:var(--fm);font-size:12.5px;color:var(--gray);line-height:1.75;display:block;margin-top:4px;}
+.rec-btn{display:inline-block;background:transparent;border:1.5px solid var(--navy);color:var(--navy);padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;font-family:var(--fb);text-decoration:none;transition:all .2s;}
+.rec-btn:hover{background:var(--navy);color:white;}
+.rec-btn .cta-ml{font-family:var(--fm);font-size:12px;font-weight:500;display:block;opacity:.85;}
+/* FINAL CTA */
+.final-section{padding:64px 22px;background:var(--navy);text-align:center;}
+.final-hd{font-family:var(--fd);font-size:clamp(24px,5vw,34px);font-weight:700;color:white;margin:0 0 4px;}
+.final-hd-ml{font-family:var(--fm);font-size:clamp(15px,3.4vw,20px);color:#dbe6f5;display:block;margin-bottom:14px;}
+.final-text{font-size:14.5px;color:#dbe6f5;line-height:1.75;max-width:640px;margin:0 auto 6px;}
+.final-text-ml{font-family:var(--fm);font-size:13px;color:#c3d3ea;line-height:1.8;display:block;margin-bottom:24px;}
+.final-btn{display:inline-flex;flex-direction:column;align-items:center;gap:2px;background:white;color:var(--navy);padding:13px 30px;border-radius:8px;font-size:15px;font-weight:700;font-family:var(--fb);text-decoration:none;transition:all .2s;}
+.final-btn .cta-ml{font-family:var(--fm);font-size:12.5px;font-weight:500;color:var(--gray);}
+.final-btn:hover{background:var(--saffron);color:white;}
+.final-btn:hover .cta-ml{color:white;}
+/* Refinement: hero hierarchy (English dominant), quiet pricing, tighter rhythm */
+.hero-main-heading h1.hero-en-primary{font-family:var(--fd);font-size:clamp(30px,4.6vw,52px);line-height:1.15;font-weight:700;color:var(--navy);margin:0 0 16px;letter-spacing:-.01em;overflow-wrap:anywhere;}
+.hero-ml-secondary{font-family:var(--fm);font-size:clamp(21px,2.7vw,29px);line-height:1.7;font-weight:500;color:#52758a;margin:0;overflow-wrap:anywhere;}
+.hero{padding:48px 22px 40px;}
+.hero-main-heading{margin-bottom:26px;}
+.hero-ctas{margin:24px 0 30px;}
+.demo-section,.price-section,.care-section,.rec-section,.url-section{padding:44px 22px;}
+.hiw{padding:44px 22px;}
+.search-section{padding:40px 22px;}
+.section-hd{margin-bottom:26px;}
+.section-title{font-size:clamp(26px,4.2vw,38px);}
+.why-grid,.demo-grid{margin-top:18px;}
+.why-card{padding:20px 20px;}
+.care-box,.rec-box{margin-top:18px;padding:24px 24px;}
+.why-remember{max-width:760px;margin:26px auto 0;text-align:center;}
+.why-remember-hd{font-family:var(--fd);font-size:clamp(19px,2.4vw,24px);font-weight:600;color:var(--navy);line-height:1.4;margin:0;}
+.why-remember-hd-ml{font-family:var(--fm);font-size:16px;color:var(--navy);opacity:.8;line-height:1.75;margin:4px 0 10px;}
+.why-remember-text{font-size:14.5px;color:var(--charcoal);line-height:1.75;margin:0;}
+.why-remember-text-ml{font-family:var(--fm);font-size:13.5px;color:var(--gray);line-height:1.9;margin:6px 0 0;}
+.price-text{max-width:640px;margin:0 auto;text-align:center;}
+.price-line{font-size:clamp(19px,2.4vw,23px);color:var(--navy);margin:0 0 10px;line-height:1.4;}
+.price-line strong{font-weight:700;}
+.price-line-ml{display:block;font-family:var(--fm);font-size:15px;color:var(--navy);opacity:.75;margin-top:2px;}
+.price-detail{font-size:14.5px;color:var(--charcoal);line-height:1.7;margin:0 0 8px;}
+.price-detail-ml{display:block;font-family:var(--fm);font-size:13.5px;color:var(--gray);line-height:1.85;}
+/* HIW horizontal on desktop */
+@media(min-width:900px){
+  .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
+  .step{flex-direction:column;border-bottom:none;border-top:2px solid var(--border);padding:20px 4px 0;text-align:left;}
+  .step-num{margin-bottom:12px;}
+}
+@media(max-width:899px){
+  .demo-grid{display:flex;overflow-x:auto;scroll-snap-type:x mandatory;gap:14px;padding-bottom:8px;-webkit-overflow-scrolling:touch;}
+  .demo-card{min-width:240px;flex:0 0 240px;scroll-snap-align:start;}
+  .why-grid{grid-template-columns:1fr;}
+  .hero-ctas{flex-direction:column;align-items:stretch;max-width:340px;margin-left:auto;margin-right:auto;}
+  .hero-cta{min-height:56px;}
+  .hero-main-heading h1.hero-en-primary{font-size:clamp(27px,7vw,34px);margin-bottom:12px;}
+  .hero-ml-secondary{font-size:clamp(21px,5.6vw,27px);line-height:1.7;margin-bottom:4px;}
+}
 /* FOOTER */
 /* MOBILE */
 @media(max-width:899px){
@@ -290,11 +395,9 @@ document.addEventListener('click',function(e){
     </a>
     <button type="button" class="nav-menu-btn" id="nav-menu-btn" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu" onclick="toggleNavMenu()">☰</button>
     <ul class="nav-links" id="nav-links">
-      <li><a href="#search" onclick="closeNavMenu()">Search</a></li>
+      <li><a href="{{ route('gallery.index') }}" onclick="closeNavMenu()">Gallery</a></li>
       <li><a href="#hiw" onclick="closeNavMenu()">How It Works</a></li>
-      <li><a href="{{ route('faq-charges') }}">FAQ &amp; Charges</a></li>
-      <li><a href="{{ route('gallery.index') }}">Gallery</a></li>
-      <li><a href="{{ route('demo-profiles.index') }}">View Demo Profiles</a></li>
+      <li><a href="#pricing" onclick="closeNavMenu()">Pricing</a></li>
       <li><a class="nav-login-mobile" href="{{ route('login') }}">Sign In</a></li>
     </ul>
     <div class="nav-right">
@@ -306,8 +409,16 @@ document.addEventListener('click',function(e){
 <!-- HERO -->
 <section class="hero">
   <div class="hero-main-heading">
-    <h1 class="hero-ml-primary" lang="ml">വിവിധ മേഖലകളിലെ ജനനായകരുടെ ഡിജിറ്റൽ ഗാലറി.</h1>
-    <span class="hero-en-secondary">A digital gallery of leaders among the people.</span>
+    <h1 class="hero-en-primary">A Digital Gallery of Notable People Across All Fields.</h1>
+    <p class="hero-ml-secondary" lang="ml">കർമ്മപഥങ്ങളിൽ ശ്രദ്ധേയരായ വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.</p>
+  </div>
+  <div class="hero-ctas">
+    <a class="hero-cta hero-cta-primary" href="{{ route('apply') }}">Create Your Profile
+      <span class="cta-ml" lang="ml">നിങ്ങളുടെ പ്രൊഫൈൽ സൃഷ്ടിക്കൂ</span>
+    </a>
+    <a class="hero-cta hero-cta-secondary" href="{{ route('gallery.index') }}">Explore Profiles
+      <span class="cta-ml" lang="ml">പ്രൊഫൈലുകൾ കാണുക</span>
+    </a>
   </div>
   <div class="hero-banner">
     <picture>
@@ -315,6 +426,39 @@ document.addEventListener('click',function(e){
       <img src="{{ asset('images/jannayaks-hero-2-source.jpeg') }}" width="1600" height="697" alt="നിങ്ങളുടെ നേട്ടങ്ങൾ, ലോകമറിയട്ടെ. Celebrate your work, herald it. Men and women from Kerala public life against a Kerala landscape with palm trees and traditional buildings." fetchpriority="high" decoding="async">
     </picture>
   </div>
+</section>
+<!-- SAMPLE PROFILES -->
+<section class="demo-section" id="sample-profiles">
+  <div class="section-hd">
+    <span class="section-eyebrow">Demo Profiles / മാതൃകാ പ്രൊഫൈലുകൾ</span>
+    <h2 class="section-title">See What Your Profile Could Look Like
+      <span class="section-title-ml">നിങ്ങളുടെ പ്രൊഫൈൽ എങ്ങനെയായിരിക്കുമെന്ന് കാണൂ</span>
+    </h2>
+    <p class="section-sub">Explore sample profiles to see how Jannayaks presents individual achievements and life stories.
+      <span class="section-title-ml" style="font-family:var(--fm);font-size:13px">വ്യക്തികളുടെ നേട്ടങ്ങളും ജീവിതകഥകളും Jannayaks എങ്ങനെ അവതരിപ്പിക്കുന്നുവെന്ന് അറിയാൻ മാതൃകാ പ്രൊഫൈലുകൾ കാണൂ.</span>
+    </p>
+  </div>
+  <div class="demo-grid">
+    @foreach ($demoProfiles as $demoProfile)
+      @php($demoPhoto = $presentation->publicProfilePhoto($demoProfile))
+      @php($demoUrl = app(\App\Services\ProfileUrlService::class)->publicListingUrl($demoProfile))
+      <a class="demo-card" href="{{ $demoUrl }}">
+        <div class="demo-card-photo">
+          @if($demoPhoto)
+            <img src="{{ route('profiles.public.photo', [$demoProfile, $demoPhoto]) }}" alt="{{ $demoPhoto->alt_text ?: ('Portrait of '.$presentation->displayName($demoProfile)) }}" loading="lazy">
+          @else
+            <span class="demo-initial">{{ mb_strtoupper(mb_substr($presentation->displayName($demoProfile), 0, 1)) }}</span>
+          @endif
+          <span class="demo-badge">Demo</span>
+        </div>
+        <div class="demo-card-body">
+          <h3>{{ $presentation->displayName($demoProfile) }}</h3>
+          <p>{{ $presentation->conciseDescriptor($demoProfile) }}</p>
+        </div>
+      </a>
+    @endforeach
+  </div>
+  <p class="demo-more"><a href="{{ route('demo-profiles.index') }}">View the complete Demo Profiles collection →</a></p>
 </section>
 <!-- INTRO -->
 <section class="intro-section">
@@ -347,10 +491,6 @@ document.addEventListener('click',function(e){
       <p>അച്ചടിച്ച ഒരു പേജിൽനിന്ന് വ്യത്യസ്തമായി, നിശ്ചിത വ്യവസ്ഥകൾക്കനുസരിച്ച് Payment പുതുക്കിക്കൊണ്ട് നിങ്ങളുടെ പ്രൊഫൈൽ ഓൺലൈനിൽ നിലനിർത്താം. നിങ്ങളുടെ പ്രവർത്തനങ്ങളിലും നേട്ടങ്ങളിലും പുതിയ അധ്യായങ്ങൾ കൂട്ടിച്ചേർക്കുമ്പോൾ പ്രൊഫൈൽ പുതുക്കുകയും ചെയ്യാം.</p>
     </div>
   </div>
-  <div class="home-actions">
-    <a class="home-action" href="{{ route('faq-charges') }}">Tariff Plans →</a>
-    <a class="home-action" href="{{ route('demo-profiles.index') }}">Demo Profiles →</a>
-  </div>
   {{-- TEMPORARY launch contact block: remove after the initial period --}}
   <p class="intro-contact" style="margin:18px auto 0;max-width:740px;text-align:center;font-size:15px">
         ചോദ്യങ്ങളുണ്ടോ? Questions?
@@ -358,61 +498,45 @@ document.addEventListener('click',function(e){
         <a href="https://wa.me/{{ preg_replace('/\D/', '', $contactTel) }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:600">WhatsApp</a>
   </p>
 </section>
-<!-- RECOMMEND SOMEONE -->
-<section class="recommend-strip">
-  <a href="{{ route('recommend.show') }}">
-    <strong>Recommend Someone You May Know</strong>
-    <span>Know someone whose life or contribution deserves to be recorded?</span>
-  </a>
-</section>
-<!-- HOW IT WORKS -->
-<section class="hiw" id="hiw">
-  <div class="container">
-    <div class="section-hd">
-      <span class="section-eyebrow">How It Works / എങ്ങനെ പ്രവർത്തിക്കുന്നു</span>
-      <h2 class="section-title">From conversation to live profile
-        <span class="section-title-ml">സംഭാഷണത്തിൽ നിന്ന് തത്സമയ പ്രൊഫൈലിലേക്ക്</span>
-      </h2>
-      <p class="section-sub">From your answers to a profile you can share.</p>
+<!-- WHY JANNAYAKS -->
+<section class="url-section" id="why">
+  <div class="section-hd">
+    <span class="section-eyebrow">Why Jannayaks? / എന്തുകൊണ്ട് Jannayaks?</span>
+    <h2 class="section-title">Why Jannayaks?
+      <span class="section-title-ml">എന്തുകൊണ്ട് Jannayaks?</span>
+    </h2>
+  </div>
+  <div class="why-grid">
+    <div class="why-card">
+      <span class="why-icon" aria-hidden="true">📜</span>
+      <h3 class="why-hd">Your Achievements, Documented</h3>
+      <span class="why-hd-ml" lang="ml">നിങ്ങളുടെ നേട്ടങ്ങൾ രേഖപ്പെടുത്താം</span>
+      <p class="why-text">Present your achievements and contributions through a professionally prepared biographical profile.
+        <span class="why-text-ml" lang="ml">നിങ്ങളുടെ നേട്ടങ്ങളും സംഭാവനകളും പ്രൊഫഷണലായി തയ്യാറാക്കിയ ഒരു ജീവചരിത്ര പ്രൊഫൈലിലൂടെ അവതരിപ്പിക്കാം.</span>
+      </p>
     </div>
-    <div class="steps">
-      <div class="step">
-        <div class="step-num">01</div>
-        <div class="step-body">
-          <div class="step-title">Register
-            <span class="step-title-ml">രജിസ്റ്റർ ചെയ്യുക</span>
-          </div>
-          <div class="step-text">Sign in with your Jannayaks username and password, or with Google. Then begin your profile application.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">02</div>
-        <div class="step-body">
-          <div class="step-title">Answer Our Questions
-            <span class="step-title-ml">ചോദ്യങ്ങൾക്ക് ഉത്തരം നൽകുക</span>
-          </div>
-          <div class="step-text">Answer the online interview at your own pace. Profiles are prepared in English, with Malayalam available for those who need it.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">03</div>
-        <div class="step-body">
-          <div class="step-title">Pay & Generate
-            <span class="step-title-ml">പേയ്‌മെന്റ് ചെയ്ത് ജനറേറ്റ് ചെയ്യുക</span>
-          </div>
-          <div class="step-text">Pay the published fee. It includes profile creation and the first year. A person reviews the draft before you see it on your dashboard.</div>
-        </div>
-      </div>
-      <div class="step">
-        <div class="step-num">04</div>
-        <div class="step-body">
-          <div class="step-title">Go Live
-            <span class="step-title-ml">തത്സമയമാക്കുക</span>
-          </div>
-          <div class="step-text">Approve the profile on your dashboard before it can be published. Your personal URL can then be shared. Public visibility follows an active membership.</div>
-        </div>
-      </div>
+    <div class="why-card">
+      <span class="why-icon" aria-hidden="true">🖋️</span>
+      <h3 class="why-hd">Professional Editorial Presentation</h3>
+      <span class="why-hd-ml" lang="ml">പ്രൊഫഷണൽ Editorial Presentation</span>
+      <p class="why-text">Your information is organised and edited into a clear, engaging profile that you can review before publication.
+        <span class="why-text-ml" lang="ml">നിങ്ങൾ നൽകുന്ന വിവരങ്ങൾ ക്രമീകരിച്ച് വായിക്കാൻ ആകർഷകമായ പ്രൊഫൈലായി തയ്യാറാക്കുന്നു. പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് അത് പരിശോധിക്കാനും കഴിയും.</span>
+      </p>
     </div>
+    <div class="why-card">
+      <span class="why-icon" aria-hidden="true">🔗</span>
+      <h3 class="why-hd">Your Own Profile Link</h3>
+      <span class="why-hd-ml" lang="ml">നിങ്ങളുടെ സ്വന്തം Profile Link</span>
+      <p class="why-text">Share your Jannayaks profile with friends, family, colleagues and professional contacts through your personal profile URL.
+        <span class="why-text-ml" lang="ml">നിങ്ങളുടെ വ്യക്തിഗത Profile URL വഴി സുഹൃത്തുക്കൾക്കും കുടുംബാംഗങ്ങൾക്കും സഹപ്രവർത്തകർക്കും മറ്റുള്ളവർക്കും നിങ്ങളുടെ Jannayaks പ്രൊഫൈൽ പങ്കുവയ്ക്കാം.</span>
+      </p>
+    </div>
+  </div>
+  <div class="why-remember">
+    <p class="why-remember-hd">Your achievements deserve to be remembered — not just by the world, but by you.</p>
+    <p class="why-remember-hd-ml" lang="ml">നിങ്ങളുടെ നേട്ടങ്ങൾ ഓർമ്മിക്കപ്പെടണം — ലോകം മാത്രമല്ല, നിങ്ങളും.</p>
+    <p class="why-remember-text">Your Jannayaks profile gives you a place to revisit your journey, remember how far you have come, and take pride in what you have accomplished.</p>
+    <p class="why-remember-text-ml" lang="ml">നിങ്ങൾ പിന്നിട്ട വഴികൾ വീണ്ടും കാണാനും, എത്ര ദൂരം മുന്നേറിയെന്ന് ഓർക്കാനും, നേടിയെടുത്തവയിൽ അഭിമാനിക്കാനും നിങ്ങളുടെ Jannayaks പ്രൊഫൈൽ ഒരിടം നൽകുന്നു.</p>
   </div>
 </section>
 <!-- SEARCH -->
@@ -436,12 +560,17 @@ document.addEventListener('click',function(e){
     <div class="url-title">Your Personal Profile URL</div>
     <span class="url-title-ml">നിങ്ങളുടെ വ്യക്തിഗത പ്രൊഫൈൽ വിലാസം</span>
     <div class="url-note">
-      An eligible profile can use a name-based address at jannayaks.in, taken from the verified name. A short number is added only when that address is already taken. The address stays permanent; public hosting follows an active membership.
-      <span class="url-note-ml">യോഗ്യമായ പ്രൊഫൈലിന് പരിശോധിച്ച പേരിൽ നിന്നുള്ള ഒരു വിലാസം ലഭിക്കും. ആ വിലാസം മറ്റൊരാൾക്കുള്ളതാണെങ്കിൽ മാത്രം ഒരു ചെറിയ സംഖ്യ ചേർക്കും. വിലാസം സ്ഥിരമായിരിക്കും; പൊതു ഹോസ്റ്റിംഗ് സജീവ അംഗത്വത്തെ ആശ്രയിച്ചിരിക്കും.</span>
+      Your preferred name is used to create your personalised Jannayaks profile URL, subject to availability and URL formatting requirements. A short number is added only when that address is already taken. The address stays permanent; public hosting follows an active membership.
+      <span class="url-note-ml">നിങ്ങൾ നൽകുന്ന ഇഷ്ടപ്പെട്ട പേര്, ലഭ്യതയ്ക്കും URL ഫോർമാറ്റിനും വിധേയമായി, നിങ്ങളുടെ വ്യക്തിഗത Jannayaks പ്രൊഫൈൽ ലിങ്ക് സൃഷ്ടിക്കാൻ ഉപയോഗിക്കുന്നു. ആ വിലാസം മറ്റൊരാൾക്കുള്ളതാണെങ്കിൽ മാത്രം ഒരു ചെറിയ സംഖ്യ ചേർക്കും. വിലാസം സ്ഥിരമായിരിക്കും; പൊതു ഹോസ്റ്റിംഗ് സജീവ അംഗത്വത്തെ ആശ്രയിച്ചിരിക്കും.</span>
     </div>
     <div class="url-examples">
       <div class="url-example">
-        jannayaks.in/<strong>arun.kumar</strong>
+        @php($demoSlugExample = $demoProfiles->first()?->slug)
+        @if($demoSlugExample !== null && $demoSlugExample !== '')
+          <a href="{{ app(\App\Services\ProfileUrlService::class)->publicListingUrl($demoProfiles->first()) }}" style="color:inherit;text-decoration:none">jannayaks.in/<strong>{{ $demoSlugExample }}</strong></a>
+        @else
+          jannayaks.in/<strong>your.name</strong>
+        @endif
         <span class="url-badge">Name</span>
       </div>
       <div class="url-example">
@@ -452,10 +581,141 @@ document.addEventListener('click',function(e){
     <div class="url-custom">
       <div class="url-custom-title">Choose a name-based address</div>
       <div class="url-custom-text">
-        The address comes from the verified name, for example <strong>arun.kumar</strong>. If that address is already taken, a short number can be added, for example <strong>arun.kumar12</strong>.
-        <span class="url-custom-text-ml">വിലാസം പരിശോധിച്ച പേരിൽ നിന്നാണ് — arun.kumar പോലെ. അത് ലഭ്യമല്ലെങ്കിൽ arun.kumar12 പോലെ ഒരു ചെറിയ സംഖ്യ ചേർക്കാം.</span>
+        If that address is already taken, a short number can be added, for example <strong>arun.kumar12</strong>. Once your profile is published, its URL cannot be changed.
+        <span class="url-custom-text-ml">ആ വിലാസം ലഭ്യമല്ലെങ്കിൽ arun.kumar12 പോലെ ഒരു ചെറിയ സംഖ്യ ചേർക്കാം. പ്രൊഫൈൽ പ്രസിദ്ധീകരിച്ചുകഴിഞ്ഞാൽ അതിന്റെ URL മാറ്റാൻ കഴിയില്ല.</span>
       </div>
     </div>
+  </div>
+</section>
+<!-- HOW IT WORKS -->
+<section class="hiw" id="hiw">
+  <div class="container">
+    <div class="section-hd">
+      <span class="section-eyebrow">How It Works / എങ്ങനെ പ്രവർത്തിക്കുന്നു</span>
+      <h2 class="section-title">How It Works
+        <span class="section-title-ml">എങ്ങനെയാണ് പ്രവർത്തിക്കുന്നത്?</span>
+      </h2>
+    </div>
+    <div class="steps">
+      <div class="step">
+        <div class="step-num">01</div>
+        <div class="step-body">
+          <div class="step-title">Apply and Complete the Interview
+            <span class="step-title-ml">അപേക്ഷിച്ച് Online Interview പൂർത്തിയാക്കുക</span>
+          </div>
+          <div class="step-text">Tell us about yourself, your work and your achievements.
+            <span class="step-title-ml" lang="ml">നിങ്ങളെക്കുറിച്ചും നിങ്ങളുടെ പ്രവർത്തനങ്ങളെക്കുറിച്ചും നേട്ടങ്ങളെക്കുറിച്ചും വിവരങ്ങൾ നൽകുക.</span>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">02</div>
+        <div class="step-body">
+          <div class="step-title">Editorial Preparation
+            <span class="step-title-ml">Editorial Preparation</span>
+          </div>
+          <div class="step-text">We organise and edit your information into a professionally presented profile.
+            <span class="step-title-ml" lang="ml">നിങ്ങൾ നൽകിയ വിവരങ്ങൾ ക്രമീകരിച്ച് പ്രൊഫഷണലായി പ്രൊഫൈൽ തയ്യാറാക്കുന്നു.</span>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">03</div>
+        <div class="step-body">
+          <div class="step-title">Your Review and Approval
+            <span class="step-title-ml">നിങ്ങളുടെ പരിശോധനയും അംഗീകാരവും</span>
+          </div>
+          <div class="step-text">Review the prepared profile and approve it before publication.
+            <span class="step-title-ml" lang="ml">തയ്യാറാക്കിയ പ്രൊഫൈൽ പരിശോധിച്ച് പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് അംഗീകരിക്കുക.</span>
+          </div>
+        </div>
+      </div>
+      <div class="step">
+        <div class="step-num">04</div>
+        <div class="step-body">
+          <div class="step-title">Publication
+            <span class="step-title-ml">പ്രസിദ്ധീകരണം</span>
+          </div>
+          <div class="step-text">Your approved profile is published on Jannayaks with its own shareable link.
+            <span class="step-title-ml" lang="ml">നിങ്ങൾ അംഗീകരിച്ച പ്രൊഫൈൽ സ്വന്തമായി പങ്കുവയ്ക്കാവുന്ന ലിങ്കോടെ Jannayaks-ൽ പ്രസിദ്ധീകരിക്കുന്നു.</span>
+          </div>
+        </div>
+      </div>
+    </div>
+  </div>
+</section>
+<!-- PRICING -->
+<section class="price-section" id="pricing">
+  <div class="section-hd">
+    <span class="section-eyebrow">Pricing / നിരക്ക്</span>
+    <h2 class="section-title">Pricing
+      <span class="section-title-ml">നിരക്ക്</span>
+    </h2>
+  </div>
+  <div class="price-text">
+    <p class="price-line"><strong>Standard Profile: ₹4,800 + applicable GST</strong>
+      <span class="price-line-ml" lang="ml">Standard Profile: ₹4,800 + ബാധകമായ GST</span>
+    </p>
+    <p class="price-detail">Includes profile preparation, editorial presentation, publication and first-year hosting.
+      <span class="price-detail-ml" lang="ml">പ്രൊഫൈൽ തയ്യാറാക്കൽ, Editorial Presentation, പ്രസിദ്ധീകരണം, ആദ്യ വർഷത്തെ ഹോസ്റ്റിംഗ് എന്നിവ ഉൾപ്പെടുന്നു.</span>
+    </p>
+    <p class="price-detail">Annual hosting renewal from the second year: ₹1,800 + applicable GST.
+      <span class="price-detail-ml" lang="ml">രണ്ടാം വർഷം മുതൽ വാർഷിക ഹോസ്റ്റിംഗ് പുതുക്കൽ: ₹1,800 + ബാധകമായ GST.</span>
+    </p>
+    <a class="price-faq" href="{{ route('faq-charges') }}">See FAQ &amp; Charges →</a>
+  </div>
+</section>
+<!-- EDITORIAL CONFIDENCE -->
+<section class="care-section" id="editorial-care">
+  <div class="section-hd">
+    <span class="section-eyebrow">Editorial care / Editorial Preparation</span>
+    <h2 class="section-title">Prepared With Editorial Care
+      <span class="section-title-ml">ശ്രദ്ധാപൂർവമായ Editorial Preparation</span>
+    </h2>
+  </div>
+  <div class="care-box">
+    <p class="care-text">Every Jannayaks profile is prepared from information submitted by the individual concerned. AI-assisted editing and editorial review help us present that information clearly and professionally. The profile owner reviews and approves the final content before publication.
+      <span class="care-text-ml" lang="ml">ഓരോ Jannayaks പ്രൊഫൈലും ബന്ധപ്പെട്ട വ്യക്തി നേരിട്ട് നൽകുന്ന വിവരങ്ങളുടെ അടിസ്ഥാനത്തിലാണ് തയ്യാറാക്കുന്നത്. AI സഹായത്തോടെയുള്ള Editing-ഉം Editorial Review-വും വിവരങ്ങൾ വ്യക്തമായും പ്രൊഫഷണലായും അവതരിപ്പിക്കാൻ സഹായിക്കുന്നു. പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് പ്രൊഫൈൽ ഉടമ അന്തിമ ഉള്ളടക്കം പരിശോധിച്ച് അംഗീകരിക്കുന്നു.</span>
+    </p>
+  </div>
+</section>
+<!-- RECOMMEND SOMEONE -->
+<section class="rec-section" id="recommend">
+  <div class="section-hd">
+    <span class="section-eyebrow">Recommend / നിർദ്ദേശിക്കുക</span>
+    <h2 class="section-title">Recommend Someone You Know
+      <span class="section-title-ml">നിങ്ങൾക്കറിയാവുന്ന ഒരാളെ നിർദ്ദേശിക്കൂ</span>
+    </h2>
+  </div>
+  <div class="rec-box">
+    <p class="rec-text">Know someone whose achievements deserve recognition? Recommend them for Jannayaks.
+      <span class="rec-text-ml" lang="ml">നേട്ടങ്ങൾ ശ്രദ്ധിക്കപ്പെടേണ്ട ഒരാളെ നിങ്ങൾക്കറിയാമോ? Jannayaks-ലേക്ക് നിർദ്ദേശിക്കൂ.</span>
+    </p>
+    <a class="rec-btn" href="{{ route('recommend.show') }}">Recommend Someone
+      <span class="cta-ml" lang="ml">ഒരാളെ നിർദ്ദേശിക്കൂ</span>
+    </a>
+  </div>
+</section>
+<!-- FINAL CALL TO ACTION -->
+<section class="final-section" id="create">
+  <h2 class="final-hd">Your Story Deserves to Be Told
+    <span class="final-hd-ml" lang="ml">നിങ്ങളുടെ നേട്ടങ്ങൾ ലോകമറിയട്ടെ</span>
+  </h2>
+  <p class="final-text">Create your professionally prepared Jannayaks profile and share your achievements with the world.
+    <span class="final-text-ml" lang="ml">നിങ്ങളുടെ നേട്ടങ്ങൾ പ്രൊഫഷണലായി തയ്യാറാക്കിയ Jannayaks പ്രൊഫൈലിലൂടെ ലോകവുമായി പങ്കുവയ്ക്കൂ.</span>
+  </p>
+  <a class="final-btn" href="{{ route('apply') }}">Create Your Profile
+    <span class="cta-ml" lang="ml">നിങ്ങളുടെ പ്രൊഫൈൽ സൃഷ്ടിക്കൂ</span>
+  </a>
+</section>
+<!-- EDITORIAL AND INFORMATION NOTICE -->
+<section style="border-top:1.5px solid var(--border);margin:34px auto 0;padding:18px 18px 6px;max-width:860px;">
+  <div style="font-size:11.5px;color:var(--gray);line-height:1.65;text-align:center;">
+    <strong style="display:block;color:var(--charcoal);font-size:12px;letter-spacing:.04em;margin-bottom:6px;">Editorial and Information Notice</strong>
+    Jannayaks profiles are prepared from information and material supplied directly by the profile owners. Our editorial team uses artificial intelligence to assist with editing and reviews each profile for editorial quality and suitability. We do not independently verify every factual statement. Visitors should check information before relying on it. All applications are subject to editorial acceptance. If Jannayaks declines an application before publication, the full amount paid, including applicable taxes, will be refunded.
+    <strong style="display:block;color:var(--charcoal);font-size:12px;letter-spacing:.04em;margin:10px 0 6px;font-family:var(--fm);">Editorial, വിവര അറിയിപ്പ്</strong>
+    <span style="font-family:var(--fm);">Jannayaks-ലെ പ്രൊഫൈലുകൾ അതത് വ്യക്തികൾ നേരിട്ട് നൽകുന്ന വിവരങ്ങളുടെയും രേഖകളുടെയും അടിസ്ഥാനത്തിലാണ് തയ്യാറാക്കുന്നത്. ഞങ്ങളുടെ Editorial Team, Artificial Intelligence (AI) യുടെ സഹായത്തോടെ പ്രൊഫൈലുകൾ എഡിറ്റ് ചെയ്യുകയും പ്രസിദ്ധീകരണത്തിന് മുമ്പ് അവയുടെ ഗുണനിലവാരവും അനുയോജ്യതയും പരിശോധിക്കുകയും ചെയ്യുന്നു. എന്നാൽ എല്ലാ വസ്തുതകളും ഞങ്ങൾ സ്വതന്ത്രമായി സ്ഥിരീകരിക്കുന്നില്ല. വിവരങ്ങൾ ആശ്രയിക്കുന്നതിന് മുമ്പ് സന്ദർശകർ അവയുടെ കൃത്യത പരിശോധിക്കേണ്ടതാണ്. എല്ലാ അപേക്ഷകളും Editorial Acceptance-ന് വിധേയമാണ്. പ്രസിദ്ധീകരണത്തിന് മുമ്പ് Jannayaks ഒരു അപേക്ഷ നിരസിക്കുന്ന പക്ഷം, അടച്ച മുഴുവൻ തുകയും ബാധകമായ നികുതികൾ ഉൾപ്പെടെ തിരികെ നൽകുന്നതാണ്.</span>
+    <a href="{{ route('legal.disclaimer') }}" style="display:inline-block;margin-top:8px;color:var(--gray);font-weight:600;">Read the full Disclaimer →</a>
   </div>
 </section>
 <!-- FOOTER -->

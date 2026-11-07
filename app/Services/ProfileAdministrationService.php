@@ -160,6 +160,11 @@ class ProfileAdministrationService
             throw new InvalidArgumentException('This application has no profile whose URL can be changed.');
         }
 
+        // Published profile URLs are permanent: no change, fee or migration.
+        if ($profile->status === 'published' || $profile->published_at !== null) {
+            throw new InvalidArgumentException('Once a profile is published, its URL cannot be changed.');
+        }
+
         $before = (string) $profile->slug;
         $updated = $this->profileUrls->selectPersonalSlug(
             $profile,

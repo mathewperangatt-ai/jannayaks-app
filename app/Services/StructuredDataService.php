@@ -68,7 +68,7 @@ class StructuredDataService
     }
 
     /**
-     * Profile / memorial page graph: ProfilePage + Person (+ visible
+     * Profile page graph: ProfilePage + Person (+ visible
      * breadcrumbs). Only non-null facts are emitted.
      *
      * @param  array<int, array{0: string, 1: string}>  $crumbs  visible breadcrumb [name, url] pairs

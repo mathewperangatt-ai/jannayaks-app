@@ -46,24 +46,7 @@ class Application extends Model
 
     public const STATUS_REFUNDED = 'refunded';
 
-    public const HOSTING_DESTINATION_JANNAYAKS = 'jannayaks';
-
-    public const HOSTING_DESTINATION_ICONSHERALD = 'iconsherald';
-
     public const DUPLICATE_EMAIL_NOTICE = 'An application or profile is already associated with this email address. Only one published profile is permitted per email address. For assistance or to discuss an existing application or profile, please contact contactus@jannayaks.in.';
-
-    /**
-     * Allowed public hosting destinations for a single profile URL.
-     *
-     * @return list<string>
-     */
-    public static function hostingDestinations(): array
-    {
-        return [
-            self::HOSTING_DESTINATION_JANNAYAKS,
-            self::HOSTING_DESTINATION_ICONSHERALD,
-        ];
-    }
 
     /**
      * Statuses that are still moving through intake, payment, or editorial work.
@@ -210,7 +193,6 @@ class Application extends Model
         'full_name',
         'preferred_display_name',
         'preferred_slug',
-        'hosting_destination',
         'broad_location',
         'distinguished_interview_addon',
         'preferred_contact_email',
