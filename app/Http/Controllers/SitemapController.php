@@ -8,8 +8,8 @@ use Illuminate\Http\Response;
 /**
  * SEO-3: serves the dynamic XML sitemap at /sitemap.xml.
  *
- * Generated per request so newly published/removed public profiles and
- * memorials are reflected automatically. application/xml content type.
+ * Generated per request so newly published/removed public profiles are
+ * reflected automatically. application/xml content type.
  */
 class SitemapController extends Controller
 {

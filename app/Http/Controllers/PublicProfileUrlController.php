@@ -2,7 +2,6 @@
 
 namespace App\Http\Controllers;
 
-use App\Models\InMemoriamProfile;
 use App\Models\Profile;
 use App\Services\ProfileUrlService;
 use App\Services\PublicProfilePresentationService;
@@ -63,15 +62,13 @@ class PublicProfileUrlController extends Controller
             abort(404);
         }
 
-        $target = $redirect->redirectable;
-        if ($target instanceof InMemoriamProfile) {
-            if (! filled($target->slug) || ! app(\App\Services\InMemoriamLifecycleService::class)->isPubliclyVisible($target)) {
-                abort(404);
-            }
-
-            return redirect()->route('in-memoriam.show', ['slug' => $target->slug], 301);
+        // Only living-profile redirects resolve; historical memorial redirect
+        // rows (separate memorial product discontinued) are not followed.
+        if ($redirect->redirectable_type !== Profile::class) {
+            abort(404);
         }
 
+        $target = $redirect->redirectable;
         if (! $target instanceof Profile) {
             abort(404);
         }
@@ -85,10 +82,6 @@ class PublicProfileUrlController extends Controller
         }
 
         if (! $this->profileUrls->isPubliclyVisible($target)) {
-            abort(404);
-        }
-
-        if ($this->profileUrls->isHostedOnIconsHerald($target)) {
             abort(404);
         }
 
@@ -108,11 +101,6 @@ class PublicProfileUrlController extends Controller
             abort(404);
         }
 
-        // IconsHerald-hosted profiles are not served (or redirected) on Jannayaks.
-        if ($this->profileUrls->isHostedOnIconsHerald($profile)) {
-            abort(404);
-        }
-
         return redirect()->route('profiles.public', [
             'slug' => $profile->slug,
             'lang' => $request->query('lang'),
@@ -122,11 +110,6 @@ class PublicProfileUrlController extends Controller
     private function renderOrHide(Request $request, Profile $profile): View|Response
     {
         if (! $this->profileUrls->isPubliclyVisible($profile)) {
-            abort(404);
-        }
-
-        // Detailed pages for IconsHerald-hosted profiles live only on IconsHerald.
-        if ($this->profileUrls->isHostedOnIconsHerald($profile)) {
             abort(404);
         }
 

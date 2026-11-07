@@ -31,11 +31,6 @@ class SelectPersonalProfileUrlRequest extends FormRequest
     {
         return [
             'slug' => ['required', 'string', 'max:64'],
-            'hosting_destination' => [
-                'required',
-                'string',
-                Rule::in(Application::hostingDestinations()),
-            ],
             // Explicitly ignore any client-supplied ownership fields.
             'profile_id' => ['prohibited'],
             'application_id' => ['prohibited'],
@@ -49,8 +44,6 @@ class SelectPersonalProfileUrlRequest extends FormRequest
     public function messages(): array
     {
         return [
-            'hosting_destination.required' => 'Choose where your public profile should be hosted.',
-            'hosting_destination.in' => 'Choose either Jannayaks or IconsHerald as the hosting destination.',
         ];
     }
 

@@ -3,15 +3,13 @@
 namespace App\Services;
 
 use App\Models\Application;
-use App\Models\InMemoriamProfile;
 use App\Models\Profile;
 use Illuminate\Support\Collection;
 
 /**
  * SEO-3: XML sitemap entry generation.
  *
- * Scope: static public pages + genuinely public profiles + publicly visible
- * memorials. Deliberately excludes /search (utility page, not an SEO surface)
+ * Scope: static public pages + genuinely public profiles. Deliberately excludes /search (utility page, not an SEO surface)
  * and demonstration content.
  *
  * Demo/temporary content discriminator — the convention already used by
@@ -30,7 +28,6 @@ class SitemapService
 
     public function __construct(
         private PublicProfileSearchService $profileSearch,
-        private InMemoriamLifecycleService $memorialLifecycle,
         private ProfileUrlService $profileUrls,
     ) {}
 
@@ -42,7 +39,6 @@ class SitemapService
         return collect()
             ->merge($this->staticEntries())
             ->merge($this->profileEntries())
-            ->merge($this->memorialEntriesEnabled() ? $this->memorialEntries() : collect())
             ->values();
     }
 
@@ -59,12 +55,6 @@ class SitemapService
             ['loc' => route('faq-charges'), 'lastmod' => null],
         ]);
 
-        // The In Memoriam landing page is listed only while its public
-        // presentation is enabled; it 404s otherwise.
-        if ((bool) config('jannayaks.in_memoriam.public_enabled', false)) {
-            $entries->splice(2, 0, [['loc' => route('in-memoriam.index'), 'lastmod' => null]]);
-        }
-
         return $entries->values();
     }
 
@@ -79,12 +69,6 @@ class SitemapService
         return $this->profileSearch
             ->publishedBaseQuery()
             ->whereDoesntHave('user', fn ($q) => $q->where('email', 'like', '%'.self::DEMO_EMAIL_DOMAIN))
-            // Sitemap lists Jannayaks-hosted detail pages only — not IconsHerald URLs.
-            ->whereDoesntHave(
-                'application',
-                fn ($q) => $q->where('hosting_destination', Application::HOSTING_DESTINATION_ICONSHERALD)
-            )
-            ->with('application')
             ->orderBy('published_at')
             ->get(['id', 'slug', 'published_at'])
             ->map(fn (Profile $profile): array => [
@@ -93,31 +77,5 @@ class SitemapService
                 'lastmod' => $profile->published_at?->toAtomString(),
             ])
             ->filter(fn (array $entry): bool => $entry['loc'] !== '');
-    }
-
-    public function memorialEntriesEnabled(): bool
-    {
-        return (bool) config('jannayaks.in_memoriam.public_enabled', false);
-    }
-
-    /**
-     * Publicly visible memorials only (status + hosting window via the
-     * existing lifecycle service), excluding demonstration memorials.
-     *
-     * @return Collection<int, array{loc: string, lastmod: string|null}>
-     */
-    private function memorialEntries(): Collection
-    {
-        return InMemoriamProfile::query()
-            ->where('status', InMemoriamProfile::STATUS_PUBLISHED_ARCHIVED)
-            ->whereNotNull('slug')
-            ->where('commissioner_contact_email', 'not like', '%'.self::DEMO_EMAIL_DOMAIN)
-            ->orderBy('published_at')
-            ->get()
-            ->filter(fn (InMemoriamProfile $profile): bool => $this->memorialLifecycle->isPubliclyVisible($profile))
-            ->map(fn (InMemoriamProfile $profile): array => [
-                'loc' => route('in-memoriam.show', ['slug' => $profile->slug]),
-                'lastmod' => $profile->published_at?->toAtomString(),
-            ]);
     }
 }

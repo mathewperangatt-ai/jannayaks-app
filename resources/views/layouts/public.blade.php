@@ -51,8 +51,8 @@
         .nav-links a:hover,.nav-links a[aria-current="page"]{color:var(--navy)}
         .nav-right{display:flex;align-items:center;gap:10px}
         .nav-login{border:1.5px solid var(--navy);color:var(--navy);padding:7px 14px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;background:transparent}
-        .nav-cta{background:var(--saffron);color:#fff;padding:8px 16px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none}
-        .nav-cta:hover{background:var(--brand-dark);color:#fff}
+        .nav-cta{background:var(--navy);color:#fff;padding:8px 16px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none}
+        .nav-cta:hover{background:var(--saffron);color:#fff}
         .nav-menu-btn{display:none;border:1.5px solid var(--navy);background:#fff;color:var(--navy);border-radius:4px;font-size:17px;line-height:1;padding:9px 12px;cursor:pointer}
         .translate-wrap{position:relative}
         .translate-btn{background:transparent;border:1px solid var(--border);color:var(--gray);padding:6px 12px;border-radius:4px;font-size:12px;font-family:var(--sans);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;min-height:40px}
@@ -80,19 +80,12 @@
         .card-photo{aspect-ratio:4/3;background:linear-gradient(145deg,#eaf2e7,#f3f8f0);display:flex;align-items:center;justify-content:center;overflow:hidden;position:relative}
         .card-photo img{width:100%;height:100%;object-fit:cover}
         .card-photo .placeholder{font-size:28px;font-weight:700;color:#b7c3b0;font-family:var(--serif)}
-        .card-tier{position:absolute;top:10px;left:10px;background:rgba(33,77,104,.92);color:#fff;font:600 9px var(--sans);letter-spacing:.16em;text-transform:uppercase;padding:4px 8px;border-radius:2px}
-        .card-tier.memorial{background:rgba(38,38,38,.92)}
-        .tier-mark{position:absolute;top:0;right:0;width:84px;height:84px;overflow:hidden;pointer-events:none;z-index:2}
-        .tier-mark i{position:absolute;right:-22px;width:110px;height:9px;transform:rotate(45deg);border-radius:2px;box-shadow:0 1px 2px rgba(0,0,0,.18)}
-        .tier-mark i:nth-child(1){top:12px;background:var(--tier-c1)}
-        .tier-mark i:nth-child(2){top:28px;background:var(--tier-c2)}
-        .tier-mark i:nth-child(3){top:44px;background:var(--tier-c1)}
         .card-body{padding:16px 16px 18px}
         .card-body h2{margin:0 0 6px;font-size:18px;line-height:1.25;font-family:var(--serif);font-weight:600;color:var(--navy)}
         .card-meta{margin:0;font-size:14px;color:var(--gray)}
         .pager{margin-top:28px;display:flex;justify-content:center}
         .empty{padding:36px 8px;color:var(--gray);text-align:center}
-        @media (min-width:900px){.nav-links{display:flex}.nav-menu-btn{display:none !important}}
+        @media (min-width:900px){.nav-links{display:flex}.nav-menu-btn{display:none !important}.nav-links .nav-signin-mobile{display:none}}
         @media (max-width:899px){
             .nav-menu-btn{display:inline-flex;align-items:center}
             .nav-right .nav-login{display:none}
@@ -120,13 +113,10 @@
             </a>
             <button type="button" class="nav-menu-btn" id="publicNavBtn" aria-expanded="false" aria-controls="publicNavLinks" aria-label="Open menu">☰</button>
             <ul class="nav-links" id="publicNavLinks">
-                <li><a href="{{ route('home') }}" @if(($nav ?? '') === 'home') aria-current="page" @endif data-nav-close>Home</a></li>
-                <li><a href="{{ route('home') }}#search" data-nav-close>Search</a></li>
-                <li><a href="{{ route('home') }}#hiw" data-nav-close>How It Works</a></li>
-                <li><a href="{{ route('faq-charges') }}" @if(($nav ?? '') === 'faq') aria-current="page" @endif data-nav-close>FAQ &amp; Charges</a></li>
                 <li><a href="{{ route('gallery.index') }}" @if(($nav ?? '') === 'gallery') aria-current="page" @endif data-nav-close>Gallery</a></li>
-                <li><a href="{{ route('demo-profiles.index') }}" @if(($nav ?? '') === 'demo-profiles' || request()->routeIs('demo-profiles.index')) aria-current="page" @endif data-nav-close>View Demo Profiles</a></li>
-                <li><a href="{{ route('login') }}" data-nav-close>Sign In</a></li>
+                <li><a href="{{ route('home') }}#hiw" data-nav-close>How It Works</a></li>
+                <li><a href="{{ route('home') }}#pricing" data-nav-close>Pricing</a></li>
+                <li class="nav-signin-mobile"><a href="{{ route('login') }}" data-nav-close>Sign In</a></li>
             </ul>
             <div class="nav-right">
                 @include('partials.translate-control')

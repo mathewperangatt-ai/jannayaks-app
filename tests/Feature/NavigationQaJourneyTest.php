@@ -69,7 +69,7 @@ class NavigationQaJourneyTest extends TestCase
 
         $this->get(route('apply'))
             ->assertOk()
-            ->assertSee('Tell us about a life worth remembering.')
+            ->assertSee('Tell us about your achievements and journey.')
             ->assertSee(route('apply', ['step' => 'tiers']));
 
         $this->get(route('apply', ['step' => 'tiers']))
@@ -153,7 +153,7 @@ class NavigationQaJourneyTest extends TestCase
         $tiersPage = $this->get(route('apply', ['step' => 'tiers']))->assertOk();
 
         $tiersPage->assertSee('Standard Profile', false);
-        $tiersPage->assertSee('₹4,000.00', false);
+        $tiersPage->assertSee('₹4,800.00', false);
         foreach (['ജനകീയർ', 'ജനസമ്മതർ', 'പ്രഗൽഭർ', 'അംഗീകരിക്കപ്പെട്ടവർ', 'പ്രശസ്തർ', 'വിശിഷ്ടർ', 'പ്രമുഖർ'] as $removed) {
             $tiersPage->assertDontSee($removed, false);
         }

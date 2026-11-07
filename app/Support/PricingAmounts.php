@@ -158,50 +158,6 @@ class PricingAmounts
         );
     }
 
-    public static function forInMemoriam5yr(): array
-    {
-        $cfg = (array) config('jannayaks.tier_pricing.in_memoriam', []);
-        $gstRate = (float) config('jannayaks.tier_pricing.gst_percent', 18);
-        $label = (string) ($cfg['label'] ?? 'In Memoriam (3 years hosting)');
-
-        // Product sticker is GST-inclusive when configured (customer-facing ₹25,000).
-        if ((bool) ($cfg['gst_inclusive'] ?? false)) {
-            $inclusiveRupees = (int) ($cfg['base_amount'] ?? 0);
-            if ($inclusiveRupees <= 0) {
-                throw new InvalidArgumentException('Invalid In Memoriam amount.');
-            }
-
-            $inclusivePaise = self::rupeesToPaise($inclusiveRupees);
-            $split = self::splitInclusiveTotal($inclusivePaise, $gstRate);
-            $components = self::classifyGstComponents($split['gst_paise'], null);
-
-            return [
-                'currency' => self::CURRENCY,
-                'tier_key' => 'in_memoriam',
-                'label' => $label,
-                'description' => $label,
-                'gst_inclusive' => true,
-                'gst_rate_percent' => $gstRate,
-                'amount_incl_paise' => $inclusivePaise,
-                'amount_incl_rupees' => $inclusiveRupees,
-                'base_paise' => $split['base_paise'],
-                'gst_paise' => $split['gst_paise'],
-                'cgst_paise' => $components['cgst_paise'],
-                'sgst_paise' => $components['sgst_paise'],
-                'igst_paise' => $components['igst_paise'],
-                'gst_classification' => $components['classification'],
-                'amount_incl_formatted' => self::formatMoneyInr($inclusivePaise),
-                'base_formatted' => self::formatMoneyInr($split['base_paise']),
-                'gst_formatted' => self::formatMoneyInr($split['gst_paise']),
-                'cgst_formatted' => $components['cgst_paise'] !== null ? self::formatMoneyInr($components['cgst_paise']) : null,
-                'sgst_formatted' => $components['sgst_paise'] !== null ? self::formatMoneyInr($components['sgst_paise']) : null,
-                'igst_formatted' => $components['igst_paise'] !== null ? self::formatMoneyInr($components['igst_paise']) : null,
-            ];
-        }
-
-        return self::forPlusGstItem($cfg, $gstRate, $label, 'in_memoriam');
-    }
-
     /**
      * @return array<string, string>
      */

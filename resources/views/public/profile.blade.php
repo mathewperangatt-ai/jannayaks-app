@@ -4,7 +4,9 @@
 
 @section('title', $displayName.' — Jannayaks')
 
-@section('seoDescription', \Illuminate\Support\Str::limit(trim((string) ($activeEditorial?->summary ?: $headline ?: $profession)), 300))
+@php($seoSource = trim((string) ($activeEditorial?->summary ?: $headline ?: $profession)))
+@php($seoFirstSentence = preg_match('/^(.{40,}?[.!?])(\s|$)/us', $seoSource, $seoMatch) === 1 ? $seoMatch[1] : $seoSource)
+@section('seoDescription', mb_strlen($seoFirstSentence) <= 200 ? $seoFirstSentence : rtrim(\Illuminate\Support\Str::limit($seoFirstSentence, 197, ''), ' ,;:').'…')
 @section('seoCanonical', $canonicalUrl)
 @section('seoImage', $photo ? route('profiles.public.photo', [$profile, $photo]) : '')
 @section('seoType', 'profile')
@@ -130,6 +132,20 @@
     .jk-page.lang-ml .jk-name{font-family:'Noto Serif Malayalam',var(--jk-serif);line-height:1.25}
     .jk-page.lang-ml .jk-sectionhead h2{font-family:'Noto Serif Malayalam',var(--jk-serif)}
     .jk-page.lang-ml .jk-summary-quote{font-style:normal;line-height:1.8}
+    .jk-page.lang-ml .jk-ledgerrow span.d,.jk-page.lang-ml .jk-keyfacts dd{font-family:'Noto Serif Malayalam',var(--jk-serif);line-height:1.9}
+
+    /* key facts */
+    .jk-keyfacts{margin:26px 0 0;border:1px solid var(--jk-line);background:var(--jk-surface);padding:16px 18px;max-width:620px}
+    .jk-keyfacts h2{font:600 10px var(--jk-ui);letter-spacing:.2em;text-transform:uppercase;color:var(--jk-blue);margin:0 0 10px}
+    .jk-keyfacts dl{display:grid;grid-template-columns:auto minmax(0,1fr);gap:6px 18px;margin:0}
+    .jk-keyfacts dt{font:600 10px var(--jk-ui);letter-spacing:.12em;text-transform:uppercase;color:var(--jk-muted);padding-top:2px}
+    .jk-keyfacts dd{margin:0;font:400 13.5px/1.6 var(--jk-ui);color:var(--jk-ink);overflow-wrap:anywhere}
+    /* dated career chronology */
+    .jk-timeline{margin:0 0 26px;padding:14px 0 18px;border-bottom:1px solid var(--jk-line)}
+    .jk-timeline h3{font:600 10px var(--jk-ui);letter-spacing:.18em;text-transform:uppercase;color:var(--jk-muted);margin:0 0 10px}
+    .jk-timeline ol{margin:0;padding:0;list-style:none}
+    .jk-timeline li{display:grid;grid-template-columns:64px minmax(0,1fr);gap:16px;padding:6px 0;font:400 13.5px var(--jk-ui);color:var(--jk-ink)}
+    .jk-timeline li time{font:600 12px var(--jk-ui);color:var(--jk-saffron);font-variant-numeric:tabular-nums}
 
     /* mobile */
     @media(max-width:1020px){
@@ -174,9 +190,6 @@
                 @else
                     <div class="jk-portrait-mono" aria-hidden="true">{{ mb_strtoupper(mb_substr(trim($nameLast !== '' ? $nameLast : $displayName), 0, 1)) }}</div>
                 @endif
-                @if($profile->application?->package_tier === 'in_memoriam')
-                    @include('public.partials.tier-mark', ['tier' => 'in_memoriam'])
-                @endif
             </div>
             <figcaption class="jk-caption">
                 <span>{{ $locationLabel ? 'KERALAM · INDIA' : 'PUBLIC LIFE' }}</span>
@@ -214,6 +227,28 @@
                     </span>
                 @endif
             </div>
+
+            @php($keyFactOffice = $publicOffices->first())
+            @php($keyFactYears = $publicOffices->map(fn ($o) => $o->started_on)->filter()->sort()->first())
+            @if($keyFactOffice !== null || $keyFactYears !== null)
+                <div class="jk-keyfacts">
+                    <h2>{{ $language === 'ml' ? 'പ്രധാന വിവരങ്ങൾ' : 'Key Facts' }}</h2>
+                    <dl>
+                        @if($keyFactOffice !== null && filled($keyFactOffice->office_name))
+                            <dt>{{ $language === 'ml' ? 'റോൾ' : 'Role' }}</dt>
+                            <dd>{{ $keyFactOffice->office_name }}</dd>
+                        @endif
+                        @if($keyFactOffice !== null && filled($keyFactOffice->where_location))
+                            <dt>{{ $language === 'ml' ? 'സ്ഥലം' : 'Organisation / Place' }}</dt>
+                            <dd>{{ $keyFactOffice->where_location }}</dd>
+                        @endif
+                        @if($keyFactYears !== null)
+                            <dt>{{ $language === 'ml' ? 'സജീവമായത്' : 'Active since' }}</dt>
+                            <dd>{{ \Illuminate\Support\Str::of((string) $keyFactYears)->before('-')->before(' ').' onwards' }}</dd>
+                        @endif
+                    </dl>
+                </div>
+            @endif
 
             @if($isDemonstration)
                 <p class="jk-demo-note">Fictional demonstration profile — created to show how a Jannayaks profile reads. It does not describe a real person.</p>
@@ -255,6 +290,20 @@
                 <h2>{{ $language === 'ml' ? 'കരിയറും ഉത്തരവാദിത്തങ്ങളും' : 'Career &amp; Responsibilities' }}</h2>
                 <span class="jk-tail">PUBLIC LIFE</span>
             </div>
+            @php($datedOffices = $publicOffices->filter(fn ($o) => filled($o->started_on))->sortBy('started_on')->values())
+            @if($datedOffices->isNotEmpty())
+                <div class="jk-timeline">
+                    <h3>{{ $language === 'ml' ? 'കാലക്രമം' : 'Chronology' }}</h3>
+                    <ol>
+                        @foreach($datedOffices as $datedOffice)
+                            <li>
+                                <time>{{ \Illuminate\Support\Str::of((string) $datedOffice->started_on)->before('-')->before(' ') }}{{ $datedOffice->is_current ? ' –' : '' }}</time>
+                                <span>{{ $datedOffice->office_name }}@if(filled($datedOffice->where_location)) — {{ $datedOffice->where_location }}@endif</span>
+                            </li>
+                        @endforeach
+                    </ol>
+                </div>
+            @endif
             <div>
                 @foreach($publicOffices as $office)
                     <div class="jk-ledgerrow">
@@ -345,6 +394,10 @@
                 @if($errors->any())
                     <p class="jk-status err">{{ $errors->first('contact') ?: 'Please review the highlighted fields and try again.' }}</p>
                 @endif
+                <p class="jk-privacy jk-disclosure" style="margin:0 0 14px;font-size:12px;line-height:1.6">
+                    Prepared from information supplied by the profile owner. Not independently verified. Please check the facts before relying on them.<br>
+                    <span lang="ml">പ്രൊഫൈൽ ഉടമ നേരിട്ട് നൽകിയ വിവരങ്ങളുടെ അടിസ്ഥാനത്തിൽ തയ്യാറാക്കിയത്. വിവരങ്ങൾ സ്വതന്ത്രമായി സ്ഥിരീകരിച്ചിട്ടില്ല. ആശ്രയിക്കുന്നതിന് മുമ്പ് അവയുടെ കൃത്യത പരിശോധിക്കുക.</span>
+                </p>
                 <form method="POST" action="{{ route('profiles.contact', $profile->slug) }}">
                     @csrf
                     <input type="text" name="honey_bot" tabindex="-1" autocomplete="off" aria-hidden="true" style="position:absolute;left:-9999px">

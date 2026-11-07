@@ -24,16 +24,6 @@
     .dp-section-head::after{content:"";flex:1;height:1px;background:var(--line)}
     .dp-ml,.dp-ml .lede,.dp-ml .dp-note{font-family:var(--mal)}
     .dp-ml .eyebrow,.dp-ml .dp-section-head h2,.dp-ml .dp-note b,.dp-section-head h2 [lang="ml"]{letter-spacing:.02em;font-family:var(--mal)}
-    .dp-memorials{padding:22px 20px 24px;border:1px solid #d8d8d4;border-radius:16px;background:#f6f6f4}
-    .dp-memorials .dp-section-head h2{color:#4a4a50}
-    .dp-memorials .dp-section-head::after{background:#d8d8d4}
-    .dp-memorial{display:block;color:inherit;text-decoration:none;background:#fafaf8;border:1px solid #d8d8d4;border-radius:10px;overflow:hidden;transition:border-color .15s ease,box-shadow .15s ease}
-    .dp-memorial:hover{border-color:#8f8f95;box-shadow:0 4px 18px rgba(40,40,44,.08)}
-    .dp-memorial .card-photo{background:linear-gradient(165deg,#ececea,#e2e2de)}
-    .dp-memorial .card-photo img{filter:grayscale(1)}
-    .dp-memorial .card-photo .placeholder{color:#b0b0ac}
-    .dp-memorial strong{display:block;font-family:var(--serif);font-size:18px;font-weight:600;line-height:1.25;color:#3c3c42;margin:0 0 6px}
-    .dp-memorial span{display:block;font-size:12px;letter-spacing:.08em;text-transform:uppercase;color:#8f8f95}
 </style>
 @endpush
 
@@ -52,7 +42,7 @@
     <p class="lede">
         {{ $ml
             ? 'പൂർത്തിയായ ജന്നായക്സ് പേജുകൾ ഇംഗ്ലീഷിലും മലയാളത്തിലും എങ്ങനെ കാണപ്പെടുന്നുവെന്ന് കാണിക്കാൻ തയ്യാറാക്കിയ ജനനായക പ്രൊഫൈലുകളും സ്മരണാ രേഖകളും.'
-            : 'Living profiles and In Memoriam records prepared to show how finished Jannayaks pages read, in English and Malayalam.' }}
+            : 'Profiles prepared to show how finished Jannayaks pages read, in English and Malayalam.' }}
     </p>
     <p class="dp-note">
         <b>{{ $ml ? 'ഡെമോ' : 'Demo' }}</b>
@@ -61,8 +51,8 @@
             : 'These are fictional demonstration profiles. They do not describe real people, and the portraits are AI-generated.' }}</span>
     </p>
 
-    <section class="dp-section" aria-labelledby="dp-living">
-        <div class="dp-section-head"><h2 id="dp-living">{{ $ml ? 'ജനനായകർ' : 'Living profiles' }}</h2></div>
+    <section class="dp-section" aria-labelledby="dp-profiles">
+        <div class="dp-section-head"><h2 id="dp-profiles">{{ $ml ? 'പ്രൊഫൈലുകൾ' : 'Profiles' }}</h2></div>
         @if($profiles->isEmpty())
             <p class="empty">{{ $ml ? 'ഡെമോ പ്രൊഫൈലുകൾ ലഭ്യമല്ല.' : 'No demonstration profiles are published.' }}</p>
         @else
@@ -74,38 +64,5 @@
         @endif
     </section>
 
-    @if($memorials->isNotEmpty())
-        <section class="dp-section dp-memorials" aria-labelledby="dp-memorial">
-            <div class="dp-section-head"><h2 id="dp-memorial">
-                @if($ml)
-                    ഓർമ്മയ്ക്കായി
-                @else
-                    In Memoriam · <span lang="ml">ഓർമ്മയ്ക്കായി</span>
-                @endif
-            </h2></div>
-            <div class="grid">
-                @foreach($memorials as $memorial)
-                    @php($memorialProfile = $memorial['profile'])
-                    @php($memorialName = $memorialProfile->displayName())
-                    <a class="dp-memorial" href="{{ route('in-memoriam.show', array_filter(['slug' => $memorialProfile->slug, 'lang' => $cardLanguage])) }}">
-                        <div class="card-photo">
-                            @if($memorial['photo'])
-                                <img src="{{ route('in-memoriam.photo', ['slug' => $memorialProfile->slug, 'media' => $memorial['photo']]) }}" alt="{{ $memorial['photo']->alt_text ?: ('Portrait of '.$memorialName) }}" width="480" height="360" loading="lazy">
-                            @else
-                                <span class="placeholder" aria-hidden="true">{{ mb_strtoupper(mb_substr($memorialName, 0, 1)) }}</span>
-                            @endif
-                            @include('public.partials.tier-mark', ['tier' => 'in_memoriam'])
-                        </div>
-                        <div class="card-body">
-                            <strong>{{ $memorialName }}</strong>
-                            @if(filled($memorialProfile->bio_headline))
-                                <span>{{ $memorialProfile->bio_headline }}</span>
-                            @endif
-                        </div>
-                    </a>
-                @endforeach
-            </div>
-        </section>
-    @endif
 </div>
 @endsection

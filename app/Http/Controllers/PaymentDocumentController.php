@@ -3,6 +3,8 @@
 namespace App\Http\Controllers;
 
 use App\Models\Payment;
+use App\Services\InvoiceDeliveryService;
+use App\Services\InvoicePdfService;
 use App\Services\InvoiceService;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\Request;
@@ -13,7 +15,11 @@ use Symfony\Component\HttpKernel\Exception\NotFoundHttpException;
 
 class PaymentDocumentController extends Controller
 {
-    public function __construct(private readonly InvoiceService $invoices) {}
+    public function __construct(
+        private readonly InvoiceService $invoices,
+        private readonly InvoicePdfService $pdf,
+        private readonly InvoiceDeliveryService $delivery,
+    ) {}
 
     public function receipt(Request $request, Payment $payment): View|JsonResponse
     {
@@ -82,6 +88,76 @@ class PaymentDocumentController extends Controller
             'payment' => $payment,
             'document' => $details,
         ]);
+    }
+
+    /**
+     * Authenticated PDF download for the payment owner. The document number is
+     * the stored, issued number; the PDF is regenerated on demand and served
+     * from a non-guessable, login-gated route.
+     */
+    public function pdfDownload(Request $request, Payment $payment, string $kind): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse
+    {
+        $this->authorizeOwner($payment);
+
+        try {
+            $path = $this->pdf->store($payment, $kind);
+        } catch (\Throwable $e) {
+            if ($request->expectsJson()) {
+                return response()->json(['ok' => false, 'error' => $e->getMessage()], 409);
+            }
+
+            abort(404, $e->getMessage());
+        }
+
+        $absolute = \Illuminate\Support\Facades\Storage::disk('local')->path($path);
+
+        return response()->file($absolute, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.basename($path).'"',
+        ]);
+    }
+
+    /**
+     * Finance-admin PDF download (PaymentPolicy::view via route authorization).
+     */
+    public function adminPdfDownload(Payment $payment, string $kind): \Symfony\Component\HttpFoundation\BinaryFileResponse|JsonResponse
+    {
+        $this->authorizeFinance();
+
+        try {
+            $path = $this->pdf->store($payment, $kind);
+        } catch (\Throwable $e) {
+            abort(404, $e->getMessage());
+        }
+
+        $absolute = \Illuminate\Support\Facades\Storage::disk('local')->path($path);
+
+        return response()->file($absolute, [
+            'Content-Type' => 'application/pdf',
+            'Content-Disposition' => 'attachment; filename="'.basename($path).'"',
+        ]);
+    }
+
+    /**
+     * Finance-admin resend of the settlement-document email. Explicit action:
+     * re-sends regardless of invoice_emailed_at without reissuing numbers.
+     */
+    public function adminResendDocuments(Request $request, Payment $payment): JsonResponse
+    {
+        $this->authorizeFinance();
+
+        $sent = $this->delivery->sendSettlementDocuments($payment, force: true);
+
+        return response()->json(['ok' => true, 'emailed' => $sent, 'invoice_emailed_at' => $payment->fresh()->invoice_emailed_at?->toIso8601String()]);
+    }
+
+    private function authorizeFinance(): void
+    {
+        $user = Auth::user();
+
+        if ($user === null || ! $user->canManageFinance()) {
+            throw new AccessDeniedHttpException('Finance administration is required.');
+        }
     }
 
     private function authorizeOwner(Payment $payment): void

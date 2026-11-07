@@ -132,6 +132,7 @@ class Payment extends Model
         'tax_invoice_issued_at',
         'credit_note_number',
         'credit_note_issued_at',
+        'invoice_emailed_at',
     ];
 
     protected function casts(): array
@@ -152,6 +153,7 @@ class Payment extends Model
             'invoice_issued_at' => 'datetime',
             'tax_invoice_issued_at' => 'datetime',
             'credit_note_issued_at' => 'datetime',
+            'invoice_emailed_at' => 'datetime',
             'gateway_checked_at' => 'datetime',
             'gateway_check_count' => 'integer',
         ];
@@ -170,11 +172,6 @@ class Payment extends Model
     public function application(): BelongsTo
     {
         return $this->belongsTo(Application::class, 'application_id');
-    }
-
-    public function inMemoriamProfile(): BelongsTo
-    {
-        return $this->belongsTo(InMemoriamProfile::class, 'in_memoriam_profile_id');
     }
 
     public function waivedByUser(): BelongsTo

@@ -39,52 +39,20 @@
         <p class="lead" style="margin:0">No canonical URL has been assigned yet.</p>
     @endif
 
-    @php
-        $selectedHosting = old('hosting_destination', $hostingDestination);
-        $hostPrefix = $selectedHosting === \App\Models\Application::HOSTING_DESTINATION_ICONSHERALD
-            ? 'iconsherald.com/'
-            : 'jannayaks.in/';
-    @endphp
-
-    <h2 style="margin-top:14px;font-size:16px">Where should your profile be hosted?</h2>
-    @if($hostingDestinationLocked)
-        <p class="lead" style="margin:0">
-            @if($hostingDestination === \App\Models\Application::HOSTING_DESTINATION_ICONSHERALD)
-                IconsHerald — <code>iconsherald.com/{{ $profile->slug }}</code>
-            @else
-                Jannayaks — <code>jannayaks.in/{{ $profile->slug }}</code>
-            @endif
-        </p>
-        <p class="sub" style="margin:0">Hosting destination is locked after publication.</p>
-    @else
-        <p class="sub" style="margin:0">
-            Choose one public address. Your profile content, editorial and publication stay on Jannayaks.
-        </p>
-    @endif
-
     @if($canSelectPersonal)
         <h2 style="margin-top:14px;font-size:16px">Choose your personal URL</h2>
         <p class="sub" style="margin:0">
-            Name on the profile: <b>{{ $verifiedName }}</b>.
+            Preferred name supplied by the applicant: <b>{{ $verifiedName }}</b>.
             These suggestions are derived from that name. Arbitrary usernames are not allowed.
+        </p>
+        <p class="sub" style="margin:4px 0 0">
+            Once your profile is published, its URL cannot be changed. Please choose carefully.
         </p>
         @if($personalSlugLocked)
             <p class="lead" style="margin:0">Your personal URL is permanent and cannot be changed from this page.</p>
-            @unless($hostingDestinationLocked)
-                <form method="post" action="{{ route('applications.profile-url.hosting', $application) }}" class="stack" style="margin-top:10px">
-                    @csrf
-                    @include('application.partials.hosting-destination-fields', [
-                        'selectedHosting' => $selectedHosting,
-                        'hostPrefix' => $hostPrefix,
-                        'slugPreview' => $profile->slug,
-                        'hostingPrices' => $hostingPrices,
-                    ])
-                    <button type="submit" class="btn primary">Save hosting destination</button>
-                </form>
-            @endunless
         @else
             @if(count($suggestions))
-                <p class="sub" style="margin:10px 0 0">Suggested profile addresses — the highlighted line follows your chosen hosting destination:</p>
+                <p class="sub" style="margin:10px 0 0">Suggested profile addresses:</p>
                 <ul class="stack" style="margin:10px 0 0;padding-left:0;list-style:none">
                     @foreach($suggestions as $suggestion)
                         <li style="display:flex;gap:8px;align-items:flex-start;flex-wrap:wrap">
@@ -104,15 +72,9 @@
             @endif
             <form method="post" action="{{ route('applications.profile-url.update', $application) }}" class="stack" style="margin-top:10px">
                 @csrf
-                @include('application.partials.hosting-destination-fields', [
-                    'selectedHosting' => $selectedHosting,
-                    'hostPrefix' => $hostPrefix,
-                    'slugPreview' => null,
-                    'hostingPrices' => $hostingPrices,
-                ])
                 <label for="slug">Personal URL</label>
                 <div class="row" style="gap:8px;align-items:center">
-                    <span class="sub" id="hosting-prefix">{{ $hostPrefix }}</span>
+                    <span class="sub" id="hosting-prefix">jannayaks.in/</span>
                     <input id="slug" name="slug" type="text" maxlength="64" required
                            value="{{ old('slug', $preferredSlug ?: $profile->slug) }}"
                            pattern="[a-z0-9]+(?:[.\-][a-z0-9]+)*"
@@ -128,18 +90,6 @@
         <p class="lead" style="margin:0">
             This profile has a six-character system address. A personal name-based address is not available for this application.
         </p>
-        @unless($hostingDestinationLocked)
-            <form method="post" action="{{ route('applications.profile-url.hosting', $application) }}" class="stack" style="margin-top:10px">
-                @csrf
-                @include('application.partials.hosting-destination-fields', [
-                    'selectedHosting' => $selectedHosting,
-                    'hostPrefix' => $hostPrefix,
-                    'slugPreview' => $profile->slug,
-                    'hostingPrices' => $hostingPrices,
-                ])
-                <button type="submit" class="btn primary">Save hosting destination</button>
-            </form>
-        @endunless
     @endif
 
     @if($isPublished && $canonicalUrl)
@@ -159,75 +109,5 @@
         </ul>
     @endif
 </section>
-<script>
-(() => {
-    const prefixes = {
-        jannayaks: 'jannayaks.in/',
-        iconsherald: 'iconsherald.com/',
-    };
-    const prefixEl = document.getElementById('hosting-prefix');
-    const previewEl = document.getElementById('hosting-preview');
-    const slugInput = document.getElementById('slug');
 
-    const syncHostingPrefix = () => {
-        const selected = document.querySelector('input[name="hosting_destination"]:checked');
-        const key = selected ? selected.value : 'jannayaks';
-        const prefix = prefixes[key] || prefixes.jannayaks;
-        if (prefixEl) {
-            prefixEl.textContent = prefix;
-        }
-        if (previewEl && slugInput) {
-            previewEl.textContent = prefix + (slugInput.value.trim() || {{ json_encode((string) ($profile->slug ?? '')) }});
-        } else if (previewEl) {
-            const slug = {{ json_encode((string) ($profile->slug ?? '')) }};
-            previewEl.textContent = prefix + slug;
-        }
-        document.querySelectorAll('.js-domain-preview').forEach((line) => {
-            const active = line.getAttribute('data-domain') === key;
-            line.style.fontWeight = active ? '700' : '400';
-            line.style.color = active ? '' : 'inherit';
-        });
-    };
-
-    document.querySelectorAll('.js-hosting-choice').forEach((input) => {
-        input.addEventListener('change', syncHostingPrefix);
-    });
-    syncHostingPrefix();
-
-    @if($canSelectPersonal && ! $personalSlugLocked)
-    const input = document.getElementById('slug');
-    const status = document.getElementById('slug-availability');
-    const endpoint = @json(route('applications.profile-url.availability', $application));
-    let timer = null;
-
-    document.querySelectorAll('.js-slug-choice').forEach((button) => {
-        button.addEventListener('click', () => {
-            input.value = button.getAttribute('data-slug') || '';
-            input.dispatchEvent(new Event('input'));
-        });
-    });
-
-    input.addEventListener('input', () => {
-        syncHostingPrefix();
-        const value = input.value.trim();
-        window.clearTimeout(timer);
-        if (value === '') {
-            status.textContent = '';
-            return;
-        }
-        timer = window.setTimeout(async () => {
-            const url = new URL(endpoint, window.location.origin);
-            url.searchParams.set('slug', value);
-            const response = await fetch(url.toString(), { headers: { 'Accept': 'application/json' } });
-            if (!response.ok) {
-                return;
-            }
-            const payload = await response.json();
-            status.textContent = payload.message || '';
-            status.style.color = payload.available ? 'var(--ok)' : 'var(--bad)';
-        }, 250);
-    });
-    @endif
-})();
-</script>
 @endsection

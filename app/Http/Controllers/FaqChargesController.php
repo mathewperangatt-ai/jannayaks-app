@@ -13,8 +13,6 @@ class FaqChargesController extends Controller
             'profile' => PricingAmounts::forStandardProfile(),
             'renewal' => PricingAmounts::forTierRenewal(PricingAmounts::STANDARD_INTERNAL_TIER),
             'revision' => PricingAmounts::forRevisionUpdate(),
-            'inMemoriam' => PricingAmounts::forInMemoriam5yr(),
-            'hostingYears' => (int) config('jannayaks.tier_pricing.in_memoriam.hosting_years', 5),
             'gstPercent' => (float) config('jannayaks.tier_pricing.gst_percent', 18),
         ]);
     }

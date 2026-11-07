@@ -36,35 +36,61 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee('arun.kumar12', false);
         $response->assertDontSee('jj_nemom', false);
         $response->assertDontSee('Create Your Own Handle', false);
-        // The Editorial Preparation block was removed by the final frontend pass.
-        $response->assertDontSee('Editorial Preparation');
-        $response->assertDontSee('human editors', false);
-        $response->assertSee('href="'.route('faq-charges').'">Tariff Plans →</a>', false);
-        $response->assertSee('href="'.route('demo-profiles.index').'">Demo Profiles →</a>', false);
-        $response->assertDontSee('FAQ &amp; Charges →', false);
-        $response->assertDontSee('View Demo Profiles <span lang="ml">', false);
+        // The approved pre-launch homepage presents editorial preparation
+        // transparently (Pre-Launch Refinement Parts 4 and 6).
+        $response->assertSee('Editorial Preparation');
+        $response->assertSee('Prepared With Editorial Care', false);
+        // Standard pricing in plain editorial text — no founding-member offer.
+        $response->assertSee('Standard Profile: ₹4,800 + applicable GST', false);
+        $response->assertSee('Annual hosting renewal from the second year: ₹1,800 + applicable GST.', false);
+        $response->assertDontSee('Founding', false);
+        $response->assertDontSee('₹4,000', false);
+        // Emotional message within Why Jannayaks.
+        $response->assertSee('Your achievements deserve to be remembered — not just by the world, but by you.', false);
+        $response->assertSee('href="'.route('faq-charges').'"', false);
         $response->assertSee('nav-menu-btn', false);
         $response->assertSee('Open menu', false);
         $response->assertSee('branding/jannayaks-logo.jpg', false);
         $html = $response->getContent();
-        $malayalamHeading = strpos($html, 'വിവിധ മേഖലകളിലെ ജനനായകരുടെ ഡിജിറ്റൽ ഗാലറി.');
-        $englishSubtitle = strpos($html, 'A digital gallery of leaders among the people.');
+        // Anchor to hero markup, not the headline text — the approved wording
+        // also appears in <head> meta and structured data.
+        $englishHeading = strpos($html, 'class="hero-en-primary"');
+        $malayalamSubtitle = strpos($html, 'class="hero-ml-secondary"');
+        $primaryCta = strpos($html, 'class="hero-cta hero-cta-primary"');
+        $secondaryCta = strpos($html, 'class="hero-cta hero-cta-secondary"');
         $banner = strpos($html, 'class="hero-banner"');
         $search = strpos($html, 'id="search"');
-        $this->assertNotFalse($malayalamHeading);
-        $this->assertNotFalse($englishSubtitle);
+        $this->assertNotFalse($englishHeading);
+        $this->assertNotFalse($malayalamSubtitle);
+        $response->assertSee('<h1 class="hero-en-primary">A Digital Gallery of Notable People Across All Fields.</h1>', false);
+        $response->assertSee('കർമ്മപഥങ്ങളിൽ ശ്രദ്ധേയരായ വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.', false);
+        // The hero artwork is unchanged.
+        $response->assertSee('images/jannayaks-hero-2-source.jpeg', false);
+        $this->assertNotFalse($primaryCta);
+        $this->assertNotFalse($secondaryCta);
         $this->assertNotFalse($banner);
         $this->assertNotFalse($search);
-        $this->assertTrue($malayalamHeading < $englishSubtitle && $englishSubtitle < $banner && $banner < $search);
+        $this->assertTrue($englishHeading < $malayalamSubtitle && $malayalamSubtitle < $primaryCta && $primaryCta < $secondaryCta && $secondaryCta < $banner && $banner < $search);
         $intro = strpos($html, 'class="intro-section"');
-        $recommend = strpos($html, 'class="recommend-strip"');
+        $demoSection = strpos($html, 'id="sample-profiles"');
+        $why = strpos($html, 'id="why"');
+        $recommend = strpos($html, 'id="recommend"');
         $howItWorks = strpos($html, 'id="hiw"');
-        $this->assertNotFalse($intro);
+        $pricing = strpos($html, 'id="pricing"');
+        $care = strpos($html, 'id="editorial-care"');
+        $finalCta = strpos($html, 'id="create"');
+        $this->assertNotFalse($demoSection);
+        $this->assertNotFalse($why);
         $this->assertNotFalse($recommend);
         $this->assertNotFalse($howItWorks);
+        $this->assertNotFalse($pricing);
+        $this->assertNotFalse($care);
+        $this->assertNotFalse($finalCta);
         // In Memoriam section removed from the public homepage.
         $this->assertFalse(strpos($html, 'id="memoriam') !== false);
-        $this->assertTrue($banner < $intro && $intro < $recommend && $recommend < $howItWorks && $howItWorks < $search);
+        $urlSection = strpos($html, '<section class="url-section">');
+        $this->assertTrue($banner < $demoSection && $demoSection < $intro && $intro < $why && $why < $search && $search < $howItWorks && $howItWorks < $pricing && $pricing < $care && $care < $recommend && $recommend < $finalCta);
+        $this->assertTrue($search < $urlSection && $urlSection < $howItWorks, 'search and the URL explanation are separate sections, in order');
         $malayalamBlock = strpos($html, 'class="intro-block intro-block-ml" lang="ml"');
         $englishBlock = strpos($html, 'class="intro-block intro-block-en" lang="en"');
         $this->assertNotFalse($malayalamBlock);
@@ -86,11 +112,10 @@ class HomepageIntegrationTest extends TestCase
             'An English-only profile is also available for those who prefer it.',
             'എന്താണ് Jannayaks?',
             'എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?',
-            'Tariff Plans →',
-            'Demo Profiles →',
+            'ചോദ്യങ്ങളുണ്ടോ? Questions?',
         ], false);
         $response->assertDontSee('ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു.', false);
-        $response->assertSee('Sign in with your Jannayaks username and password, or with Google. Then begin your profile application.', false);
+        $response->assertSee('Tell us about yourself, your work and your achievements.', false);
         $response->assertDontSee('start the standard profile', false);
         $response->assertDontSee('Sign in with Google or WhatsApp', false);
         $this->assertStringNotContainsStringIgnoringCase('every application', $html);
@@ -117,7 +142,7 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee(route('login', absolute: false), false);
         $response->assertSee(route('apply', absolute: false), false);
         // In Memoriam links are removed from public navigation.
-        $response->assertDontSee(route('in-memoriam.index', absolute: false), false);
+        $response->assertDontSee('/in-memoriam', false);
         $response->assertSee(route('search.index', absolute: false), false);
         // Footer: no phone numbers, no directory link.
         // Google Translate control is temporarily omitted from the homepage.
@@ -156,8 +181,13 @@ class HomepageIntegrationTest extends TestCase
             $this->assertSame(1, substr_count($html, $loader), $url);
             $this->assertSame(1, substr_count($html, 'function googleTranslateElementInit()'), $url);
             $this->assertStringNotContainsString('src="//translate.google.com', $html, $url);
-            foreach (['en', 'ml', 'hi', 'ta'] as $lang) {
+            // Only English and Malayalam are offered as customer-facing languages
+            // (Pre-Launch Refinement Part 1); the translate backend is preserved.
+            foreach (['en', 'ml'] as $lang) {
                 $this->assertStringContainsString("setLang('{$lang}')", $html, $url);
+            }
+            foreach (['hi', 'ta'] as $lang) {
+                $this->assertStringNotContainsString("setLang('{$lang}')", $html, $url);
             }
         }
 
@@ -170,8 +200,10 @@ class HomepageIntegrationTest extends TestCase
     {
         $html = $this->get(route('home'))->assertOk()->getContent();
 
-        $this->assertSame(1, substr_count($html, 'href="'.route('faq-charges').'">Tariff Plans →</a>'));
-        $this->assertSame(1, substr_count($html, 'href="'.route('demo-profiles.index').'">Demo Profiles →</a>'));
+        // The pricing section links to FAQ & Charges; the sample-profiles
+        // section links to the demo collection (Pre-Launch Refinement Part 4).
+        $this->assertSame(1, substr_count($html, 'href="'.route('faq-charges').'">See FAQ &amp; Charges →</a>'));
+        $this->assertSame(1, substr_count($html, 'href="'.route('demo-profiles.index').'">View the complete Demo Profiles collection →</a>'));
         $this->get(route('faq-charges'))->assertOk();
         $this->get(route('demo-profiles.index'))->assertOk();
     }
@@ -198,7 +230,7 @@ class HomepageIntegrationTest extends TestCase
         $response->assertDontSee('₹2,400', false);
         $response->assertSee('+ GST', false);
         // In Memoriam links are removed from public navigation.
-        $response->assertDontSee(route('in-memoriam.index', absolute: false), false);
+        $response->assertDontSee('/in-memoriam', false);
         $response->assertSee(route('gallery.index', absolute: false), false);
         $response->assertDontSee('QR', false);
         $response->assertDontSee('visiting card', false);
@@ -229,7 +261,7 @@ class HomepageIntegrationTest extends TestCase
         $this->get(route('gallery.index'))->assertOk();
         $this->get(route('search.index'))->assertOk();
         // In Memoriam public presentation is disabled; the landing 404s.
-        $this->get(route('in-memoriam.index'))->assertNotFound();
+        $this->get('/in-memoriam')->assertNotFound();
         $this->get(route('login'))->assertOk();
         $this->get(route('apply'))->assertOk();
     }

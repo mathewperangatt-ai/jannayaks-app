@@ -38,27 +38,6 @@ class PhotoSha256Test extends TestCase
         $this->assertSame(hash('sha256', $storedBytes), (string) $photo->photo_sha256);
     }
 
-    public function test_in_memoriam_photo_upload_stores_sha256_of_exact_stored_bytes(): void
-    {
-        Storage::fake('public');
-        $editor = User::factory()->editor()->create();
-        $memorial = \App\Models\InMemoriamProfile::factory()->paid()->create([
-            'slug' => 'hash-memorial',
-            'status' => \App\Models\InMemoriamProfile::STATUS_UNDER_EDITORIAL_REVIEW,
-        ]);
-        $service = app(InMemoriamMediaService::class);
-
-        $photo = $service->uploadPhotograph(
-            $memorial,
-            UploadedFile::fake()->image('memorial.jpg', 400, 500),
-            $editor,
-        );
-
-        $this->assertNotNull($photo->photo_sha256);
-        $storedBytes = Storage::disk('public')->get($photo->storage_path_key);
-        $this->assertSame(hash('sha256', $storedBytes), (string) $photo->photo_sha256);
-    }
-
     public function test_backfill_hashes_existing_photo_with_null_hash(): void
     {
         Storage::fake('public');

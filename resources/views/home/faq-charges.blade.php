@@ -36,7 +36,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .nav-links a:hover,.nav-links a[aria-current="page"]{color:var(--navy);}
 .nav-right{display:flex;align-items:center;gap:10px;}
 .nav-login{background:transparent;border:1.5px solid var(--navy);color:var(--navy);padding:7px 16px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;font-family:var(--fb);}
-.nav-cta{background:var(--saffron);color:white;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;font-family:var(--fb);}
+.nav-cta{background:var(--navy);color:white;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:600;text-decoration:none;font-family:var(--fb);}
 .translate-wrap{position:relative;}
 .translate-btn{background:transparent;border:1px solid var(--border);color:var(--gray);padding:6px 12px;border-radius:4px;font-size:12px;font-family:var(--fb);cursor:pointer;display:flex;align-items:center;gap:5px;transition:all .2s;min-height:40px;}
 .translate-btn:hover{border-color:var(--navy);color:var(--navy);}
@@ -70,6 +70,9 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 .back a{color:var(--navy);font-weight:600;}
 @media(min-width:900px){.nav-links{display:flex;}}
 @media(max-width:899px){
+  .nav-inner{height:auto;min-height:56px;padding:8px 14px;flex-wrap:wrap;gap:8px;}
+  .nav-links{display:flex;order:3;width:100%;justify-content:center;gap:18px;padding:4px 0 2px;border-top:1px solid var(--border);}
+  .nav-links a{display:inline-flex;align-items:center;min-height:40px;font-size:14px;color:var(--navy);}
   .translate-label{display:none;}
   .translate-btn{padding:8px 10px;min-width:44px;justify-content:center;}
 }
@@ -83,11 +86,9 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
       <img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks">
     </a>
     <ul class="nav-links">
-      <li><a href="{{ route('home') }}#search">Search</a></li>
-      <li><a href="{{ route('home') }}#hiw">How It Works</a></li>
-      <li><a href="{{ route('faq-charges') }}" aria-current="page">FAQ &amp; Charges</a></li>
       <li><a href="{{ route('gallery.index') }}">Gallery</a></li>
-      <li><a href="{{ route('demo-profiles.index') }}">View Demo Profiles</a></li>
+      <li><a href="{{ route('home') }}#hiw">How It Works</a></li>
+      <li><a href="{{ route('home') }}#pricing">Pricing</a></li>
     </ul>
     <div class="nav-right">
       @include('partials.translate-control')
@@ -108,17 +109,56 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <div class="card">
     <div class="tier-name">Standard Profile</div>
     <div class="price">{{ $profile['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">The regular profile fee. Annual renewal is {{ $renewal['base_formatted'] }} + GST.</div>
+    <div class="price-sub">Includes profile preparation, editorial presentation, publication and first-year hosting. Annual hosting renewal from the second year: {{ $renewal['base_formatted'] }} + applicable GST.</div>
     <ul class="features">
-      <li>The same Online Interview for every applicant</li>
-      <li>Editorial preparation, your preview, and your approval before publication</li>
+      <li>Profile preparation and editorial presentation: ₹3,000</li>
+      <li>First-year hosting: ₹1,800</li>
+      <li>The same Online Interview for every applicant, and your approval before publication</li>
     </ul>
   </div>
 
-
-
   <h2>Frequently asked questions</h2>
 
+  <div class="faq">
+    <strong>Who can apply?</strong>
+    <p>Jannayaks accepts profile submissions directly from individuals. You must be at least 18 years old and able to enter into a binding contract under Indian law.</p>
+  </div>
+  <div class="faq">
+    <strong>What kinds of achievements can be featured?</strong>
+    <p>Achievements and contributions from any field of work or public life can be featured. Profiles are prepared from the information and material you submit about yourself.</p>
+  </div>
+  <div class="faq">
+    <strong>What does the Standard Profile include?</strong>
+    <p>The Standard Profile includes profile preparation and the first year of publication, with up to three photographs. Videos and video links are not included.</p>
+  </div>
+  <div class="faq">
+    <strong>How does the Online Interview work?</strong>
+    <p>After your application, you complete the Online Interview at your own pace, telling us about yourself, your work and your achievements, and upload source material.</p>
+  </div>
+  <div class="faq">
+    <strong>How is my profile prepared and approved?</strong>
+    <p>Profiles are prepared first using artificial intelligence tools and are then checked by human editors before they are shown to you for approval. You review the prepared profile and approve it before publication.</p>
+  </div>
+  <div class="faq">
+    <strong>How is my profile published?</strong>
+    <p>Your approved profile is published on Jannayaks with its own shareable link. Publication is subject to editorial acceptance.</p>
+  </div>
+  <div class="faq">
+    <strong>What does the Standard Profile cost?</strong>
+    <p>Standard Profile: ₹4,800 + applicable GST. It includes profile preparation and editorial presentation (₹3,000) and first-year hosting (₹1,800). Annual hosting renewal from the second year is ₹1,800 + applicable GST. A full profile rewrite costs ₹3,000 plus GST.</p>
+  </div>
+  <div class="faq">
+    <strong>What if Jannayaks declines my application?</strong>
+    <p>All applications are subject to editorial acceptance. If Jannayaks rejects an application before publication, the full amount paid, including applicable taxes, will be refunded.</p>
+  </div>
+  <div class="faq">
+    <strong>When am I eligible for a refund?</strong>
+    <p>Before your profile is submitted for approval, a full refund applies. From submission for approval until seven days after submission, a 60% refund applies. After you approve the profile, or after the seven-day period ends, no refund applies. Full details are on the <a href="{{ route('legal.refund') }}">Refund and Cancellation Policy</a> page.</p>
+  </div>
+  <div class="faq">
+    <strong>Can I recommend someone else?</strong>
+    <p>Know someone whose achievements deserve recognition? Recommend them for Jannayaks through the Recommend Someone form. A recommendation is not an application submitted by the recommended person; a profile is created only if they themselves apply and consent.</p>
+  </div>
   <div class="faq">
     <strong>How do I create a profile?</strong>
     <p>Use Create Profile, sign in with your username and password or with Google, and begin your profile application. There is no membership tier to choose. Payment uses the Standard Profile price shown above.</p>
@@ -137,7 +177,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   </div>
   <div class="faq">
     <strong>What is annual membership?</strong>
-    <p>After the first publication period, renewal is {{ $renewal['base_formatted'] }} plus GST for every living profile. Renewal is not the same amount as the Standard Profile fee.</p>
+    <p>After the first publication period, renewal is {{ $renewal['base_formatted'] }} plus GST for every profile. Renewal is not the same amount as the Standard Profile fee.</p>
   </div>
   <div class="faq">
     <strong>What about profile revisions after publication?</strong>
@@ -150,13 +190,18 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <div class="faq">
     <strong>How is my personal profile URL created?</strong>
     <p>
-      Your profile URL is based on your verified name.
+      Your preferred name is used to create your personalised Jannayaks profile URL, subject to availability and URL formatting requirements.
       For example:
       https://jannayaks.in/arun.kumar
       or https://jannayaks.in/arun.kumar12
       A short number is added only if the name-based address is already taken.
       Your profile address remains permanent while your membership is active.
     </p>
+  </div>
+  <div class="faq">
+    <strong>Can I change my profile URL after publication?</strong>
+    <p>Your profile URL is generated using the preferred name you provide during the application process, subject to availability and formatting requirements. Once your profile is published, its URL cannot be changed. Please choose your preferred name carefully before submitting your application.</p>
+    <p lang="ml">അപേക്ഷാ സമയത്ത് നിങ്ങൾ നൽകുന്ന ഇഷ്ടപ്പെട്ട പേര് ഉപയോഗിച്ചാണ്, ലഭ്യതയ്ക്കും ഫോർമാറ്റിനും വിധേയമായി, നിങ്ങളുടെ പ്രൊഫൈൽ URL സൃഷ്ടിക്കുന്നത്. പ്രൊഫൈൽ പ്രസിദ്ധീകരിച്ചുകഴിഞ്ഞാൽ അതിന്റെ URL മാറ്റാൻ കഴിയില്ല. അതിനാൽ അപേക്ഷ സമർപ്പിക്കുന്നതിന് മുമ്പ് ഇഷ്ടപ്പെട്ട പേര് ശ്രദ്ധാപൂർവം തിരഞ്ഞെടുക്കുക.</p>
   </div>
 
   <p class="back"><a href="{{ route('home') }}">← Back to homepage</a></p>

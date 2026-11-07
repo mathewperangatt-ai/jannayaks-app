@@ -49,7 +49,7 @@ class PricingBranchCorrectionsTest extends TestCase
         $this->assertNull($stale->razorpay_link_url);
         $this->assertNotSame($stale->id, $created->id);
         $this->assertSame('plink_new', $created->razorpay_link_id);
-        $this->assertSame(472000, $created->totalPaise());
+        $this->assertSame(566400, $created->totalPaise());
         $this->assertSame(1, Payment::query()->where('application_id', $app->id)->activeAttempts()->count());
     }
 
@@ -189,14 +189,14 @@ class PricingBranchCorrectionsTest extends TestCase
             'status' => Payment::STATUS_INITIATED,
         ])->save();
 
-        $this->postWebhook($payment, 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_name_only', 'payment.captured', '')
+        $this->postWebhook($payment, 566400, 'INR', 'plink_current', 'pay_current_auth', 'evt_name_only', 'payment.captured', '')
             ->assertStatus(503)
             ->assertJson(['paid' => false, 'capture_confirmed' => false, 'retryable' => true]);
 
-        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_auth', 'payment.authorized', 'authorized')
+        $this->postWebhook($payment->fresh(), 566400, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_auth', 'payment.authorized', 'authorized')
             ->assertOk()
             ->assertJson(['authorized' => true, 'paid' => false]);
-        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_auth', 'payment.authorized', 'authorized')
+        $this->postWebhook($payment->fresh(), 566400, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_auth', 'payment.authorized', 'authorized')
             ->assertOk()
             ->assertJson(['ok' => true, 'idempotent' => true]);
 
@@ -207,10 +207,10 @@ class PricingBranchCorrectionsTest extends TestCase
         $this->assertNull($payment->captured_at);
         $this->assertFalse(app(ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($app->fresh()));
 
-        $this->postWebhook($payment, 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_captured', 'payment.captured', 'captured')
+        $this->postWebhook($payment, 566400, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_captured', 'payment.captured', 'captured')
             ->assertOk()
             ->assertJson(['paid' => true]);
-        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_captured', 'payment.captured', 'captured')
+        $this->postWebhook($payment->fresh(), 566400, 'INR', 'plink_current', 'pay_current_auth', 'evt_current_captured', 'payment.captured', 'captured')
             ->assertOk()
             ->assertJson(['ok' => true, 'idempotent' => true]);
 
@@ -237,7 +237,7 @@ class PricingBranchCorrectionsTest extends TestCase
             if (str_contains($url, '/payments/pay_recovered')) {
                 return Http::response([
                     'id' => 'pay_recovered',
-                    'amount' => 472000,
+                    'amount' => 566400,
                     'currency' => 'INR',
                     'status' => 'captured',
                 ], 200);
@@ -246,19 +246,19 @@ class PricingBranchCorrectionsTest extends TestCase
                 return Http::response([
                     'id' => 'plink_recovered',
                     'status' => 'paid',
-                    'amount' => 472000,
+                    'amount' => 566400,
                     'currency' => 'INR',
-                    'payments' => [['id' => 'pay_recovered', 'amount' => 472000, 'status' => 'captured']],
+                    'payments' => [['id' => 'pay_recovered', 'amount' => 566400, 'status' => 'captured']],
                 ], 200);
             }
 
             return Http::response(['error' => 'unexpected'], 500);
         });
 
-        $this->postWebhook($payment, 472000, 'INR', 'plink_recovered', 'pay_recovered', 'evt_recovered', 'payment.captured', '')
+        $this->postWebhook($payment, 566400, 'INR', 'plink_recovered', 'pay_recovered', 'evt_recovered', 'payment.captured', '')
             ->assertOk()
             ->assertJson(['paid' => true]);
-        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_recovered', 'pay_recovered', 'evt_recovered', 'payment.captured', '')
+        $this->postWebhook($payment->fresh(), 566400, 'INR', 'plink_recovered', 'pay_recovered', 'evt_recovered', 'payment.captured', '')
             ->assertOk()
             ->assertJson(['idempotent' => true]);
 
@@ -284,10 +284,10 @@ class PricingBranchCorrectionsTest extends TestCase
             throw new \Illuminate\Http\Client\ConnectionException('timed out');
         });
 
-        $this->postWebhook($payment, 472000, 'INR', 'plink_unconfirmed', 'pay_unconfirmed', 'evt_unconfirmed', 'payment.captured', '')
+        $this->postWebhook($payment, 566400, 'INR', 'plink_unconfirmed', 'pay_unconfirmed', 'evt_unconfirmed', 'payment.captured', '')
             ->assertStatus(503)
             ->assertJson(['paid' => false, 'capture_confirmed' => false, 'retryable' => true]);
-        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_unconfirmed', 'pay_unconfirmed', 'evt_unconfirmed', 'payment.captured', '')
+        $this->postWebhook($payment->fresh(), 566400, 'INR', 'plink_unconfirmed', 'pay_unconfirmed', 'evt_unconfirmed', 'payment.captured', '')
             ->assertStatus(503);
 
         $payment->refresh();
@@ -300,7 +300,7 @@ class PricingBranchCorrectionsTest extends TestCase
             if (str_contains($request->url(), '/payments/pay_inconsistent')) {
                 return Http::response([
                     'id' => 'pay_inconsistent',
-                    'amount' => 472000,
+                    'amount' => 566400,
                     'currency' => 'INR',
                     'status' => 'authorized',
                 ], 200);
@@ -309,13 +309,13 @@ class PricingBranchCorrectionsTest extends TestCase
             return Http::response([
                 'id' => 'plink_unconfirmed',
                 'status' => 'paid',
-                'amount' => 472000,
+                'amount' => 566400,
                 'payments' => [['id' => 'pay_inconsistent']],
             ], 200);
         });
 
         $payment->forceFill(['razorpay_link_id' => 'plink_unconfirmed'])->save();
-        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_unconfirmed', 'pay_inconsistent', 'evt_inconsistent', 'payment.captured', '')
+        $this->postWebhook($payment->fresh(), 566400, 'INR', 'plink_unconfirmed', 'pay_inconsistent', 'evt_inconsistent', 'payment.captured', '')
             ->assertStatus(503)
             ->assertJson(['retryable' => true, 'paid' => false]);
 
@@ -344,15 +344,15 @@ class PricingBranchCorrectionsTest extends TestCase
             ])->save();
 
             $this->enableGateway();
-            $this->fakeConfirmedCapture($payId, $linkId, 472000);
-            $this->postWebhook($payment, 472000, 'INR', $linkId, $payId, $eventId, $event, '')
+            $this->fakeConfirmedCapture($payId, $linkId, 566400);
+            $this->postWebhook($payment, 566400, 'INR', $linkId, $payId, $eventId, $event, '')
                 ->assertOk()
                 ->assertJson(['paid' => true]);
 
             $this->replaceHttpFake(function () {
                 throw new \Illuminate\Http\Client\ConnectionException('gateway down on retry');
             });
-            $this->postWebhook($payment->fresh(), 472000, 'INR', $linkId, $payId, $eventId, $event, '')
+            $this->postWebhook($payment->fresh(), 566400, 'INR', $linkId, $payId, $eventId, $event, '')
                 ->assertOk()
                 ->assertJson(['idempotent' => true]);
 
@@ -383,10 +383,10 @@ class PricingBranchCorrectionsTest extends TestCase
             $this->replaceHttpFake(function () {
                 throw new \Illuminate\Http\Client\ConnectionException('timed out');
             });
-            $this->postWebhook($payment, 472000, 'INR', $linkId, 'pay_fail_'.$suffix, 'evt_fail_'.$suffix, $event, '')
+            $this->postWebhook($payment, 566400, 'INR', $linkId, 'pay_fail_'.$suffix, 'evt_fail_'.$suffix, $event, '')
                 ->assertStatus(503)
                 ->assertJson(['paid' => false, 'capture_confirmed' => false, 'retryable' => true]);
-            $this->postWebhook($payment->fresh(), 472000, 'INR', $linkId, 'pay_fail_'.$suffix, 'evt_fail_'.$suffix, $event, '')
+            $this->postWebhook($payment->fresh(), 566400, 'INR', $linkId, 'pay_fail_'.$suffix, 'evt_fail_'.$suffix, $event, '')
                 ->assertStatus(503);
 
             $payment->refresh();
@@ -399,7 +399,7 @@ class PricingBranchCorrectionsTest extends TestCase
                 if (str_contains($request->url(), '/payments/pay_inconsistent_'.$suffix)) {
                     return Http::response([
                         'id' => 'pay_inconsistent_'.$suffix,
-                        'amount' => 472000,
+                        'amount' => 566400,
                         'currency' => 'INR',
                         'status' => 'authorized',
                     ], 200);
@@ -408,13 +408,13 @@ class PricingBranchCorrectionsTest extends TestCase
                 return Http::response([
                     'id' => $linkId,
                     'status' => 'paid',
-                    'amount' => 472000,
+                    'amount' => 566400,
                     'currency' => 'INR',
                     'payments' => [['id' => 'pay_inconsistent_'.$suffix]],
                 ], 200);
             });
 
-            $this->postWebhook($payment->fresh(), 472000, 'INR', $linkId, 'pay_inconsistent_'.$suffix, 'evt_inconsistent_'.$suffix, $event, '')
+            $this->postWebhook($payment->fresh(), 566400, 'INR', $linkId, 'pay_inconsistent_'.$suffix, 'evt_inconsistent_'.$suffix, $event, '')
                 ->assertStatus(503)
                 ->assertJson(['retryable' => true, 'paid' => false]);
 
@@ -437,12 +437,12 @@ class PricingBranchCorrectionsTest extends TestCase
         ])->save();
 
         $this->enableGateway();
-        $this->fakeConfirmedCapture('pay_resolved', 'plink_resolved', 472000);
+        $this->fakeConfirmedCapture('pay_resolved', 'plink_resolved', 566400);
 
-        $this->postWebhook($payment, 472000, 'INR', 'plink_resolved', '', 'evt_resolved', 'payment_link.paid', '')
+        $this->postWebhook($payment, 566400, 'INR', 'plink_resolved', '', 'evt_resolved', 'payment_link.paid', '')
             ->assertOk()
             ->assertJson(['paid' => true]);
-        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_resolved', '', 'evt_resolved', 'payment_link.paid', '')
+        $this->postWebhook($payment->fresh(), 566400, 'INR', 'plink_resolved', '', 'evt_resolved', 'payment_link.paid', '')
             ->assertOk()
             ->assertJson(['idempotent' => true]);
 
@@ -464,12 +464,12 @@ class PricingBranchCorrectionsTest extends TestCase
         ])->save();
 
         $this->enableGateway();
-        $this->fakeConfirmedCapture('pay_order_stored', 'plink_order_stored', 472000);
+        $this->fakeConfirmedCapture('pay_order_stored', 'plink_order_stored', 566400);
 
-        $this->postWebhook($payment, 472000, 'INR', 'plink_order_stored', 'pay_order_stored', 'evt_order_stored', 'order.paid', '', false)
+        $this->postWebhook($payment, 566400, 'INR', 'plink_order_stored', 'pay_order_stored', 'evt_order_stored', 'order.paid', '', false)
             ->assertOk()
             ->assertJson(['paid' => true]);
-        $this->postWebhook($payment->fresh(), 472000, 'INR', 'plink_order_stored', 'pay_order_stored', 'evt_order_stored', 'order.paid', '', false)
+        $this->postWebhook($payment->fresh(), 566400, 'INR', 'plink_order_stored', 'pay_order_stored', 'evt_order_stored', 'order.paid', '', false)
             ->assertOk()
             ->assertJson(['idempotent' => true]);
 
@@ -964,7 +964,7 @@ class PricingBranchCorrectionsTest extends TestCase
             ->assertJsonPath('progress.answered', 2)
             ->assertJsonPath('progress.missing_required', []);
 
-        $this->actingAs($user)->postJson(route('online-interview.submit', $app), ['questionnaire_confirmed' => true])
+        $this->actingAs($user)->postJson(route('online-interview.submit', $app), ['questionnaire_confirmed' => true, 'accuracy_confirmed' => true])
             ->assertOk()
             ->assertJsonPath('ok', true)
             ->assertJsonPath('next_step', 'editorial_processing');
@@ -1057,7 +1057,9 @@ class PricingBranchCorrectionsTest extends TestCase
         $this->actingAs($owner)
             ->get(route('applications.profile-url', $application))
             ->assertOk()
-            ->assertSee('This profile has a six-character system address. A personal name-based address is not available for this application.', false);
+            // Every living applicant chooses a preferred-name URL (historical tiers included).
+            ->assertSee('Choose your personal URL', false)
+            ->assertDontSee('six-character system address', false);
     }
 
     public function test_stale_payment_page_hides_the_obsolete_link_and_shows_the_current_amount(): void
@@ -1072,7 +1074,7 @@ class PricingBranchCorrectionsTest extends TestCase
         $this->actingAs($user)
             ->get(route('applications.payment', ['application' => $app, 'lang' => 'en']))
             ->assertOk()
-            ->assertSee('₹4,720.00', false)
+            ->assertSee('₹5,664.00', false)
             ->assertSee('An earlier payment link must not be paid.', false)
             ->assertDontSee('https://rzp.io/i/obsolete', false);
 

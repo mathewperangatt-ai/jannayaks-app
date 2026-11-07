@@ -53,7 +53,7 @@ class SitemapTest extends TestCase
         ] as $expected) {
             $this->assertContains($expected, $locs);
         }
-        // The In Memoriam landing page is presentation-gated and excluded.
+        // The discontinued In Memoriam landing is not part of the sitemap.
         $this->assertNotContains($home.'/in-memoriam', $locs);
 
         $this->assertNotContains(url('/search'), $locs);
@@ -87,29 +87,6 @@ class SitemapTest extends TestCase
         $this->assertNotContains(url('/hidden.person'), $locs);
     }
 
-    public function test_sitemap_excludes_all_memorial_records(): void
-    {
-        $admin = User::factory()->admin()->create();
-        $memorial = InMemoriamProfile::factory()->paid()->create([
-            'slug' => 'public-memorial-record',
-            'status' => InMemoriamProfile::STATUS_UNDER_EDITORIAL_REVIEW,
-        ]);
-        $published = app(InMemoriamLifecycleService::class)->publish($memorial, $admin);
-
-        // An unpublished memorial must stay out.
-        InMemoriamProfile::factory()->paid()->create([
-            'slug' => 'unpublished-memorial-record',
-            'status' => InMemoriamProfile::STATUS_DRAFT,
-        ]);
-
-        $locs = $this->fetchLocs();
-
-        // In Memoriam public presentation is disabled: published or not,
-        // memorial records AND the landing page are excluded from the sitemap.
-        $this->assertNotContains(route('in-memoriam.show', ['slug' => $published->slug]), $locs);
-        $this->assertNotContains(route('in-memoriam.index'), $locs);
-    }
-
     public function test_demonstration_content_is_excluded_from_sitemap(): void
     {
         // The demo set satisfies the generic "published" conditions but must
@@ -119,8 +96,6 @@ class SitemapTest extends TestCase
         $locs = $this->fetchLocs();
 
         $this->assertNotContains(url('/t.gopalakrishnan'), $locs);
-        $this->assertNotContains(route('in-memoriam.show', ['slug' => 'k.v.mathew']), $locs);
-        $this->assertNotContains(route('in-memoriam.show', ['slug' => 'dr.saroja.nair']), $locs);
         $this->assertFalse(collect($locs)->contains(fn ($loc) => str_contains($loc, 'gopalakrishnan')));
     }
 

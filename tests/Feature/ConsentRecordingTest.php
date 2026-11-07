@@ -17,20 +17,44 @@ class ConsentRecordingTest extends TestCase
 {
     use RefreshDatabase;
 
-    public function test_interview_submission_records_ai_processing_consent(): void
+    public function test_interview_submission_records_ai_processing_and_accuracy_consents(): void
     {
         [$user, $application] = $this->seedPaidApplicationWithRequiredAnswers();
         config(['online_interview.submission.prevent_duplicate_within_seconds' => 0]);
 
-        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $application->id]), ['questionnaire_confirmed' => true])
+        $this->actingAs($user)->postJson(route('online-interview.submit', ['application' => $application->id]), ['questionnaire_confirmed' => true, 'accuracy_confirmed' => true])
             ->assertOk();
 
-        $this->assertSame(1, ConsentRecord::query()->count());
-        $consent = ConsentRecord::query()->firstOrFail();
-        $this->assertSame($user->id, (int) $consent->user_id);
-        $this->assertSame(ConsentRecordingService::KEY_INTERVIEW_AI_PROCESSING, (string) $consent->consent_key);
-        $this->assertTrue((bool) $consent->consented);
-        $this->assertNotNull($consent->action_at);
+        $this->assertSame(2, ConsentRecord::query()->count());
+        $keys = ConsentRecord::query()->orderBy('consent_key')->pluck('consent_key')->all();
+        $this->assertSame([
+            ConsentRecordingService::KEY_ACCURACY_DECLARATION,
+            ConsentRecordingService::KEY_INTERVIEW_AI_PROCESSING,
+        ], $keys);
+
+        $accuracy = ConsentRecord::query()
+            ->where('consent_key', ConsentRecordingService::KEY_ACCURACY_DECLARATION)
+            ->firstOrFail();
+        $this->assertSame($user->id, (int) $accuracy->user_id);
+        $this->assertSame($application->id, (int) $accuracy->application_id);
+        $this->assertTrue((bool) $accuracy->consented);
+        $this->assertNotNull($accuracy->action_at);
+    }
+
+    public function test_submission_is_rejected_without_the_accuracy_declaration(): void
+    {
+        [$user, $application] = $this->seedPaidApplicationWithRequiredAnswers();
+        config(['online_interview.submission.prevent_duplicate_within_seconds' => 0]);
+
+        $this->actingAs($user)
+            // Deliberately omits accuracy_confirmed: the declaration must be mandatory.
+            ->postJson(route('online-interview.submit', ['application' => $application->id]), ['questionnaire_confirmed' => true])
+            ->assertStatus(422)
+            ->assertJsonValidationErrors('accuracy_confirmed');
+
+        // Nothing is submitted or recorded when the declaration is missing.
+        $this->assertSame(0, ConsentRecord::query()->count());
+        $this->assertNull($application->fresh()->online_interview_completed_at);
     }
 
     public function test_repeated_recording_is_idempotent_per_user_and_key(): void

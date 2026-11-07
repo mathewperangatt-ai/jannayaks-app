@@ -51,23 +51,72 @@ class Phase12ProfileUrlAndQrTest extends TestCase
         $this->assertSame('4IZ2UF', $kept->slug);
     }
 
-    public function test_emerging_cannot_choose_custom_personal_url(): void
+    public function test_emerging_tier_does_not_restrict_url_choice_but_selection_rules_still_apply(): void
     {
-        [$member, $application, $profile] = $this->publishLiving('emerging');
-        $before = $profile->fresh()->slug;
+        // Historical legacy tier (Emerging) on the application — URL eligibility
+        // is tier-independent, exactly as for the current Standard Profile tier.
+        $member = User::factory()->create();
+        $profile = Profile::query()->create([
+            'user_id' => $member->id,
+            'status' => 'under_editorial_review',
+            'full_name' => 'Arun Kumar Nair',
+            'display_name' => 'Arun Kumar Nair',
+            'display_phone_consent' => false,
+            'display_email_consent' => false,
+        ]);
+        $application = Application::factory()->paid()->create([
+            'user_id' => $member->id,
+            'profile_id' => $profile->id,
+            'full_name' => $profile->full_name,
+            'package_tier' => 'emerging',
+            'source_method' => 'admin_test_demo',
+            'broad_location' => 'Kozhikode',
+            'status' => Application::STATUS_IN_EDITORIAL_REVIEW,
+        ]);
 
-        $this->actingAs($member)->post(route('applications.profile-url.update', $application), [
-            'hosting_destination' => 'jannayaks',
-            'slug' => 'mathew-perangatt',
-        ])->assertSessionHasErrors('slug');
+        // The selection page offers the personal (name-based) flow — never the
+        // six-character system-address dead end.
+        $this->actingAs($member)
+            ->get(route('applications.profile-url', $application))
+            ->assertOk()
+            ->assertSee('Choose your personal URL', false)
+            ->assertSee('https://jannayaks.in/arun.kumar.nair', false)
+            ->assertDontSee('six-character system address', false);
 
-        $this->assertSame($before, $profile->fresh()->slug);
+        // Preferred-name derivation still applies: a slug that is not derived
+        // from the preferred name is rejected and the URL is unchanged.
+        $this->actingAs($member)
+            ->post(route('applications.profile-url.update', $application), [
+                'slug' => 'mathew-perangatt',
+            ])
+            ->assertSessionHasErrors('slug');
+        $this->assertNull($profile->fresh()->slug);
+
+        // Availability still applies: a name-derived, available slug is accepted
+        // regardless of the legacy tier value.
+        $this->actingAs($member)
+            ->post(route('applications.profile-url.update', $application), [
+                'slug' => 'arun.kumar',
+            ])
+            ->assertRedirect(route('applications.profile-url', $application))
+            ->assertSessionHas('status');
+        $this->assertSame('arun.kumar', $profile->fresh()->slug);
+
+        // Once published, the URL is immutable — even for a derived,
+        // otherwise-valid slug. No change path exists for any tier.
+        $profile->forceFill(['status' => 'published', 'published_at' => now()])->save();
+        $this->actingAs($member)
+            ->post(route('applications.profile-url.update', $application), [
+                'slug' => 'arun.kumar.nair',
+            ])
+            ->assertSessionHasErrors('slug');
+        $this->assertSame('arun.kumar', $profile->fresh()->slug);
 
         $this->expectException(\InvalidArgumentException::class);
         app(ProfileUrlService::class)->selectPersonalSlug(
             $profile->fresh(),
             $member,
-            'mathew-perangatt',
+            'arun.kumar.nair',
             'emerging',
         );
     }

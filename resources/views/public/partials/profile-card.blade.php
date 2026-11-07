@@ -4,6 +4,7 @@
     $descriptor = $presentation->conciseDescriptor($item);
     $location = $presentation->publicLocationLabel($item);
     $photo = $presentation->publicProfilePhoto($item);
+    $isDemo = str_ends_with(strtolower((string) $item->user?->email), \App\Services\SitemapService::DEMO_EMAIL_DOMAIN);
     $url = app(\App\Services\ProfileUrlService::class)->publicListingUrl(
         $item,
         isset($cardLanguage) ? (string) $cardLanguage : null,
@@ -16,8 +17,8 @@
         @else
             <span class="placeholder">{{ mb_strtoupper(mb_substr($name, 0, 1)) }}</span>
         @endif
-        @if($item->application?->package_tier === 'in_memoriam')
-            @include('public.partials.tier-mark', ['tier' => 'in_memoriam'])
+        @if($isDemo)
+            <span class="demo-badge" style="position:absolute;top:10px;left:10px;z-index:2;background:#214d68;color:#fff;font:700 10px/1 var(--jk-ui,var(--fb,sans-serif));letter-spacing:.14em;text-transform:uppercase;padding:5px 10px;border-radius:4px;">Demo</span>
         @endif
     </div>
     <div class="card-body">

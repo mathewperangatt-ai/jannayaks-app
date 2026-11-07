@@ -355,23 +355,4 @@ class ContactNumbersExportTest extends TestCase
     }
 
     /* 11. Memorial commissioner mobile is no longer a required collection field. */
-    public function test_memorial_profile_can_be_created_without_commissioner_mobile(): void
-    {
-        $user = User::factory()->create(['email_verified_at' => now()]);
-        $memorial = \App\Models\InMemoriamProfile::query()->create([
-            'user_id' => $user->id,
-            'slug' => 'test-memorial-nophone',
-            'status' => 'draft',
-            'full_name' => 'Test Memorial',
-            'deceased_full_name' => 'Test Deceased',
-            'commissioner_contact_name' => '',
-            'base_amount' => '24000.00',
-            'display_amount' => '4500.00',
-            'currency' => 'INR',
-            'display_phone_consent' => false,
-        ]);
-
-        $this->assertNotNull($memorial->id);
-        $this->assertNull($memorial->commissioner_contact_mobile);
-    }
 }

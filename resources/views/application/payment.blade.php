@@ -175,8 +175,12 @@
             @endif
         </div>
         <div class="actions">
-            <a class="btn" href="{{ route('payments.receipt', $settledPayment) }}">{{ $ml ? 'പേയ്‌മെൻ്റ് റിസീറ്റ്' : 'Payment Receipt' }}</a>
+            <a class="btn" href="{{ route('payments.receipt', $settledPayment) }}">{{ $ml ? 'പേയ്‌മെന്റ് റിസീറ്റ്' : 'Payment Receipt' }}</a>
             <a class="btn" href="{{ route('payments.tax-invoice', $settledPayment) }}">{{ $ml ? 'ജിഎസ്ടി ടാക്സ് ഇൻവോയ്സ്' : 'GST Tax Invoice' }}</a>
+            <a class="btn" href="{{ route('payments.document.pdf', [$settledPayment, 'receipt']) }}">{{ $ml ? 'റിസീറ്റ് PDF ഡൗൺലോഡ്' : 'Download Receipt (PDF)' }}</a>
+            @if ($settledPayment->tax_invoice_number)
+                <a class="btn" href="{{ route('payments.document.pdf', [$settledPayment, 'tax-invoice']) }}">{{ $ml ? 'ടാക്സ് ഇൻവോയ്സ് PDF ഡൗൺലോഡ്' : 'Download Tax Invoice (PDF)' }}</a>
+            @endif
             @if ($settledPayment->isRefunded() && $settledPayment->credit_note_number)
                 <a class="btn" href="{{ route('payments.credit-note', $settledPayment) }}">{{ $ml ? 'ക്രെഡിറ്റ് നോട്ട്' : 'Credit Note' }}</a>
             @endif

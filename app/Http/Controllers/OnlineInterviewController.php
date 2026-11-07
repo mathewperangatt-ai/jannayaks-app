@@ -225,6 +225,22 @@ class OnlineInterviewController extends Controller
             ]);
         }
 
+        if (! $request->boolean('accuracy_confirmed')) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'The accuracy declaration is required before submitting.',
+                    'errors' => [
+                        'accuracy_confirmed' => ['The accuracy declaration is required before submitting.'],
+                    ],
+                ], 422);
+            }
+
+            return back()->withErrors([
+                'accuracy_confirmed' => 'The accuracy declaration is required before submitting.',
+            ]);
+        }
+
         $rateKey = 'ol-submit:user:'.(int) Auth::id();
         if (! RateLimiter::attempt($rateKey, 1, fn () => true, (int) config('online_interview.submission.prevent_duplicate_within_seconds', 30))) {
             if ($request->expectsJson()) {
@@ -253,6 +269,14 @@ class OnlineInterviewController extends Controller
             ConsentRecordingService::KEY_INTERVIEW_AI_PROCESSING,
             $request->ip(),
             (string) $request->userAgent(),
+        );
+
+        app(ConsentRecordingService::class)->recordOnce(
+            $request->user(),
+            ConsentRecordingService::KEY_ACCURACY_DECLARATION,
+            $request->ip(),
+            (string) $request->userAgent(),
+            $application,
         );
 
         if ($request->expectsJson()) {

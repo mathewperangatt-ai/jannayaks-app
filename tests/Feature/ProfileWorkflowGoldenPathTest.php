@@ -134,7 +134,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
                         'id' => 'pay_golden_path_1',
                         'status' => 'captured',
                         'order_id' => null,
-                        'amount' => 472000, // Standard Profile ₹4,000 + 18% GST, server-authoritative
+                        'amount' => 566400, // Standard Profile ₹4,800 + 18% GST, server-authoritative
                         'currency' => 'INR',
                         'notes' => [
                             'payment_id' => (string) $payment->id,
@@ -178,7 +178,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
             ->assertOk();
 
         $this->actingAs($customer)
-            ->postJson(route('online-interview.submit', ['application' => $application->id]), ['questionnaire_confirmed' => true])
+            ->postJson(route('online-interview.submit', ['application' => $application->id]), ['questionnaire_confirmed' => true, 'accuracy_confirmed' => true])
             ->assertOk()
             ->assertJson(['ok' => true, 'next_step' => 'editorial_processing']);
 
@@ -371,7 +371,10 @@ class ProfileWorkflowGoldenPathTest extends TestCase
         $this->assertSame(Application::STATUS_AWAITING_PUBLICATION, $application->status);
         $this->assertSame($successor->id, $application->customer_approved_english_editorial_content_id);
         $this->assertSame($successor->id, $application->customer_approved_english_editorial_content_id, 'final approved version pinned');
-        $this->assertSame(2, ConsentRecord::query()->where('user_id', $customer->id)->count(), 'two publication consents (one per approval round)');
+        // Interview AI-processing + applicant accuracy declaration (submission)
+        // + publication approval (idempotent per user across approval rounds).
+        $this->assertSame(3, ConsentRecord::query()->where('user_id', $customer->id)->count(), 'submission consents plus the publication consent');
+        $this->assertTrue(ConsentRecord::query()->where('user_id', $customer->id)->where('consent_key', \App\Services\ConsentRecordingService::KEY_ACCURACY_DECLARATION)->exists());
 
         /* --------------------------------------------------------------
          * Stage 9 — final administrative publication (admin-only service).
@@ -435,7 +438,9 @@ class ProfileWorkflowGoldenPathTest extends TestCase
         // Canonical + metadata + JSON-LD.
         $canonical = url('/'.$slug);
         $this->assertStringContainsString('<link rel="canonical" href="'.$canonical.'">', $html);
-        $this->assertStringContainsString('name="description" content="'.$successor->summary, $html);
+        // Social description is the summary's first sentence (concise, never cut mid-sentence).
+        $firstSentence = preg_match('/^(.{40,}?[.!?])(\s|$)/us', (string) $successor->summary, $sm) === 1 ? $sm[1] : (string) $successor->summary;
+        $this->assertStringContainsString('name="description" content="'.$firstSentence.'"', $html);
         $this->assertStringContainsString('<title>Golden Path Leader — Jannayaks</title>', $html);
 
         preg_match_all('/<script type="application\/ld\+json">(.*?)<\/script>/s', $html, $m);
@@ -475,7 +480,8 @@ class ProfileWorkflowGoldenPathTest extends TestCase
          * -------------------------------------------------------------- */
         $this->assertSame(1, AiEditorialRun::query()->where('application_id', $application->id)->where('status', AiEditorialRun::STATUS_SUCCEEDED)->count());
         $this->assertSame(1, EditorialRevisionRequest::query()->where('application_id', $application->id)->count());
-        $this->assertSame(2, ConsentRecord::query()->where('user_id', $customer->id)->count());
+        // AI-processing + accuracy declaration (submission) + publication approval.
+        $this->assertSame(3, ConsentRecord::query()->where('user_id', $customer->id)->count());
         $this->assertDatabaseHas('profiles', ['id' => $profile->id, 'slug' => $slug]);
     }
 

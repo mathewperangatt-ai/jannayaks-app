@@ -31,7 +31,7 @@ class SeoMetadataTest extends TestCase
 
         // Description present, no visible-copy change, noindex intact.
         $this->assertMatchesRegularExpression('#<meta name="description" content="[^"]+">#i', $content);
-        $this->assertStringContainsString('digital biographical archive', $content);
+        $this->assertStringContainsString('A Digital Gallery of Notable People Across All Fields', $content);
         $this->assertStringNotContainsString('noindex', $content);
 
         // OG + Twitter.

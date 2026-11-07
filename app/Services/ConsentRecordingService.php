@@ -16,14 +16,17 @@ use Illuminate\Database\QueryException;
  * consent key, and backed by a database unique index so concurrent requests
  * cannot create duplicates.
  *
- * Scope is deliberately narrow: interview AI-processing consent and
- * publication-approval consent. Not a general-purpose consent framework.
+ * Scope is deliberately narrow: interview AI-processing consent, the
+ * applicant accuracy declaration made at submission, and publication-approval
+ * consent. Not a general-purpose consent framework.
  */
 class ConsentRecordingService
 {
     public const NOTICE_VERSION = 'v1';
 
     public const KEY_INTERVIEW_AI_PROCESSING = 'interview.submission.ai_processing';
+
+    public const KEY_ACCURACY_DECLARATION = 'interview.submission.accuracy_declaration';
 
     public const KEY_EDITORIAL_APPROVAL_PUBLICATION = 'editorial.approval.publication';
 

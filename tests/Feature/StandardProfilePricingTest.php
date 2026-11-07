@@ -13,11 +13,11 @@ class StandardProfilePricingTest extends TestCase
         $profile = PricingAmounts::forStandardProfile();
         $this->assertSame('Standard Profile', $profile['label']);
         $this->assertSame('standard_profile', $profile['tier_key']);
-        $this->assertSame(400000, $profile['base_paise']);
-        $this->assertSame(72000, $profile['gst_paise']);
-        $this->assertSame(472000, $profile['amount_incl_paise']);
-        $this->assertSame('₹4,000.00', $profile['base_formatted']);
-        $this->assertSame('₹4,720.00', $profile['amount_incl_formatted']);
+        $this->assertSame(480000, $profile['base_paise']);
+        $this->assertSame(86400, $profile['gst_paise']);
+        $this->assertSame(566400, $profile['amount_incl_paise']);
+        $this->assertSame('₹4,800.00', $profile['base_formatted']);
+        $this->assertSame('₹5,664.00', $profile['amount_incl_formatted']);
         $this->assertSame('unclassified', $profile['gst_classification']);
         $this->assertNull($profile['cgst_formatted']);
         $this->assertNull($profile['sgst_formatted']);
@@ -29,7 +29,7 @@ class StandardProfilePricingTest extends TestCase
             'package_tier' => 'distinguished',
             'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
         ]);
-        $this->assertSame(472000, PricingAmounts::forApplication($standardApp)['amount_incl_paise']);
+        $this->assertSame(566400, PricingAmounts::forApplication($standardApp)['amount_incl_paise']);
 
         foreach (PricingAmounts::livingTierKeys() as $tier) {
             $renewal = PricingAmounts::forTierRenewal($tier);
@@ -71,7 +71,7 @@ class StandardProfilePricingTest extends TestCase
             'package_tier' => 'distinguished',
             'pricing_generation' => Application::PRICING_GENERATION_STANDARD,
         ]);
-        $this->assertSame(472000, PricingAmounts::forApplication($standard)['amount_incl_paise']);
+        $this->assertSame(566400, PricingAmounts::forApplication($standard)['amount_incl_paise']);
         $this->assertNotSame(
             PricingAmounts::forStandardProfile()['amount_incl_paise'],
             PricingAmounts::forApplication(new Application([
@@ -81,11 +81,4 @@ class StandardProfilePricingTest extends TestCase
         );
     }
 
-    public function test_in_memoriam_price_is_unchanged(): void
-    {
-        $memorial = PricingAmounts::forInMemoriam5yr();
-
-        $this->assertSame(2400000, $memorial['base_paise']);
-        $this->assertFalse($memorial['gst_inclusive']);
-    }
 }

@@ -200,6 +200,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
 
         $this->actingAs($user)->postJson(route('online-interview.submit', $application), [
             'questionnaire_confirmed' => true,
+            'accuracy_confirmed' => true,
         ])->assertOk();
 
         $application->refresh();
@@ -463,8 +464,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $owner = User::factory()->create(['email' => 'owner@example.com']);
         $profile = Profile::query()->create([
             'user_id' => $owner->id,
-            'status' => 'published',
-            'published_at' => now(),
+            'status' => 'draft',
             'full_name' => 'Meera Nair',
             'display_name' => 'Meera Nair',
             'slug' => 'meera.nair',
@@ -531,10 +531,19 @@ class AgreedCorrectionWorkflowTest extends TestCase
             $this->assertSame('meera.nair', $profile->fresh()->slug);
         }
 
-        $service->changeProfileUrl($transferred->fresh(), $admin, 'meera', 'Customer requested a clearer URL.');
+        $service->changeProfileUrl($transferred->fresh(), $admin, 'meera', 'Customer requested a clearer URL before publication.');
         $this->assertSame('meera', $profile->fresh()->slug);
         $this->assertTrue(SlugRedirect::query()->where('old_slug', 'meera.nair')->where('new_slug', 'meera')->exists());
         $this->assertTrue(StaffActionLog::query()->where('action', 'profile.url_changed')->exists());
+
+        // Published profile URLs are permanent: no admin change, fee or migration.
+        $published = tap($profile->fresh(), fn (Profile $p) => $p->forceFill(['status' => 'published', 'published_at' => now()])->save());
+        try {
+            $service->changeProfileUrl($transferred->fresh(), $admin, 'meera.nair', 'Post-publication change request.');
+            $this->fail('A published profile URL must not be changeable.');
+        } catch (InvalidArgumentException) {
+            $this->assertSame('meera', $published->fresh()->slug);
+        }
 
         $paymentCount = Payment::query()->where('application_id', $application->id)->count();
         $body = $profile->fresh()->full_name;
@@ -546,7 +555,6 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $this->assertNotNull($profile->unpublished_at);
         $this->assertSame('meera', $profile->slug);
         $this->assertSame($body, $profile->full_name);
-        $this->assertSame(0, InMemoriamProfile::query()->count());
         $this->assertSame($paymentCount, Payment::query()->where('application_id', $application->id)->count());
         $this->assertSame(1, StaffActionLog::query()->where('action', 'profile.living_unpublished')->count());
         $this->get('/meera')->assertNotFound();
