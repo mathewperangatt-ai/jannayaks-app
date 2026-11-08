@@ -40,6 +40,11 @@ class ProfileMediaService
         return ProfileEntitlements::photoSlots($application);
     }
 
+    public function photoLimitMessage(int $limit): string
+    {
+        return 'Each profile may include a maximum of '.$limit.' photograph'.($limit === 1 ? '' : 's').'.';
+    }
+
     public function photoSlotLimitForProfile(Profile $profile): int
     {
         $profile->loadMissing('application');
@@ -123,7 +128,7 @@ class ProfileMediaService
 
                 if ($existing->count() >= $limit) {
                     throw ValidationException::withMessages([
-                        'photo' => "This package allows a maximum of {$limit} photograph(s).",
+                        'photo' => $this->photoLimitMessage($limit),
                     ]);
                 }
 
@@ -320,6 +325,24 @@ class ProfileMediaService
 
         return DB::transaction(function () use ($media, $reviewer, $note, $profile): MediaItem {
             $media = MediaItem::query()->whereKey($media->id)->lockForUpdate()->firstOrFail();
+
+            $limit = ProfileEntitlements::photoLimit();
+            $visibleApproved = MediaItem::query()
+                ->where('mediable_type', $profile->getMorphClass())
+                ->where('mediable_id', $profile->id)
+                ->where('media_type', MediaItem::TYPE_PROFILE_PHOTO)
+                ->where('review_status', MediaItem::REVIEW_APPROVED)
+                ->where('privacy', MediaItem::PRIVACY_PUBLIC)
+                ->whereKeyNot($media->id)
+                ->lockForUpdate()
+                ->get(['id'])
+                ->count();
+            if ($visibleApproved >= $limit) {
+                throw ValidationException::withMessages([
+                    'media' => "This profile already has the maximum of {$limit} approved photographs. Reject or remove one before approving another.",
+                ]);
+            }
+
             $before = [
                 'review_status' => $media->review_status,
                 'privacy' => $media->privacy,

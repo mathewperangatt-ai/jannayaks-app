@@ -35,6 +35,8 @@ class ViewApplication extends ViewRecord
     {
         return [
             $this->generateAiEditorialHeaderAction(),
+            $this->editEnglishDraftHeaderAction(),
+            $this->approveEnglishMasterHeaderAction(),
             $this->releaseCustomerPreviewHeaderAction(),
             Action::make('approvePublicationTestEnglishDraft')
                 ->label('Approve unchanged English draft')

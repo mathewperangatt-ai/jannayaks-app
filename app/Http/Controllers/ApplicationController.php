@@ -605,6 +605,8 @@ class ApplicationController extends Controller
             'activePayment' => $activePayment,
             'settledPayment' => $settledPayment,
             'isSettled' => $settledPayment !== null,
+            'isWaived' => $settledPayment === null
+                && app(\App\Services\ApplicationPaymentStateService::class)->isPaymentWaived($application),
             'quoteIsStale' => $this->activePaymentQuoteIsStale($activePayment, $package),
             'language' => $this->flowLanguage($request),
             'paymentsTestingMode' => \App\Services\ApplicationPaymentStateService::testingModeActive(),

@@ -111,9 +111,9 @@ class PublicProfilePhotoLayoutTest extends TestCase
         );
     }
 
-    public function test_three_and_four_photographs_adapt_gallery_without_changing_side_feature_rule(): void
+    public function test_three_photographs_adapt_gallery_without_changing_side_feature_rule(): void
     {
-        foreach ([3, 4] as $count) {
+        foreach ([3] as $count) {
             $specs = [];
             for ($i = 0; $i < $count; $i++) {
                 $portrait = $i % 2 === 0;

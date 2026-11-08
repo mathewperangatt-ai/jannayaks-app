@@ -49,7 +49,7 @@
             <button class="btn primary" type="submit">Upload photograph</button>
         </form>
     @else
-        <p class="lead" style="margin:0;color:var(--warn)">Photograph limit reached for this package. Remove a photo to upload another.</p>
+        <p class="lead" style="margin:0;color:var(--warn)">You have reached the maximum of {{ $limit }} photograph{{ $limit === 1 ? '' : 's' }} for this profile. Remove a photo to upload another.</p>
     @endif
 
     <h2 style="font-size:16px;margin-top:18px">Your photographs</h2>

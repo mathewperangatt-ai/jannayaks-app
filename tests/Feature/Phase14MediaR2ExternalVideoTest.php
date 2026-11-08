@@ -50,18 +50,18 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         [$member, $application, $profile] = $this->makeReadyApplication('emerging');
         $service = app(ProfileMediaService::class);
 
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 0; $i < 3; $i++) {
             $service->uploadProfilePhoto($profile, $this->jpegUpload("a{$i}.jpg"), $member);
         }
 
         try {
             $service->uploadProfilePhoto($profile, $this->jpegUpload('b.jpg'), $member);
-            $this->fail('A fifth photograph should be rejected.');
+            $this->fail('A fourth photograph should be rejected.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('photo', $e->errors());
         }
 
-        $this->assertSame(4, $service->profilePhotoCount($profile));
+        $this->assertSame(3, $service->profilePhotoCount($profile));
     }
 
     public function test_accomplished_and_distinguished_photo_limits(): void
@@ -70,29 +70,29 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
 
         [, , $accomplished] = $this->makeReadyApplication('accomplished');
         $ownerA = User::query()->findOrFail($accomplished->user_id);
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 0; $i < 3; $i++) {
             $service->uploadProfilePhoto($accomplished, $this->jpegUpload("a{$i}.jpg"), $ownerA);
         }
         try {
-            $service->uploadProfilePhoto($accomplished, $this->jpegUpload('a4.jpg'), $ownerA);
-            $this->fail('A fifth photograph should be rejected.');
+            $service->uploadProfilePhoto($accomplished, $this->jpegUpload('a3.jpg'), $ownerA);
+            $this->fail('A fourth photograph should be rejected.');
         } catch (ValidationException) {
             $this->assertTrue(true);
         }
-        $this->assertSame(4, $service->profilePhotoCount($accomplished));
+        $this->assertSame(3, $service->profilePhotoCount($accomplished));
 
         [, , $distinguished] = $this->makeReadyApplication('distinguished');
         $ownerD = User::query()->findOrFail($distinguished->user_id);
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 0; $i < 3; $i++) {
             $service->uploadProfilePhoto($distinguished, $this->jpegUpload("d{$i}.jpg"), $ownerD);
         }
         try {
-            $service->uploadProfilePhoto($distinguished, $this->jpegUpload('d4.jpg'), $ownerD);
-            $this->fail('A fifth photograph should be rejected.');
+            $service->uploadProfilePhoto($distinguished, $this->jpegUpload('d3.jpg'), $ownerD);
+            $this->fail('A fourth photograph should be rejected.');
         } catch (ValidationException) {
             $this->assertTrue(true);
         }
-        $this->assertSame(4, $service->profilePhotoCount($distinguished));
+        $this->assertSame(3, $service->profilePhotoCount($distinguished));
     }
 
     public function test_member_cannot_manage_another_members_media(): void

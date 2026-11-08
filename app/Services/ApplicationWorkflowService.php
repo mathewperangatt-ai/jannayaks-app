@@ -122,6 +122,99 @@ class ApplicationWorkflowService
     }
 
     /**
+     * The English draft an Admin may approve as the editorial master before
+     * customer preview: the highest-version usable English draft that is newer
+     * than any approved English version. Null when nothing awaits approval.
+     */
+    public function englishMasterAwaitingApproval(?Application $application): ?EditorialContent
+    {
+        if (! $application instanceof Application
+            || $application->profile_id === null
+            || $application->status === Application::STATUS_PUBLISHED) {
+            return null;
+        }
+
+        $latestApprovedVersion = (int) EditorialContent::query()
+            ->where('profile_id', $application->profile_id)
+            ->where('language', EditorialContent::LANGUAGE_EN)
+            ->where('status', EditorialContent::STATUS_APPROVED)
+            ->max('version_number');
+
+        $draft = EditorialContent::query()
+            ->where('profile_id', $application->profile_id)
+            ->where('language', EditorialContent::LANGUAGE_EN)
+            ->where('status', EditorialContent::STATUS_DRAFT)
+            ->where('version_number', '>', $latestApprovedVersion)
+            ->orderByDesc('version_number')
+            ->first();
+
+        if (! $draft instanceof EditorialContent
+            || $draft->isIncompleteFailedGeneration()
+            || trim((string) $draft->body) === '') {
+            return null;
+        }
+
+        return $draft;
+    }
+
+    /**
+     * Admin editorial approval of the English master. Marks the draft Approved
+     * in place through the versioning service (narrative unchanged, so no
+     * successor is created) and records the reviewer and approval time. Does
+     * not release a preview, record customer approval, or publish.
+     */
+    public function approveEnglishMaster(Application $application, User $actor): EditorialContent
+    {
+        if (! $actor->isAdmin() || ! $actor->isActiveAccount()) {
+            throw new InvalidArgumentException('Only an authorised Admin may approve the English editorial master.');
+        }
+
+        return DB::transaction(function () use ($application, $actor) {
+            $locked = Application::query()->whereKey($application->id)->lockForUpdate()->firstOrFail();
+
+            $draft = $this->englishMasterAwaitingApproval($locked);
+            if (! $draft instanceof EditorialContent) {
+                throw new InvalidArgumentException('There is no English editorial draft awaiting approval.');
+            }
+
+            $draft = EditorialContent::query()->whereKey($draft->id)->lockForUpdate()->firstOrFail();
+            if ($draft->status !== EditorialContent::STATUS_DRAFT) {
+                throw new InvalidArgumentException('This English version is no longer a draft.');
+            }
+
+            $approved = app(EditorialContentVersioningService::class)->applyEditorUpdate($draft, [
+                'status' => EditorialContent::STATUS_APPROVED,
+            ], $actor);
+
+            if ((int) $approved->id !== (int) $draft->id || $approved->status !== EditorialContent::STATUS_APPROVED) {
+                throw new InvalidArgumentException('The English editorial master could not be approved.');
+            }
+
+            $this->auditLogger->log(
+                action: 'editorial.english_master_approved',
+                subject: $approved,
+                before: [
+                    'status' => EditorialContent::STATUS_DRAFT,
+                    'editorial_content_id' => $approved->id,
+                    'version_number' => $approved->version_number,
+                ],
+                after: [
+                    'status' => $approved->status,
+                    'editorial_content_id' => $approved->id,
+                    'version_number' => $approved->version_number,
+                    'language' => $approved->language,
+                    'application_id' => $locked->id,
+                    'reviewed_by_id' => $approved->reviewed_by_id,
+                    'approved_at' => now()->toIso8601String(),
+                ],
+                actor: $actor,
+            );
+
+            return $approved;
+        });
+    }
+
+    /**
      * Publication-test-only: mark the exact unchanged English draft the customer
      * already approved as editorially approved. Does not edit narrative, clear
      * the customer approval, approve Malayalam, or write a payment.

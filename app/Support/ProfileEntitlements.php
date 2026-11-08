@@ -6,17 +6,25 @@ use App\Models\Application;
 
 /**
  * Photo and video entitlements for living profiles.
- * Every living profile, including historical package rows, may show four
+ * Every living profile, including historical package rows, may show three
  * photographs and no external video links. Stored media is not deleted when
  * an older profile already has more photographs or a video link on file.
  */
 class ProfileEntitlements
 {
-    public const CUSTOMER_VISIBLE_PHOTO_LIMIT = 4;
+    /** Approved maximum. tier_pricing.standard_profile.photo_slots may lower it, never raise it. */
+    public const CUSTOMER_VISIBLE_PHOTO_LIMIT = 3;
 
     public static function photoSlots(Application $application): int
     {
-        return self::CUSTOMER_VISIBLE_PHOTO_LIMIT;
+        return self::photoLimit();
+    }
+
+    public static function photoLimit(): int
+    {
+        $configured = (int) config('jannayaks.tier_pricing.standard_profile.photo_slots', self::CUSTOMER_VISIBLE_PHOTO_LIMIT);
+
+        return max(0, min($configured, self::CUSTOMER_VISIBLE_PHOTO_LIMIT));
     }
 
     public static function allowsVideoLink(Application $application): bool

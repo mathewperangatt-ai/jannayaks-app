@@ -34,32 +34,32 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
         Storage::fake('private_uploads');
     }
 
-    public function test_standard_profile_allows_four_photos_and_rejects_a_fifth(): void
+    public function test_standard_profile_allows_three_photos_and_rejects_a_fourth(): void
     {
         [$member, $application, $profile] = $this->makeStandardApplication();
         $service = app(ProfileMediaService::class);
 
-        $this->assertSame(4, ProfileEntitlements::photoSlots($application));
+        $this->assertSame(3, ProfileEntitlements::photoSlots($application));
         $this->assertFalse(ProfileEntitlements::allowsVideoLink($application));
-        $this->assertSame(4, $service->photoSlotLimitForApplication($application));
+        $this->assertSame(3, $service->photoSlotLimitForApplication($application));
 
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 0; $i < 3; $i++) {
             $service->uploadProfilePhoto($profile, UploadedFile::fake()->image("s{$i}.jpg", 400, 500), $member);
         }
 
         try {
-            $service->uploadProfilePhoto($profile, UploadedFile::fake()->image('s4.jpg', 400, 500), $member);
-            $this->fail('A living profile must reject a fifth photograph.');
+            $service->uploadProfilePhoto($profile, UploadedFile::fake()->image('s3.jpg', 400, 500), $member);
+            $this->fail('A living profile must reject a fourth photograph.');
         } catch (ValidationException $e) {
             $this->assertArrayHasKey('photo', $e->errors());
         }
 
-        $this->assertSame(4, $service->profilePhotoCount($profile));
+        $this->assertSame(3, $service->profilePhotoCount($profile));
 
         $this->actingAs($member)
             ->get(route('applications.media', $application))
             ->assertOk()
-            ->assertSee('4', false)
+            ->assertSee('3 of 3 photographs used', false)
             ->assertDontSee('External video link', false);
     }
 
@@ -79,19 +79,27 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
         }
     }
 
-    public function test_historical_distinguished_is_capped_at_four_photos_and_rejects_video(): void
+    public function test_historical_distinguished_is_capped_at_three_photos_and_rejects_video(): void
     {
         [$member, $application, $profile] = $this->makeHistoricalApplication('distinguished');
         $service = app(ProfileMediaService::class);
 
         $this->assertNull($application->pricing_generation);
-        $this->assertSame(4, ProfileEntitlements::photoSlots($application));
+        $this->assertSame(3, ProfileEntitlements::photoSlots($application));
         $this->assertFalse(ProfileEntitlements::allowsVideoLink($application));
 
-        for ($i = 0; $i < 4; $i++) {
+        for ($i = 0; $i < 3; $i++) {
             $service->uploadProfilePhoto($profile, UploadedFile::fake()->image("h{$i}.jpg", 400, 500), $member);
         }
-        $this->assertSame(4, $service->profilePhotoCount($profile));
+        $this->assertSame(3, $service->profilePhotoCount($profile));
+
+        try {
+            $service->uploadProfilePhoto($profile, UploadedFile::fake()->image('h3.jpg', 400, 500), $member);
+            $this->fail('A historical living profile must reject a fourth photograph.');
+        } catch (ValidationException $e) {
+            $this->assertArrayHasKey('photo', $e->errors());
+        }
+        $this->assertSame(3, $service->profilePhotoCount($profile));
 
         try {
             app(ExternalVideoLinkService::class)->submit(

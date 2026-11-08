@@ -17,6 +17,8 @@ use Illuminate\View\View;
 
 class OnlineInterviewController extends Controller
 {
+    public const SUBMITTED_MESSAGE = 'Your Online Interview has been submitted. Please wait for the Jannayaks editorial team to contact you.';
+
     public function __construct(
         private readonly OnlineInterviewService $interview,
     ) {}
@@ -163,8 +165,8 @@ class OnlineInterviewController extends Controller
                 ]);
             }
 
-            return redirect()->route('online-interview.show', ['application' => $application->id])
-                ->with('already_submitted', 'Your interview is already submitted.');
+            return redirect()->route('applications.show', ['application' => $application->id])
+                ->with('interview_submitted', self::SUBMITTED_MESSAGE);
         }
         if (! in_array((string) $application->source_method, (array) config('online_interview.submission.valid_source_methods_for_interview', ['online_interview']), true)) {
             return $this->forbid($request, 'This application is not an Online Interview intake.');
@@ -286,11 +288,12 @@ class OnlineInterviewController extends Controller
                 'application_id' => $application->id,
                 'next_step' => 'editorial_processing',
                 'status' => $application->status,
+                'redirect_to' => route('applications.show', ['application' => $application->id]),
             ]);
         }
 
-        return redirect()->route('online-interview.show', ['application' => $application->id])
-            ->with('submitted', 'Online Interview submitted for editorial processing.');
+        return redirect()->route('applications.show', ['application' => $application->id])
+            ->with('interview_submitted', self::SUBMITTED_MESSAGE);
     }
 
     private function interviewIsOpen(Application $application): bool

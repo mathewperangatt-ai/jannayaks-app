@@ -44,6 +44,11 @@
             {{ session('maintenance_status') }}
         </div>
     @endif
+    @if(session('interview_submitted'))
+        <div style="border:1px solid #86a982;background:#eaf4ec;border-radius:10px;padding:12px 16px;font-size:14px;color:#33553f" role="status">
+            {{ session('interview_submitted') }}
+        </div>
+    @endif
     <div class="dash-identity">
         @if($identityPhoto && $application->profile)
             <img class="dash-photo" src="{{ route('profiles.public.photo', [$application->profile, $identityPhoto]) }}" alt="Approved profile photograph of {{ $application->full_name }}" width="76" height="95">
@@ -134,13 +139,22 @@
     <div class="dash-section">
         <p class="dash-label">Next steps</p>
 
+        @php
+            $editorialStage = match ($application->status) {
+                \App\Models\Application::STATUS_IN_EDITORIAL_REVIEW => 'Editorial review is underway.',
+                \App\Models\Application::STATUS_EDITORIAL_APPROVED => 'Editorial review is complete. Waiting for Jannayaks to release your profile preview.',
+                default => 'Profile preparation is underway.',
+            };
+        @endphp
+
         @if ($application->source_method === 'online_interview')
             @if($application->isInterviewSubmitted())
                 <p class="dash-next">
                     @if($canPreview)
                         Your Online Interview is complete. Review your finished profile when ready, request included revisions if needed, then approve for publication.
                     @else
-                        Your Online Interview has been submitted. The editorial team is preparing your profile. You will review and approve it here before publication.
+                        Your Online Interview has been submitted. Please wait for the Jannayaks editorial team to contact you.
+                        {{ $editorialStage }} You will review and approve your profile here before publication.
                     @endif
                 </p>
             @elseif(!empty($progress['missing_required']))
@@ -155,7 +169,11 @@
         @else
             @if($application->isDirectSubmitted())
                 <p class="dash-next">
-                    Your direct submission is received. The editorial team will prepare your profile for review and approval.
+                    @if($canPreview)
+                        Your direct submission is received. Review your finished profile when ready, request included revisions if needed, then approve for publication.
+                    @else
+                        Your direct submission is received. {{ $editorialStage }} You will review and approve your profile here before publication.
+                    @endif
                 </p>
             @else
                 <p class="dash-next">
@@ -167,11 +185,14 @@
         @php
             $linkedProfile = $application->profile;
             $unlocked = app(\App\Services\ApplicationPaymentStateService::class)->unlocksInterviewOrUploads($application);
+            $paymentWaived = app(\App\Services\ApplicationPaymentStateService::class)->isPaymentWaived($application);
         @endphp
 
         <div class="dash-actions">
             <a class="btn primary" href="{{ route('applications.payment', $application) }}">
-                @if ($application->isPaymentSettled())
+                @if ($paymentWaived)
+                    Payment waived
+                @elseif ($application->isPaymentSettled())
                     View payment / receipt
                 @elseif (!empty($paymentsTestingMode))
                     Payments unavailable (testing)

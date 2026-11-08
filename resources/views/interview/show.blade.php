@@ -138,12 +138,16 @@
         </label>
         @error('accuracy_confirmed')<p class="hint" style="color:#7a1414">{{ $message }}</p>@enderror
         <div class="actions">
-            <button class="btn ghost" type="submit" form="interview-form" formaction="{{ route('online-interview.save', $application) }}" formmethod="POST" @if($isSubmitted) disabled @endif>
-                💾 Save and continue (partial)
-            </button>
-            <button class="btn primary" type="submit" @if($isSubmitted || !empty($progress['missing_required'])) disabled aria-disabled="true" @endif>
-                Submit for editorial processing →
-            </button>
+            @if($isSubmitted)
+                <a class="btn primary" href="{{ route('applications.show', $application) }}">← Back to dashboard</a>
+            @else
+                <button class="btn ghost" type="submit" form="interview-form" formaction="{{ route('online-interview.save', $application) }}" formmethod="POST">
+                    💾 Save and continue (partial)
+                </button>
+                <button class="btn primary" type="submit" @if(!empty($progress['missing_required'])) disabled aria-disabled="true" @endif>
+                    Submit for editorial processing →
+                </button>
+            @endif
         </div>
         <p class="hint" style="margin-top:10px">
             @if(!empty($progress['missing_required']))

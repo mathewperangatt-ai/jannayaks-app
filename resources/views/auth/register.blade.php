@@ -13,6 +13,8 @@
         label{display:block;font-size:13px;font-weight:600;margin:12px 0 4px}
         input{width:100%;box-sizing:border-box;min-height:44px;padding:10px 12px;border:1px solid #e7e5df;border-radius:10px;font-size:14px}
         .btn{display:flex;width:100%;align-items:center;justify-content:center;min-height:44px;padding:12px 16px;border-radius:10px;border:1px solid transparent;background:linear-gradient(180deg,#C4202A,#8A1A1A);color:#fff;font-weight:600;margin-top:16px;cursor:pointer;font-size:14px}
+        .btn.google{box-sizing:border-box;border-color:#e7e5df;background:#fff;color:#1B1B18;text-decoration:none;margin-top:0}
+        .divider{text-align:center;color:#4b4b48;font-size:13px;margin:18px 0 4px}
         .errors{background:#fbe9e9;border-left:4px solid #7a1414;padding:10px 12px;margin-bottom:14px;font-size:14px}
         .hint{font-size:12px;color:#4b4b48;margin:4px 0 0}
         .login{font-size:14px;text-align:center;margin-top:16px}
@@ -23,7 +25,7 @@
 <div class="wrap">
     <div class="card">
         <h1>Create your Jannayaks account</h1>
-        <p class="sub">Your username and password are your Jannayaks sign-in for the customer dashboard.</p>
+        <p class="sub">Continue with Google, or create an account using a username and password. Either gives you sign-in to the customer dashboard.</p>
 
         @if ($errors->any())
             <div class="errors">
@@ -32,6 +34,10 @@
                 @endforeach
             </div>
         @endif
+
+        <a class="btn google" href="{{ route('auth.google') }}">Continue with Google</a>
+
+        <div class="divider">or create an account using username and password</div>
 
         <form method="POST" action="{{ route('register') }}">
             @csrf

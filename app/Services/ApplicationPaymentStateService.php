@@ -223,6 +223,12 @@ class ApplicationPaymentStateService
             ->exists();
     }
 
+    /** A recorded staff waiver stands in for payment; nothing is owed. */
+    public function isPaymentWaived(Application $application): bool
+    {
+        return $this->hasTrustedStaffWaiver($application);
+    }
+
     private function hasTrustedStaffWaiver(Application $application): bool
     {
         if ($application->waived_by_user_id === null) {

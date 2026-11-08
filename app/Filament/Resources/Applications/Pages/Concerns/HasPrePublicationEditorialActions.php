@@ -2,8 +2,11 @@
 
 namespace App\Filament\Resources\Applications\Pages\Concerns;
 
+use App\Filament\Resources\EditorialContents\EditorialContentResource;
 use App\Models\Application;
+use App\Models\EditorialContent;
 use App\Models\User;
+use App\Services\ApplicationWorkflowService;
 use App\Services\CustomerEditorialWorkflowService;
 use App\Services\EditorialGenerationService;
 use App\Services\PostPublicationUpdateService;
@@ -96,6 +99,81 @@ trait HasPrePublicationEditorialActions
                     Notification::make()->title('Cannot release preview')->body($e->getMessage())->danger()->persistent()->send();
                 }
             });
+    }
+
+    protected function editEnglishDraftHeaderAction(): Action
+    {
+        return Action::make('editEnglishDraft')
+            ->label('Edit English draft')
+            ->color('gray')
+            ->url(function (): ?string {
+                $draft = $this->englishMasterAwaitingApproval();
+
+                return $draft instanceof EditorialContent
+                    ? EditorialContentResource::getUrl('edit', ['record' => $draft])
+                    : null;
+            })
+            ->visible(fn (): bool => $this->prePublicationEditorialActionsOpen()
+                && $this->englishMasterAwaitingApproval() instanceof EditorialContent);
+    }
+
+    protected function approveEnglishMasterHeaderAction(): Action
+    {
+        return Action::make('approveEnglishMaster')
+            ->label('Approve English')
+            ->color('success')
+            ->requiresConfirmation()
+            ->modalHeading('Approve the English editorial master')
+            ->modalDescription(function (): string {
+                $draft = $this->englishMasterAwaitingApproval();
+                $version = $draft instanceof EditorialContent ? ' (version '.$draft->version_number.')' : '';
+
+                return 'Marks the current English draft'.$version.' as editorially Approved and records you as the reviewer. '
+                    .'It does not edit the text, release the customer preview, record customer approval, approve Malayalam, or publish.';
+            })
+            ->modalSubmitActionLabel('Approve English')
+            ->visible(fn (): bool => $this->prePublicationEditorialActionsOpen()
+                && $this->actorMayApproveEnglish()
+                && $this->englishMasterAwaitingApproval() instanceof EditorialContent)
+            ->action(function (): void {
+                $actor = auth()->user();
+                if (! $actor instanceof User || ! $actor->isAdmin() || ! $actor->isActiveAccount()) {
+                    abort(403);
+                }
+
+                try {
+                    /** @var Application $application */
+                    $application = $this->getRecord();
+                    $approved = app(ApplicationWorkflowService::class)->approveEnglishMaster($application, $actor);
+                } catch (InvalidArgumentException $e) {
+                    Notification::make()->title('Cannot approve English')->body($e->getMessage())->danger()->persistent()->send();
+
+                    return;
+                }
+
+                Notification::make()
+                    ->title('English approved')
+                    ->body('English version '.$approved->version_number.' is Approved. Nothing was published. Use Release for customer preview next.')
+                    ->success()
+                    ->persistent()
+                    ->send();
+            });
+    }
+
+    protected function englishMasterAwaitingApproval(): ?EditorialContent
+    {
+        $record = $this->getRecord();
+
+        return $record instanceof Application
+            ? app(ApplicationWorkflowService::class)->englishMasterAwaitingApproval($record)
+            : null;
+    }
+
+    protected function actorMayApproveEnglish(): bool
+    {
+        $actor = auth()->user();
+
+        return $actor instanceof User && $actor->isAdmin() && $actor->isActiveAccount();
     }
 
     protected function prePublicationEditorialActionsOpen(): bool
