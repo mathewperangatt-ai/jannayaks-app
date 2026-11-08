@@ -34,20 +34,17 @@ class ApplicationController extends Controller
     public function create(Request $request): View|JsonResponse
     {
         $language = $this->flowLanguage($request);
-        $tiers = self::LIVING_TIERS;
         $sourceMethods = ['online_interview', 'direct_submission'];
-        $tierLabels = \App\Support\TierLabels::forLivingTiers();
 
         $auth = Auth::check();
-        $showTiers = $auth || $request->boolean('tiers') || $request->query('step') === 'tiers';
 
-        if (! $auth && ! $showTiers) {
+        if (! $auth) {
             if ($request->expectsJson()) {
                 return response()->json([
                     'ok' => true,
                     'login_required' => true,
                     'intro' => true,
-                    'next' => route('apply', ['step' => 'tiers']),
+                    'next' => route('apply'),
                 ]);
             }
 
@@ -77,9 +74,7 @@ class ApplicationController extends Controller
         }
 
         return view('application.tier-select', [
-            'tiers' => $tiers,
             'source_methods' => $sourceMethods,
-            'tier_labels' => $tierLabels,
             'guest' => ! $auth,
             'language' => $language,
             'emailNotice' => $emailNotice,
@@ -194,7 +189,7 @@ class ApplicationController extends Controller
                 return response()->json(['ok' => false, 'error' => 'No application intent found. Start your profile application first.'], 422);
             }
 
-            return redirect()->route('apply', ['step' => 'tiers'])
+            return redirect()->route('apply')
                 ->withErrors(['apply' => 'Start your profile application to continue.']);
         }
 
@@ -792,7 +787,7 @@ class ApplicationController extends Controller
         }
 
         return redirect()
-            ->route('apply', ['step' => 'tiers'])
+            ->route('apply')
             ->withErrors(['apply' => Application::DUPLICATE_EMAIL_NOTICE]);
     }
 

@@ -25,10 +25,10 @@
 
     <h2 style="margin-top:8px">How it works</h2>
     <ol class="sub" style="list-style:decimal;margin:0;padding-left:22px;color:var(--ink-soft)">
-        <li style="padding:2px 0"><b>Begin your profile application</b> — one Standard Profile.</li>
+        <li style="padding:2px 0"><b>Begin your profile application</b> — one Profile.</li>
         <li style="padding:2px 0"><b>Sign in</b> with your Jannayaks username, Google, or create an account.</li>
         <li style="padding:2px 0"><b>Complete the Online Interview</b> (or direct submission) and upload source material.</li>
-        <li style="padding:2px 0"><b>Pay</b> for the Standard Profile.</li>
+        <li style="padding:2px 0"><b>Pay</b> the Profile fee.</li>
         <li style="padding:2px 0">Editorial preparation, human review, your preview and approval precede publication.</li>
         <li style="padding:2px 0">Publication is subject to editorial acceptance. Payment of the profile fee does not guarantee publication. If Jannayaks rejects an application before publication, the full amount paid, including applicable taxes, will be refunded.</li>
     </ol>
@@ -41,10 +41,12 @@
     </ul>
 
     <div class="row" style="margin-top:6px;justify-content:flex-end">
-        <a class="btn primary block" href="{{ route('apply', ['step' => 'tiers']) }}">Begin your profile application →</a>
+        <a class="btn primary block" href="{{ auth()->check() ? route('apply') : route('login', ['return' => route('apply')]) }}">Begin your profile application →</a>
         @guest
             <a class="btn block" href="{{ route('login') }}">Already have an account? Sign in</a>
         @endguest
     </div>
 </section>
+
+@include('partials.public-footer')
 @endsection

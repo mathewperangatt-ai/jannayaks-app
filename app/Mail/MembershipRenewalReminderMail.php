@@ -26,7 +26,7 @@ class MembershipRenewalReminderMail extends Mailable
     public function envelope(): Envelope
     {
         return new Envelope(
-            subject: '[PROVISIONAL] Jannayaks membership renewal reminder',
+            subject: '[PROVISIONAL] Jannayaks annual hosting renewal reminder',
         );
     }
 

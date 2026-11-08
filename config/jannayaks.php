@@ -94,9 +94,9 @@ return [
         */
         'standard_profile' => [
             'internal_tier' => 'distinguished',
-            'label' => 'Standard Profile',
+            'label' => 'Profile',
             'base_amount' => 4800,
-            'description' => 'Standard Profile: profile preparation and editorial presentation (₹3,000) and first-year hosting (₹1,800), exclusive of GST.',
+            'description' => 'Profile preparation and editorial presentation (₹3,000) and first-year hosting (₹1,800), exclusive of GST.',
             'photo_slots' => 3,
             'includes_video_link' => false,
         ],

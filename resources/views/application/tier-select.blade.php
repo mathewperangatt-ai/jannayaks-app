@@ -8,7 +8,7 @@
 <section class="card stack">
     <div>
         <span class="tag">STEP 1 OF 3</span>
-        <span class="list-pill">Standard Profile</span>
+        <span class="list-pill">Jannayaks Profile</span>
         <span style="float:right" role="navigation" aria-label="Language">
             @if($ml)
                 <a class="list-pill" style="text-decoration:none" href="{{ request()->fullUrlWithQuery(['lang' => 'en']) }}" lang="en">English</a>
@@ -24,7 +24,7 @@
         <div class="warnbox" role="alert">{{ $emailNotice }}</div>
     @endif
     <p class="sub">
-        {{ $ml ? 'ഒരു Standard Profile മാത്രമേയുള്ളൂ. എല്ലാവരും ഒരേ ഓൺലൈൻ അഭിമുഖത്തിന് ഉത്തരം നൽകുന്നു.' : 'There is one Standard Profile. Everyone answers the same Online Interview.' }}
+        {{ $ml ? 'ഒരു Jannayaks Profile മാത്രമേയുള്ളൂ. എല്ലാവരും ഒരേ ഓൺലൈൻ അഭിമുഖത്തിന് ഉത്തരം നൽകുന്നു.' : 'There is one Jannayaks Profile. Everyone answers the same Online Interview.' }}
     </p>
 
     @php($standardQuote = \App\Support\PricingAmounts::forStandardProfile())
@@ -32,7 +32,7 @@
     <div class="warnbox" role="note" aria-label="Pricing note">
         {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം ഓൺലൈൻ അഭിമുഖം ആദ്യം വരും.' : 'After you sign in, the Online Interview comes before payment.' }}
         <b>{{ $standardQuote['base_formatted'] }} + GST</b>.
-        {{ $ml ? 'വാർഷിക പുതുക്കൽ' : 'Annual renewal is' }}
+        {{ $ml ? 'വാർഷിക ഹോസ്റ്റിംഗ് പുതുക്കൽ' : 'Annual hosting renewal is' }}
         <b>{{ $renewalQuote['base_formatted'] }} + GST</b>.
     </div>
 
