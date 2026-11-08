@@ -471,12 +471,6 @@ document.addEventListener('click',function(e){
       <h2 class="intro-hd">What is Jannayaks?</h2>
       <p>Jannayaks is a digital gallery that documents the contributions and achievements of individuals. Its content is similar to the personal profiles published in a magazine.</p>
       <p>Our aim is to give due recognition to the contributions of people working in fields where opportunities to present their achievements publicly may be limited. Even achievements quietly accomplished should not simply fade away as another social media post. They deserve to be documented in a digital gallery where they can remain accessible for much longer.</p>
-      <h2 class="intro-hd">How does it work?</h2>
-      <p>Much like a personal profile prepared for a magazine, we develop your profile through an online interview.</p>
-      <p>With the assistance of AI, we prepare a profile covering your life journey, achievements and contributions. We seek to include your experiences and work that a conventional résumé may not fully convey. Our editorial team reviews the profile and obtains your approval before publication.</p>
-      <p>Your profile is published with a dedicated link, such as "jannayaks.in/your.name". You can share this link through WhatsApp and social media, or include it on your visiting card.</p>
-      <p>Unlike a printed page, your profile can remain online through payment renewals, subject to the applicable terms. You can also update it as new chapters unfold in your work, achievements and contributions.</p>
-      <p>Every profile is personally reviewed before publication. Anyone can use AI to prepare a biography. Jannayaks offers something different: consistent editorial standards, careful review, publication with your approval, and a digital record that can be updated over time.</p>
       <p>Whichever field you are in, have a record of yourself which you can be proud of.</p>
       <p>An English-only profile is also available for those who prefer it.</p>
     </div>
@@ -484,10 +478,7 @@ document.addEventListener('click',function(e){
       <h2 class="intro-hd">എന്താണ് Jannayaks?</h2>
       <p>വ്യക്തികളുടെ സംഭാവനകളും നേട്ടങ്ങളും രേഖപ്പെടുത്തുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയാണ് Jannayaks. ഒരു മാഗസിനിൽ പ്രസിദ്ധീകരിക്കുന്ന വ്യക്തിവിവരണങ്ങളോട് സാമ്യമുള്ളതാണ് ഇതിന്റെ ഉള്ളടക്കം.</p>
       <p>സ്വന്തം നേട്ടങ്ങൾ പൊതുവേദികളിൽ അവതരിപ്പിക്കാൻ അധികം അവസരങ്ങൾ ലഭിക്കാത്ത മേഖലകളിൽ പ്രവർത്തിക്കുന്നവരുടെ സംഭാവനകൾക്ക് അർഹമായ ഇടം നൽകുകയാണ് ഞങ്ങളുടെ ലക്ഷ്യം. നിശ്ശബ്ദമായി നേടിയെടുത്ത നേട്ടങ്ങൾ പോലും സോഷ്യൽ മീഡിയയിലെ ഒരു പോസ്റ്റിൽ ഒതുങ്ങി മാഞ്ഞുപോകേണ്ടതില്ല. അവ കൂടുതൽ കാലം നിലനിൽക്കുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയിൽ രേഖപ്പെടുത്തൂ.</p>
-      <h2 class="intro-hd">എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?</h2>
-      <p>ഒരു മാഗസിനിൽ വ്യക്തിവിവരണം തയ്യാറാക്കുന്നതുപോലെ, ഒരു ഓൺലൈൻ അഭിമുഖത്തിലൂടെയാണ് നിങ്ങളുടെ വ്യക്തിവിവരണത്തിന് ഞങ്ങൾ രൂപം നൽകുന്നത്.</p>
-      <p>നിങ്ങളുടെ ജീവിതയാത്രയും നേട്ടങ്ങളും സംഭാവനകളും ഉൾക്കൊള്ളുന്ന ഒരു വ്യക്തിവിവരണം എ.ഐ.യുടെ സഹായത്തോടെ തയ്യാറാക്കുന്നു. ഒരു ബയോഡാറ്റയിൽ ഒതുങ്ങാത്ത നിങ്ങളുടെ അനുഭവങ്ങളും പ്രവർത്തനങ്ങളുമെല്ലാം അതിൽ ഉൾപ്പെടുത്താൻ ശ്രമിക്കുന്നു. ഞങ്ങളുടെ എഡിറ്റോറിയൽ ടീം ഇത് പരിശോധിക്കുകയും നിങ്ങളുടെ അംഗീകാരം നേടുകയും ചെയ്തശേഷമാണ് പ്രസിദ്ധീകരിക്കുന്നത്.</p>
-      <p>"jannayaks.in/your.name" എന്നതുപോലുള്ള ഒരു പ്രത്യേക ലിങ്ക് സഹിതമാണ് നിങ്ങളുടെ പ്രൊഫൈൽ പ്രസിദ്ധീകരിക്കുന്നത്. ഈ ലിങ്ക് വാട്സ്ആപ്പിലൂടെയും സോഷ്യൽ മീഡിയയിലൂടെയും പങ്കുവയ്ക്കാം. നിങ്ങളുടെ വിസിറ്റിംഗ് കാർഡിലും ഉൾപ്പെടുത്താം.</p>
+      <p>"jannayaks.in/your.name" എന്നതുപോലുള്ള ഒരു പ്രത്യേക ലിങ്ക് സഹിതമാണ് നിങ്ങളുടെ പ്രൊഫൈൽ പ്രസിദ്ധീകരിക്കുന്നത്. ഈ ലിങ്ക് വാട്ട്സ്ആപ്പിലൂടെയും സോഷ്യൽ മീഡിയയിലൂടെയും പങ്കുവയ്ക്കാം. നിങ്ങളുടെ വിസിറ്റിംഗ് കാർഡിലും ഉൾപ്പെടുത്താം.</p>
       <p>അച്ചടിച്ച ഒരു പേജിൽനിന്ന് വ്യത്യസ്തമായി, നിശ്ചിത വ്യവസ്ഥകൾക്കനുസരിച്ച് Payment പുതുക്കിക്കൊണ്ട് നിങ്ങളുടെ പ്രൊഫൈൽ ഓൺലൈനിൽ നിലനിർത്താം. നിങ്ങളുടെ പ്രവർത്തനങ്ങളിലും നേട്ടങ്ങളിലും പുതിയ അധ്യായങ്ങൾ കൂട്ടിച്ചേർക്കുമ്പോൾ പ്രൊഫൈൽ പുതുക്കുകയും ചെയ്യാം.</p>
     </div>
   </div>
@@ -612,7 +603,6 @@ document.addEventListener('click',function(e){
         <div class="step-num">02</div>
         <div class="step-body">
           <div class="step-title">Editorial Preparation
-            <span class="step-title-ml">Editorial Preparation</span>
           </div>
           <div class="step-text">We organise and edit your information into a professionally presented profile.
             <span class="step-title-ml" lang="ml">നിങ്ങൾ നൽകിയ വിവരങ്ങൾ ക്രമീകരിച്ച് പ്രൊഫഷണലായി പ്രൊഫൈൽ തയ്യാറാക്കുന്നു.</span>
@@ -653,8 +643,8 @@ document.addEventListener('click',function(e){
     </h2>
   </div>
   <div class="price-text">
-    <p class="price-line"><strong>Standard Profile: ₹4,800 + applicable GST</strong>
-      <span class="price-line-ml" lang="ml">Standard Profile: ₹4,800 + ബാധകമായ GST</span>
+    <p class="price-line"><strong>Jannayaks Profile: ₹4,800 + applicable GST</strong>
+      <span class="price-line-ml" lang="ml">Jannayaks Profile: ₹4,800 + ബാധകമായ GST</span>
     </p>
     <p class="price-detail">Includes profile preparation, editorial presentation, publication and first-year hosting.
       <span class="price-detail-ml" lang="ml">പ്രൊഫൈൽ തയ്യാറാക്കൽ, Editorial Presentation, പ്രസിദ്ധീകരണം, ആദ്യ വർഷത്തെ ഹോസ്റ്റിംഗ് എന്നിവ ഉൾപ്പെടുന്നു.</span>
@@ -674,7 +664,7 @@ document.addEventListener('click',function(e){
     </h2>
   </div>
   <div class="care-box">
-    <p class="care-text">Every Jannayaks profile is prepared from information submitted by the individual concerned. AI-assisted editing and editorial review help us present that information clearly and professionally. The profile owner reviews and approves the final content before publication.
+    <p class="care-text">Every Jannayaks profile is prepared from information submitted by the individual concerned. Editing assisted by artificial intelligence (AI) and editorial review help us present that information clearly and professionally. The profile owner reviews and approves the final content before publication.
       <span class="care-text-ml" lang="ml">ഓരോ Jannayaks പ്രൊഫൈലും ബന്ധപ്പെട്ട വ്യക്തി നേരിട്ട് നൽകുന്ന വിവരങ്ങളുടെ അടിസ്ഥാനത്തിലാണ് തയ്യാറാക്കുന്നത്. AI സഹായത്തോടെയുള്ള Editing-ഉം Editorial Review-വും വിവരങ്ങൾ വ്യക്തമായും പ്രൊഫഷണലായും അവതരിപ്പിക്കാൻ സഹായിക്കുന്നു. പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് പ്രൊഫൈൽ ഉടമ അന്തിമ ഉള്ളടക്കം പരിശോധിച്ച് അംഗീകരിക്കുന്നു.</span>
     </p>
   </div>

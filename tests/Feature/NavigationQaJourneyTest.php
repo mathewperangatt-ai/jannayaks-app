@@ -61,20 +61,27 @@ class NavigationQaJourneyTest extends TestCase
     }
 
     /* B — Homepage → Register Profile entry. */
-    public function test_b_homepage_register_profile_reaches_intro_then_tiers(): void
+    public function test_b_homepage_register_profile_reaches_intro_then_form(): void
     {
         $this->get(route('home'))
             ->assertOk()
             ->assertSee('/apply', false);
 
-        $this->get(route('apply'))
+        // Guests: the intro explains the flow and leads to sign-in with a
+        // return to the application.
+        $guest = $this->get(route('apply'))
             ->assertOk()
             ->assertSee('Tell us about your achievements and journey.')
-            ->assertSee(route('apply', ['step' => 'tiers']));
+            ->getContent();
+        $this->assertStringContainsString(route('login', ['return' => route('apply')]), $guest);
 
-        $this->get(route('apply', ['step' => 'tiers']))
+        // Authenticated: the single Jannayaks Profile application form renders
+        // directly, with no tier-selection step.
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $this->actingAs($user)->get(route('apply'))
             ->assertOk()
-            ->assertSee('Continue to sign in');
+            ->assertSee('Jannayaks Profile', false)
+            ->assertDontSee('Continue to sign in');
     }
 
     /* C + D — Guest tier form → register → application → payment page,
@@ -150,16 +157,18 @@ class NavigationQaJourneyTest extends TestCase
     /* H — Approved Malayalam tier names, exactly. */
     public function test_h_tier_page_uses_approved_malayalam_names_only(): void
     {
-        $tiersPage = $this->get(route('apply', ['step' => 'tiers']))->assertOk();
+        // Authenticated view of the application form (guests see the intro).
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $tiersPage = $this->actingAs($user)->get(route('apply'))->assertOk();
 
-        $tiersPage->assertSee('Standard Profile', false);
+        $tiersPage->assertSee('Jannayaks Profile', false);
         $tiersPage->assertSee('₹4,800.00', false);
         foreach (['ജനകീയർ', 'ജനസമ്മതർ', 'പ്രഗൽഭർ', 'അംഗീകരിക്കപ്പെട്ടവർ', 'പ്രശസ്തർ', 'വിശിഷ്ടർ', 'പ്രമുഖർ'] as $removed) {
             $tiersPage->assertDontSee($removed, false);
         }
 
         $faq = $this->get(route('faq-charges'))->assertOk();
-        $faq->assertSee('Standard Profile', false);
+        $faq->assertSee('Jannayaks Profile', false);
         $faq->assertDontSee('പ്രഗൽഭർ', false);
         $faq->assertDontSee('പ്രമുഖർ', false);
         $faq->assertDontSee('പ്രശസ്തർ', false);

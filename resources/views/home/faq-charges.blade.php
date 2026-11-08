@@ -12,7 +12,7 @@
 @include('partials.schema-ld', ['json' => $schemaJson])
 @include('partials.seo-meta', [
     'title' => 'FAQ &amp; Charges — Jannayaks™',
-    'description' => 'Jannayaks Standard Profile charges, renewal, and answers to common questions.',
+    'description' => 'Jannayaks Profile charges, renewal, and answers to common questions.',
     'canonical' => route('faq-charges'),
 ])
 <link rel="preconnect" href="https://fonts.googleapis.com">
@@ -102,12 +102,12 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <span class="eyebrow">FAQ &amp; Charges / ചോദ്യങ്ങളും നിരക്കുകളും</span>
   <h1>Charges and common questions</h1>
   <p class="lede">
-    One Standard Profile. The prices below are exclusive of GST. GST ({{ number_format($gstPercent, 0) }}%)
+    One Profile. The prices below are exclusive of GST. GST ({{ number_format($gstPercent, 0) }}%)
     is added at checkout. There is no discounted comparison price.
   </p>
 
   <div class="card">
-    <div class="tier-name">Standard Profile</div>
+    <div class="tier-name">Jannayaks Profile</div>
     <div class="price">{{ $profile['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
     <div class="price-sub">Includes profile preparation, editorial presentation, publication and first-year hosting. Annual hosting renewal from the second year: {{ $renewal['base_formatted'] }} + applicable GST.</div>
     <ul class="features">
@@ -128,8 +128,8 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     <p>Achievements and contributions from any field of work or public life can be featured. Profiles are prepared from the information and material you submit about yourself.</p>
   </div>
   <div class="faq">
-    <strong>What does the Standard Profile include?</strong>
-    <p>The Standard Profile includes profile preparation and the first year of publication, with up to three photographs. Videos and video links are not included.</p>
+    <strong>What does the Profile include?</strong>
+    <p>The Profile includes profile preparation and the first year of publication, with up to three photographs. Videos and video links are not included.</p>
   </div>
   <div class="faq">
     <strong>How does the Online Interview work?</strong>
@@ -144,8 +144,8 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     <p>Your approved profile is published on Jannayaks with its own shareable link. Publication is subject to editorial acceptance.</p>
   </div>
   <div class="faq">
-    <strong>What does the Standard Profile cost?</strong>
-    <p>Standard Profile: ₹4,800 + applicable GST. It includes profile preparation and editorial presentation (₹3,000) and first-year hosting (₹1,800). Annual hosting renewal from the second year is ₹1,800 + applicable GST. A full profile rewrite costs ₹3,000 plus GST.</p>
+    <strong>What does the Profile cost?</strong>
+    <p>Jannayaks Profile: ₹4,800 + applicable GST. It includes profile preparation and editorial presentation (₹3,000) and first-year hosting (₹1,800). Annual hosting renewal from the second year is ₹1,800 + applicable GST. A full profile rewrite costs ₹3,000 plus GST.</p>
   </div>
   <div class="faq">
     <strong>What if Jannayaks declines my application?</strong>
@@ -161,11 +161,11 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   </div>
   <div class="faq">
     <strong>How do I create a profile?</strong>
-    <p>Use Create Profile, sign in with your username and password or with Google, and begin your profile application. There is no membership tier to choose. Payment uses the Standard Profile price shown above.</p>
+    <p>Use Create Profile, sign in with your username and password, or sign in with Google, and begin your profile application. Payment is based on the Profile price shown above.</p>
   </div>
   <div class="faq">
     <strong>When is payment taken?</strong>
-    <p>The Standard Profile fee is collected in the application before the interview and uploads. The amount is calculated on the server.</p>
+    <p>The Profile fee is collected in the application before the interview and uploads. The amount is calculated on the server.</p>
   </div>
   <div class="faq">
     <strong>Is a direct personal interview available?</strong>
@@ -176,8 +176,8 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
     <p>Jannayaks does not itself provide photography or reel production. If required, we can try to arrange suitable external agencies for professional photography and/or reel production at an additional cost, subject to availability.</p>
   </div>
   <div class="faq">
-    <strong>What is annual membership?</strong>
-    <p>After the first publication period, renewal is {{ $renewal['base_formatted'] }} plus GST for every profile. Renewal is not the same amount as the Standard Profile fee.</p>
+    <strong>What is annual hosting renewal?</strong>
+    <p>After the first publication period, annual hosting renewal is ₹1,800 plus applicable GST for every profile. This is a hosting renewal charge and is separate from the initial Profile fee.</p>
   </div>
   <div class="faq">
     <strong>What about profile revisions after publication?</strong>
@@ -195,7 +195,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
       https://jannayaks.in/arun.kumar
       or https://jannayaks.in/arun.kumar12
       A short number is added only if the name-based address is already taken.
-      Your profile address remains permanent while your membership is active.
+      Your profile address remains permanent while your annual hosting renewal is active.
     </p>
   </div>
   <div class="faq">

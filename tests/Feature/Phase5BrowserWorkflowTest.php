@@ -31,7 +31,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
         $res = $this->actingAs($user)->get(route('apply'));
         $res->assertOk();
-        $res->assertSee('Standard Profile', false);
+        $res->assertSee('Jannayaks Profile', false);
         $res->assertSee('₹4,800.00', false);
         $res->assertDontSee('Recognised', false);
         $res->assertSee(route('apply.intent'), false);

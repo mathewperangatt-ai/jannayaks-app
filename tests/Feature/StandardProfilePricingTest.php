@@ -11,7 +11,7 @@ class StandardProfilePricingTest extends TestCase
     public function test_standard_profile_renewal_and_rewrite_use_the_approved_exclusive_prices(): void
     {
         $profile = PricingAmounts::forStandardProfile();
-        $this->assertSame('Standard Profile', $profile['label']);
+        $this->assertSame('Profile', $profile['label']);
         $this->assertSame('standard_profile', $profile['tier_key']);
         $this->assertSame(480000, $profile['base_paise']);
         $this->assertSame(86400, $profile['gst_paise']);

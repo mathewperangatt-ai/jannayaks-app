@@ -884,10 +884,12 @@ class PricingBranchCorrectionsTest extends TestCase
 
     public function test_apply_page_has_no_customer_tier_choice(): void
     {
-        $this->get(route('apply', ['step' => 'tiers', 'lang' => 'en']))
+        // Authenticated view: guests see the intro landing before sign-in.
+        $user = User::factory()->create(['email_verified_at' => now()]);
+        $this->actingAs($user)->get(route('apply', ['lang' => 'en']))
             ->assertOk()
-            ->assertSee('Standard Profile', false)
-            ->assertSee('There is one Standard Profile', false)
+            ->assertSee('Jannayaks Profile', false)
+            ->assertSee('There is one Jannayaks Profile', false)
             ->assertDontSee('Recognised', false)
             ->assertDontSee('Acclaimed', false)
             ->assertDontSee('name="package_tier"', false)

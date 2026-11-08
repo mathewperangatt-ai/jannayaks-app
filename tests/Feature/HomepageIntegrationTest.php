@@ -41,7 +41,7 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee('Editorial Preparation');
         $response->assertSee('Prepared With Editorial Care', false);
         // Standard pricing in plain editorial text — no founding-member offer.
-        $response->assertSee('Standard Profile: ₹4,800 + applicable GST', false);
+        $response->assertSee('Jannayaks Profile: ₹4,800 + applicable GST', false);
         $response->assertSee('Annual hosting renewal from the second year: ₹1,800 + applicable GST.', false);
         $response->assertDontSee('Founding', false);
         $response->assertDontSee('₹4,000', false);
@@ -106,12 +106,9 @@ class HomepageIntegrationTest extends TestCase
         $this->assertSame(1, substr_count($html, 'role="tablist"'));
         $response->assertSeeInOrder([
             'Jannayaks is a digital gallery that documents the contributions and achievements of individuals. Its content is similar to the personal profiles published in a magazine.',
-            'How does it work?',
-            'Every profile is personally reviewed before publication. Anyone can use AI to prepare a biography. Jannayaks offers something different: consistent editorial standards, careful review, publication with your approval, and a digital record that can be updated over time.',
             'Whichever field you are in, have a record of yourself which you can be proud of.',
             'An English-only profile is also available for those who prefer it.',
             'എന്താണ് Jannayaks?',
-            'എങ്ങനെയാണ് ഇത് സാധ്യമാകുന്നത്?',
             'ചോദ്യങ്ങളുണ്ടോ? Questions?',
         ], false);
         $response->assertDontSee('ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു.', false);
@@ -237,7 +234,7 @@ class HomepageIntegrationTest extends TestCase
         $response->assertDontSee('directories', false);
         $response->assertDontSee('Directories', false);
         $response->assertDontSee('Optional add-on', false);
-        $response->assertSee('One Standard Profile', false);
+        $response->assertSee('One Profile', false);
     }
 
     public function test_demo_links_open_the_demo_collection_and_gallery_stays_in_navigation(): void

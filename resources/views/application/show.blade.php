@@ -69,7 +69,7 @@
                     <span class="dash-pill dash-ref">Ref&nbsp;<b>{{ $application->profile->reference_code }}</b></span>
                 @endif
                 @if($isLivingProfile)
-                    <span class="dash-pill">Standard Profile</span>
+                    <span class="dash-pill">Jannayaks Profile</span>
                     <span class="dash-pill">{{ $standardQuote['base_formatted'] }} + GST</span>
                 @endif
                 <span class="dash-pill">Started {{ $application->intake_started_at ? $application->intake_started_at->format('d M Y') : '—' }}</span>
@@ -224,7 +224,7 @@
                 @endif
                 @if($application->status === \App\Models\Application::STATUS_PUBLISHED && $linkedProfile?->membership)
                     <a class="dash-manage-card" href="{{ route('membership.show', $linkedProfile) }}">
-                        <span class="dmc-label">Membership &amp; renewal <span class="dmc-arrow">→</span></span>
+                        <span class="dmc-label">Annual hosting renewal <span class="dmc-arrow">→</span></span>
                         <span class="dmc-sub">Annual hosting, status and renewal</span>
                     </a>
                 @endif

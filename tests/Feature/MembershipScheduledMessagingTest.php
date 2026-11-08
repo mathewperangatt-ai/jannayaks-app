@@ -119,7 +119,7 @@ class MembershipScheduledMessagingTest extends TestCase
 
             // Provisional subject/view are the CURRENT implementation and are
             // pinned here on purpose; wording changes later should update this.
-            $this->assertSame('[PROVISIONAL] Jannayaks membership renewal reminder', $mail->envelope()->subject);
+            $this->assertSame('[PROVISIONAL] Jannayaks annual hosting renewal reminder', $mail->envelope()->subject);
             $this->assertSame('emails.membership.renewal-reminder', $mail->content()->markdown);
 
             $html = $mail->render();
