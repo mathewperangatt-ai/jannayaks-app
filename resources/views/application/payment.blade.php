@@ -21,7 +21,9 @@
         'expired'           => ['en' => 'Expired',          'ml' => 'കാലഹരണപ്പെട്ടു',   'cls' => 'tag bad'],
         'refunded'          => ['en' => 'Refunded',       'ml' => 'റീഫണ്ട് നൽകി',     'cls' => 'tag'],
         'partially_refunded'=> ['en' => 'Partially Refunded', 'ml' => 'ഭാഗിക റീഫണ്ട്',    'cls' => 'tag warn'],
+        'waived'            => ['en' => 'Payment waived',   'ml' => 'പേയ്‌മെൻ്റ് ഒഴിവാക്കി', 'cls' => 'tag ok'],
     ];
+    $isWaived = !empty($isWaived);
     $lang = $ml ? 'ml' : 'en';
     $sourceMethodLabels = [
         'online_interview'  => ['en' => 'Online Interview',  'ml' => 'ഓൺലൈൻ അഭിമുഖം'],
@@ -61,7 +63,7 @@
     @endif
 </div>
 
-@if ($package)
+@if ($package && ! $isWaived)
 <div class="card">
     <h2 style="margin-top:0;margin-bottom:6px">{{ $ml ? 'ചെലവ് വിഭജനം' : 'Package Price Breakdown' }}</h2>
     <div class="sub" style="margin-bottom:14px">
@@ -137,6 +139,9 @@
         if ($settledPayment) {
             $statusRow = $statusLabelMap[$settledPayment->status] ?? null;
             $settlementStatus = 'settled';
+        } elseif ($isWaived) {
+            $statusRow = $statusLabelMap['waived'];
+            $settlementStatus = 'waived';
         } elseif ($activePayment) {
             $statusRow = $statusLabelMap[$activePayment->status] ?? null;
             $settlementStatus = 'active';
@@ -150,7 +155,7 @@
             <span class="tag">{{ $ml ? 'ആരംഭിച്ചിട്ടില്ല' : 'Not started' }}</span>
         @endif
         <div style="flex:1"></div>
-        @if ($application->payment_status)
+        @if ($application->payment_status && ! $isWaived)
             <span class="note-safe">{{ $ml ? 'പേയ്‌മെൻ്റ് നില:' : 'App payment_status:' }} <b>{{ $application->payment_status }}</b></span>
         @endif
     </div>
@@ -184,6 +189,16 @@
             @if ($settledPayment->isRefunded() && $settledPayment->credit_note_number)
                 <a class="btn" href="{{ route('payments.credit-note', $settledPayment) }}">{{ $ml ? 'ക്രെഡിറ്റ് നോട്ട്' : 'Credit Note' }}</a>
             @endif
+            <a class="btn block" href="{{ route('applications.show', ['application' => $application->id]) }}">
+                {{ $ml ? 'ഡാഷ്‌ബോർഡിലേക്ക് തിരികെ പോകുക' : 'Back to Dashboard' }}
+            </a>
+        </div>
+    @elseif ($isWaived)
+        <div class="warnbox" style="border-left-color:#2e8b57;background:#f1faf4">
+            <div style="color:#0d4721"><b>{{ $ml ? 'ഈ അപേക്ഷയുടെ പേയ്‌മെൻ്റ് Jannayaks ഒഴിവാക്കിയിരിക്കുന്നു. നിങ്ങൾ പണമടയ്ക്കേണ്ടതില്ല.' : 'Payment waived. Jannayaks has waived the payment for this application. No payment is required.' }}</b></div>
+            <div style="margin-top:4px;color:#0d4721;font-size:13px">{{ $ml ? 'നിങ്ങളുടെ അപേക്ഷ സാധാരണ എഡിറ്റോറിയൽ പ്രക്രിയയിലൂടെ മുന്നോട്ട് പോകും.' : 'Your application continues through the normal editorial process.' }}</div>
+        </div>
+        <div class="actions">
             <a class="btn block" href="{{ route('applications.show', ['application' => $application->id]) }}">
                 {{ $ml ? 'ഡാഷ്‌ബോർഡിലേക്ക് തിരികെ പോകുക' : 'Back to Dashboard' }}
             </a>

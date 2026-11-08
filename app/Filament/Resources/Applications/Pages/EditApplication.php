@@ -23,6 +23,8 @@ class EditApplication extends EditRecord
     {
         return [
             $this->generateAiEditorialHeaderAction(),
+            $this->editEnglishDraftHeaderAction(),
+            $this->approveEnglishMasterHeaderAction(),
             $this->releaseCustomerPreviewHeaderAction(),
             ViewAction::make(),
         ];

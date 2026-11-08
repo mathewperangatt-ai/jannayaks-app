@@ -19,6 +19,7 @@ use Filament\Tables\Columns\ImageColumn;
 use Filament\Tables\Columns\TextColumn;
 use Filament\Tables\Table;
 use Illuminate\Database\Eloquent\Model;
+use Illuminate\Validation\ValidationException;
 
 class ProfileMediaRelationManager extends RelationManager
 {
@@ -178,6 +179,8 @@ class ProfileMediaRelationManager extends RelationManager
                             AdminFeedback::success('Photograph approved', 'The photograph is now available for the public profile.');
                         } catch (InvalidArgumentException $e) {
                             AdminFeedback::danger('Cannot approve photograph', $e->getMessage());
+                        } catch (ValidationException $e) {
+                            AdminFeedback::danger('Cannot approve photograph', (string) collect($e->errors())->flatten()->first());
                         }
                     }),
                 Action::make('reject')
