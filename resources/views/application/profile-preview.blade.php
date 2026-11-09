@@ -32,6 +32,26 @@
 
     <div class="divider"></div>
 
+    @if(($previewPhotos ?? collect())->isNotEmpty())
+        <section aria-label="Approved photographs" class="stack" style="gap:8px">
+            <h2 style="font-size:16px;margin:0">Photographs</h2>
+            <div style="display:grid;grid-template-columns:repeat(auto-fill,minmax(150px,1fr));gap:12px">
+                @foreach($previewPhotos as $photo)
+                    <figure style="margin:0">
+                        <img src="{{ route('applications.preview.photo', [$application, $photo]) }}"
+                             alt="{{ $photo->alt_text ?: 'Approved profile photograph' }}"
+                             loading="lazy"
+                             style="display:block;width:100%;aspect-ratio:4/5;object-fit:cover;border:1px solid var(--line);border-radius:10px;background:#f3f4f6">
+                        @if($photo->is_primary)
+                            <figcaption class="sub" style="margin-top:4px">Main portrait</figcaption>
+                        @endif
+                    </figure>
+                @endforeach
+            </div>
+        </section>
+        <div class="divider"></div>
+    @endif
+
     <article class="stack" style="white-space:pre-wrap;font-size:16px;line-height:1.7">{{ $english->body }}</article>
 
     @if($malayalam && filled($malayalam->body))

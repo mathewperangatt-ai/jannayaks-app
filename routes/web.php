@@ -7,6 +7,7 @@ use App\Http\Controllers\Auth\NewPasswordController;
 use App\Http\Controllers\Auth\PasswordResetLinkController;
 use App\Http\Controllers\Auth\RegisteredUserController;
 use App\Http\Controllers\CustomerProfilePreviewController;
+use App\Http\Controllers\CustomerProfilePreviewPhotoController;
 use App\Http\Controllers\DemoProfilesController;
 use App\Http\Controllers\FaqChargesController;
 use App\Http\Controllers\HomeController;
@@ -136,6 +137,9 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
         ->name('applications.payment.initiate');
 
     Route::get('/applications/{application}/preview', [CustomerProfilePreviewController::class, 'show'])->name('applications.preview');
+    Route::get('/applications/{application}/preview/photos/{media}', [CustomerProfilePreviewPhotoController::class, 'show'])
+        ->whereNumber('media')
+        ->name('applications.preview.photo');
     Route::post('/applications/{application}/preview/revision', [CustomerProfilePreviewController::class, 'requestRevision'])
         ->middleware('throttle:10,1')
         ->name('applications.preview.revision');

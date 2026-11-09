@@ -40,11 +40,16 @@ class CustomerProfilePreviewController extends Controller
         // Post-publication maintenance preview (application stays published).
         $maintenanceRequest = app(\App\Services\PostPublicationUpdateService::class)->openRequestFor($application);
 
+        $previewPhotos = $application->profile !== null
+            ? app(\App\Services\PublicProfilePresentationService::class)->publicProfilePhotos($application->profile)
+            : collect();
+
         return view('application.profile-preview', [
             'application' => $application,
             'member' => $member,
             'english' => $english,
             'malayalam' => $malayalam,
+            'previewPhotos' => $previewPhotos,
             'statusLabel' => $workflow->memberFacingStatusLabel($application),
             'remainingRevisions' => $workflow->remainingIncludedRevisionRounds($application),
             'canRequestRevision' => $application->status === Application::STATUS_EDITORIAL_APPROVED
