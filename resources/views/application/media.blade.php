@@ -33,6 +33,8 @@
         JPEG, PNG, or WebP only. Maximum {{ $maxKb }} KB before optimization.
         Photographs are resized server-side and stay <b>pending review</b> until Jannayaks approves them —
         they do not appear on a published profile until approved.
+        You may upload up to {{ $limit }} photograph{{ $limit === 1 ? '' : 's' }} for your profile, separately from the Online Interview.
+        Jannayaks may prepare an enhanced version for its own review; any enhanced version stays private unless Jannayaks approves it.
     </p>
 
     @if ($count < $limit)

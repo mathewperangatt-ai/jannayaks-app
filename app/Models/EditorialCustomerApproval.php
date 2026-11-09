@@ -9,6 +9,9 @@ class EditorialCustomerApproval extends Model
 {
     public const SCOPE_ENGLISH_AND_MALAYALAM = 'english_and_malayalam';
 
+    /** Only an English version was shown for review; Malayalam was not part of the consent. */
+    public const SCOPE_ENGLISH = 'english';
+
     protected $fillable = [
         'application_id',
         'profile_id',

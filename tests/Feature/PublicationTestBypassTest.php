@@ -98,6 +98,15 @@ class PublicationTestBypassTest extends TestCase
             $this->assertSame('The publication test bypass requires customer approval of the exact approved English version.', $e->getMessage());
         }
 
+        // A newer version the customer never saw makes the approval stale for normal publication.
+        try {
+            $workflow->publish($application->fresh(), $admin, true);
+            $this->fail('A stale customer approval must not authorize normal publication.');
+        } catch (InvalidArgumentException $e) {
+            $this->assertStringStartsWith('A newer English version exists that the customer has not approved.', $e->getMessage());
+        }
+        $replacement->forceFill(['status' => EditorialContent::STATUS_ARCHIVED])->save();
+
         $published = $workflow->publish($application->fresh(), $admin, true);
 
         $this->assertSame(Application::STATUS_PUBLISHED, $published->status);

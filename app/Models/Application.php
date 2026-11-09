@@ -213,6 +213,7 @@ class Application extends Model
         return [
             'distinguished_interview_addon' => 'boolean',
             'intake_started_at' => 'datetime',
+            'online_interview_started_at' => 'datetime',
             'online_interview_completed_at' => 'datetime',
             'questionnaire_confirmed_at' => 'datetime',
             'direct_submission_received_at' => 'datetime',

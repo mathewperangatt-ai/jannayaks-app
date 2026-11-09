@@ -7,6 +7,7 @@ use App\Services\ApplicationPaymentStateService;
 use App\Services\ApplicationWorkflowService;
 use App\Services\ConsentRecordingService;
 use App\Services\OnlineInterviewService;
+use App\Support\InterviewSubmissionDeadline;
 use App\Support\OnlineInterviewCatalog;
 use Illuminate\Http\JsonResponse;
 use Illuminate\Http\RedirectResponse;
@@ -41,6 +42,7 @@ class OnlineInterviewController extends Controller
             $readOnly = true;
         } else {
             $readOnly = false;
+            InterviewSubmissionDeadline::recordFirstStart($application);
         }
 
         $questions = OnlineInterviewCatalog::questionsForTier($application->package_tier);
@@ -102,6 +104,8 @@ class OnlineInterviewController extends Controller
         if (! RateLimiter::attempt($rateKey, 30, fn () => true, 60)) {
             return $this->validationFail($request, ['save' => ['Too many autosaves. Please wait a moment.']]);
         }
+
+        InterviewSubmissionDeadline::recordFirstStart($application);
 
         $answers = $request->input('answers', []);
         $singletonQid = $request->input('question_id');

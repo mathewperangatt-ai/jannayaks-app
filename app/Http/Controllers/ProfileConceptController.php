@@ -168,7 +168,7 @@ class ProfileConceptController extends Controller
                     'പാർലമെന്ററി സെക്രട്ടറി ചുമതല',
                 ],
                 'labels' => [
-                    'archive' => 'ജന്നയക്സ് · ജീവചരിത്ര ശേഖരം',
+                    'archive' => 'Jannayaks · ജീവചരിത്ര ശേഖരം',
                     'biography' => 'ജീവചരിത്രം',
                     'career' => 'കരിയറും ചുമതലകളും',
                     'contributions' => 'പൊതുസംഭാവനകൾ',

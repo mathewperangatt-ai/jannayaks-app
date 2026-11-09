@@ -4,7 +4,7 @@
 <meta charset="utf-8">
 <meta name="viewport" content="width=device-width, initial-scale=1">
 <meta name="robots" content="noindex, nofollow">
-<title>{{ $specimen[$lang]['name'] }} — {{ $lang === 'ml' ? 'ജന്നയക്സ്' : 'Jannayaks' }}</title>
+<title>{{ $specimen[$lang]['name'] }} — Jannayaks</title>
 <link rel="preconnect" href="https://fonts.googleapis.com">
 <link rel="preconnect" href="https://fonts.gstatic.com" crossorigin>
 <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;0,9..144,700;1,9..144,400;1,9..144,500&family=Inter:wght@400;500;600&family=Anek+Malayalam:wght@400;500;600;700&display=swap" rel="stylesheet">
@@ -302,7 +302,7 @@ html.lang-ml .plate-mark{font-family:var(--serif-ml)}
 <body>
 <header class="topbar">
   <div class="topbar-in">
-    <a class="brand" href="/"><span class="jeeb">ജ</span>{{ $lang === 'ml' ? 'ജന്നയക്സ്' : 'Jannayaks' }}</a>
+    <a class="brand" href="/"><span class="jeeb">ജ</span>Jannayaks</a>
     <nav class="concept-nav" aria-label="profile sections">
       <a href="#biography">{{ $labels['biography'] }}</a>
       <a href="#career">{{ $labels['career'] }}</a>
@@ -463,7 +463,7 @@ html.lang-ml .plate-mark{font-family:var(--serif-ml)}
 
 <footer class="concept-foot">
   <div class="foot-in">
-    <a class="brand" href="/"><span class="jeeb">ജ</span>{{ $lang === 'ml' ? 'ജന്നയക്സ്' : 'Jannayaks' }}</a>
+    <a class="brand" href="/"><span class="jeeb">ജ</span>Jannayaks</a>
     <span class="url-pill" style="border-color:var(--hair)"><span>jannayaks.in/<span class="dot">·</span>{{ $specimen['slug'] }}</span></span>
     <button class="copy-btn" id="copyFoot" data-url="https://jannayaks.in/{{ $specimen['slug'] }}">{{ $labels['copy'] }}</button>
     <button class="share-btn" id="shareBtn" data-url="https://jannayaks.in/{{ $specimen['slug'] }}" data-title="{{ $specimen['en']['name'] }} — Jannayaks">{{ $labels['share'] }}</button>

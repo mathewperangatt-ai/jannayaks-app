@@ -41,6 +41,11 @@
     </div>
 </section>
 
+@if(!$isSubmitted)
+    <section class="card" style="padding:14px 16px">
+        @include('partials.interview-notices', ['notice' => 'reminder', 'application' => $application])
+    </section>
+@endif
 @if(!$isSubmitted && ! empty($progress['missing_required']))
     <section class="card" style="padding:14px 16px">
         <div class="missbox" role="note" style="margin:0" aria-live="polite">
@@ -117,6 +122,9 @@
 </form>
 
 <section class="card" style="padding:14px 16px 18px">
+    @if(!$isSubmitted)
+        <div style="margin-bottom:14px">@include('partials.interview-notices', ['notice' => 'preparation'])</div>
+    @endif
     <form method="POST" action="{{ route('online-interview.submit', $application) }}" id="submit-form" onsubmit="return confirm('Submit this Online Interview for editorial processing? Once submitted, answers become read-only and ordinary editing is locked.');">
         @csrf
         <label class="hint" style="display:flex;gap:8px;align-items:flex-start;margin:0 0 12px">

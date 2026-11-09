@@ -322,7 +322,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $this->assertSame(1, EditorialCustomerApproval::query()->where('application_id', $application->id)->count());
     }
 
-    public function test_consent_covers_bilingual_publication_without_publishing_unprepared_malayalam(): void
+    public function test_english_only_consent_does_not_cover_or_publish_unprepared_malayalam(): void
     {
         Config::set('jannayaks.ai.provider', 'fake');
         Config::set('jannayaks.ai.malayalam_pipeline_enabled', true);
@@ -366,7 +366,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $released = $workflow->releaseForCustomerPreview($application->fresh(), $editor);
         $approval = $workflow->approvePreview($released, $member, $english->id);
 
-        $this->assertSame(EditorialCustomerApproval::SCOPE_ENGLISH_AND_MALAYALAM, $approval->consent_scope);
+        $this->assertSame(EditorialCustomerApproval::SCOPE_ENGLISH, $approval->consent_scope);
         $this->assertNull($approval->malayalam_editorial_content_id);
         $this->assertSame(1, EditorialCustomerApproval::query()->where('application_id', $application->id)->count());
 

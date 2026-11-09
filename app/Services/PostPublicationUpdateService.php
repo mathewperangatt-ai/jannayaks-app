@@ -422,7 +422,9 @@ class PostPublicationUpdateService
                     'approved_by_user_id' => $member->id,
                     'english_editorial_content_id' => $english->id,
                     'malayalam_editorial_content_id' => $malayalam?->id,
-                    'consent_scope' => \App\Models\EditorialCustomerApproval::SCOPE_ENGLISH_AND_MALAYALAM,
+                    'consent_scope' => $malayalam !== null
+                        ? \App\Models\EditorialCustomerApproval::SCOPE_ENGLISH_AND_MALAYALAM
+                        : \App\Models\EditorialCustomerApproval::SCOPE_ENGLISH,
                     'approved_at' => now(),
                 ]);
 

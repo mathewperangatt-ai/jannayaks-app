@@ -29,6 +29,19 @@ Schedule::command(ProcessMembershipLifecycleCommand::class)
     ->name('membership-process-lifecycle');
 
 /*
+| Intake expiry (Day 11 erasure of incomplete Online Interview applications).
+| Day 1 is the first questionnaire start; erasure becomes due on Day 11.
+| InterviewSubmissionDeadline is the single date authority. Manual runs are a
+| dry run unless --execute is given; the scheduled run passes it explicitly.
+| Same production scheduler service requirement as the membership lifecycle above.
+*/
+Schedule::command(\App\Console\Commands\ProcessIntakeExpiryCommand::class, ['--execute'])
+    ->dailyAt('02:15')
+    ->timezone($lifecycleTz !== '' ? $lifecycleTz : 'Asia/Kolkata')
+    ->withoutOverlapping(120)
+    ->name('intake-expiry');
+
+/*
 | AI editorial generation runs synchronously in the HTTP request. If the process
 | dies mid-run (proxy timeout, OOM, redeploy), the ai_editorial_runs row stays
 | "running" forever and the per-application partial unique index blocks every

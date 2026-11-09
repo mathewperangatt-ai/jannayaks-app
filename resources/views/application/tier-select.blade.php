@@ -36,6 +36,10 @@
         <b>{{ $renewalQuote['base_formatted'] }} + GST</b>.
     </div>
 
+    <div style="margin-top:10px">
+        @include('partials.interview-notices', ['notice' => 'intro-full', 'languages' => $ml ? ['ml'] : ['en']])
+    </div>
+
     <form method="POST" action="{{ route('apply.intent') }}" novalidate>
         @csrf
         <input type="hidden" name="honey_bot" value="" maxlength="0" autocomplete="off" tabindex="-1" aria-hidden="true">

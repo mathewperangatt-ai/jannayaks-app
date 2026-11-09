@@ -23,6 +23,10 @@
         <span lang="ml" style="display:block;margin-top:4px">തയ്യാറാക്കിയ പ്രൊഫൈൽ പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് പരിശോധിക്കാനും അംഗീകരിക്കാനും നിങ്ങൾക്ക് അവസരമുണ്ടാകും.</span>
     </div>
 
+    <div style="margin-top:10px">
+        @include('partials.interview-notices', ['notice' => 'intro-full'])
+    </div>
+
     <h2 style="margin-top:8px">How it works</h2>
     <ol class="sub" style="list-style:decimal;margin:0;padding-left:22px;color:var(--ink-soft)">
         <li style="padding:2px 0"><b>Begin your profile application</b> — one Profile.</li>
