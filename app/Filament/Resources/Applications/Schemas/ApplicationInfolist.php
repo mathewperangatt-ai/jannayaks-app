@@ -8,6 +8,7 @@ use App\Models\EditorialContent;
 use App\Models\EditorialRevisionRequest;
 use App\Models\MediaItem;
 use App\Models\User;
+use App\Services\ApplicationWorkflowService;
 use App\Services\MembershipLifecycleService;
 use App\Services\PostPublicationUpdateService;
 use App\Services\ProfileAdministrationService;
@@ -127,6 +128,87 @@ class ApplicationInfolist
                 ])
                 ->columns(2)
                 ->collapsed(),
+            Section::make('Customer approval')
+                ->description('The customer\'s approval of the exact editorial versions shown in the preview. Normal publication uses this approval.')
+                ->visible(fn (?Application $record): bool => $record !== null && $record->profile_id !== null)
+                ->schema([
+                    TextEntry::make('customer_approval_status')
+                        ->label('Customer approval')
+                        ->state(fn (?Application $record): string => $record === null ? '—' : self::customerApprovalStatusLabel(self::approvalState($record)))
+                        ->badge()
+                        ->color(fn (?Application $record): string => $record !== null && self::approvalState($record)['received'] ? 'success' : 'gray'),
+                    TextEntry::make('customer_approval_received_at')
+                        ->label('Approved on')
+                        ->state(fn (?Application $record) => $record === null ? null : self::approvalState($record)['approved_at'])
+                        ->dateTime()
+                        ->placeholder('—'),
+                    TextEntry::make('customer_approval_by')
+                        ->label('Approved by')
+                        ->state(fn (?Application $record): ?string => $record === null ? null : self::approvalState($record)['approved_by'])
+                        ->placeholder('—'),
+                    TextEntry::make('customer_approval_english')
+                        ->label('English version approved')
+                        ->state(fn (?Application $record): ?string => $record === null ? null : self::approvedVersionLabel('EN', self::approvalState($record)['english_id'], self::approvalState($record)['english_version']))
+                        ->placeholder('—')
+                        ->color('primary')
+                        ->url(fn (?Application $record): ?string => $record !== null && self::approvalState($record)['english_id'] !== null ? self::editorialContentViewUrl((int) self::approvalState($record)['english_id']) : null, shouldOpenInNewTab: true),
+                    TextEntry::make('customer_approval_malayalam')
+                        ->label('Malayalam version approved')
+                        ->state(function (?Application $record): ?string {
+                            if ($record === null) {
+                                return null;
+                            }
+                            $state = self::approvalState($record);
+                            if (! $state['received']) {
+                                return null;
+                            }
+
+                            return $state['malayalam_id'] !== null
+                                ? self::approvedVersionLabel('ML', $state['malayalam_id'], $state['malayalam_version'])
+                                : 'Not included — the customer approved the English version only';
+                        })
+                        ->placeholder('—')
+                        ->url(fn (?Application $record): ?string => $record !== null && self::approvalState($record)['malayalam_id'] !== null ? self::editorialContentViewUrl((int) self::approvalState($record)['malayalam_id']) : null, shouldOpenInNewTab: true),
+                    TextEntry::make('customer_approval_current')
+                        ->label('Current versions match the approval')
+                        ->state(function (?Application $record): ?string {
+                            if ($record === null) {
+                                return null;
+                            }
+                            $state = self::approvalState($record);
+                            if (! $state['received']) {
+                                return null;
+                            }
+                            if ($state['english_current'] === false) {
+                                return 'No — a newer English version exists';
+                            }
+                            if ($state['malayalam_current'] === false) {
+                                return 'No — a newer Malayalam version exists';
+                            }
+
+                            return 'Yes';
+                        })
+                        ->placeholder('—'),
+                    TextEntry::make('customer_approval_publication')
+                        ->label('Normal publication')
+                        ->state(fn (?Application $record): string => $record === null ? '—' : (self::approvalState($record)['ready'] ? 'Ready — Publish uses this customer approval' : 'Blocked — '.self::approvalState($record)['reason']))
+                        ->columnSpanFull(),
+                    TextEntry::make('customer_approval_last_invalidated')
+                        ->label('Previous approval withdrawn')
+                        ->visible(fn (?Application $record): bool => $record !== null && self::approvalState($record)['last_invalidated'] !== null)
+                        ->state(function (?Application $record): ?string {
+                            $last = $record === null ? null : self::approvalState($record)['last_invalidated'];
+
+                            return $last === null ? null : sprintf(
+                                'Approved %s, withdrawn %s: %s',
+                                $last->approved_at?->format('d M Y H:i') ?? '—',
+                                $last->invalidated_at?->format('d M Y H:i') ?? '—',
+                                $last->invalidation_reason ?: 'No reason recorded',
+                            );
+                        })
+                        ->columnSpanFull(),
+                ])
+                ->columns(3),
             Section::make('Workflow')
                 ->schema([
                     TextEntry::make('workflow_wayfinding')
@@ -469,6 +551,40 @@ class ApplicationInfolist
         $user = auth()->user();
 
         return $user instanceof User ? $user : null;
+    }
+
+    /** @var \WeakMap<Application, array<string, mixed>>|null */
+    private static ?\WeakMap $approvalStates = null;
+
+    /**
+     * @return array<string, mixed>
+     */
+    private static function approvalState(Application $record): array
+    {
+        self::$approvalStates ??= new \WeakMap;
+
+        return self::$approvalStates[$record] ??= app(ApplicationWorkflowService::class)->customerApprovalState($record);
+    }
+
+    /**
+     * @param  array<string, mixed>  $state
+     */
+    private static function customerApprovalStatusLabel(array $state): string
+    {
+        if ($state['received']) {
+            return 'Customer approval received';
+        }
+
+        return $state['last_invalidated'] !== null ? 'Approval withdrawn — not currently approved' : 'Not yet approved by the customer';
+    }
+
+    private static function approvedVersionLabel(string $language, ?int $id, ?int $version): ?string
+    {
+        if ($id === null) {
+            return null;
+        }
+
+        return $language.' version #'.$id.($version !== null ? ' (v'.$version.')' : '');
     }
 
     private static function canSeeAccountEmail(?Application $record): bool

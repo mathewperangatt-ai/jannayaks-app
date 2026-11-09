@@ -385,6 +385,144 @@ class ApplicationWorkflowService
     }
 
     /**
+     * Customer approval as the admin should see it, and whether the normal
+     * customer-approved Publish path is available. Read-only; publish()
+     * enforces the same version rules.
+     *
+     * @return array{
+     *     received: bool,
+     *     approval: ?EditorialCustomerApproval,
+     *     approved_at: ?\Illuminate\Support\Carbon,
+     *     approved_by: ?string,
+     *     scope: ?string,
+     *     english_id: ?int,
+     *     english_version: ?int,
+     *     malayalam_id: ?int,
+     *     malayalam_version: ?int,
+     *     english_current: ?bool,
+     *     malayalam_current: ?bool,
+     *     last_invalidated: ?EditorialCustomerApproval,
+     *     ready: bool,
+     *     reason: string,
+     * }
+     */
+    public function customerApprovalState(Application $application): array
+    {
+        $active = EditorialCustomerApproval::query()
+            ->where('application_id', $application->id)
+            ->whereNull('invalidated_at')
+            ->latest('approved_at')
+            ->first();
+
+        $englishId = $application->customer_approved_english_editorial_content_id !== null
+            ? (int) $application->customer_approved_english_editorial_content_id
+            : null;
+        $malayalamId = $active?->malayalam_editorial_content_id !== null ? (int) $active->malayalam_editorial_content_id : null;
+        $english = $englishId !== null ? EditorialContent::query()->find($englishId) : null;
+        $malayalam = $malayalamId !== null ? EditorialContent::query()->find($malayalamId) : null;
+        $received = $application->customer_approved_at !== null && $englishId !== null;
+
+        $englishCurrent = null;
+        $malayalamCurrent = null;
+        if ($received && $application->profile_id !== null) {
+            $englishCurrent = $this->newestUsableVersion((int) $application->profile_id, EditorialContent::LANGUAGE_EN)?->id === $englishId;
+            if ($malayalamId !== null) {
+                $malayalamCurrent = $this->newestUsableVersion((int) $application->profile_id, EditorialContent::LANGUAGE_ML)?->id === $malayalamId;
+            }
+        }
+
+        $reason = match (true) {
+            $application->status === Application::STATUS_PUBLISHED => 'This profile is already published.',
+            ! $received => 'The customer has not approved the current editorial version.',
+            $application->status !== Application::STATUS_AWAITING_PUBLICATION => 'Customer approval is recorded but the application is not awaiting publication.',
+            ! $english instanceof EditorialContent || $english->status !== EditorialContent::STATUS_APPROVED => 'The customer-approved English version is not editorially approved.',
+            $englishCurrent === false => 'A newer English version exists that the customer has not approved. Release a new customer preview.',
+            $malayalamCurrent === false => 'A newer Malayalam version exists that the customer has not approved. Release a new customer preview.',
+            ! $this->paymentAllowsPublication($application) => 'Payment must be settled before publication.',
+            default => '',
+        };
+
+        return [
+            'received' => $received,
+            'approval' => $active,
+            'approved_at' => $application->customer_approved_at,
+            'approved_by' => $application->customer_approved_by_user_id !== null
+                ? User::query()->whereKey($application->customer_approved_by_user_id)->value('name')
+                : null,
+            'scope' => $active?->consent_scope,
+            'english_id' => $englishId,
+            'english_version' => $english?->version_number !== null ? (int) $english->version_number : null,
+            'malayalam_id' => $malayalamId,
+            'malayalam_version' => $malayalam?->version_number !== null ? (int) $malayalam->version_number : null,
+            'english_current' => $englishCurrent,
+            'malayalam_current' => $malayalamCurrent,
+            'last_invalidated' => $active === null
+                ? EditorialCustomerApproval::query()
+                    ->where('application_id', $application->id)
+                    ->whereNotNull('invalidated_at')
+                    ->latest('invalidated_at')
+                    ->first()
+                : null,
+            'ready' => $reason === '',
+            'reason' => $reason,
+        ];
+    }
+
+    private function paymentAllowsPublication(Application $application): bool
+    {
+        return $application->isPaymentSettled()
+            || $application->source_method === 'admin_test_demo'
+            || app(PublicationTestBypass::class)->appliesTo($application);
+    }
+
+    /** Highest-version English or Malayalam row that is a real, non-archived editorial version. */
+    private function newestUsableVersion(int $profileId, string $language): ?EditorialContent
+    {
+        $versions = EditorialContent::query()
+            ->where('profile_id', $profileId)
+            ->where('language', $language)
+            ->whereIn('status', [EditorialContent::STATUS_DRAFT, EditorialContent::STATUS_APPROVED])
+            ->orderByDesc('version_number')
+            ->get();
+
+        foreach ($versions as $version) {
+            if (! $version->isIncompleteFailedGeneration()) {
+                return $version;
+            }
+        }
+
+        return null;
+    }
+
+    /**
+     * Normal publication may only use an approval of the versions that are
+     * still current. Approved versions newer than the customer's approval
+     * need a fresh customer preview, or exceptional publication with a reason.
+     */
+    private function assertCustomerApprovalIsCurrent(Application $application, EditorialContent $english): void
+    {
+        $newestEnglish = $this->newestUsableVersion((int) $application->profile_id, EditorialContent::LANGUAGE_EN);
+        if ($newestEnglish instanceof EditorialContent && (int) $newestEnglish->id !== (int) $english->id) {
+            throw new InvalidArgumentException('A newer English version exists that the customer has not approved. Release a new customer preview, or use exceptional publication with a recorded reason.');
+        }
+
+        $approvedMalayalamId = EditorialCustomerApproval::query()
+            ->where('application_id', $application->id)
+            ->whereNull('invalidated_at')
+            ->where('english_editorial_content_id', $english->id)
+            ->latest('approved_at')
+            ->value('malayalam_editorial_content_id');
+        if ($approvedMalayalamId === null) {
+            return;
+        }
+
+        $newestMalayalam = $this->newestUsableVersion((int) $application->profile_id, EditorialContent::LANGUAGE_ML);
+        if ($newestMalayalam instanceof EditorialContent && (int) $newestMalayalam->id !== (int) $approvedMalayalamId) {
+            throw new InvalidArgumentException('A newer Malayalam version exists that the customer has not approved. Release a new customer preview, or use exceptional publication with a recorded reason.');
+        }
+    }
+
+    /**
      * Admin publication for normal (customer-approved) or exceptional offline/admin workflows.
      * Editors and members cannot publish.
      */
@@ -443,6 +581,10 @@ class ApplicationWorkflowService
 
             if ($requireCustomerApproval && ! $english instanceof EditorialContent) {
                 throw new InvalidArgumentException('Customer approval of a specific editorial version is required.');
+            }
+
+            if ($requireCustomerApproval && $english instanceof EditorialContent) {
+                $this->assertCustomerApprovalIsCurrent($locked, $english);
             }
 
             $maintenanceApproved = $this->customerApprovedMaintenanceCovers($locked);

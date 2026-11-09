@@ -1,5 +1,12 @@
 @extends('layouts.app')
 
+@php
+    $malayalamShown = $malayalam && filled($malayalam->body);
+    $consentText = $malayalamShown
+        ? 'I have reviewed both the English and Malayalam versions of this editorially prepared profile shown above. I consent to the publication of both versions.'
+        : 'I have reviewed the English version of this editorially prepared profile shown above. I consent to the publication of the English version. This approval covers the English version only; no Malayalam version was shown for my review.';
+@endphp
+
 @section('content')
 <section class="card stack">
     <div class="row" style="justify-content:space-between;align-items:center">
@@ -64,7 +71,7 @@
             @enderror
             <label class="field" style="display:flex;gap:10px;align-items:flex-start">
                 <input type="checkbox" name="confirm_approval" value="1" required style="margin-top:4px">
-                <span>I have reviewed this updated profile. I consent to its publication in English and Malayalam. A Malayalam version is published only after it has been prepared and approved.</span>
+                <span>{{ $consentText }}</span>
             </label>
             <button class="btn primary" type="submit">Approve Profile</button>
         </form>
@@ -97,7 +104,7 @@
             <input type="hidden" name="english_editorial_content_id" value="{{ $english->id }}">
             <label class="field" style="display:flex;gap:10px;align-items:flex-start">
                 <input type="checkbox" name="confirm_approval" value="1" required style="margin-top:4px">
-                <span>I have reviewed this editorially prepared profile. I consent to its publication in English and Malayalam. A Malayalam version is published only after it has been prepared and approved.</span>
+                <span>{{ $consentText }}</span>
             </label>
             <button class="btn primary" type="submit">Approve this profile</button>
         </form>

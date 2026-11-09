@@ -166,6 +166,9 @@
                     All required questions are complete. Review your answers, then submit for editorial processing.
                 </p>
             @endif
+            @unless($application->isInterviewSubmitted())
+                <div style="margin:10px 0">@include('partials.interview-notices', ['notice' => 'reminder', 'application' => $application])</div>
+            @endunless
         @else
             @if($application->isDirectSubmitted())
                 <p class="dash-next">
@@ -233,7 +236,7 @@
             || ($linkedProfile && filled($linkedProfile->slug))
             || $application->status === \App\Models\Application::STATUS_PUBLISHED;
     @endphp
-    @if($showProfileUrl || $application->status === \App\Models\Application::STATUS_PUBLISHED || $linkedProfile)
+    @if($showProfileUrl || $application->status === \App\Models\Application::STATUS_PUBLISHED || $linkedProfile || $unlocked)
         <div class="dash-section">
             <p class="dash-label">Manage</p>
             <div class="dash-manage">
@@ -249,10 +252,10 @@
                         <span class="dmc-sub">Annual hosting, status and renewal</span>
                     </a>
                 @endif
-                @if($linkedProfile)
+                @if($linkedProfile || $unlocked)
                     <a class="dash-manage-card" href="{{ route('applications.media', $application) }}">
                         <span class="dmc-label">Photographs &amp; video <span class="dmc-arrow">→</span></span>
-                        <span class="dmc-sub">Portraits and external video links</span>
+                        <span class="dmc-sub">Upload up to {{ \App\Support\ProfileEntitlements::photoLimit() }} photographs for your profile</span>
                     </a>
                 @endif
                 @if($application->status === \App\Models\Application::STATUS_PUBLISHED && $linkedProfile)

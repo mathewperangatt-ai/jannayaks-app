@@ -29,9 +29,7 @@ class CustomerProfilePreviewController extends Controller
         }
 
         $english = EditorialContent::query()->find($application->preview_english_editorial_content_id);
-        $malayalam = $application->preview_malayalam_editorial_content_id
-            ? EditorialContent::query()->find($application->preview_malayalam_editorial_content_id)
-            : null;
+        $malayalam = $workflow->malayalamShownInPreview($application);
 
         if (! $english) {
             return redirect()

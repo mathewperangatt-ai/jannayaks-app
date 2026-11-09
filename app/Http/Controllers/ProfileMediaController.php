@@ -4,14 +4,17 @@ namespace App\Http\Controllers;
 
 use App\Models\Application;
 use App\Models\MediaItem;
+use App\Models\Profile;
 use App\Services\ApplicationPaymentStateService;
 use App\Services\ProfileMediaService;
+use App\Services\ProfileUrlService;
 use App\Support\ProfileEntitlements;
 use Illuminate\Http\RedirectResponse;
 use Illuminate\Http\Request;
 use Illuminate\Support\Facades\Auth;
 use Illuminate\Validation\ValidationException;
 use Illuminate\View\View;
+use InvalidArgumentException;
 
 class ProfileMediaController extends Controller
 {
@@ -28,7 +31,7 @@ class ProfileMediaController extends Controller
             return redirect()->route('applications.payment', $application);
         }
 
-        $profile = $application->profile;
+        $profile = $this->draftProfileFor($application);
         if (! $profile) {
             return redirect()
                 ->route('applications.show', $application)
@@ -67,7 +70,7 @@ class ProfileMediaController extends Controller
             return redirect()->route('applications.payment', $application);
         }
 
-        $profile = $application->profile;
+        $profile = $this->draftProfileFor($application);
         if (! $profile) {
             return redirect()
                 ->route('applications.show', $application)
@@ -134,5 +137,23 @@ class ProfileMediaController extends Controller
         return redirect()
             ->route('applications.media', $application)
             ->with('status', 'Photograph removed.');
+    }
+
+    /** Same draft profile the Profile URL page creates; no URL is assigned here. */
+    private function draftProfileFor(Application $application): ?Profile
+    {
+        if ($application->profile instanceof Profile) {
+            return $application->profile;
+        }
+
+        try {
+            $profile = app(ProfileUrlService::class)->ensureDraftProfileForApplication($application);
+        } catch (InvalidArgumentException) {
+            return null;
+        }
+
+        $application->setRelation('profile', $profile);
+
+        return $profile;
     }
 }

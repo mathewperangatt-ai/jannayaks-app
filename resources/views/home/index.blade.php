@@ -434,29 +434,9 @@ document.addEventListener('click',function(e){
     <h2 class="section-title">See What Your Profile Could Look Like
       <span class="section-title-ml">നിങ്ങളുടെ പ്രൊഫൈൽ എങ്ങനെയായിരിക്കുമെന്ന് കാണൂ</span>
     </h2>
-    <p class="section-sub">Explore sample profiles to see how Jannayaks presents individual achievements and life stories.
+    <p class="section-sub">
       <span class="section-title-ml" style="font-family:var(--fm);font-size:13px">വ്യക്തികളുടെ നേട്ടങ്ങളും ജീവിതകഥകളും Jannayaks എങ്ങനെ അവതരിപ്പിക്കുന്നുവെന്ന് അറിയാൻ മാതൃകാ പ്രൊഫൈലുകൾ കാണൂ.</span>
     </p>
-  </div>
-  <div class="demo-grid">
-    @foreach ($demoProfiles as $demoProfile)
-      @php($demoPhoto = $presentation->publicProfilePhoto($demoProfile))
-      @php($demoUrl = app(\App\Services\ProfileUrlService::class)->publicListingUrl($demoProfile))
-      <a class="demo-card" href="{{ $demoUrl }}">
-        <div class="demo-card-photo">
-          @if($demoPhoto)
-            <img src="{{ route('profiles.public.photo', [$demoProfile, $demoPhoto]) }}" alt="{{ $demoPhoto->alt_text ?: ('Portrait of '.$presentation->displayName($demoProfile)) }}" loading="lazy">
-          @else
-            <span class="demo-initial">{{ mb_strtoupper(mb_substr($presentation->displayName($demoProfile), 0, 1)) }}</span>
-          @endif
-          <span class="demo-badge">Demo</span>
-        </div>
-        <div class="demo-card-body">
-          <h3>{{ $presentation->displayName($demoProfile) }}</h3>
-          <p>{{ $presentation->conciseDescriptor($demoProfile) }}</p>
-        </div>
-      </a>
-    @endforeach
   </div>
   <p class="demo-more"><a href="{{ route('demo-profiles.index') }}">View the complete Demo Profiles collection →</a></p>
 </section>

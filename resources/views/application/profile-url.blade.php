@@ -48,6 +48,9 @@
         <p class="sub" style="margin:4px 0 0">
             Once your profile is published, its URL cannot be changed. Please choose carefully.
         </p>
+        <p class="sub" style="margin:4px 0 0">
+            Every URL is subject to availability and formatting requirements: lowercase letters and numbers, separated by single dots or hyphens (for example arun.kumar). Select a suggestion or type your own, and availability is checked as you type.
+        </p>
         @if($personalSlugLocked)
             <p class="lead" style="margin:0">Your personal URL is permanent and cannot be changed from this page.</p>
         @else
@@ -111,3 +114,51 @@
 </section>
 
 @endsection
+
+@if($canSelectPersonal && ! $personalSlugLocked)
+@push('scripts')
+<script>
+(function () {
+    var input = document.getElementById('slug');
+    var status = document.getElementById('slug-availability');
+    if (!input || !status) return;
+    var endpoint = @json(route('applications.profile-url.availability', $application));
+    var timer = null;
+    var seq = 0;
+
+    function check() {
+        var value = input.value.trim();
+        if (value === '') { status.textContent = ''; return; }
+        var mine = ++seq;
+        status.textContent = 'Checking availability…';
+        status.style.color = '';
+        fetch(endpoint + '?slug=' + encodeURIComponent(value), {
+            headers: { 'Accept': 'application/json' },
+            credentials: 'same-origin'
+        }).then(function (r) { return r.json(); }).then(function (data) {
+            if (mine !== seq) return;
+            status.textContent = data.message || '';
+            status.style.color = data.available ? 'var(--ok)' : 'var(--bad)';
+        }).catch(function () {
+            if (mine !== seq) return;
+            status.textContent = 'Availability could not be checked. It will be checked again when you reserve the URL.';
+            status.style.color = '';
+        });
+    }
+
+    input.addEventListener('input', function () {
+        clearTimeout(timer);
+        timer = setTimeout(check, 400);
+    });
+
+    document.querySelectorAll('.js-slug-choice').forEach(function (button) {
+        button.addEventListener('click', function () {
+            input.value = button.getAttribute('data-slug') || '';
+            input.focus();
+            check();
+        });
+    });
+})();
+</script>
+@endpush
+@endif

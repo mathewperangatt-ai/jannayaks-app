@@ -19,7 +19,6 @@ use Filament\Actions\EditAction;
 use Filament\Forms\Components\Select;
 use Filament\Forms\Components\Textarea;
 use Filament\Forms\Components\TextInput;
-use Filament\Forms\Components\Toggle;
 use Filament\Notifications\Notification;
 use Filament\Resources\Pages\ViewRecord;
 use Filament\Schemas\Components\Section;
@@ -78,35 +77,73 @@ class ViewApplication extends ViewRecord
                 ->label('Publish')
                 ->color('success')
                 ->requiresConfirmation()
-                ->modalHeading('Publish this profile')
+                ->modalHeading('Publish the customer-approved profile')
                 ->modalDescription(function (): string {
                     $record = $this->getRecord();
+                    if (! $record instanceof Application) {
+                        return '';
+                    }
 
-                    return app(PublicationTestBypass::class)->publishModalDescription(
-                        $record instanceof Application ? $record : null,
+                    $state = app(ApplicationWorkflowService::class)->customerApprovalState($record);
+                    $approval = sprintf(
+                        'Customer approval received %s for English version #%d%s. This is the normal customer-approved publication path; no exceptional reason is needed.',
+                        $state['approved_at']?->format('d M Y H:i') ?? '',
+                        (int) $state['english_id'],
+                        $state['malayalam_id'] !== null ? ' and Malayalam version #'.$state['malayalam_id'] : ' (English only)',
                     );
+
+                    return trim($approval.' '.app(PublicationTestBypass::class)->publishModalDescription($record));
+                })
+                ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false)
+                    && ! $this->hasOpenMaintenanceRequest())
+                ->disabled(fn (): bool => ! $this->customerApprovalState()['ready'])
+                ->tooltip(fn (): ?string => $this->customerApprovalState()['ready'] ? null : $this->customerApprovalState()['reason'])
+                ->action(function (): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User) {
+                        abort(403);
+                    }
+
+                    try {
+                        /** @var Application $application */
+                        $application = $this->getRecord();
+                        app(ApplicationWorkflowService::class)->publish($application, $actor, true, null);
+                        Notification::make()->title('Profile published')->body('Published using the customer\'s approval.')->success()->persistent()->send();
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot publish')->body($e->getMessage())->danger()->persistent()->send();
+                    }
+                }),
+            Action::make('publishWithoutCustomerApproval')
+                ->label('Publish without customer approval (exceptional)')
+                ->color('danger')
+                ->outlined()
+                ->requiresConfirmation()
+                ->modalHeading('Exceptional publication without customer approval')
+                ->modalDescription(function (): string {
+                    $note = 'Use only for authorised exceptional circumstances. The publication bypasses customer approval and your reason is stored in the audit record.';
+
+                    return $this->customerApprovalState()['ready']
+                        ? $note.' A valid customer approval exists — use Publish instead.'
+                        : $note;
                 })
                 ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false)
                     && ! $this->hasOpenMaintenanceRequest())
                 ->form([
-                    Toggle::make('require_customer_approval')
-                        ->label('Require customer approval (normal path)')
-                        ->default(true)
-                        ->helperText('Turn off only for authorised offline/admin exceptional publication.'),
                     Textarea::make('exceptional_reason')
                         ->label('Reason for publishing without customer approval')
+                        ->required()
                         ->rows(3)
-                        ->helperText('Required when customer approval is turned off. The reason is stored in the audit record.'),
+                        ->helperText('Required. The reason is stored in the audit record.'),
                 ])
+                ->modalSubmitActionLabel('Publish without customer approval')
                 ->action(function (array $data): void {
                     $actor = auth()->user();
                     if (! $actor instanceof User) {
                         abort(403);
                     }
 
-                    $requireCustomerApproval = (bool) ($data['require_customer_approval'] ?? true);
                     $reason = trim((string) ($data['exceptional_reason'] ?? ''));
-                    if (! $requireCustomerApproval && $reason === '') {
+                    if ($reason === '') {
                         Notification::make()
                             ->title('Cannot publish')
                             ->body('Publishing without customer approval requires a written reason.')
@@ -120,13 +157,8 @@ class ViewApplication extends ViewRecord
                     try {
                         /** @var Application $application */
                         $application = $this->getRecord();
-                        app(ApplicationWorkflowService::class)->publish(
-                            $application,
-                            $actor,
-                            $requireCustomerApproval,
-                            $reason !== '' ? $reason : null,
-                        );
-                        Notification::make()->title('Profile published')->success()->persistent()->send();
+                        app(ApplicationWorkflowService::class)->publish($application, $actor, false, $reason);
+                        Notification::make()->title('Profile published (exceptional)')->body('Published without customer approval. The reason was recorded in the audit log.')->success()->persistent()->send();
                     } catch (InvalidArgumentException $e) {
                         Notification::make()->title('Cannot publish')->body($e->getMessage())->danger()->persistent()->send();
                     }
@@ -581,6 +613,18 @@ class ViewApplication extends ViewRecord
     private function hasOpenMaintenanceRequest(): bool
     {
         return $this->maintenanceRequest() !== null;
+    }
+
+    /**
+     * @return array<string, mixed>
+     */
+    private function customerApprovalState(): array
+    {
+        $record = $this->getRecord();
+
+        return $record instanceof Application
+            ? app(ApplicationWorkflowService::class)->customerApprovalState($record)
+            : ['ready' => false, 'reason' => 'No application.'];
     }
 
     /**

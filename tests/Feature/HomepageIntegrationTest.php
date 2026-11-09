@@ -205,6 +205,26 @@ class HomepageIntegrationTest extends TestCase
         $this->get(route('demo-profiles.index'))->assertOk();
     }
 
+    public function test_demo_section_keeps_heading_and_collection_link_without_individual_cards(): void
+    {
+        $html = $this->get(route('home'))->assertOk()->getContent();
+        $start = strpos($html, 'id="sample-profiles"');
+        $this->assertNotFalse($start);
+        $section = substr($html, $start, strpos($html, '</section>', $start) - $start);
+
+        $this->assertStringContainsString('See What Your Profile Could Look Like', $section);
+        $this->assertStringContainsString('നിങ്ങളുടെ പ്രൊഫൈൽ എങ്ങനെയായിരിക്കുമെന്ന് കാണൂ', $section);
+        $this->assertStringContainsString('വ്യക്തികളുടെ നേട്ടങ്ങളും ജീവിതകഥകളും Jannayaks എങ്ങനെ അവതരിപ്പിക്കുന്നുവെന്ന് അറിയാൻ മാതൃകാ പ്രൊഫൈലുകൾ കാണൂ.', $section);
+        $this->assertStringContainsString('href="'.route('demo-profiles.index').'">View the complete Demo Profiles collection →</a>', $section);
+
+        $this->assertStringNotContainsString('class="demo-card"', $section);
+        $this->assertStringNotContainsString('class="demo-grid"', $section);
+        $this->assertStringNotContainsString('<img', $section);
+        $this->assertStringNotContainsString('Explore sample profiles to see how Jannayaks presents individual achievements and life stories.', $section);
+
+        $this->assertStringContainsString('id="search"', $html, 'The separate Search section stays.');
+    }
+
     public function test_faq_charges_uses_authoritative_pricing(): void
     {
         $profile = PricingAmounts::forStandardProfile();

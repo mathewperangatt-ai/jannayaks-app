@@ -343,13 +343,17 @@ class CustomerEditorialWorkflowService
 
                 $this->invalidateActiveApproval($locked, 'Superseded by a new customer approval.', $member);
 
+                $malayalam = $this->malayalamShownInPreview($locked);
+
                 $approval = EditorialCustomerApproval::query()->create([
                     'application_id' => $locked->id,
                     'profile_id' => $locked->profile_id,
                     'approved_by_user_id' => $member->id,
                     'english_editorial_content_id' => $english->id,
-                    'malayalam_editorial_content_id' => $locked->preview_malayalam_editorial_content_id,
-                    'consent_scope' => EditorialCustomerApproval::SCOPE_ENGLISH_AND_MALAYALAM,
+                    'malayalam_editorial_content_id' => $malayalam?->id,
+                    'consent_scope' => $malayalam instanceof EditorialContent
+                        ? EditorialCustomerApproval::SCOPE_ENGLISH_AND_MALAYALAM
+                        : EditorialCustomerApproval::SCOPE_ENGLISH,
                     'approved_at' => now(),
                 ]);
 
@@ -472,6 +476,29 @@ class CustomerEditorialWorkflowService
                 actor: $actor,
             );
         });
+    }
+
+    /**
+     * The Malayalam version the customer preview actually displays, or null.
+     * Shared by the preview page and approvePreview() so consent never covers
+     * a language the customer was not shown.
+     */
+    public function malayalamShownInPreview(Application $application): ?EditorialContent
+    {
+        if ($application->preview_malayalam_editorial_content_id === null) {
+            return null;
+        }
+
+        $malayalam = EditorialContent::query()->find($application->preview_malayalam_editorial_content_id);
+
+        if (! $malayalam instanceof EditorialContent
+            || (int) $malayalam->profile_id !== (int) $application->profile_id
+            || $malayalam->language !== EditorialContent::LANGUAGE_ML
+            || ! filled($malayalam->body)) {
+            return null;
+        }
+
+        return $malayalam;
     }
 
     public function memberFacingStatusLabel(Application $application): string
