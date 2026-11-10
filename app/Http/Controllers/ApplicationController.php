@@ -7,6 +7,7 @@ use App\Models\Application;
 use App\Models\Payment;
 use App\Models\SourceMaterial;
 use App\Services\ApplicationPaymentStateService;
+use App\Services\ConsentRecordingService;
 use App\Services\OnlineInterviewService;
 use App\Services\ProfileUrlService;
 use App\Services\PublicProfilePresentationService;
@@ -110,11 +111,15 @@ class ApplicationController extends Controller
         if ($this->flowLanguage($request) !== 'ml') {
             return [
                 'source_method.required' => 'Please select how you would like to submit your content.',
+                'solicitation_declaration.required' => 'Please confirm the declaration about professional and business solicitation before continuing.',
+                'solicitation_declaration.accepted' => 'Please confirm the declaration about professional and business solicitation before continuing.',
             ];
         }
 
         return [
             'source_method.required' => 'നിങ്ങളുടെ ഉള്ളടക്കം എങ്ങനെ സമർപ്പിക്കണമെന്ന് ദയവായി തിരഞ്ഞെടുക്കുക.',
+            'solicitation_declaration.required' => 'ദയവായി പ്രൊഫഷണൽ, ബിസിനസ് പ്രചാരണ പ്രഖ്യാപനം സമ്മതിച്ചതിന് ശേഷം തുടരുക.',
+            'solicitation_declaration.accepted' => 'ദയവായി പ്രൊഫഷണൽ, ബിസിനസ് പ്രചാരണ പ്രഖ്യാപനം സമ്മതിച്ചതിന് ശേഷം തുടരുക.',
             'full_name.required' => 'പൂർണ്ണനാമം നൽകേണ്ടതാണ്.',
             'contact_email.required_without' => 'ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകിയിട്ടില്ലെങ്കിൽ ഇമെയിൽ നൽകേണ്ടതാണ്.',
             'contact_mobile.required_without' => 'ഇമെയിൽ നൽകിയിട്ടില്ലെങ്കിൽ ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകേണ്ടതാണ്.',
@@ -136,6 +141,7 @@ class ApplicationController extends Controller
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
             'contact_whatsapp' => ['nullable', 'string', 'max:32', 'regex:/^[0-9+\-\s]{6,20}$/'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
+            'solicitation_declaration' => ['required', 'accepted'],
             'honey_bot' => ['nullable', 'string', 'max:0'],
         ], $this->intakeValidationMessages($request));
 
@@ -269,7 +275,7 @@ class ApplicationController extends Controller
             $source = (string) $validated['source_method'];
             $application = new Application;
             try {
-                DB::transaction(function () use ($application, $user, $email, $validated, $source): void {
+                DB::transaction(function () use ($application, $user, $email, $validated, $source, $request): void {
                     $application->forceFill([
                     'user_id' => $user->id,
                     'applicant_email_normalized' => $email,
@@ -291,6 +297,16 @@ class ApplicationController extends Controller
                             ? Application::STATUS_INTERVIEW_IN_PROGRESS
                             : Application::STATUS_PAYMENT_PENDING,
                     ])->save();
+
+                    // Professional/business solicitation declaration: recorded
+                    // atomically with the application (fail-closed), reusing
+                    // the shared consent-evidence mechanism.
+                    app(ConsentRecordingService::class)->recordSolicitationDeclaration(
+                        $user,
+                        $request->ip(),
+                        (string) $request->userAgent(),
+                        $application,
+                    );
                 });
             } catch (QueryException $exception) {
                 if ((string) ($exception->errorInfo[0] ?? '') !== '23505') {

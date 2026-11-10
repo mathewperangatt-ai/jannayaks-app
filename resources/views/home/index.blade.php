@@ -39,20 +39,20 @@ body{background:var(--off);color:var(--charcoal);font-family:var(--fb);-webkit-f
 .ml{font-family:var(--fm);display:block;font-size:.85em;color:var(--gray);margin-top:2px;}
 /* NAV */
 nav{background:var(--white);border-bottom:2px solid var(--saffron);position:sticky;top:0;z-index:100;box-shadow:0 1px 12px rgba(0,0,0,.06);}
-.nav-inner{display:flex;align-items:center;justify-content:space-between;height:64px;padding:0 22px;max-width:1400px;margin:0 auto;gap:12px;}
+.nav-inner{display:flex;align-items:center;justify-content:space-between;height:66px;padding:0 24px;max-width:1400px;margin:0 auto;gap:20px;}
 .nav-logo{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.nav-logo img{height:58px;width:auto;display:block;}
+.nav-logo img{height:48px;width:auto;display:block;}
 .nav-menu-btn{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:1.5px solid var(--border);border-radius:6px;background:white;color:var(--navy);font-size:20px;line-height:1;cursor:pointer;font-family:var(--fb);flex-shrink:0;}
 .nav-menu-btn:hover{border-color:var(--navy);}
 .home-actions{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;margin-top:22px;}
 .home-action{font-size:14px;font-weight:600;color:var(--navy);text-decoration:none;border-bottom:1.5px solid transparent;padding-bottom:2px;transition:color .2s,border-color .2s;}
 .home-action:hover{color:var(--saffron);border-bottom-color:var(--saffron);}
 .ep-section{padding:40px 22px 8px;background:transparent;}
-.nav-links{display:none;list-style:none;gap:28px;}
-.nav-links a{font-size:13px;color:var(--gray);text-decoration:none;font-weight:500;transition:color .2s;}
+.nav-links{display:none;list-style:none;gap:26px;padding:0;margin:0 auto;}
+.nav-links a{font-size:13.5px;color:var(--gray);text-decoration:none;font-weight:500;letter-spacing:.01em;transition:color .2s;}
 .nav-links a:hover{color:var(--navy);}
 .nav-links .nav-login-mobile{display:none;}
-.nav-right{display:flex;align-items:center;gap:10px;flex-shrink:0;}
+.nav-right{display:flex;align-items:center;gap:12px;flex-shrink:0;}
 .nav-login{background:transparent;border:1.5px solid var(--navy);color:var(--navy);padding:7px 16px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:all .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
 .nav-login:hover{background:var(--navy);color:white;}
 .nav-cta{background:var(--navy);color:white;border:none;padding:8px 18px;border-radius:4px;font-size:12px;font-weight:600;cursor:pointer;font-family:var(--fb);transition:background .2s;text-decoration:none;display:inline-flex;align-items:center;min-height:40px;}
@@ -67,27 +67,35 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .hero-en-secondary{display:block;font-family:var(--fd);font-size:clamp(17px,2.3vw,25px);line-height:1.4;font-weight:400;color:#52758a;margin:0;overflow-wrap:anywhere;}
 .hero-intro{max-width:760px;margin:0 auto 0;position:relative;}
 .hero-intro p{font-size:17px;line-height:1.65;font-weight:300;color:var(--charcoal);}
-.hero-intro .hero-ml{font-family:var(--fm);font-size:14px;line-height:1.7;color:var(--gray);margin-top:8px;display:block;}
+.hero-intro .hero-ml{font-family:var(--fm);font-size:15.5px;line-height:1.8;color:var(--gray);margin-top:8px;display:block;}
 .hero-banner{position:relative;z-index:1;max-width:800px;margin:0 auto;}
 .hero-banner picture{display:block;}
 .hero-banner img{display:block;width:100%;height:auto;aspect-ratio:1600/697;object-fit:contain;}
-/* BILINGUAL INTRO — complete Malayalam text first, then complete English text */
-.intro-section{padding:44px 22px 40px;background:transparent;}
-.intro-blocks{max-width:680px;margin:0 auto;}
-.intro-block{min-width:0;}
-.intro-tabs{display:flex;width:max-content;max-width:100%;gap:4px;background:var(--light);padding:4px;border-radius:8px;margin:0 auto 28px;}
-.intro-tab{min-width:120px;min-height:40px;padding:8px 18px;border:none;background:transparent;border-radius:6px;font-size:14px;font-weight:600;cursor:pointer;font-family:var(--fb);color:var(--gray);transition:all .2s;line-height:1.35;}
-.intro-tab[lang="ml"]{font-family:var(--fm);}
-.intro-tab:hover{color:var(--navy);}
-.intro-tab[aria-selected="true"]{background:white;color:var(--navy);box-shadow:0 1px 4px rgba(0,0,0,.1);}
-.intro-block[hidden]{display:none;}
-.intro-hd{font-family:var(--fd);font-size:clamp(22px,3vw,26px);font-weight:700;color:var(--navy);line-height:1.3;margin:0 0 14px;}
-.intro-block p{font-size:16px;line-height:1.75;color:var(--charcoal);margin:0 0 14px;overflow-wrap:anywhere;}
-.intro-block p:last-child{margin-bottom:0;}
-.intro-block p + .intro-hd{margin-top:28px;}
-.intro-block-ml .intro-hd{font-family:var(--fm);font-size:clamp(20px,2.7vw,24px);line-height:1.5;}
-.intro-block-ml p{font-family:var(--fm);font-size:16px;line-height:1.9;}
+/* BILINGUAL INTRO — English first, Malayalam immediately below, both visible */
+.intro-section{padding:40px 22px 36px;background:transparent;}
+.intro-blocks{max-width:740px;margin:0 auto;}
+.intro-hd{font-family:var(--fd);font-size:clamp(22px,3vw,26px);font-weight:700;color:var(--navy);line-height:1.3;margin:0;}
+.intro-hd-ml{font-family:var(--fm);font-size:clamp(16px,2.6vw,21px);font-weight:600;color:var(--navy);opacity:.85;line-height:1.6;margin:2px 0 20px;}
+.intro-lead-en{font-family:var(--fd);font-size:clamp(20px,3vw,26px);font-weight:600;color:var(--navy);line-height:1.45;margin:0;}
+.intro-lead-ml{font-family:var(--fm);font-size:clamp(16px,2.6vw,20px);font-weight:600;color:var(--navy);line-height:1.75;margin:2px 0 16px;}
+.intro-text-en{font-size:14px;color:var(--charcoal);line-height:1.7;margin:0 0 4px;overflow-wrap:anywhere;}
+.intro-text-ml{font-family:var(--fm);font-size:13.5px;color:var(--gray);line-height:1.85;margin:0 0 12px;overflow-wrap:anywhere;}
+.intro-tiles{display:flex;flex-wrap:wrap;gap:12px;justify-content:center;margin:14px 0 0;padding:0;list-style:none;}
+.intro-tiles li{flex:1 1 calc(33.333% - 8px);min-width:0;background:white;border:1px solid var(--border);border-radius:10px;padding:15px 15px 16px;}
+.intro-tile-hd-en{font-family:var(--fd);font-size:20px;font-weight:700;color:var(--navy);line-height:1.25;margin:0;}
+.intro-tile-hd-ml{font-family:var(--fm);font-size:13.5px;color:var(--gray);line-height:1.6;margin:2px 0 8px;}
+.intro-tile-en{font-size:13px;color:var(--charcoal);line-height:1.65;margin:0 0 4px;overflow-wrap:anywhere;}
+.intro-tile-note{font-size:11.5px;color:var(--gray);line-height:1.6;margin:0 0 4px;}
+.intro-tile-note[lang="ml"]{font-family:var(--fm);}
+.intro-tile-ml{font-family:var(--fm);font-size:13px;color:var(--gray);line-height:1.8;margin:0;}
+.intro-close-en{font-family:var(--fd);font-size:clamp(19px,2.8vw,24px);font-weight:600;color:var(--navy);text-align:center;margin:20px 0 0;}
+.intro-close-ml{font-family:var(--fm);font-size:clamp(15px,2.4vw,19px);color:var(--navy);text-align:center;line-height:1.8;margin:2px 0 0;}
 .intro-section .home-actions{margin-top:32px;}
+@media(max-width:899px){.intro-tiles li{flex:1 1 calc(50% - 6px);}}
+@media(max-width:599px){.intro-tiles li{flex:1 1 100%;}}
+/* DEMO SECTION HEADING — two steps below .section-title */
+.demo-section .section-title{font-size:clamp(21px,3.2vw,30px);}
+.demo-section .section-title-ml{font-size:clamp(14px,2.4vw,20px);}
 /* SEARCH BOX */
 .search-section{background:transparent;padding:48px 22px;}
 .search-box{background:var(--white);border:1.5px solid var(--border);border-radius:12px;padding:32px;max-width:740px;margin:0 auto;box-shadow:0 4px 24px rgba(0,0,0,.05);}
@@ -115,7 +123,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .section-hd{text-align:center;margin-bottom:40px;}
 .section-eyebrow{font-size:10px;letter-spacing:3px;text-transform:uppercase;color:var(--saffron);font-weight:600;margin-bottom:10px;display:block;}
 .section-title{font-family:var(--fd);font-size:clamp(28px,5vw,44px);font-weight:700;color:var(--navy);line-height:1.2;letter-spacing:-.01em;}
-.section-title-ml{font-family:var(--fm);font-size:clamp(16px,3vw,24px);color:var(--navy);opacity:.6;display:block;margin-top:4px;}
+.section-title-ml{font-family:var(--fm);font-size:clamp(17px,3.2vw,26px);color:var(--navy);opacity:.6;display:block;margin-top:4px;}
 .section-sub{font-size:14px;color:var(--gray);max-width:460px;margin:14px auto 0;line-height:1.7;}
 .steps{display:flex;flex-direction:column;gap:0;}
 .step{display:flex;gap:18px;padding:20px 0;border-bottom:1px solid var(--border);min-width:0;}
@@ -123,7 +131,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .step-num{width:44px;height:44px;border-radius:50%;background:var(--navy);color:white;display:flex;align-items:center;justify-content:center;font-family:var(--fd);font-size:18px;font-weight:700;flex-shrink:0;}
 .step-body{min-width:0;flex:1;}
 .step-title{font-size:15px;font-weight:600;color:var(--navy);margin-bottom:3px;}
-.step-title-ml{font-family:var(--fm);font-size:12px;color:var(--gray);display:block;margin-bottom:5px;}
+.step-title-ml{font-family:var(--fm);font-size:13.5px;color:var(--gray);display:block;margin-bottom:5px;}
 .step-text{font-size:13px;color:var(--gray);line-height:1.65;overflow-wrap:anywhere;}
 /* TIERS */
 .tiers{padding:72px 22px;background:transparent;}
@@ -161,16 +169,16 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .url-section{padding:56px 22px;background:transparent;border-top:1px solid var(--border);}
 .url-box{background:white;border:1.5px solid var(--border);border-radius:12px;padding:32px;max-width:680px;margin:0 auto;}
 .url-title{font-family:var(--fd);font-size:22px;font-weight:700;color:var(--navy);margin-bottom:4px;}
-.url-title-ml{font-family:var(--fm);font-size:14px;color:var(--gray);display:block;margin-bottom:20px;}
+.url-title-ml{font-family:var(--fm);font-size:15.5px;color:var(--gray);display:block;margin-bottom:20px;}
 .url-examples{display:flex;flex-direction:column;gap:10px;margin-bottom:20px;}
 .url-example{background:var(--light);border-radius:6px;padding:12px 16px;font-family:monospace;font-size:13px;color:var(--navy);display:flex;align-items:center;justify-content:space-between;flex-wrap:wrap;gap:8px;overflow-wrap:anywhere;word-break:break-word;}
 .url-badge{font-size:10px;font-family:var(--fb);background:var(--navy);color:white;padding:2px 8px;border-radius:10px;letter-spacing:.5px;flex-shrink:0;}
 .url-note{font-size:13px;color:var(--gray);line-height:1.7;margin-bottom:16px;overflow-wrap:anywhere;}
-.url-note-ml{font-family:var(--fm);font-size:12px;color:var(--gray);display:block;margin-top:4px;line-height:1.7;}
+.url-note-ml{font-family:var(--fm);font-size:13.5px;color:var(--gray);display:block;margin-top:4px;line-height:1.8;}
 .url-custom{background:var(--greenbg);border:1px solid #cfe0cb;border-radius:8px;padding:14px 16px;margin-top:12px;}
 .url-custom-title{font-size:13px;font-weight:600;color:var(--green);margin-bottom:4px;}
 .url-custom-text{font-size:12px;color:var(--gray);line-height:1.6;overflow-wrap:anywhere;}
-.url-custom-text-ml{font-family:var(--fm);font-size:11px;color:var(--gray);display:block;margin-top:3px;line-height:1.6;}
+.url-custom-text-ml{font-family:var(--fm);font-size:12.5px;color:var(--gray);display:block;margin-top:3px;line-height:1.7;}
 /* WELLWISHER */
 .ww-section{padding:60px 22px;background:transparent;border-top:1px solid var(--border);}
 .ww-inner{max-width:680px;margin:0 auto;text-align:center;}
@@ -216,9 +224,9 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .why-card{background:white;border:1.5px solid var(--border);border-radius:10px;padding:24px 22px;text-align:center;}
 .why-icon{font-size:30px;display:block;margin-bottom:10px;}
 .why-hd{font-family:var(--fd);font-size:17px;font-weight:700;color:var(--navy);margin:0 0 2px;}
-.why-hd-ml{font-family:var(--fm);font-size:13px;color:var(--gray);display:block;margin-bottom:8px;}
+.why-hd-ml{font-family:var(--fm);font-size:14.5px;color:var(--gray);display:block;margin-bottom:8px;}
 .why-text{font-size:13px;color:var(--gray);line-height:1.7;margin:0;}
-.why-text-ml{font-family:var(--fm);font-size:12px;color:var(--gray);line-height:1.75;display:block;margin-top:4px;}
+.why-text-ml{font-family:var(--fm);font-size:13.5px;color:var(--gray);line-height:1.8;display:block;margin-top:4px;}
 /* PRICING */
 .price-section{padding:56px 22px;border-top:1px solid var(--border);}
 .price-card{background:white;border:1.5px solid var(--navy);border-radius:12px;padding:34px 28px;max-width:560px;margin:26px auto 0;text-align:center;}
@@ -234,28 +242,28 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .care-section{padding:56px 22px;border-top:1px solid var(--border);}
 .care-box{background:white;border:1.5px solid var(--border);border-radius:12px;padding:30px 28px;max-width:760px;margin:26px auto 0;}
 .care-text{font-size:14px;color:var(--charcoal);line-height:1.8;margin:0;}
-.care-text-ml{font-family:var(--fm);font-size:13px;color:var(--gray);line-height:1.85;display:block;margin-top:10px;}
+.care-text-ml{font-family:var(--fm);font-size:15px;color:var(--gray);line-height:1.9;display:block;margin-top:10px;}
 /* RECOMMEND */
 .rec-section{padding:56px 22px;border-top:1px solid var(--border);}
 .rec-box{max-width:680px;margin:26px auto 0;text-align:center;background:var(--light);border:1.5px solid var(--border);border-radius:12px;padding:32px 26px;}
 .rec-text{font-size:14px;color:var(--charcoal);line-height:1.7;margin:8px 0 18px;}
-.rec-text-ml{font-family:var(--fm);font-size:12.5px;color:var(--gray);line-height:1.75;display:block;margin-top:4px;}
+.rec-text-ml{font-family:var(--fm);font-size:14.5px;color:var(--gray);line-height:1.8;display:block;margin-top:4px;}
 .rec-btn{display:inline-block;background:transparent;border:1.5px solid var(--navy);color:var(--navy);padding:12px 28px;border-radius:8px;font-size:14px;font-weight:600;font-family:var(--fb);text-decoration:none;transition:all .2s;}
 .rec-btn:hover{background:var(--navy);color:white;}
-.rec-btn .cta-ml{font-family:var(--fm);font-size:12px;font-weight:500;display:block;opacity:.85;}
+.rec-btn .cta-ml{font-family:var(--fm);font-size:13px;font-weight:500;display:block;opacity:.85;}
 /* FINAL CTA */
 .final-section{padding:64px 22px;background:var(--navy);text-align:center;}
 .final-hd{font-family:var(--fd);font-size:clamp(24px,5vw,34px);font-weight:700;color:white;margin:0 0 4px;}
-.final-hd-ml{font-family:var(--fm);font-size:clamp(15px,3.4vw,20px);color:#dbe6f5;display:block;margin-bottom:14px;}
+.final-hd-ml{font-family:var(--fm);font-size:clamp(16px,3.6vw,22px);color:#dbe6f5;display:block;margin-bottom:14px;}
 .final-text{font-size:14.5px;color:#dbe6f5;line-height:1.75;max-width:640px;margin:0 auto 6px;}
-.final-text-ml{font-family:var(--fm);font-size:13px;color:#c3d3ea;line-height:1.8;display:block;margin-bottom:24px;}
+.final-text-ml{font-family:var(--fm);font-size:14.5px;color:#c3d3ea;line-height:1.8;display:block;margin-bottom:24px;}
 .final-btn{display:inline-flex;flex-direction:column;align-items:center;gap:2px;background:white;color:var(--navy);padding:13px 30px;border-radius:8px;font-size:15px;font-weight:700;font-family:var(--fb);text-decoration:none;transition:all .2s;}
-.final-btn .cta-ml{font-family:var(--fm);font-size:12.5px;font-weight:500;color:var(--gray);}
+.final-btn .cta-ml{font-family:var(--fm);font-size:13.5px;font-weight:500;color:var(--gray);}
 .final-btn:hover{background:var(--saffron);color:white;}
 .final-btn:hover .cta-ml{color:white;}
 /* Refinement: hero hierarchy (English dominant), quiet pricing, tighter rhythm */
 .hero-main-heading h1.hero-en-primary{font-family:var(--fd);font-size:clamp(30px,4.6vw,52px);line-height:1.15;font-weight:700;color:var(--navy);margin:0 0 16px;letter-spacing:-.01em;overflow-wrap:anywhere;}
-.hero-ml-secondary{font-family:var(--fm);font-size:clamp(21px,2.7vw,29px);line-height:1.7;font-weight:500;color:#52758a;margin:0;overflow-wrap:anywhere;}
+.hero-ml-secondary{font-family:var(--fm);font-size:clamp(23px,3vw,32px);line-height:1.7;font-weight:500;color:#52758a;margin:0;overflow-wrap:anywhere;}
 .hero{padding:48px 22px 40px;}
 .hero-main-heading{margin-bottom:26px;}
 .hero-ctas{margin:24px 0 30px;}
@@ -269,15 +277,15 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .care-box,.rec-box{margin-top:18px;padding:24px 24px;}
 .why-remember{max-width:760px;margin:26px auto 0;text-align:center;}
 .why-remember-hd{font-family:var(--fd);font-size:clamp(19px,2.4vw,24px);font-weight:600;color:var(--navy);line-height:1.4;margin:0;}
-.why-remember-hd-ml{font-family:var(--fm);font-size:16px;color:var(--navy);opacity:.8;line-height:1.75;margin:4px 0 10px;}
+.why-remember-hd-ml{font-family:var(--fm);font-size:17px;color:var(--navy);opacity:.8;line-height:1.75;margin:4px 0 10px;}
 .why-remember-text{font-size:14.5px;color:var(--charcoal);line-height:1.75;margin:0;}
-.why-remember-text-ml{font-family:var(--fm);font-size:13.5px;color:var(--gray);line-height:1.9;margin:6px 0 0;}
+.why-remember-text-ml{font-family:var(--fm);font-size:15px;color:var(--gray);line-height:1.9;margin:6px 0 0;}
 .price-text{max-width:640px;margin:0 auto;text-align:center;}
 .price-line{font-size:clamp(19px,2.4vw,23px);color:var(--navy);margin:0 0 10px;line-height:1.4;}
 .price-line strong{font-weight:700;}
-.price-line-ml{display:block;font-family:var(--fm);font-size:15px;color:var(--navy);opacity:.75;margin-top:2px;}
+.price-line-ml{display:block;font-family:var(--fm);font-size:16.5px;color:var(--navy);opacity:.75;margin-top:2px;}
 .price-detail{font-size:14.5px;color:var(--charcoal);line-height:1.7;margin:0 0 8px;}
-.price-detail-ml{display:block;font-family:var(--fm);font-size:13.5px;color:var(--gray);line-height:1.85;}
+.price-detail-ml{display:block;font-family:var(--fm);font-size:15px;color:var(--gray);line-height:1.85;}
 /* HIW horizontal on desktop */
 @media(min-width:900px){
   .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
@@ -291,7 +299,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .hero-ctas{flex-direction:column;align-items:stretch;max-width:340px;margin-left:auto;margin-right:auto;}
   .hero-cta{min-height:56px;}
   .hero-main-heading h1.hero-en-primary{font-size:clamp(27px,7vw,34px);margin-bottom:12px;}
-  .hero-ml-secondary{font-size:clamp(21px,5.6vw,27px);line-height:1.7;margin-bottom:4px;}
+  .hero-ml-secondary{font-size:clamp(22px,5.8vw,28px);line-height:1.7;margin-bottom:4px;}
 }
 /* FOOTER */
 /* MOBILE */
@@ -301,7 +309,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .nav-logo{order:1;}
   .nav-logo img{height:46px;}
   .nav-menu-btn{display:inline-flex;order:2;margin-left:auto;}
-  .nav-right{order:3;width:100%;justify-content:flex-end;gap:8px;padding-top:2px;}
+  .nav-right{order:3;width:100%;justify-content:flex-end;gap:10px;padding-top:10px;}
   .nav-links{order:4;width:100%;flex-direction:column;gap:0;padding:6px 0 4px;border-top:1px solid var(--border);margin-top:4px;}
   nav.nav-open .nav-links{display:flex;}
   .nav-links a{display:flex;align-items:center;min-height:44px;padding:10px 4px;font-size:14px;color:var(--navy);}
@@ -310,7 +318,6 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .hero-main-heading{margin-bottom:0;}
   .hero-banner{margin-top:22px;}
   .intro-section{padding:32px 16px 32px;}
-  .intro-tabs{margin-bottom:22px;}
   .hero-main-heading h1{font-size:clamp(26px,7.2vw,38px);line-height:1.2;}
   .hero-main-heading .hero-ml{font-size:clamp(16px,4.6vw,22px);line-height:1.4;margin-top:10px;}
   .search-section{padding:36px 16px;}
@@ -324,7 +331,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .section-hd{margin-bottom:32px;}
   .step{gap:14px;padding:18px 0;}
   .step-title{font-size:16px;}
-  .step-title-ml{font-size:13px;}
+  .step-title-ml{font-size:14px;}
   .step-text{font-size:14px;line-height:1.7;}
   .ep-section{padding:36px 16px 12px;}
   .url-section{padding:40px 16px;}
@@ -356,7 +363,6 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
   .step-num{margin-bottom:14px;}
 }
 </style>
-<noscript><style>.intro-tabs{display:none;}.intro-block[hidden]{display:block;margin-top:32px;}</style></noscript>
 @include('partials.ga4')
 </head>
 <body>
@@ -427,40 +433,59 @@ document.addEventListener('click',function(e){
     </picture>
   </div>
 </section>
-<!-- SAMPLE PROFILES -->
-<section class="demo-section" id="sample-profiles">
-  <div class="section-hd">
-    <span class="section-eyebrow">Demo Profiles / മാതൃകാ പ്രൊഫൈലുകൾ</span>
-    <h2 class="section-title">See What Your Profile Could Look Like
-      <span class="section-title-ml">നിങ്ങളുടെ പ്രൊഫൈൽ എങ്ങനെയായിരിക്കുമെന്ന് കാണൂ</span>
-    </h2>
-    <p class="section-sub">
-      <span class="section-title-ml" style="font-family:var(--fm);font-size:13px">വ്യക്തികളുടെ നേട്ടങ്ങളും ജീവിതകഥകളും Jannayaks എങ്ങനെ അവതരിപ്പിക്കുന്നുവെന്ന് അറിയാൻ മാതൃകാ പ്രൊഫൈലുകൾ കാണൂ.</span>
-    </p>
-  </div>
-  <p class="demo-more"><a href="{{ route('demo-profiles.index') }}">View the complete Demo Profiles collection →</a></p>
-</section>
 <!-- INTRO -->
 <section class="intro-section">
   <div class="intro-blocks">
-    <div class="intro-tabs" role="tablist" aria-label="Language / ഭാഷ">
-      <button type="button" class="intro-tab" role="tab" id="intro-tab-en" lang="en" aria-selected="true" aria-controls="intro-panel-en" onclick="switchIntroLang('en')">English</button>
-      <button type="button" class="intro-tab" role="tab" id="intro-tab-ml" lang="ml" aria-selected="false" aria-controls="intro-panel-ml" tabindex="-1" onclick="switchIntroLang('ml')">മലയാളം</button>
+    <h2 class="intro-hd">What is Jannayaks?</h2>
+    <p class="intro-hd-ml" lang="ml">എന്താണ് Jannayaks?</p>
+
+    <p class="intro-lead-en">Every life's work deserves to be remembered, recognised and documented.</p>
+    <p class="intro-lead-ml" lang="ml">ഓരോരുത്തരുടെയും ജീവിതപ്രയത്നം ഓർമ്മിക്കപ്പെടണം, അംഗീകരിക്കപ്പെടണം, രേഖപ്പെടുത്തപ്പെടണം.</p>
+
+    <div class="intro-explain">
+      <p class="intro-text-en">Achievements are more than milestones. They represent years of dedication, professional accomplishments, personal journeys and contributions to society.</p>
+      <p class="intro-text-ml" lang="ml">നേട്ടങ്ങൾ വെറും നാഴികക്കല്ലുകളല്ല. വർഷങ്ങളുടെ അധ്വാനവും, തൊഴിൽരംഗത്തെ മികവും, ജീവിതയാത്രകളും, സമൂഹത്തിനുള്ള സംഭാവനകളുമാണ് അവ.</p>
+      <p class="intro-text-en">Jannayaks™ gives these achievements a lasting digital presence.</p>
+      <p class="intro-text-ml" lang="ml">ആ നേട്ടങ്ങൾക്ക് Jannayaks™ ദീർഘകാലം നിലനിൽക്കുന്ന ഒരു ഡിജിറ്റൽ ഇടം നൽകുന്നു.</p>
     </div>
-    <div class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en">
-      <h2 class="intro-hd">What is Jannayaks?</h2>
-      <p>Jannayaks is a digital gallery that documents the contributions and achievements of individuals. Its content is similar to the personal profiles published in a magazine.</p>
-      <p>Our aim is to give due recognition to the contributions of people working in fields where opportunities to present their achievements publicly may be limited. Even achievements quietly accomplished should not simply fade away as another social media post. They deserve to be documented in a digital gallery where they can remain accessible for much longer.</p>
-      <p>Whichever field you are in, have a record of yourself which you can be proud of.</p>
-      <p>An English-only profile is also available for those who prefer it.</p>
-    </div>
-    <div class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml" hidden>
-      <h2 class="intro-hd">എന്താണ് Jannayaks?</h2>
-      <p>വ്യക്തികളുടെ സംഭാവനകളും നേട്ടങ്ങളും രേഖപ്പെടുത്തുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയാണ് Jannayaks. ഒരു മാഗസിനിൽ പ്രസിദ്ധീകരിക്കുന്ന വ്യക്തിവിവരണങ്ങളോട് സാമ്യമുള്ളതാണ് ഇതിന്റെ ഉള്ളടക്കം.</p>
-      <p>സ്വന്തം നേട്ടങ്ങൾ പൊതുവേദികളിൽ അവതരിപ്പിക്കാൻ അധികം അവസരങ്ങൾ ലഭിക്കാത്ത മേഖലകളിൽ പ്രവർത്തിക്കുന്നവരുടെ സംഭാവനകൾക്ക് അർഹമായ ഇടം നൽകുകയാണ് ഞങ്ങളുടെ ലക്ഷ്യം. നിശ്ശബ്ദമായി നേടിയെടുത്ത നേട്ടങ്ങൾ പോലും സോഷ്യൽ മീഡിയയിലെ ഒരു പോസ്റ്റിൽ ഒതുങ്ങി മാഞ്ഞുപോകേണ്ടതില്ല. അവ കൂടുതൽ കാലം നിലനിൽക്കുന്ന ഒരു ഡിജിറ്റൽ ഗാലറിയിൽ രേഖപ്പെടുത്തൂ.</p>
-      <p>"jannayaks.in/your.name" എന്നതുപോലുള്ള ഒരു പ്രത്യേക ലിങ്ക് സഹിതമാണ് നിങ്ങളുടെ പ്രൊഫൈൽ പ്രസിദ്ധീകരിക്കുന്നത്. ഈ ലിങ്ക് വാട്ട്സ്ആപ്പിലൂടെയും സോഷ്യൽ മീഡിയയിലൂടെയും പങ്കുവയ്ക്കാം. നിങ്ങളുടെ വിസിറ്റിംഗ് കാർഡിലും ഉൾപ്പെടുത്താം.</p>
-      <p>അച്ചടിച്ച ഒരു പേജിൽനിന്ന് വ്യത്യസ്തമായി, നിശ്ചിത വ്യവസ്ഥകൾക്കനുസരിച്ച് Payment പുതുക്കിക്കൊണ്ട് നിങ്ങളുടെ പ്രൊഫൈൽ ഓൺലൈനിൽ നിലനിർത്താം. നിങ്ങളുടെ പ്രവർത്തനങ്ങളിലും നേട്ടങ്ങളിലും പുതിയ അധ്യായങ്ങൾ കൂട്ടിച്ചേർക്കുമ്പോൾ പ്രൊഫൈൽ പുതുക്കുകയും ചെയ്യാം.</p>
-    </div>
+
+    <ul class="intro-tiles">
+      <li>
+        <h3 class="intro-tile-hd-en">Recognition</h3>
+        <p class="intro-tile-hd-ml" lang="ml">അംഗീകാരം</p>
+        <p class="intro-tile-en">Give your achievements the acknowledgement they deserve.</p>
+        <p class="intro-tile-ml" lang="ml">നിങ്ങളുടെ അധ്വാനത്തിന് അർഹമായ ശ്രദ്ധ ലഭിക്കട്ടെ.</p>
+      </li>
+      <li>
+        <h3 class="intro-tile-hd-en">Identity</h3>
+        <p class="intro-tile-hd-ml" lang="ml">നിങ്ങളുടെ കഥ</p>
+        <p class="intro-tile-en">Document your professional journey, experiences and accomplishments in one place, at jannayaks.in/your.name*</p>
+        <p class="intro-tile-note" lang="en">*Name-based address, subject to availability.</p>
+        <p class="intro-tile-ml" lang="ml">നിങ്ങളുടെ തൊഴിൽജീവിതവും അനുഭവങ്ങളും നേട്ടങ്ങളും ഒരിടത്ത്, jannayaks.in/your.name എന്ന നിങ്ങളുടെ സ്വന്തം വിലാസത്തിൽ*</p>
+        <p class="intro-tile-note" lang="ml">*പേരിനനുസരിച്ചുള്ള വിലാസം, ലഭ്യതയ്ക്ക് വിധേയം.</p>
+      </li>
+      <li>
+        <h3 class="intro-tile-hd-en">Credibility</h3>
+        <p class="intro-tile-hd-ml" lang="ml">വിശ്വാസ്യത</p>
+        <p class="intro-tile-en">A professionally prepared profile, built from your own details and published only with your approval.</p>
+        <p class="intro-tile-ml" lang="ml">നിങ്ങളുടെ സ്വന്തം വിവരങ്ങളിൽ നിന്ന് പ്രൊഫഷണലായി തയ്യാറാക്കി, നിങ്ങളുടെ അംഗീകാരത്തോടെ മാത്രം പ്രസിദ്ധീകരിക്കുന്ന പ്രൊഫൈൽ.</p>
+      </li>
+      <li>
+        <h3 class="intro-tile-hd-en">Family Esteem</h3>
+        <p class="intro-tile-hd-ml" lang="ml">കുടുംബത്തിന്റെ അഭിമാനം</p>
+        <p class="intro-tile-en">Preserve a record of your achievements that your family can cherish and share.</p>
+        <p class="intro-tile-ml" lang="ml">മക്കൾക്കും പേരക്കുട്ടികൾക്കും അഭിമാനത്തോടെ വായിക്കാവുന്ന നിങ്ങളുടെ ജീവിതകഥ.</p>
+      </li>
+      <li>
+        <h3 class="intro-tile-hd-en">Lasting Record</h3>
+        <p class="intro-tile-hd-ml" lang="ml">നിലനിൽക്കുന്ന രേഖ</p>
+        <p class="intro-tile-en">Unlike a social media post, your profile stays online for as long as your annual hosting continues.</p>
+        <p class="intro-tile-ml" lang="ml">സോഷ്യൽ മീഡിയ പോസ്റ്റ് പോലെ മാഞ്ഞുപോകാതെ, നിങ്ങളുടെ സ്വന്തം ഇടത്ത്; വാർഷിക ഹോസ്റ്റിംഗ് തുടരുന്നിടത്തോളം.</p>
+      </li>
+    </ul>
+
+    <p class="intro-close-en">Make your family proud, yourself too.</p>
+    <p class="intro-close-ml" lang="ml">നിങ്ങളുടെ കുടുംബം അഭിമാനിക്കട്ടെ, നിങ്ങളും.</p>
   </div>
   {{-- TEMPORARY launch contact block: remove after the initial period --}}
   <p class="intro-contact" style="margin:18px auto 0;max-width:740px;text-align:center;font-size:15px">
@@ -468,6 +493,18 @@ document.addEventListener('click',function(e){
         <a href="tel:{{ $contactTel }}" style="color:var(--navy);font-weight:600">{{ $contactPhone }}</a> ·
         <a href="https://wa.me/{{ preg_replace('/\D/', '', $contactTel) }}" target="_blank" rel="noopener" style="color:var(--navy);font-weight:600">WhatsApp</a>
   </p>
+</section>
+<!-- SAMPLE PROFILES -->
+<section class="demo-section" id="sample-profiles">
+  <div class="section-hd">
+    <h2 class="section-title">See What Your Profile Could Look Like
+      <span class="section-title-ml">നിങ്ങളുടെ പ്രൊഫൈൽ എങ്ങനെയായിരിക്കുമെന്ന് കാണൂ</span>
+    </h2>
+    <p class="section-sub">
+      <span class="section-title-ml" style="font-family:var(--fm);font-size:14.5px">വ്യക്തികളുടെ നേട്ടങ്ങളും ജീവിതകഥകളും Jannayaks എങ്ങനെ അവതരിപ്പിക്കുന്നുവെന്ന് അറിയാൻ മാതൃകാ പ്രൊഫൈലുകൾ കാണൂ.</span>
+    </p>
+  </div>
+  <p class="demo-more"><a href="{{ route('demo-profiles.index') }}">View the complete Demo Profiles collection →</a></p>
 </section>
 <!-- WHY JANNAYAKS -->
 <section class="url-section" id="why">
@@ -690,21 +727,5 @@ document.addEventListener('click',function(e){
 </section>
 <!-- FOOTER -->
 @include('partials.public-footer')
-<script>
-function switchIntroLang(lang){
-  ['ml','en'].forEach(function(l){
-    var on=l===lang, tab=document.getElementById('intro-tab-'+l);
-    tab.setAttribute('aria-selected',on?'true':'false');
-    tab.tabIndex=on?0:-1;
-    document.getElementById('intro-panel-'+l).hidden=!on;
-  });
-}
-document.querySelector('.intro-tabs').addEventListener('keydown',function(e){
-  if(e.key!=='ArrowLeft'&&e.key!=='ArrowRight')return;
-  var next=document.getElementById('intro-tab-en').getAttribute('aria-selected')==='true'?'ml':'en';
-  switchIntroLang(next);
-  document.getElementById('intro-tab-'+next).focus();
-});
-</script>
 </body>
 </html>

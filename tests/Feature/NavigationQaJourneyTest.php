@@ -147,6 +147,7 @@ class NavigationQaJourneyTest extends TestCase
                 'broad_location' => 'Kozhikode',
                 'full_name' => 'Navigation QA Test',
                 'contact_email' => 'nav.qa@example.com',
+                'solicitation_declaration' => '1',
             ])
             ->assertStatus(409)
             ->assertJsonPath('application_id', $app->id);

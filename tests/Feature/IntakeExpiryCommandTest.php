@@ -169,6 +169,7 @@ class IntakeExpiryCommandTest extends TestCase
                 'full_name' => 'Fresh Start',
                 'broad_location' => 'Kozhikode',
                 'contact_email' => 'fresh.start@example.com',
+                'solicitation_declaration' => '1',
             ])
             ->assertRedirect();
         $this->assertSame(1, Application::query()->where('user_id', $seed['member']->id)->count());

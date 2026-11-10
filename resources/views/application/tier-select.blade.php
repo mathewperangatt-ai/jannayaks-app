@@ -104,6 +104,16 @@
             {{ $ml ? 'വിശ്വസനീയമായ ഒരു ബന്ധപ്പെടൽ മാർഗമെങ്കിലും (ഇമെയിൽ അല്ലെങ്കിൽ മൊബൈൽ നമ്പർ) നൽകുക. എഡിറ്റോറിയൽ പരിശോധനയ്ക്കും തയ്യാറാക്കിയ പ്രൊഫൈൽ സ്ഥിരീകരിക്കുന്നതിനുമായി Jannayaks നിങ്ങളുമായി ബന്ധപ്പെടും.' : 'Provide at least one reliable contact method (email or mobile). Jannayaks will contact you for editorial review and to confirm the finished profile.' }}
         </div>
 
+        <label class="field" style="display:flex;gap:10px;align-items:flex-start;margin-top:16px">
+            <input type="checkbox" name="solicitation_declaration" value="1" required style="margin-top:3px">
+            @if($ml)
+                <span lang="ml" style="font-size:12.5px;line-height:1.8">Jannayaks വ്യക്തിപരവും തൊഴിൽപരവുമായ നേട്ടങ്ങൾ രേഖപ്പെടുത്തുന്നതിനുള്ള ഡിജിറ്റൽ ഗാലറിയാണെന്നും പ്രൊഫഷണൽ സേവനങ്ങളുടെ പരസ്യത്തിനോ ഉപഭോക്താക്കളെ ആകർഷിക്കുന്നതിനോ ബിസിനസ് പ്രചാരണത്തിനോ ഉള്ള വേദിയല്ലെന്നും ഞാൻ മനസ്സിലാക്കുന്നു. എന്റെ പ്രൊഫൈലിലോ സമർപ്പിക്കുന്ന ഉള്ളടക്കത്തിലോ ഇത്തരം പരസ്യങ്ങളോ പ്രചാരണങ്ങളോ ഉൾപ്പെടുത്തില്ലെന്ന് ഞാൻ സമ്മതിക്കുന്നു. അത്തരം ഉള്ളടക്കം ഉൾപ്പെട്ടിട്ടുണ്ടെങ്കിൽ അത് നീക്കം ചെയ്യാൻ Jannayaks-ന് ഞാൻ അനുമതി നൽകുന്നു.</span>
+            @else
+                <span style="font-size:12.5px;line-height:1.7">I understand that Jannayaks is a digital gallery for documenting personal and professional achievements, not a platform for advertising professional services, soliciting clients or promoting businesses. I agree not to include advertisements, business solicitations or promotional material in my profile or submitted content. I authorise Jannayaks to remove such content if included.</span>
+            @endif
+        </label>
+        @error('solicitation_declaration')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+
         <div class="actions">
             <a class="btn ghost" href="{{ route('apply') }}">← {{ $ml ? 'പിന്നോട്ട്' : 'Back' }}</a>
             <button class="btn primary" type="submit">{{ !empty($guest) ? 'Continue to sign in →' : ($ml ? 'തുടരുക →' : 'Continue →') }}</button>

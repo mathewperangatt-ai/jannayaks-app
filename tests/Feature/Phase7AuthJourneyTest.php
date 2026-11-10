@@ -161,6 +161,7 @@ class Phase7AuthJourneyTest extends TestCase
             'broad_location' => 'Kozhikode',
             'full_name' => 'Guest Tier User',
             'contact_email' => 'guest.tier@example.com',
+            'solicitation_declaration' => '1',
         ]);
 
         $res->assertRedirect();
@@ -178,6 +179,7 @@ class Phase7AuthJourneyTest extends TestCase
             'broad_location' => 'Kozhikode',
             'full_name' => 'Paid Path User',
             'contact_email' => 'paid.path@example.com',
+            'solicitation_declaration' => '1',
         ])->assertRedirect();
 
         $app = Application::query()->where('user_id', $user->id)->latest('id')->first();

@@ -30,6 +30,33 @@ class ConsentRecordingService
 
     public const KEY_EDITORIAL_APPROVAL_PUBLICATION = 'editorial.approval.publication';
 
+    public const KEY_APPLICATION_SOLICITATION_DECLARATION = 'application.solicitation_declaration';
+
+    /** Version of the professional/business solicitation declaration wording shown on the application form. */
+    public const SOLICITATION_DECLARATION_VERSION = 'v1';
+
+    /**
+     * Record the applicant's professional/business solicitation declaration
+     * made on the application form. Uses the shared per-key version so a
+     * future wording change records a fresh acceptance.
+     */
+    public function recordSolicitationDeclaration(
+        User $member,
+        ?string $ipAddress = null,
+        ?string $userAgent = null,
+        ?Application $application = null,
+    ): ConsentRecord {
+        return $this->recordOnce(
+            $member,
+            self::KEY_APPLICATION_SOLICITATION_DECLARATION,
+            $ipAddress,
+            $userAgent,
+            $application,
+            null,
+            self::SOLICITATION_DECLARATION_VERSION,
+        );
+    }
+
     /**
      * Record the publication-approval consent against the exact application and
      * profile being approved. Called inside the approval transaction so that a
@@ -58,6 +85,7 @@ class ConsentRecordingService
         ?string $userAgent = null,
         ?Application $application = null,
         ?Profile $profile = null,
+        ?string $noticeVersion = null,
     ): ConsentRecord {
         $existing = ConsentRecord::query()
             ->where('user_id', $user->id)
@@ -76,7 +104,7 @@ class ConsentRecordingService
                 'consent_key' => mb_substr($consentKey, 0, 64),
                 'consented' => true,
                 'action_at' => now(),
-                'notice_version' => self::NOTICE_VERSION,
+                'notice_version' => $noticeVersion ?? self::NOTICE_VERSION,
                 'ip_address' => $ipAddress !== null ? mb_substr($ipAddress, 0, 45) : null,
                 'user_agent' => $userAgent !== null ? mb_substr($userAgent, 0, 1000) : null,
             ]);
