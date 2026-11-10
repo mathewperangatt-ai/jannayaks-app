@@ -32,6 +32,7 @@ class NavigationQaJourneyTest extends TestCase
         'broad_location' => 'Kozhikode',
         'preferred_slug' => 'navigation-qa',
         'contact_email' => 'nav.qa@example.com',
+        'solicitation_declaration' => true,
     ];
 
     private const REGISTRATION = [
@@ -204,6 +205,7 @@ class NavigationQaJourneyTest extends TestCase
     private function createPaymentPendingApplication(User $user): Application
     {
         $this->actingAs($user)->post(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'package_tier' => 'distinguished',
             'source_method' => 'online_interview',
             'broad_location' => 'Kozhikode',

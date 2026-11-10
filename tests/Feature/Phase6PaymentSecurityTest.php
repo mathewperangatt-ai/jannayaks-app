@@ -750,6 +750,7 @@ class Phase6PaymentSecurityTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
 
         $createRes = $this->actingAs($user)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
             'broad_location' => 'Kozhikode',

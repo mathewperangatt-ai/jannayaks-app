@@ -101,7 +101,7 @@ class SolicitationDeclarationTest extends TestCase
 
         $consent = ConsentRecord::query()
             ->where('user_id', $member->id)
-            ->where('consent_key', 'application.solicitation_declaration')
+            ->where('consent_key', 'application.solicitation_declaration:'.$application->id)
             ->sole();
         $this->assertTrue($consent->consented);
         $this->assertSame('v1', $consent->notice_version);
@@ -130,5 +130,133 @@ class SolicitationDeclarationTest extends TestCase
         ]);
 
         $this->assertSame($consentsBefore, ConsentRecord::query()->count());
+    }
+
+    public function test_direct_creation_requires_the_declaration(): void
+    {
+        $member = User::factory()->create(['email_verified_at' => now()]);
+        $payload = [
+            'source_method' => 'online_interview',
+            'full_name' => 'Direct Route Applicant',
+            'broad_location' => 'Kozhikode',
+            'contact_email' => 'direct@example.com',
+        ];
+
+        $this->actingAs($member)
+            ->postJson(route('applications.store'), $payload)
+            ->assertJsonValidationErrors('solicitation_declaration');
+
+        $this->assertSame(0, Application::query()->where('user_id', $member->id)->count());
+        $this->assertSame(0, ConsentRecord::query()->count(), 'No consent evidence for a refused creation.');
+    }
+
+    public function test_direct_creation_with_the_declaration_records_linked_evidence(): void
+    {
+        $member = User::factory()->create(['email_verified_at' => now()]);
+
+        $this->actingAs($member)
+            ->postJson(route('applications.store'), [
+                'source_method' => 'online_interview',
+                'full_name' => 'Direct Route Applicant',
+                'broad_location' => 'Kozhikode',
+                'contact_email' => 'direct@example.com',
+                'solicitation_declaration' => '1',
+            ])
+            ->assertCreated();
+
+        $application = Application::query()->where('user_id', $member->id)->sole();
+        $consent = ConsentRecord::query()
+            ->where('user_id', $member->id)
+            ->where('consent_key', 'application.solicitation_declaration:'.$application->id)
+            ->sole();
+        $this->assertSame('v1', $consent->notice_version);
+        $this->assertNotNull($consent->action_at);
+        $this->assertSame($application->id, (int) $consent->application_id);
+    }
+
+    public function test_guest_acceptance_survives_sign_in_and_is_recorded(): void
+    {
+        $member = User::factory()->create([
+            'email_verified_at' => now(),
+            'password' => 'correct-horse',
+            'username' => 'guest.survivor',
+        ]);
+
+        // Guest accepts the declaration; the intent is stored for sign-in.
+        $this->post(route('apply.intent'), [
+            'source_method' => 'online_interview',
+            'full_name' => 'Guest Applicant',
+            'broad_location' => 'Kochi',
+            'contact_email' => 'guest@example.com',
+            'solicitation_declaration' => '1',
+        ])->assertRedirect();
+        $this->assertTrue(session()->has('apply.intent'));
+        $this->assertSame(0, ConsentRecord::query()->count(), 'No user account yet — nothing recorded.');
+
+        // Sign-in continues the intent: the application and its consent evidence
+        // are created for the signed-in account.
+        $this->post(route('login.attempt'), [
+            'username' => 'guest.survivor',
+            'password' => 'correct-horse',
+        ])->assertRedirect();
+
+        $application = Application::query()->where('user_id', $member->id)->sole();
+        $consent = ConsentRecord::query()
+            ->where('user_id', $member->id)
+            ->where('consent_key', 'application.solicitation_declaration:'.$application->id)
+            ->sole();
+        $this->assertTrue($consent->consented);
+        $this->assertSame('v1', $consent->notice_version);
+        $this->assertNotNull($consent->action_at);
+    }
+
+    public function test_fresh_application_after_expiry_gets_its_own_linked_evidence(): void
+    {
+        $member = User::factory()->create(['email_verified_at' => now(), 'password' => 'correct-horse', 'username' => 'fresh.after.expiry']);
+
+        // First application: created through the form with the declaration
+        // accepted, then left unsubmitted past Day 10 and erased on Day 11.
+        $this->actingAs($member)->post(route('apply.intent'), [
+            'source_method' => 'online_interview',
+            'full_name' => 'Expired Applicant',
+            'broad_location' => 'Kozhikode',
+            'contact_email' => 'expired@example.com',
+            'solicitation_declaration' => '1',
+        ])->assertRedirect();
+        $expired = Application::query()->where('user_id', $member->id)->sole();
+        $expired->forceFill([
+            'online_interview_started_at' => '2026-11-01 04:30:00',
+            'status' => Application::STATUS_INTERVIEW_IN_PROGRESS,
+        ])->save();
+
+        $this->artisan('jannayaks:process-intake-expiry', ['--date' => '2026-11-11', '--execute' => true])
+            ->assertExitCode(0);
+
+        // The declaration evidence is retained, detached from the erased application.
+        $expiredConsent = ConsentRecord::query()
+            ->where('user_id', $member->id)
+            ->where('consent_key', 'application.solicitation_declaration:'.$expired->id)
+            ->sole();
+        $this->assertNull($expiredConsent->application_id);
+
+        // The retained account starts a fresh application; its acceptance is
+        // recorded as new, accurately linked evidence.
+        $this->actingAs($member)->post(route('apply.intent'), [
+            'source_method' => 'online_interview',
+            'full_name' => 'Fresh Start',
+            'broad_location' => 'Kozhikode',
+            'contact_email' => 'fresh@example.com',
+            'solicitation_declaration' => '1',
+        ])->assertRedirect();
+
+        $fresh = Application::query()->where('user_id', $member->id)->latest('id')->first();
+        $freshConsent = ConsentRecord::query()
+            ->where('user_id', $member->id)
+            ->where('consent_key', 'application.solicitation_declaration:'.$fresh->id)
+            ->sole();
+        $this->assertSame($fresh->id, (int) $freshConsent->application_id);
+        $this->assertSame('v1', $freshConsent->notice_version);
+        $this->assertNotNull($freshConsent->action_at);
+        $this->assertNotSame($expiredConsent->id, $freshConsent->id);
     }
 }

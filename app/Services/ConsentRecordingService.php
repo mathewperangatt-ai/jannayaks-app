@@ -37,8 +37,11 @@ class ConsentRecordingService
 
     /**
      * Record the applicant's professional/business solicitation declaration
-     * made on the application form. Uses the shared per-key version so a
-     * future wording change records a fresh acceptance.
+     * made on the application form, associated with the application it
+     * relates to (the consent key is scoped per application, so a fresh
+     * application after an expiry gets its own accurately-linked evidence).
+     * Uses the shared per-key version so a future wording change records a
+     * fresh acceptance.
      */
     public function recordSolicitationDeclaration(
         User $member,
@@ -48,7 +51,7 @@ class ConsentRecordingService
     ): ConsentRecord {
         return $this->recordOnce(
             $member,
-            self::KEY_APPLICATION_SOLICITATION_DECLARATION,
+            self::KEY_APPLICATION_SOLICITATION_DECLARATION.':'.($application?->id ?? 0),
             $ipAddress,
             $userAgent,
             $application,

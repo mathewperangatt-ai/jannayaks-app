@@ -109,20 +109,31 @@ class ApplicationController extends Controller
     private function intakeValidationMessages(Request $request): array
     {
         if ($this->flowLanguage($request) !== 'ml') {
-            return [
+            return array_merge([
                 'source_method.required' => 'Please select how you would like to submit your content.',
+            ], $this->solicitationDeclarationMessages($request));
+        }
+
+        return array_merge([
+            'source_method.required' => 'നിങ്ങളുടെ ഉള്ളടക്കം എങ്ങനെ സമർപ്പിക്കണമെന്ന് ദയവായി തിരഞ്ഞെടുക്കുക.',
+            'full_name.required' => 'പൂർണ്ണനാമം നൽകേണ്ടതാണ്.',
+            'contact_email.required_without' => 'ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകിയിട്ടില്ലെങ്കിൽ ഇമെയിൽ നൽകേണ്ടതാണ്.',
+            'contact_mobile.required_without' => 'ഇമെയിൽ നൽകിയിട്ടില്ലെങ്കിൽ ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകേണ്ടതാണ്.',
+        ], $this->solicitationDeclarationMessages($request));
+    }
+
+    private function solicitationDeclarationMessages(Request $request): array
+    {
+        if ($this->flowLanguage($request) !== 'ml') {
+            return [
                 'solicitation_declaration.required' => 'Please confirm the declaration about professional and business solicitation before continuing.',
                 'solicitation_declaration.accepted' => 'Please confirm the declaration about professional and business solicitation before continuing.',
             ];
         }
 
         return [
-            'source_method.required' => 'നിങ്ങളുടെ ഉള്ളടക്കം എങ്ങനെ സമർപ്പിക്കണമെന്ന് ദയവായി തിരഞ്ഞെടുക്കുക.',
             'solicitation_declaration.required' => 'ദയവായി പ്രൊഫഷണൽ, ബിസിനസ് പ്രചാരണ പ്രഖ്യാപനം സമ്മതിച്ചതിന് ശേഷം തുടരുക.',
             'solicitation_declaration.accepted' => 'ദയവായി പ്രൊഫഷണൽ, ബിസിനസ് പ്രചാരണ പ്രഖ്യാപനം സമ്മതിച്ചതിന് ശേഷം തുടരുക.',
-            'full_name.required' => 'പൂർണ്ണനാമം നൽകേണ്ടതാണ്.',
-            'contact_email.required_without' => 'ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകിയിട്ടില്ലെങ്കിൽ ഇമെയിൽ നൽകേണ്ടതാണ്.',
-            'contact_mobile.required_without' => 'ഇമെയിൽ നൽകിയിട്ടില്ലെങ്കിൽ ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകേണ്ടതാണ്.',
         ];
     }
 
@@ -158,6 +169,9 @@ class ApplicationController extends Controller
             'source_method' => (string) $validated['source_method'],
             'full_name' => (string) $validated['full_name'],
             'broad_location' => trim((string) $validated['broad_location']),
+            // The declaration was validated above; the flag carries the
+            // acceptance through sign-in so application creation can rely on it.
+            'solicitation_declaration' => true,
             'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
             'contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
             'contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
@@ -227,8 +241,9 @@ class ApplicationController extends Controller
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
             'contact_whatsapp' => ['nullable', 'string', 'max:32', 'regex:/^[0-9+\-\s]{6,20}$/'],
             'direct_submission_note' => ['nullable', 'string', 'max:500'],
+            'solicitation_declaration' => ['required', 'accepted'],
             'honey_bot' => ['nullable', 'string', 'max:0'],
-        ]);
+        ], $this->solicitationDeclarationMessages($request));
 
         if ($validator->fails()) {
             return $this->validationErrorResponse($request, $validator);
