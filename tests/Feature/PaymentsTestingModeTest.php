@@ -33,6 +33,7 @@ class PaymentsTestingModeTest extends TestCase
     private function makeApplicationFor(User $user): Application
     {
         $this->actingAs($user)->post(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
             'broad_location' => 'Kozhikode',

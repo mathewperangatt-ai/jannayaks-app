@@ -89,28 +89,56 @@ class HomepageIntegrationTest extends TestCase
         // In Memoriam section removed from the public homepage.
         $this->assertFalse(strpos($html, 'id="memoriam') !== false);
         $urlSection = strpos($html, '<section class="url-section">');
-        $this->assertTrue($banner < $demoSection && $demoSection < $intro && $intro < $why && $why < $search && $search < $howItWorks && $howItWorks < $pricing && $pricing < $care && $care < $recommend && $recommend < $finalCta);
+        $this->assertTrue($banner < $intro && $intro < $demoSection && $demoSection < $why && $why < $search && $search < $howItWorks && $howItWorks < $pricing && $pricing < $care && $care < $recommend && $recommend < $finalCta, 'hero → What is Jannayaks → Demo Profiles → Why → … in order');
         $this->assertTrue($search < $urlSection && $urlSection < $howItWorks, 'search and the URL explanation are separate sections, in order');
-        $malayalamBlock = strpos($html, 'class="intro-block intro-block-ml" lang="ml"');
-        $englishBlock = strpos($html, 'class="intro-block intro-block-en" lang="en"');
-        $this->assertNotFalse($malayalamBlock);
-        $this->assertNotFalse($englishBlock);
-        $this->assertTrue($intro < $englishBlock && $englishBlock < $malayalamBlock && $malayalamBlock < $recommend);
-        $tabs = strpos($html, 'class="intro-tabs" role="tablist"');
-        $this->assertNotFalse($tabs);
-        $this->assertTrue($intro < $tabs && $tabs < $englishBlock);
-        $response->assertSee('id="intro-tab-en" lang="en" aria-selected="true" aria-controls="intro-panel-en"', false);
-        $response->assertSee('id="intro-tab-ml" lang="ml" aria-selected="false" aria-controls="intro-panel-ml"', false);
-        $response->assertSee('class="intro-block intro-block-en" lang="en" id="intro-panel-en" role="tabpanel" aria-labelledby="intro-tab-en">', false);
-        $response->assertSee('class="intro-block intro-block-ml" lang="ml" id="intro-panel-ml" role="tabpanel" aria-labelledby="intro-tab-ml" hidden>', false);
-        $this->assertSame(1, substr_count($html, 'role="tablist"'));
+        // The intro is fully bilingual: English first, Malayalam immediately
+        // below, with no language toggle.
+        $this->assertSame(0, substr_count($html, 'intro-tabs'));
+        $this->assertSame(0, substr_count($html, 'switchIntroLang'));
+        $leadEn = strpos($html, 'class="intro-lead-en"');
+        $leadMl = strpos($html, 'class="intro-lead-ml"');
+        $this->assertNotFalse($leadEn);
+        $this->assertNotFalse($leadMl);
+        $this->assertTrue($intro < $leadEn && $leadEn < $leadMl && $leadMl < $recommend);
         $response->assertSeeInOrder([
-            'Jannayaks is a digital gallery that documents the contributions and achievements of individuals. Its content is similar to the personal profiles published in a magazine.',
-            'Whichever field you are in, have a record of yourself which you can be proud of.',
-            'An English-only profile is also available for those who prefer it.',
+            'What is Jannayaks?',
             'എന്താണ് Jannayaks?',
+            "Every life's work deserves to be remembered, recognised and documented.",
+            'ഓരോരുത്തരുടെയും ജീവിതപ്രയത്നം ഓർമ്മിക്കപ്പെടണം, അംഗീകരിക്കപ്പെടണം, രേഖപ്പെടുത്തപ്പെടണം.',
+            'Achievements are more than milestones. They represent years of dedication, professional accomplishments, personal journeys and contributions to society.',
+            'നേട്ടങ്ങൾ വെറും നാഴികക്കല്ലുകളല്ല. വർഷങ്ങളുടെ അധ്വാനവും, തൊഴിൽരംഗത്തെ മികവും, ജീവിതയാത്രകളും, സമൂഹത്തിനുള്ള സംഭാവനകളുമാണ് അവ.',
+            'Jannayaks™ gives these achievements a lasting digital presence.',
+            'ആ നേട്ടങ്ങൾക്ക് Jannayaks™ ദീർഘകാലം നിലനിൽക്കുന്ന ഒരു ഡിജിറ്റൽ ഇടം നൽകുന്നു.',
+            'Recognition',
+            'അംഗീകാരം',
+            'Give your achievements the acknowledgement they deserve.',
+            'നിങ്ങളുടെ അധ്വാനത്തിന് അർഹമായ ശ്രദ്ധ ലഭിക്കട്ടെ.',
+            'Identity',
+            'നിങ്ങളുടെ കഥ',
+            'Document your professional journey, experiences and accomplishments in one place, at jannayaks.in/your.name*',
+            '*Name-based address, subject to availability.',
+            'നിങ്ങളുടെ തൊഴിൽജീവിതവും അനുഭവങ്ങളും നേട്ടങ്ങളും ഒരിടത്ത്, jannayaks.in/your.name എന്ന നിങ്ങളുടെ സ്വന്തം വിലാസത്തിൽ*',
+            '*പേരിനനുസരിച്ചുള്ള വിലാസം, ലഭ്യതയ്ക്ക് വിധേയം.',
+            'Credibility',
+            'വിശ്വാസ്യത',
+            'A professionally prepared profile, built from your own details and published only with your approval.',
+            'നിങ്ങളുടെ സ്വന്തം വിവരങ്ങളിൽ നിന്ന് പ്രൊഫഷണലായി തയ്യാറാക്കി, നിങ്ങളുടെ അംഗീകാരത്തോടെ മാത്രം പ്രസിദ്ധീകരിക്കുന്ന പ്രൊഫൈൽ.',
+            'Family Esteem',
+            'കുടുംബത്തിന്റെ അഭിമാനം',
+            'Preserve a record of your achievements that your family can cherish and share.',
+            'മക്കൾക്കും പേരക്കുട്ടികൾക്കും അഭിമാനത്തോടെ വായിക്കാവുന്ന നിങ്ങളുടെ ജീവിതകഥ.',
+            'Lasting Record',
+            'നിലനിൽക്കുന്ന രേഖ',
+            'Unlike a social media post, your profile stays online for as long as your annual hosting continues.',
+            'സോഷ്യൽ മീഡിയ പോസ്റ്റ് പോലെ മാഞ്ഞുപോകാതെ, നിങ്ങളുടെ സ്വന്തം ഇടത്ത്; വാർഷിക ഹോസ്റ്റിംഗ് തുടരുന്നിടത്തോളം.',
+            'Make your family proud, yourself too.',
+            'നിങ്ങളുടെ കുടുംബം അഭിമാനിക്കട്ടെ, നിങ്ങളും.',
             'ചോദ്യങ്ങളുണ്ടോ? Questions?',
         ], false);
+        // The retired intro paragraphs must not linger.
+        $response->assertDontSee('Jannayaks is a digital gallery that documents the contributions and achievements of individuals.', false);
+        $response->assertDontSee('Whichever field you are in, have a record of yourself which you can be proud of.', false);
+        $response->assertDontSee('An English-only profile is also available for those who prefer it.', false);
         $response->assertDontSee('ഓരോ പ്രൊഫൈലും പ്രസിദ്ധീകരിക്കുന്നതിന് മുമ്പ് വ്യക്തിപരമായി പരിശോധിക്കുന്നു.', false);
         $response->assertSee('Tell us about yourself, your work and your achievements.', false);
         $response->assertDontSee('start the standard profile', false);
@@ -160,8 +188,6 @@ class HomepageIntegrationTest extends TestCase
         $this->assertSame(0, substr_count($html, 'id="google_translate_element"'));
         $this->assertSame(0, substr_count($html, 'translate_a/element.js'));
         $this->assertStringNotContainsString('aria-label="Translate"', $html);
-        // Native bilingual homepage intro tabs remain.
-        $this->assertStringContainsString('intro-tabs', $html);
     }
 
     public function test_google_translate_control_renders_once_with_https_loader_on_public_pages(): void
@@ -216,6 +242,7 @@ class HomepageIntegrationTest extends TestCase
         $this->assertStringContainsString('നിങ്ങളുടെ പ്രൊഫൈൽ എങ്ങനെയായിരിക്കുമെന്ന് കാണൂ', $section);
         $this->assertStringContainsString('വ്യക്തികളുടെ നേട്ടങ്ങളും ജീവിതകഥകളും Jannayaks എങ്ങനെ അവതരിപ്പിക്കുന്നുവെന്ന് അറിയാൻ മാതൃകാ പ്രൊഫൈലുകൾ കാണൂ.', $section);
         $this->assertStringContainsString('href="'.route('demo-profiles.index').'">View the complete Demo Profiles collection →</a>', $section);
+        $this->assertStringNotContainsString('section-eyebrow', $section, 'The duplicate eyebrow is removed from the Demo Profiles section.');
 
         $this->assertStringNotContainsString('class="demo-card"', $section);
         $this->assertStringNotContainsString('class="demo-grid"', $section);

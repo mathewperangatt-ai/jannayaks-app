@@ -46,6 +46,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
 
         $other = User::factory()->create(['email' => 'Other.Person@Example.com']);
         $this->actingAs($other)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'source_method' => 'online_interview',
             'full_name' => 'Other Person',
             'broad_location' => 'Kozhikode',
@@ -58,6 +59,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $this->assertSame(Application::STATUS_INTERVIEW_IN_PROGRESS, $created->status);
 
         $this->actingAs($other)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'source_method' => 'online_interview',
             'full_name' => 'Other Person Again',
             'broad_location' => 'Kozhikode',
@@ -67,6 +69,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
 
         $created->forceFill(['status' => Application::STATUS_CANCELLED])->save();
         $this->actingAs($other)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'source_method' => 'online_interview',
             'full_name' => 'Other Person Restarted',
             'broad_location' => 'Kannur',
@@ -77,6 +80,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
 
         $contactCollision = User::factory()->create(['email' => 'fresh.contact@example.com']);
         $this->actingAs($contactCollision)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'source_method' => 'direct_submission',
             'full_name' => 'Contact Collision',
             'broad_location' => 'Kochi',
@@ -92,6 +96,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
 
         $applicant = User::factory()->create(['email' => 'new.applicant@example.com']);
         $this->actingAs($applicant)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'source_method' => 'online_interview',
             'full_name' => 'New Applicant',
             'broad_location' => 'Kozhikode',
@@ -101,6 +106,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
         $this->assertSame(0, Application::query()->where('user_id', $applicant->id)->count());
 
         $this->actingAs($applicant)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'source_method' => 'online_interview',
             'full_name' => 'New Applicant',
             'broad_location' => 'Kozhikode',
@@ -154,6 +160,7 @@ class AgreedCorrectionWorkflowTest extends TestCase
     {
         $user = User::factory()->create();
         $this->actingAs($user)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'source_method' => 'online_interview',
             'full_name' => 'No Location',
             'contact_email' => 'nolocation@example.com',

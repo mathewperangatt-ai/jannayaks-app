@@ -99,6 +99,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
 
         $created = $this->actingAs($customer)
             ->postJson(route('applications.store'), [
+                'solicitation_declaration' => '1',
                 'package_tier' => 'emerging',
                 'source_method' => 'online_interview',
                 'broad_location' => 'Kozhikode',
@@ -372,8 +373,9 @@ class ProfileWorkflowGoldenPathTest extends TestCase
         $this->assertSame($successor->id, $application->customer_approved_english_editorial_content_id);
         $this->assertSame($successor->id, $application->customer_approved_english_editorial_content_id, 'final approved version pinned');
         // Interview AI-processing + applicant accuracy declaration (submission)
+        // + solicitation declaration (application form)
         // + publication approval (idempotent per user across approval rounds).
-        $this->assertSame(3, ConsentRecord::query()->where('user_id', $customer->id)->count(), 'submission consents plus the publication consent');
+        $this->assertSame(4, ConsentRecord::query()->where('user_id', $customer->id)->count(), 'submission consents, the solicitation declaration and the publication consent');
         $this->assertTrue(ConsentRecord::query()->where('user_id', $customer->id)->where('consent_key', \App\Services\ConsentRecordingService::KEY_ACCURACY_DECLARATION)->exists());
 
         /* --------------------------------------------------------------
@@ -480,8 +482,8 @@ class ProfileWorkflowGoldenPathTest extends TestCase
          * -------------------------------------------------------------- */
         $this->assertSame(1, AiEditorialRun::query()->where('application_id', $application->id)->where('status', AiEditorialRun::STATUS_SUCCEEDED)->count());
         $this->assertSame(1, EditorialRevisionRequest::query()->where('application_id', $application->id)->count());
-        // AI-processing + accuracy declaration (submission) + publication approval.
-        $this->assertSame(3, ConsentRecord::query()->where('user_id', $customer->id)->count());
+        // AI-processing + accuracy declaration + solicitation declaration (submission) + publication approval.
+        $this->assertSame(4, ConsentRecord::query()->where('user_id', $customer->id)->count());
         $this->assertDatabaseHas('profiles', ['id' => $profile->id, 'slug' => $slug]);
     }
 

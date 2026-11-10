@@ -140,6 +140,7 @@ class UsernamePasswordAuthTest extends TestCase
 
         $this->actingAs($user)
             ->postJson(route('applications.store'), [
+                'solicitation_declaration' => '1',
                 'package_tier' => 'emerging',
                 'source_method' => 'online_interview',
                 'broad_location' => 'Kozhikode',

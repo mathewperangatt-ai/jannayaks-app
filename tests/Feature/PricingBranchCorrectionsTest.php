@@ -870,6 +870,7 @@ class PricingBranchCorrectionsTest extends TestCase
 
         $user = User::factory()->create(['email_verified_at' => now()]);
         $this->actingAs($user)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'source_method' => 'online_interview',
             'broad_location' => 'Kozhikode',
             'full_name' => 'New Standard',
@@ -1028,6 +1029,7 @@ class PricingBranchCorrectionsTest extends TestCase
 
         $user = User::factory()->create(['email_verified_at' => now()]);
         $this->actingAs($user)->postJson(route('applications.store'), [
+            'solicitation_declaration' => '1',
             'source_method' => 'online_interview',
             'broad_location' => 'Kozhikode',
             'full_name' => 'Arun Kumar',
