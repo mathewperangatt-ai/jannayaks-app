@@ -161,7 +161,7 @@
             @if(!empty($progress['missing_required']))
                 Complete the {{ count($progress['missing_required']) }} remaining required questions to enable Submit.
             @else
-                Submission does not publish a profile. Editorial prepares a draft; you review and approve before publication.
+                Submitting this questionnaire does not publish your profile.
             @endif
         </p>
     </form>
