@@ -19,6 +19,7 @@ class EditorialCustomerApproval extends Model
         'english_editorial_content_id',
         'malayalam_editorial_content_id',
         'consent_scope',
+        'presentation_fingerprint',
         'approved_at',
         'invalidated_at',
         'invalidation_reason',

@@ -40,16 +40,22 @@ class CustomerProfilePreviewController extends Controller
         // Post-publication maintenance preview (application stays published).
         $maintenanceRequest = app(\App\Services\PostPublicationUpdateService::class)->openRequestFor($application);
 
-        $previewPhotos = $application->profile !== null
-            ? app(\App\Services\PublicProfilePresentationService::class)->publicProfilePhotos($application->profile)
-            : collect();
+        // The customer previews the ACTUAL publication-ready presentation:
+        // the same assembly, markup and section order as the published page.
+        // Photographs stream through the owner-only preview route, and the
+        // public engagement rail (reactions/contact) is not part of the
+        // profile presentation, so it stays out of the preview.
+        $presentation = app(\App\Services\PublicProfilePresentationService::class)
+            ->presentForCustomerPreview(
+                $application->profile,
+                $english,
+                $malayalam,
+                (string) $request->query('lang', 'en'),
+            );
 
-        return view('application.profile-preview', [
+        return view('application.profile-preview', $presentation + [
             'application' => $application,
             'member' => $member,
-            'english' => $english,
-            'malayalam' => $malayalam,
-            'previewPhotos' => $previewPhotos,
             'statusLabel' => $workflow->memberFacingStatusLabel($application),
             'remainingRevisions' => $workflow->remainingIncludedRevisionRounds($application),
             'canRequestRevision' => $application->status === Application::STATUS_EDITORIAL_APPROVED
@@ -68,6 +74,18 @@ class CustomerProfilePreviewController extends Controller
                 && filled($maintenanceRequest->customer_correction_text),
             'maintenanceApproved' => $maintenanceRequest !== null
                 && $maintenanceRequest->status === EditorialRevisionRequest::STATUS_CUSTOMER_APPROVED,
+            // Preview wiring: photographs stream owner-only, the language
+            // toggle stays inside the preview, and no public URL exists yet.
+            'photoUrlOf' => fn ($item) => route('applications.preview.photo', [$application, $item]),
+            'langUrlOf' => fn (string $lang) => route('applications.preview', ['application' => $application, 'lang' => $lang]),
+            'showEngagement' => false,
+            'showPermanentUrl' => false,
+            'galleryLinksClickable' => false,
+            'showBackLink' => false,
+            'listingUrl' => route('applications.show', $application),
+            'listingLabel' => 'Application',
+            'isDemonstration' => false,
+            'viewerReactions' => [],
         ]);
     }
 

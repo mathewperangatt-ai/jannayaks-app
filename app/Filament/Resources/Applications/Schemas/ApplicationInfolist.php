@@ -189,6 +189,27 @@ class ApplicationInfolist
                             return 'Yes';
                         })
                         ->placeholder('—'),
+                    TextEntry::make('customer_approval_presentation')
+                        ->label('Presentation matches the approval')
+                        ->state(function (?Application $record): ?string {
+                            if ($record === null) {
+                                return null;
+                            }
+                            $state = self::approvalState($record);
+                            if (! $state['received']) {
+                                return null;
+                            }
+                            if ($state['presentation_current'] === null) {
+                                return 'Not tracked for this approval';
+                            }
+
+                            return $state['presentation_current'] === false
+                                ? 'No — photographs or profile details changed after approval'
+                                : 'Yes — the approved presentation is unchanged';
+                        })
+                        ->badge()
+                        ->color(fn (?Application $record): string => $record !== null && self::approvalState($record)['presentation_current'] === false ? 'danger' : 'success')
+                        ->placeholder('—'),
                     TextEntry::make('customer_approval_publication')
                         ->label('Normal publication')
                         ->state(fn (?Application $record): string => $record === null ? '—' : (self::approvalState($record)['ready'] ? 'Ready — Publish uses this customer approval' : 'Blocked — '.self::approvalState($record)['reason']))
