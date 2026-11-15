@@ -472,6 +472,53 @@ class ViewApplication extends ViewRecord
                         );
                     }, 'Living profile unpublished. No memorial profile was created.');
                 }),
+            Action::make('recommendPhotoPlacements')
+                ->label('Recommend photo placements (AI)')
+                ->color('info')
+                ->visible(function (): bool {
+                    $record = $this->getRecord();
+
+                    return $record instanceof Application
+                        && (auth()->user()?->canManageEditorial() ?? false)
+                        && $record->profile_id !== null
+                        && $record->status !== Application::STATUS_PUBLISHED;
+                })
+                ->requiresConfirmation()
+                ->modalDescription('Send the approved photographs and the prepared narrative to the AI placement advisor. It recommends positions only — nothing is published and no photograph is modified. Unchanged inputs reuse the previous analysis.')
+                ->action(function (): void {
+                    $actor = auth()->user();
+                    $application = $this->getRecord();
+                    if (! $actor instanceof User || ! $application instanceof Application) {
+                        abort(403);
+                    }
+
+                    try {
+                        $run = app(\App\Services\PhotoPlacementService::class)->recommend($application, $actor);
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot recommend placements')->body($e->getMessage())->danger()->persistent()->send();
+                        return;
+                    }
+
+                    if ($run->isFailed()) {
+                        Notification::make()->title('Placement recommendation failed')->body($run->error_message ?? 'The AI provider returned an error. The profile is unchanged.')->danger()->persistent()->send();
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title('Placement recommendations ready')
+                        ->body('Review them in the Photograph placements section, then decide each placement. Customer approval is required before publication.')
+                        ->success()->persistent()->send();
+                }),
+            Action::make('previewPresentation')
+                ->label('Preview presentation')
+                ->color('gray')
+                ->url(fn (): ?string => $this->getRecord() instanceof Application && $this->getRecord()->profile_id !== null
+                    ? route('staff.applications.presentation-preview', ['application' => $this->getRecord()])
+                    : null)
+                ->openUrlInNewTab(true)
+                ->visible(fn (): bool => $this->getRecord() instanceof Application
+                    && $this->getRecord()->profile_id !== null
+                    && (auth()->user()?->canManageEditorial() ?? false)),
             Action::make('correctCountryOfResidence')
                 ->label('Correct country of residence')
                 ->color('gray')

@@ -541,6 +541,19 @@ class ApplicationWorkflowService
             throw new InvalidArgumentException('A newer English version exists that the customer has not approved. Release a new customer preview, or use exceptional publication with a recorded reason.');
         }
 
+        // The approved presentation (including editorial photograph
+        // placements) must still be the current presentation — checked for
+        // EVERY approval, English-only ones included.
+        $approvalForPresentation = EditorialCustomerApproval::query()
+            ->where('application_id', $application->id)
+            ->whereNull('invalidated_at')
+            ->where('english_editorial_content_id', $english->id)
+            ->latest('approved_at')
+            ->first();
+        if ($this->presentationChangedAfterApproval($application, $approvalForPresentation) === true) {
+            throw new InvalidArgumentException('The profile presentation changed after customer approval. Release a new customer preview, or use exceptional publication with a recorded reason.');
+        }
+
         $approvedMalayalamId = EditorialCustomerApproval::query()
             ->where('application_id', $application->id)
             ->whereNull('invalidated_at')
@@ -556,15 +569,6 @@ class ApplicationWorkflowService
             throw new InvalidArgumentException('A newer Malayalam version exists that the customer has not approved. Release a new customer preview, or use exceptional publication with a recorded reason.');
         }
 
-        $activeApproval = EditorialCustomerApproval::query()
-            ->where('application_id', $application->id)
-            ->whereNull('invalidated_at')
-            ->where('english_editorial_content_id', $english->id)
-            ->latest('approved_at')
-            ->first();
-        if ($this->presentationChangedAfterApproval($application, $activeApproval) === true) {
-            throw new InvalidArgumentException('The profile presentation changed after customer approval. Release a new customer preview, or use exceptional publication with a recorded reason.');
-        }
     }
 
     /**

@@ -12,7 +12,6 @@ use Illuminate\Support\Collection;
 
 class PublicProfilePresentationService
 {
-    public function __construct(private ProfileUrlService $profileUrls) {}
 
     /**
      * @return array{
@@ -61,7 +60,12 @@ class PublicProfilePresentationService
         }
 
         $photos = $this->publicProfilePhotos($profile);
-        $photo = $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary) ?? $photos->first();
+        $placements = $this->placementService->approvedPlacements($profile);
+        // An approved hero placement overrides the primary-first fallback;
+        // without placements the presentation is unchanged.
+        $photo = $this->heroPlacementPhoto($placements)
+            ?? $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary)
+            ?? $photos->first();
 
         return [
             'profile' => $profile,
@@ -75,6 +79,7 @@ class PublicProfilePresentationService
             'malayalam' => $malayalam,
             'photo' => $photo,
             'photos' => $photos,
+            'placements' => $placements,
             'videoLinks' => $this->publicVideoLinks($profile),
             'language' => $language === 'ml' && $malayalam ? 'ml' : 'en',
             'activeEditorial' => $active,
@@ -82,6 +87,21 @@ class PublicProfilePresentationService
             // an internal database id.
             'referenceCode' => filled($profile->reference_code) ? (string) $profile->reference_code : null,
         ];
+    }
+
+    public function __construct(
+        private ProfileUrlService $profileUrls,
+        private \App\Services\PhotoPlacementService $placementService,
+    ) {}
+
+    /** The approved hero placement's media item, or null. */
+    private function heroPlacementPhoto(\Illuminate\Support\Collection $placements): ?MediaItem
+    {
+        $hero = $placements->first(fn ($placement): bool => $placement->placement_type === \App\Models\EditorialPhotoPlacement::TYPE_HERO);
+
+        return $hero !== null && $hero->mediaItem !== null && $hero->mediaItem->isApprovedForPublicDisplay()
+            ? $hero->mediaItem
+            : null;
     }
 
     public function displayName(Profile $profile): string
@@ -125,7 +145,10 @@ class PublicProfilePresentationService
         $active = $language === 'ml' ? $malayalam : $english;
 
         $photos = $this->publicProfilePhotos($profile);
-        $photo = $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary) ?? $photos->first();
+        $placements = $this->placementService->approvedPlacements($profile);
+        $photo = $this->heroPlacementPhoto($placements)
+            ?? $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary)
+            ?? $photos->first();
 
         return [
             'profile' => $profile,
@@ -139,6 +162,7 @@ class PublicProfilePresentationService
             'malayalam' => $malayalam,
             'photo' => $photo,
             'photos' => $photos,
+            'placements' => $placements,
             'videoLinks' => $this->publicVideoLinks($profile),
             'language' => $language,
             'activeEditorial' => $active,
@@ -195,6 +219,18 @@ class PublicProfilePresentationService
                     (bool) $item->is_primary,
                     (int) $item->display_order,
                     (string) $item->storage_path_key,
+                ])
+                ->all(),
+            // Approved editorial photograph placements are part of what the
+            // customer approved: type, anchor, order and per-language captions.
+            'placements' => $this->placementService->approvedPlacements($profile)
+                ->map(fn ($placement): array => [
+                    (int) $placement->media_item_id,
+                    (string) $placement->placement_type,
+                    $placement->section_anchor,
+                    (int) $placement->display_order,
+                    $placement->caption_en,
+                    $placement->caption_ml,
                 ])
                 ->all(),
             'videos' => $this->publicVideoLinks($profile)

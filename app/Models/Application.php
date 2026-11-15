@@ -252,6 +252,12 @@ class Application extends Model
             ->orderBy('display_order');
     }
 
+    /** Editorial photograph placements for the linked profile (Phase 3). */
+    public function photoPlacements(): HasMany
+    {
+        return $this->hasMany(EditorialPhotoPlacement::class, 'profile_id', 'profile_id');
+    }
+
     /** @return HasMany<ProfileExternalLink> */
     public function profileExternalLinks(): HasMany
     {

@@ -325,7 +325,18 @@ return [
             'included_prepublication_revision_rounds' => 2,
             // Substantial rewriting is assessed individually and quoted before work begins. A maintenance request does not collect it.
         ],
-        'image_enhancement' => [
+        /*
+    | Photograph-placement recommendations (Phase 3). Invoked only through
+    | the explicit Filament administrator action. Shares the OpenAI
+    | credentials/model config; a recommendation for unchanged photographs
+    | and editorial content is reused from the recorded run instead of
+    | re-analysing. The AI recommends; administrators decide.
+    */
+    'photo_placement' => [
+        'provider' => env('JANNAYAKS_AI_PLACEMENT_PROVIDER', 'fake'), // fake | openai
+    ],
+
+    'image_enhancement' => [
             // KILL SWITCH — disabled by default. When false: no candidate is
             // created, no job is dispatched, uploads/approval/publication are
             // completely unaffected. Enable only after output-quality review.

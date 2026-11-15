@@ -4,6 +4,9 @@ namespace App\Providers;
 
 use App\Contracts\EditorialAiClient;
 use App\Contracts\PhotoEnhancementClient;
+use App\Contracts\PhotoPlacementAiClient;
+use App\Services\Ai\FakePhotoPlacementClient;
+use App\Services\Ai\OpenAiPhotoPlacementClient;
 use App\Models\Application;
 use App\Services\Ai\FakeEditorialAiClient;
 use App\Services\Ai\FakePhotoEnhancementClient;
@@ -38,6 +41,19 @@ class AppServiceProvider extends ServiceProvider
             }
 
             return $app->make(FakePhotoEnhancementClient::class);
+        });
+
+        // Photograph-placement recommendations: vision-capable client, same
+        // OpenAI credentials/model config. Defaults to fake; testing always
+        // gets the deterministic fake.
+        $this->app->bind(PhotoPlacementAiClient::class, function ($app) {
+            $provider = (string) config('jannayaks.ai.photo_placement.provider', 'fake');
+
+            if ($provider === 'openai' && ! $app->environment('testing')) {
+                return $app->make(OpenAiPhotoPlacementClient::class);
+            }
+
+            return $app->make(FakePhotoPlacementClient::class);
         });
     }
 

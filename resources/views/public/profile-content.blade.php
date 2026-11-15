@@ -34,6 +34,17 @@
     $nameWords = preg_split('/\s+/u', trim($displayName), -1, PREG_SPLIT_NO_EMPTY);
     $nameFirst = implode(' ', array_slice($nameWords, 0, -1));
     $nameLast = $nameWords ? array_pop($nameWords) : '';
+
+    // Editorial photograph placements (Phase 3). Approved placements only —
+    // supplied by the presentation service. Stable SECTION anchors hold
+    // across English and Malayalam; paragraph structure never matters.
+    $placements = $placements ?? collect();
+    $inlinePlacements = $placements->filter(fn ($pl) => $pl->placement_type === 'inline');
+    $biographyInline = $inlinePlacements->filter(fn ($pl) => ($pl->section_anchor ?? 'biography') === 'biography')->sortBy('display_order')->values();
+    $careerInline = $inlinePlacements->filter(fn ($pl) => $pl->section_anchor === 'career')->sortBy('display_order')->values();
+    $galleryPlacementPhotos = $placements->filter(fn ($pl) => $pl->placement_type === 'gallery')->sortBy('display_order')->values();
+    // No photograph renders twice: hero + inline placements are excluded from the gallery.
+    $placedPhotoIds = $placements->pluck('media_item_id')->map(fn ($id) => (int) $id)->all();
 @endphp
 
 @push('head')
@@ -292,7 +303,21 @@
                     @endforeach
                 </div>
                 <aside>
-                    @if($photo)
+                    @if($biographyInline->isNotEmpty())
+                        {{-- Editorial placements: each approved biography photograph, with its
+                             approved caption in the active language (none shown when the
+                             active language has no reviewed caption). --}}
+                        @foreach($biographyInline as $inlinePlacement)
+                            @if($inlinePlacement->mediaItem !== null)
+                                <img class="jk-side-feature{{ ($isDemonstration || $photos->count() <= 1) ? ' jk-portrait--whole' : '' }}" src="{{ ($__photoUrl)($inlinePlacement->mediaItem) }}" alt="{{ $inlinePlacement->mediaItem->alt_text ?: ($displayName.' — documentary photograph') }}" style="margin-bottom:16px">
+                                @if($inlinePlacement->captionFor($language) !== null)
+                                    <p class="jk-figcap">{{ $inlinePlacement->captionFor($language) }}</p>
+                                @else
+                                    <p class="jk-figcap">{{ strtoupper($displayName) }} · DOCUMENTARY RECORD</p>
+                                @endif
+                            @endif
+                        @endforeach
+                    @elseif($photo)
                         {{-- Single-photo profiles reuse the primary image here; contain it fully
                              instead of forcing the 16/10 cover crop that clips heads/faces. --}}
                         <img class="jk-side-feature{{ ($isDemonstration || $photos->count() <= 1) ? ' jk-portrait--whole' : '' }}" src="{{ ($__photoUrl)($photo) }}" alt="{{ $photo->alt_text ?: ($displayName.' — documentary photograph') }}">
@@ -341,6 +366,17 @@
                     </div>
                 @endforeach
             </div>
+            @if($careerInline->isNotEmpty())
+                <div class="jk-gallery" style="margin-top:26px">
+                    @foreach($careerInline as $careerPlacement)
+                        @if($careerPlacement->mediaItem !== null)
+                            <span style="display:block">
+                                <img src="{{ ($__photoUrl)($careerPlacement->mediaItem) }}" alt="{{ $careerPlacement->mediaItem->alt_text ?: ($displayName.' photograph') }}" loading="lazy">
+                            </span>
+                        @endif
+                    @endforeach
+                </div>
+            @endif
         </section>
     @endif
 
@@ -353,6 +389,7 @@
             </div>
             <div class="jk-gallery">
                 @foreach($photos->skip(1) as $galleryPhoto)
+                    @continue(in_array((int) $galleryPhoto->id, $placedPhotoIds, true))
                     @php($__galleryHref = $galleryLinksClickable ? ($__photoUrl)($galleryPhoto) : null)
                     @if($__galleryHref)
                         <a href="{{ $__galleryHref }}">
@@ -365,6 +402,18 @@
                     @endif
                 @endforeach
             </div>
+            @if($galleryPlacementPhotos->isNotEmpty())
+                @foreach($galleryPlacementPhotos as $galleryPlacement)
+                    @if($galleryPlacement->mediaItem !== null)
+                        <span style="display:block;margin-top:12px">
+                            <img src="{{ ($__photoUrl)($galleryPlacement->mediaItem) }}" alt="{{ $galleryPlacement->mediaItem->alt_text ?: ($displayName.' photograph') }}" loading="lazy" style="max-width:220px;width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border:1px solid #bdcfba;background:var(--jk-surface)">
+                            @if($galleryPlacement->captionFor($language) !== null)
+                                <span style="display:block;margin-top:6px;font:500 9px var(--jk-ui);letter-spacing:.2em;text-transform:uppercase;color:#81907e">{{ $galleryPlacement->captionFor($language) }}</span>
+                            @endif
+                        </span>
+                    @endif
+                @endforeach
+            @endif
             <p class="jk-note" style="margin-top:16px">Photographs are held as documentary records — captioned and preserved alongside the written record.</p>
         </section>
     @endif
