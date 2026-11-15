@@ -36,12 +36,23 @@ class Phase2PricingConsistencyTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
 
-        $this->actingAs($user)->get(route('apply'))
+        // The apply page defaults to Malayalam; both presentations must carry
+        // the language-consistent GST-inclusive suffix.
+        $content = $this->actingAs($user)->get(route('apply'))
             ->assertOk()
             ->assertSee('₹5,000.00', false)
             ->assertSee('₹1,500.00', false)
+            ->assertSee('(ഇന്ത്യ, GST ഉൾപ്പെടെ)', false)
+            ->assertDontSee('+ GST', false)
+            ->getContent();
+
+        $contentEn = $this->actingAs($user)->get(route('apply', ['lang' => 'en']))
+            ->assertOk()
             ->assertSee('(India, GST-inclusive)', false)
-            ->assertDontSee('+ GST', false);
+            ->assertDontSee('+ GST', false)
+            ->getContent();
+        $this->assertStringContainsString('(India, GST-inclusive)', $contentEn);
+        $this->assertStringNotContainsString('(India, GST-inclusive)', $content);
     }
 
     public function test_maintenance_request_states_free_corrections_and_no_fixed_rewrite_price(): void
