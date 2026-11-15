@@ -1,9 +1,45 @@
 {
     "$schema": "https://schema.railpack.com",
+    "steps": {
+        "pgdump18": {
+            "commands": [
+                "apt-get update -qq",
+                "apt-get install -y -qq --no-install-recommends ca-certificates curl gnupg",
+                "install -d /usr/share/postgresql-common/pgdg",
+                "curl -fsSL https://www.postgresql.org/media/keys/ACCC4CF8.asc -o /usr/share/postgresql-common/pgdg/apt.postgresql.org.asc",
+                ". /etc/os-release && echo \"deb [signed-by=/usr/share/postgresql-common/pgdg/apt.postgresql.org.asc] https://apt.postgresql.org/pub/repos/apt ${VERSION_CODENAME}-pgdg main\" > /etc/apt/sources.list.d/pgdg.list",
+                "apt-get update",
+                "apt-cache policy postgresql-client-18",
+                "apt-get install -y --no-install-recommends postgresql-client-18",
+                "pg_dump --version"
+            ],
+            "deployOutputs": [
+                {
+                    "include": [
+                        "/usr/lib/postgresql/18/**",
+                        "/usr/lib/x86_64-linux-gnu/libpq.so.5*"
+                    ]
+                }
+            ]
+        }
+    },
     "deploy": {
         "aptPackages": [
             "postgresql-client",
             "age"
+        ],
+        "inputs": [
+            "...",
+            {
+                "step": "pgdump18",
+                "include": [
+                    "/usr/lib/postgresql/18/**",
+                    "/usr/lib/x86_64-linux-gnu/libpq.so.5*"
+                ]
+            }
+        ],
+        "paths": [
+            "/usr/lib/postgresql/18/bin"
         ]
     }
 }
