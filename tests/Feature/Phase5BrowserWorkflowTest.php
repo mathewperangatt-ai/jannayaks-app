@@ -32,7 +32,7 @@ class Phase5BrowserWorkflowTest extends TestCase
         $res = $this->actingAs($user)->get(route('apply'));
         $res->assertOk();
         $res->assertSee('Jannayaks Profile', false);
-        $res->assertSee('₹4,800.00', false);
+        $res->assertSee('₹5,000.00', false);
         $res->assertDontSee('Recognised', false);
         $res->assertSee(route('apply.intent'), false);
     }
@@ -43,9 +43,10 @@ class Phase5BrowserWorkflowTest extends TestCase
         foreach (['emerging', 'accomplished', 'distinguished'] as $tier) {
             $user = User::factory()->create(['email_verified_at' => now()]);
             $create = $this->actingAs($user)->get(route('apply'));
-            $create->assertSee('₹4,800.00', false);
+            $create->assertSee('₹5,000.00', false);
 
             $res = $this->actingAs($user)->postJson(route('applications.store'), [
+                'country_of_residence' => 'IN',
                 'solicitation_declaration' => '1',
                 'package_tier'   => $tier,
                 'source_method'  => 'online_interview',
@@ -68,6 +69,7 @@ class Phase5BrowserWorkflowTest extends TestCase
     {
         $user = User::factory()->create(['email_verified_at' => now()]);
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
             'package_tier'   => 'distinguished',
             'source_method'  => 'online_interview',
@@ -359,13 +361,15 @@ class Phase5BrowserWorkflowTest extends TestCase
         $this->assertArrayHasKey('important_facts', config('online_interview.sections', []));
 
         $this->assertSame(18, (int) config('jannayaks.tier_pricing.gst_percent'));
-        $this->assertSame(4800, (int) config('jannayaks.tier_pricing.standard_profile.base_amount'));
+        $this->assertSame(5000, (int) config('jannayaks.tier_pricing.standard_profile.base_amount'));
+        $this->assertTrue((bool) config('jannayaks.tier_pricing.standard_profile.gst_inclusive'), 'Advertised amount is GST-inclusive.');
         $this->assertSame(3, (int) config('jannayaks.tier_pricing.standard_profile.photo_slots'), 'Approved maximum: three photographs per profile.');
         $this->assertFalse((bool) config('jannayaks.tier_pricing.standard_profile.includes_video_link'));
         $this->assertSame(3000, (int) config('jannayaks.tier_pricing.packages.emerging.base_amount'));
         $this->assertSame(6000, (int) config('jannayaks.tier_pricing.packages.accomplished.base_amount'));
         $this->assertSame(9000, (int) config('jannayaks.tier_pricing.packages.distinguished.base_amount'));
-        $this->assertSame(1800, (int) config('jannayaks.tier_pricing.renewal.base_amount'));
+        $this->assertSame(1500, (int) config('jannayaks.tier_pricing.renewal.base_amount'));
+        $this->assertTrue((bool) config('jannayaks.tier_pricing.renewal.gst_inclusive'));
         $this->assertSame(3000, (int) config('jannayaks.tier_pricing.revision.base_amount'));
         $qids = array_map(static fn(array $q): string => (string) ($q['id'] ?? ''), (array) config('online_interview.questions', []));
         $this->assertContains('q22', $qids);

@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\PaymentLinkStateUncertainException;
 use App\Models\Application;
+use App\Support\Countries;
 use App\Models\Payment;
 use App\Models\SourceMaterial;
 use App\Services\ApplicationPaymentStateService;
@@ -111,11 +112,15 @@ class ApplicationController extends Controller
         if ($this->flowLanguage($request) !== 'ml') {
             return array_merge([
                 'source_method.required' => 'Please select how you would like to submit your content.',
+                'country_of_residence.required' => 'Please select your country of residence. It determines the applicable price.',
+                'country_of_residence.in' => 'Please select a valid country of residence from the list.',
             ], $this->solicitationDeclarationMessages($request));
         }
 
         return array_merge([
             'source_method.required' => 'നിങ്ങളുടെ ഉള്ളടക്കം എങ്ങനെ സമർപ്പിക്കണമെന്ന് ദയവായി തിരഞ്ഞെടുക്കുക.',
+            'country_of_residence.required' => 'ദയവായി താങ്കൾ താമസിക്കുന്ന രാജ്യം തിരഞ്ഞെടുക്കുക. ഇത് ബാധകമായ നിരക്ക് നിർണ്ണയിക്കുന്നു.',
+            'country_of_residence.in' => 'ദയവായി പട്ടികയിൽ നിന്ന് സാധുവായ ഒരു രാജ്യം തിരഞ്ഞെടുക്കുക.',
             'full_name.required' => 'പൂർണ്ണനാമം നൽകേണ്ടതാണ്.',
             'contact_email.required_without' => 'ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകിയിട്ടില്ലെങ്കിൽ ഇമെയിൽ നൽകേണ്ടതാണ്.',
             'contact_mobile.required_without' => 'ഇമെയിൽ നൽകിയിട്ടില്ലെങ്കിൽ ബന്ധപ്പെടാനുള്ള മൊബൈൽ നമ്പർ നൽകേണ്ടതാണ്.',
@@ -143,10 +148,17 @@ class ApplicationController extends Controller
      */
     public function storeIntent(Request $request): JsonResponse|RedirectResponse
     {
+        // Accept mixed-case country codes from the browser; validation and
+        // storage work on the normalised uppercase ISO code.
+        if ($request->has('country_of_residence')) {
+            $request->merge(['country_of_residence' => strtoupper(trim((string) $request->input('country_of_residence')))]);
+        }
+
         $validator = Validator::make($request->all(), [
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
             'broad_location' => ['required', 'string', 'min:2', 'max:120'],
+            'country_of_residence' => ['required', 'string', Countries::validationRule()],
             'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-][a-z0-9]+)*$/'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
@@ -169,6 +181,7 @@ class ApplicationController extends Controller
             'source_method' => (string) $validated['source_method'],
             'full_name' => (string) $validated['full_name'],
             'broad_location' => trim((string) $validated['broad_location']),
+            'country_of_residence' => Countries::normalize($validated['country_of_residence'] ?? null),
             // The declaration was validated above; the flag carries the
             // acceptance through sign-in so application creation can rely on it.
             'solicitation_declaration' => true,
@@ -232,10 +245,15 @@ class ApplicationController extends Controller
             return $this->unauthorizedResponse($request, 'You must log in before creating an application.');
         }
 
+        if ($request->has('country_of_residence')) {
+            $request->merge(['country_of_residence' => strtoupper(trim((string) $request->input('country_of_residence')))]);
+        }
+
         $validator = Validator::make($request->all(), [
             'source_method' => ['required', 'string', 'in:online_interview,direct_submission'],
             'full_name' => ['required', 'string', 'min:2', 'max:255'],
             'broad_location' => ['required', 'string', 'min:2', 'max:120'],
+            'country_of_residence' => ['required', 'string', Countries::validationRule()],
             'preferred_slug' => ['nullable', 'string', 'max:128', 'regex:/^[a-z0-9]+(?:[.\-][a-z0-9]+)*$/'],
             'contact_email' => ['required_without:contact_mobile', 'nullable', 'email:strict', 'max:255'],
             'contact_mobile' => ['required_without:contact_email', 'nullable', 'string', 'max:32'],
@@ -301,6 +319,8 @@ class ApplicationController extends Controller
                     'preferred_display_name' => (string) $validated['full_name'],
                     'preferred_slug' => isset($validated['preferred_slug']) && (string) $validated['preferred_slug'] !== '' ? (string) $validated['preferred_slug'] : null,
                     'broad_location' => trim((string) $validated['broad_location']),
+                    'country_of_residence' => Countries::normalize($validated['country_of_residence'] ?? null),
+            'country_of_residence' => Countries::normalize($validated['country_of_residence'] ?? null),
                     'preferred_contact_email' => isset($validated['contact_email']) && $validated['contact_email'] !== '' ? (string) $validated['contact_email'] : null,
                     'preferred_contact_mobile' => isset($validated['contact_mobile']) && $validated['contact_mobile'] !== '' ? (string) $validated['contact_mobile'] : null,
                     'preferred_whatsapp_mobile' => isset($validated['contact_whatsapp']) && $validated['contact_whatsapp'] !== '' ? (string) $validated['contact_whatsapp'] : null,

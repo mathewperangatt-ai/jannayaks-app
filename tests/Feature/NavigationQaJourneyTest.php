@@ -32,6 +32,7 @@ class NavigationQaJourneyTest extends TestCase
         'broad_location' => 'Kozhikode',
         'preferred_slug' => 'navigation-qa',
         'contact_email' => 'nav.qa@example.com',
+        'country_of_residence' => 'IN',
         'solicitation_declaration' => true,
     ];
 
@@ -148,6 +149,7 @@ class NavigationQaJourneyTest extends TestCase
                 'broad_location' => 'Kozhikode',
                 'full_name' => 'Navigation QA Test',
                 'contact_email' => 'nav.qa@example.com',
+                'country_of_residence' => 'IN',
                 'solicitation_declaration' => '1',
             ])
             ->assertStatus(409)
@@ -164,7 +166,7 @@ class NavigationQaJourneyTest extends TestCase
         $tiersPage = $this->actingAs($user)->get(route('apply'))->assertOk();
 
         $tiersPage->assertSee('Jannayaks Profile', false);
-        $tiersPage->assertSee('₹4,800.00', false);
+        $tiersPage->assertSee('₹5,000.00', false);
         foreach (['ജനകീയർ', 'ജനസമ്മതർ', 'പ്രഗൽഭർ', 'അംഗീകരിക്കപ്പെട്ടവർ', 'പ്രശസ്തർ', 'വിശിഷ്ടർ', 'പ്രമുഖർ'] as $removed) {
             $tiersPage->assertDontSee($removed, false);
         }
@@ -205,6 +207,7 @@ class NavigationQaJourneyTest extends TestCase
     private function createPaymentPendingApplication(User $user): Application
     {
         $this->actingAs($user)->post(route('applications.store'), [
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
             'package_tier' => 'distinguished',
             'source_method' => 'online_interview',

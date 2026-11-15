@@ -194,6 +194,7 @@ class Application extends Model
         'preferred_display_name',
         'preferred_slug',
         'broad_location',
+    'country_of_residence',
         'distinguished_interview_addon',
         'preferred_contact_email',
         'preferred_contact_mobile',
@@ -249,6 +250,12 @@ class Application extends Model
             ->where('media_type', MediaItem::TYPE_PROFILE_PHOTO)
             ->orderByDesc('is_primary')
             ->orderBy('display_order');
+    }
+
+    /** Editorial photograph placements for the linked profile (Phase 3). */
+    public function photoPlacements(): HasMany
+    {
+        return $this->hasMany(EditorialPhotoPlacement::class, 'profile_id', 'profile_id');
     }
 
     /** @return HasMany<ProfileExternalLink> */

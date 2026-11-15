@@ -2,6 +2,7 @@
 
 @section('content')
 <section class="card stack">
+    @include('partials.panel-guidance', ['key' => 'renewals'])
     <div class="row" style="justify-content:space-between">
         <div>
             <span class="tag">MEMBERSHIP</span>
@@ -59,9 +60,9 @@
     @if($canRenew)
         <h2 style="margin-top:10px;font-size:16px">Renew</h2>
         <p class="sub">
-            Annual hosting / maintenance: {{ $amounts['label'] ?? 'Annual Membership' }} —
-            {{ $amounts['base_formatted'] ?? ('₹'.number_format(((int)($amounts['base_paise'] ?? 0))/100, 2)) }}
-            + GST. Opening payment does not renew by itself — settlement is server-side.
+            Annual renewal: {{ $amounts['label'] ?? 'Annual Membership' }} —
+            {{ $amounts['amount_incl_formatted'] ?? ('₹'.number_format(((int)($amounts['amount_incl_paise'] ?? 0))/100, 2)) }}
+            (India, GST-inclusive). Opening payment does not renew by itself — settlement is server-side.
         </p>
         <form method="post" action="{{ route('membership.renew', $profile) }}">
             @csrf

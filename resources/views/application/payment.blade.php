@@ -30,6 +30,7 @@
         'direct_submission' => ['en' => 'Direct Submission', 'ml' => 'നേരിട്ടുള്ള സമർപ്പണം'],
     ];
 @endphp
+@include('partials.panel-guidance', ['key' => 'payments', 'ml' => $ml])
 
 <div class="card">
     <div class="row" style="margin-bottom:14px">
@@ -67,7 +68,11 @@
 <div class="card">
     <h2 style="margin-top:0;margin-bottom:6px">{{ $ml ? 'ചെലവ് വിഭജനം' : 'Package Price Breakdown' }}</h2>
     <div class="sub" style="margin-bottom:14px">
-        {{ $ml ? 'അടിസ്ഥാന നിരക്ക് + ജിഎസ്ടി (പണമടയ്ക്കുമ്പോൾ ചേർക്കും)' : 'Base price + GST (added at payment)' }}</div>
+        @if(!empty($package['gst_inclusive']))
+        {{ $ml ? 'ജിഎസ്ടി ഉൾപ്പെടുന്ന നിരക്ക് — തുകയിൽ '.$package['gst_rate_percent'].'% ജിഎസ്ടി ഉൾപ്പെടുത്തിയിട്ടുണ്ട്.' : 'GST-inclusive price — the total already includes '.$package['gst_rate_percent'].'% GST.' }}
+        @else
+        {{ $ml ? 'അടിസ്ഥാന നിരക്ക് + ജിഎസ്ടി (പണമടയ്ക്കുമ്പോൾ ചേർക്കും)' : 'Base price + GST (added at payment)' }}
+        @endif</div>
 
     <div class="stack" style="gap:10px">
         <div class="row" style="justify-content:space-between">
@@ -92,26 +97,26 @@
 
         @if (is_string($package['igst_formatted'] ?? null))
         <div class="row" style="justify-content:space-between">
-            <div class="note-safe">{{ $ml ? 'ഐജിഎസ്ടി (ചേർത്തത്)' : 'IGST (added)' }}</div>
+            <div class="note-safe">{{ $ml ? (!empty($package['gst_inclusive']) ? 'ഐജിഎസ്ടി (ഉൾപ്പെടുത്തിയത്)' : 'ഐജിഎസ്ടി (ചേർത്തത്)') : (!empty($package['gst_inclusive']) ? 'IGST (included)' : 'IGST (added)') }}</div>
             <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['igst_formatted'] }}</div>
         </div>
         @elseif (is_string($package['cgst_formatted'] ?? null) || is_string($package['sgst_formatted'] ?? null))
             @if (is_string($package['cgst_formatted'] ?? null))
             <div class="row" style="justify-content:space-between">
-                <div class="note-safe">{{ $ml ? 'സിജിഎസ്ടി (ചേർത്തത്)' : 'CGST (added)' }}</div>
+                <div class="note-safe">{{ $ml ? (!empty($package['gst_inclusive']) ? 'സിജിഎസ്ടി (ഉൾപ്പെടുത്തിയത്)' : 'സിജിഎസ്ടി (ചേർത്തത്)') : (!empty($package['gst_inclusive']) ? 'CGST (included)' : 'CGST (added)') }}</div>
                 <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['cgst_formatted'] }}</div>
             </div>
             @endif
 
             @if (is_string($package['sgst_formatted'] ?? null))
             <div class="row" style="justify-content:space-between">
-                <div class="note-safe">{{ $ml ? 'എസ്ജിഎസ്ടി (ചേർത്തത്)' : 'SGST (added)' }}</div>
+                <div class="note-safe">{{ $ml ? (!empty($package['gst_inclusive']) ? 'എസ്ജിഎസ്ടി (ഉൾപ്പെടുത്തിയത്)' : 'എസ്ജിഎസ്ടി (ചേർത്തത്)') : (!empty($package['gst_inclusive']) ? 'SGST (included)' : 'SGST (added)') }}</div>
                 <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['sgst_formatted'] }}</div>
             </div>
             @endif
         @elseif (is_string($package['gst_formatted'] ?? null) && (int) ($package['gst_paise'] ?? 0) > 0)
         <div class="row" style="justify-content:space-between">
-            <div class="note-safe">{{ $ml ? 'ജിഎസ്ടി (ചേർത്തത്)' : 'GST (added)' }}</div>
+            <div class="note-safe">{{ $ml ? (!empty($package['gst_inclusive']) ? 'ജിഎസ്ടി (ഉൾപ്പെടുത്തിയത്)' : 'ജിഎസ്ടി (ചേർത്തത്)') : (!empty($package['gst_inclusive']) ? 'GST (included)' : 'GST (added)') }}</div>
             <div style="text-align:right;font-variant-numeric:tabular-nums">{{ $package['gst_formatted'] }}</div>
         </div>
         @endif
@@ -121,7 +126,13 @@
         <div class="row" style="justify-content:space-between">
             <div>
             <div style="font-weight:700">{{ $ml ? 'ആകെ (ജിഎസ്ടി ഉൾപ്പെടെ)' : 'Total (incl. GST)' }}</div>
-            <div class="note-safe">{{ $ml ? $package['gst_rate_percent'].'% ജിഎസ്ടി പണമടയ്ക്കുമ്പോൾ ചേർക്കും' : $package['gst_rate_percent'].'% GST added at payment' }}</div>
+            @if((float) ($package['gst_rate_percent'] ?? 18) === 0.0 && strtoupper((string) ($package['currency'] ?? 'INR')) === 'USD')
+        <div class="note-safe">{{ $ml ? 'അന്തർദേശീയ നിരക്ക് (US$). കാണിക്കുന്ന തുകയാണ് നൽകേണ്ടത്.' : 'International price (USD). The total shown is the amount payable.' }}</div>
+        @else
+        <div class="note-safe">{{ !empty($package['gst_inclusive'])
+                ? ($ml ? $package['gst_rate_percent'].'% ജിഎസ്ടി ഉൾപ്പെടുന്നു' : 'Includes '.$package['gst_rate_percent'].'% GST')
+                : ($ml ? $package['gst_rate_percent'].'% ജിഎസ്ടി പണമടയ്ക്കുമ്പോൾ ചേർക്കും' : $package['gst_rate_percent'].'% GST added at payment') }}</div>
+        @endif
         </div>
             <div style="font-size:22px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums">{{ $package['amount_incl_formatted'] ?? '' }}</div>
         </div>

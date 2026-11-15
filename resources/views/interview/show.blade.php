@@ -44,6 +44,7 @@
 @if(!$isSubmitted)
     <section class="card" style="padding:14px 16px">
         @include('partials.interview-notices', ['notice' => 'reminder', 'application' => $application])
+    @include('partials.panel-guidance', ['key' => 'interview'])
     </section>
 @endif
 @if(!$isSubmitted && ! empty($progress['missing_required']))

@@ -72,8 +72,8 @@ class Phase6PaymentSecurityTest extends TestCase
         }
 
         $standard = PricingAmounts::forStandardProfile();
-        $this->assertSame(566400, $standard['amount_incl_paise']);
-        $this->assertSame(86400, $standard['gst_paise']);
+        $this->assertSame(500000, $standard['amount_incl_paise']);
+        $this->assertSame(76271, $standard['gst_paise']);
         $this->assertSame('unclassified', $standard['gst_classification']);
     }
 
@@ -98,7 +98,7 @@ class Phase6PaymentSecurityTest extends TestCase
         );
         $res->assertStatus(201);
         $payment = Payment::query()->latest('id')->firstOrFail();
-        $this->assertSame(566400, $payment->totalPaise());
+        $this->assertSame(500000, $payment->totalPaise());
         $this->assertSame('INR', strtoupper((string) $payment->currency));
         $this->assertSame(Payment::STATUS_INITIATED, $payment->status);
         $this->assertSame('distinguished', (string) $app->fresh()->package_tier);
@@ -181,7 +181,7 @@ class Phase6PaymentSecurityTest extends TestCase
                     'entity' => [
                         'id' => 'pay_test9999',
                         'order_id' => null,
-                        'amount' => 566400,
+                        'amount' => 500000,
                         'currency' => 'INR',
                         'status' => 'captured',
                         'notes' => [
@@ -292,7 +292,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_usd',
-                        'amount' => 566400,
+                        'amount' => 500000,
                         'currency' => 'USD',
                         'status' => 'captured',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
@@ -332,7 +332,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_stale1',
-                        'amount' => 566400,
+                        'amount' => 500000,
                         'currency' => 'INR',
                         'status' => 'captured',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
@@ -372,7 +372,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_idem1',
-                        'amount' => 566400,
+                        'amount' => 500000,
                         'currency' => 'INR',
                         'status' => 'captured',
                         'notes' => ['payment_id' => (string) $payment->id, 'application_id' => (string) $app->id],
@@ -424,7 +424,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_already',
-                        'amount' => 566400,
+                        'amount' => 500000,
                         'currency' => 'INR',
                         'status' => 'captured',
                         'notes' => [
@@ -469,7 +469,7 @@ class Phase6PaymentSecurityTest extends TestCase
                 'payment' => [
                     'entity' => [
                         'id' => 'pay_downstream_fail',
-                        'amount' => 566400,
+                        'amount' => 500000,
                         'currency' => 'INR',
                         'status' => 'captured',
                         'notes' => [
@@ -750,6 +750,7 @@ class Phase6PaymentSecurityTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
 
         $createRes = $this->actingAs($user)->postJson(route('applications.store'), [
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',

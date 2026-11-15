@@ -438,6 +438,7 @@ class ApplicationWorkflowService
             ! $english instanceof EditorialContent || $english->status !== EditorialContent::STATUS_APPROVED => 'The customer-approved English version is not editorially approved.',
             $englishCurrent === false => 'A newer English version exists that the customer has not approved. Release a new customer preview.',
             $malayalamCurrent === false => 'A newer Malayalam version exists that the customer has not approved. Release a new customer preview.',
+            $this->presentationChangedAfterApproval($application, $active) === true => 'The profile presentation changed after customer approval (photographs or profile details). Release a new customer preview.',
             ! $this->paymentAllowsPublication($application) => 'Payment must be settled before publication.',
             default => '',
         };
@@ -456,6 +457,7 @@ class ApplicationWorkflowService
             'malayalam_version' => $malayalam?->version_number !== null ? (int) $malayalam->version_number : null,
             'english_current' => $englishCurrent,
             'malayalam_current' => $malayalamCurrent,
+            'presentation_current' => $received ? $this->presentationChangedAfterApproval($application, $active) : null,
             'last_invalidated' => $active === null
                 ? EditorialCustomerApproval::query()
                     ->where('application_id', $application->id)
@@ -473,6 +475,39 @@ class ApplicationWorkflowService
         return $application->isPaymentSettled()
             || $application->source_method === 'admin_test_demo'
             || app(PublicationTestBypass::class)->appliesTo($application);
+    }
+
+    /**
+     * True when the publication-ready presentation (photographs, profile
+     * fields, offices, video links) changed after the recorded approval.
+     * Null when the approval predates fingerprints (no comparison possible)
+     * or there is nothing to compare; false when they match. Editorial
+     * narrative changes are covered separately by the version checks.
+     */
+    private function presentationChangedAfterApproval(Application $application, ?EditorialCustomerApproval $approval): ?bool
+    {
+        if (! $approval instanceof EditorialCustomerApproval
+            || $approval->presentation_fingerprint === null
+            || $application->profile_id === null) {
+            return null;
+        }
+
+        $profile = $application->profile_id !== null
+            ? \App\Models\Profile::query()->find($application->profile_id)
+            : null;
+        if (! $profile instanceof \App\Models\Profile) {
+            return null;
+        }
+
+        $english = EditorialContent::query()->find($approval->english_editorial_content_id);
+        $malayalam = $approval->malayalam_editorial_content_id !== null
+            ? EditorialContent::query()->find($approval->malayalam_editorial_content_id)
+            : null;
+
+        $current = app(\App\Services\PublicProfilePresentationService::class)
+            ->presentationFingerprint($profile, $english, $malayalam);
+
+        return ! hash_equals($approval->presentation_fingerprint, $current);
     }
 
     /** Highest-version English or Malayalam row that is a real, non-archived editorial version. */
@@ -506,6 +541,19 @@ class ApplicationWorkflowService
             throw new InvalidArgumentException('A newer English version exists that the customer has not approved. Release a new customer preview, or use exceptional publication with a recorded reason.');
         }
 
+        // The approved presentation (including editorial photograph
+        // placements) must still be the current presentation — checked for
+        // EVERY approval, English-only ones included.
+        $approvalForPresentation = EditorialCustomerApproval::query()
+            ->where('application_id', $application->id)
+            ->whereNull('invalidated_at')
+            ->where('english_editorial_content_id', $english->id)
+            ->latest('approved_at')
+            ->first();
+        if ($this->presentationChangedAfterApproval($application, $approvalForPresentation) === true) {
+            throw new InvalidArgumentException('The profile presentation changed after customer approval. Release a new customer preview, or use exceptional publication with a recorded reason.');
+        }
+
         $approvedMalayalamId = EditorialCustomerApproval::query()
             ->where('application_id', $application->id)
             ->whereNull('invalidated_at')
@@ -520,6 +568,7 @@ class ApplicationWorkflowService
         if ($newestMalayalam instanceof EditorialContent && (int) $newestMalayalam->id !== (int) $approvedMalayalamId) {
             throw new InvalidArgumentException('A newer Malayalam version exists that the customer has not approved. Release a new customer preview, or use exceptional publication with a recorded reason.');
         }
+
     }
 
     /**

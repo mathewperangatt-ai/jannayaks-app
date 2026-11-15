@@ -125,8 +125,21 @@ class ApplicationInfolist
                     TextEntry::make('preferred_whatsapp_mobile')
                         ->label('WhatsApp number')
                         ->visible(fn (?Application $record): bool => self::canSeePrivateContact($record)),
-                ])
-                ->columns(2)
+                    TextEntry::make('country_of_residence')
+                        ->label('Country of residence')
+                        ->state(fn (?Application $record): ?string => $record === null
+                            ? null
+                            : ($record->country_of_residence !== null
+                                ? \App\Support\Countries::name($record->country_of_residence).' ('.$record->country_of_residence.')'
+                                : 'Not recorded — pricing follows the legacy INR category')),
+                    TextEntry::make('country_pricing_category')
+                        ->label('Pricing category')
+                        ->badge()
+                        ->color(fn (?Application $record): string => \App\Support\Countries::isInternational($record?->country_of_residence) ? 'info' : 'gray')
+                        ->state(fn (?Application $record): ?string => $record === null
+                            ? null
+                            : (\App\Support\Countries::isInternational($record->country_of_residence) ? 'International (USD)' : 'India (INR)')),
+                ])->columns(2)
                 ->collapsed(),
             Section::make('Customer approval')
                 ->description('The customer\'s approval of the exact editorial versions shown in the preview. Normal publication uses this approval.')
@@ -188,6 +201,27 @@ class ApplicationInfolist
 
                             return 'Yes';
                         })
+                        ->placeholder('—'),
+                    TextEntry::make('customer_approval_presentation')
+                        ->label('Presentation matches the approval')
+                        ->state(function (?Application $record): ?string {
+                            if ($record === null) {
+                                return null;
+                            }
+                            $state = self::approvalState($record);
+                            if (! $state['received']) {
+                                return null;
+                            }
+                            if ($state['presentation_current'] === null) {
+                                return 'Not tracked for this approval';
+                            }
+
+                            return $state['presentation_current'] === false
+                                ? 'No — photographs or profile details changed after approval'
+                                : 'Yes — the approved presentation is unchanged';
+                        })
+                        ->badge()
+                        ->color(fn (?Application $record): string => $record !== null && self::approvalState($record)['presentation_current'] === false ? 'danger' : 'success')
                         ->placeholder('—'),
                     TextEntry::make('customer_approval_publication')
                         ->label('Normal publication')
@@ -287,6 +321,32 @@ class ApplicationInfolist
                                 ->url(fn ($state): ?string => filled($state) ? self::editorialContentViewUrl((int) $state) : null, shouldOpenInNewTab: true),
                         ])
                         ->columns(2)
+                        ->columnSpanFull(),
+                ]),
+            Section::make('Editorial, media and payments guidance')
+                ->description('Phase 3 approved guidance for staff working this application. Concise reference — the detailed controls live in the sections below. സ്റ്റാഫ് മാർഗദർശനം — എഡിറ്റോറിയൽ, മീഡിയ, പേയ്മെന്റ്.')
+                ->collapsed()
+                ->columnSpanFull()
+                ->schema([
+                    TextEntry::make('guidance_review')
+                        ->label('1· Application review & status / 2· Interview answers')
+                        ->state('Review the application state in the Workflow section above; interview answers and source materials are read-only records — request new material from the customer rather than editing answers. / അപേക്ഷയുടെ നില Workflow ഭാഗത്ത് കാണാം. അഭിമുഖ ഉത്തരങ്ങളും രേഖകളും വായിച്ചറിയാനുള്ളതാണ് — തിരുത്തുകയില്ല; ആവശ്യമെങ്കിൽ പുതിയ രേഖ ചോദിക്കുക.')
+                        ->columnSpanFull(),
+                    TextEntry::make('guidance_editorial')
+                        ->label('3· Editorial preparation & bilingual review')
+                        ->state('Generate and edit drafts as separate versions. Approve the English master, approve the paired Malayalam, then release the customer preview. / ഡ്രാഫ്റ്റുകൾ പുതിയ പതിപ്പുകളായി സൂക്ഷിക്കുക. ഇംഗ്ലീഷ് മാസ്റ്റർ അംഗീകരിച്ച്, ബന്ധപ്പെട്ട മലയാളം അംഗീകരിച്ച്, കസ്റ്റമർ പ്രിവ്യൂ റിലീസ് ചെയ്യുക.')
+                        ->columnSpanFull(),
+                    TextEntry::make('guidance_media')
+                        ->label('4· Photograph review & editorial placement')
+                        ->state('Approve or reject photographs under Photographs & video. Run Recommend photo placements (AI) only when needed, then decide every placement in Photograph placements — captions may only restate facts from the narrative. / ഫോട്ടോഗ്രാഫുകൾ Photographs & video-യിൽ അംഗീകരിക്കുക അല്ലെങ്കിൽ നിരസിക്കുക. AI പ്ലേസ്മെന്റ് നിർദ്ദേശം ആവശ്യത്തിന് മാത്രം; ഓരോ പ്ലേസ്മെന്റും തീരുമാനിക്കുക. തലക്കെട്ടുകൾ വിവരണത്തിലെ വസ്തുതകൾ മാത്രം.')
+                        ->columnSpanFull(),
+                    TextEntry::make('guidance_approval_publication')
+                        ->label('5· Customer preview & approval / 6· Publication safeguards')
+                        ->state('Use Preview presentation to check the exact publication rendering first. Normal publish requires customer approval of the current versions and the current presentation; exceptional publish needs a written reason and stays admin-only. / പ്രസിദ്ധീകരിക്കും മുമ്പ് Preview presentation ഉപയോഗിച്ച് പരിശോധിക്കുക. സാധാരണ പ്രസിദ്ധീകരണത്തിന് കസ്റ്റമർ അംഗീകാരം നിർബന്ധമാണ്; അപവാദ പ്രസിദ്ധീകരണത്തിന് വാചക കാരണം വേണം — അഡ്മിൻ മാത്രം.')
+                        ->columnSpanFull(),
+                    TextEntry::make('guidance_updates')
+                        ->label('7· Post-publication updates / 8· Payments, waivers & renewals / 9· Queues')
+                        ->state('Maintenance updates need customer approval before publication completes. Waivers are admin-only with a written reason. Renewal pricing follows the recorded country (India ₹1,500 / other countries US$15); issued obligations are never repriced. Reconciliation and stale-run commands run on schedule. / മെയിന്റനൻസ് അപ്ഡേറ്റിന് കസ്റ്റമർ അംഗീകാരം ആവശ്യമാണ്. ഒഴിവാക്കൽ അഡ്മിൻ മാത്രം; കാരണം രേഖപ്പെടുത്തണം. പുതുക്കൽ നിരക്ക് രാജ്യം അനുസരിച്ചാണ് (ഇന്ത്യ ₹1,500 / മറ്റ് രാജ്യങ്ങൾ US$15); നൽകിയ തുകകൾ മാറ്റില്ല.')
                         ->columnSpanFull(),
                 ]),
             Section::make('Customer revision requests')

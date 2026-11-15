@@ -30,6 +30,7 @@ use App\Http\Controllers\RazorpayWebhookController;
 use App\Http\Controllers\RecommendationController;
 use App\Http\Controllers\SitemapController;
 use App\Http\Controllers\Staff\ProfileMediaPreviewController;
+use App\Http\Controllers\Staff\StaffProfilePresentationPreviewController;
 use App\Http\Controllers\Staff\SourceMaterialDownloadController;
 use Illuminate\Support\Facades\Route;
 
@@ -106,6 +107,9 @@ Route::middleware(['auth', 'verified.or.mobile'])->prefix('staff')->name('staff.
     Route::get('/profile-media/{media}/preview', ProfileMediaPreviewController::class)
         ->whereNumber('media')
         ->name('profile-media.preview');
+
+    Route::get('/applications/{application}/presentation-preview', StaffProfilePresentationPreviewController::class)
+        ->name('applications.presentation-preview');
 });
 
 Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');

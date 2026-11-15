@@ -99,6 +99,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
 
         $created = $this->actingAs($customer)
             ->postJson(route('applications.store'), [
+                'country_of_residence' => 'IN',
                 'solicitation_declaration' => '1',
                 'package_tier' => 'emerging',
                 'source_method' => 'online_interview',
@@ -135,7 +136,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
                         'id' => 'pay_golden_path_1',
                         'status' => 'captured',
                         'order_id' => null,
-                        'amount' => 566400, // Standard Profile ₹4,800 + 18% GST, server-authoritative
+                        'amount' => 500000, // Standard Profile ₹5,000 GST-inclusive, server-authoritative
                         'currency' => 'INR',
                         'notes' => [
                             'payment_id' => (string) $payment->id,

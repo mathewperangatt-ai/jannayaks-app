@@ -472,6 +472,97 @@ class ViewApplication extends ViewRecord
                         );
                     }, 'Living profile unpublished. No memorial profile was created.');
                 }),
+            Action::make('recommendPhotoPlacements')
+                ->label('Recommend photo placements (AI)')
+                ->color('info')
+                ->visible(function (): bool {
+                    $record = $this->getRecord();
+
+                    return $record instanceof Application
+                        && (auth()->user()?->canManageEditorial() ?? false)
+                        && $record->profile_id !== null
+                        && $record->status !== Application::STATUS_PUBLISHED;
+                })
+                ->requiresConfirmation()
+                ->modalDescription('Send the approved photographs and the prepared narrative to the AI placement advisor. It recommends positions only — nothing is published and no photograph is modified. Unchanged inputs reuse the previous analysis.')
+                ->action(function (): void {
+                    $actor = auth()->user();
+                    $application = $this->getRecord();
+                    if (! $actor instanceof User || ! $application instanceof Application) {
+                        abort(403);
+                    }
+
+                    try {
+                        $run = app(\App\Services\PhotoPlacementService::class)->recommend($application, $actor);
+                    } catch (InvalidArgumentException $e) {
+                        Notification::make()->title('Cannot recommend placements')->body($e->getMessage())->danger()->persistent()->send();
+                        return;
+                    }
+
+                    if ($run->isFailed()) {
+                        Notification::make()->title('Placement recommendation failed')->body($run->error_message ?? 'The AI provider returned an error. The profile is unchanged.')->danger()->persistent()->send();
+                        return;
+                    }
+
+                    Notification::make()
+                        ->title('Placement recommendations ready')
+                        ->body('Review them in the Photograph placements section, then decide each placement. Customer approval is required before publication.')
+                        ->success()->persistent()->send();
+                }),
+            Action::make('previewPresentation')
+                ->label('Preview presentation')
+                ->color('gray')
+                ->url(fn (): ?string => $this->getRecord() instanceof Application && $this->getRecord()->profile_id !== null
+                    ? route('staff.applications.presentation-preview', ['application' => $this->getRecord()])
+                    : null)
+                ->openUrlInNewTab(true)
+                ->visible(fn (): bool => $this->getRecord() instanceof Application
+                    && $this->getRecord()->profile_id !== null
+                    && (auth()->user()?->canManageEditorial() ?? false)),
+            Action::make('correctCountryOfResidence')
+                ->label('Correct country of residence')
+                ->color('gray')
+                ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false) && $this->getRecord() instanceof Application)
+                ->form([
+                    \Filament\Forms\Components\Select::make('country_of_residence')
+                        ->label('Country of residence (ISO 3166-1 alpha-2)')
+                        ->options(\App\Support\Countries::all())
+                        ->searchable()
+                        ->required()
+                        ->helperText('Determines the pricing category (India INR / other countries USD). Recorded with your name and the change time. Never shown on the public profile.'),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User) {
+                        abort(403);
+                    }
+
+                    /** @var Application $application */
+                    $application = $this->getRecord();
+                    $country = \App\Support\Countries::normalize((string) $data['country_of_residence']);
+                    if ($country === null) {
+                        Notification::make()->title('Invalid country')->body('Choose a country from the list.')->danger()->persistent()->send();
+                        return;
+                    }
+
+                    $before = $application->country_of_residence;
+                    $application->forceFill(['country_of_residence' => $country])->save();
+
+                    app(\App\Services\StaffAuditLogger::class)->log(
+                        action: 'application.country_of_residence_corrected',
+                        subject: $application,
+                        before: ['country_of_residence' => $before],
+                        after: ['country_of_residence' => $country],
+                        actor: $actor,
+                    );
+
+                    Notification::make()
+                        ->title('Country of residence updated')
+                        ->body('Pricing will follow the recorded country for new payment obligations. Existing issued amounts are never repriced.')
+                        ->success()
+                        ->persistent()
+                        ->send();
+                }),
             Action::make('applyPaymentWaiver')
                 ->label('Apply payment waiver')
                 ->color('warning')

@@ -129,16 +129,21 @@ class CustomerReviewJourneyTest extends TestCase
             $dashboard,
         );
 
-        /* 5. The preview shows both language versions and approved photographs. */
+        /* 5. The preview uses the publication-ready presentation: the English
+           page by default, the Malayalam version through the same language
+           toggle the published profile has, and approved photographs streaming
+           through the owner-only preview route. */
         $preview = $this->actingAs($member)->get(route('applications.preview', $application))
             ->assertOk()->getContent();
         $this->assertStringContainsString('ENGLISH PREPARED BIOGRAPHY TEXT.', $preview);
         $this->assertStringContainsString('English summary of the journey.', $preview);
-        $this->assertStringContainsString('മലയാളം ജീവചരിത്രം തയ്യാറാക്കിയത്.', $preview);
-        $this->assertStringContainsString('മലയാളം തലക്കെട്ട്', $preview);
         $this->assertStringContainsString('Approve this profile', $preview);
         $this->assertStringContainsString('src="'.route('applications.preview.photo', [$application, $photo]).'"', $preview);
         $this->actingAs($member)->get(route('applications.preview.photo', [$application, $photo]))->assertOk();
+
+        $previewMl = $this->actingAs($member)->get(route('applications.preview', ['application' => $application, 'lang' => 'ml']))
+            ->assertOk()->getContent();
+        $this->assertStringContainsString('മലയാളം ജീവചരിത്രം തയ്യാറാക്കിയത്.', $previewMl);
 
         /* 6. Customer approves; admin sees it; normal publication succeeds. */
         $this->actingAs($member)->post(route('applications.preview.approve', $application), [

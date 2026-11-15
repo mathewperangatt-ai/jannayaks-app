@@ -97,7 +97,7 @@ class Phase11CustomerEditorialWorkflowTest extends TestCase
         $this->actingAs($member)
             ->get(route('applications.preview', $application))
             ->assertOk()
-            ->assertSee('YOUR Jannayaks PROFILE', false)
+            ->assertSee('Customer preview', false)
             ->assertSee('Approve this profile', false)
             ->assertDontSee('generation_run', false)
             ->assertDontSee('claimTraces', false);

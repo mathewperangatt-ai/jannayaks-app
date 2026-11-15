@@ -83,20 +83,28 @@ return [
         'currency' => 'INR',
         'gst_percent' => 18,
         /*
-        | One public Standard Profile. Living charges are GST-exclusive.
+        | One public Standard Profile. Living charges are GST-INCLUSIVE: the
+        | advertised Indian amount is the exact checkout total (base_amount
+        | = 5000 with gst_inclusive=true). Subject to confirmation with the
+        | owner's chartered accountant before the live gateway is enabled.
         | New applications: pricing_generation=standard_profile, internal
         | package_tier=distinguished (editorial depth key only).
         | Historical emerging/accomplished/distinguished rows keep null
         | pricing_generation and their original package base amounts / media
         | entitlements below. Do not reprice those rows from standard_profile.
-        | Standard Profile ₹4,800 = profile preparation ₹3,000 + first-year
-        | hosting ₹1,800. No launch discount and no crossed-out comparison price.
+        | International prices (US$50 profile / US$15 renewal) are display-only
+        | reference amounts — the gateway remains INR-only and international
+        | payments are NOT enabled.
+        | No launch discount and no crossed-out comparison price. Typographical
+        | and factual corrections are free; substantial rewriting is assessed
+        | individually and quoted before work begins.
         */
         'standard_profile' => [
             'internal_tier' => 'distinguished',
             'label' => 'Profile',
-            'base_amount' => 4800,
-            'description' => 'Profile preparation and editorial presentation (₹3,000) and first-year hosting (₹1,800), exclusive of GST.',
+            'base_amount' => 5000,
+            'gst_inclusive' => true,
+            'description' => 'One GST-inclusive price of ₹5,000 (India) covering profile preparation, editorial presentation, publication and first-year hosting.',
             'photo_slots' => 3,
             'includes_video_link' => false,
         ],
@@ -160,14 +168,22 @@ return [
         ],
         'renewal' => [
             'label' => 'Annual renewal',
-            'base_amount' => 1800,
-            'gst_inclusive' => false,
-            'description' => 'Annual renewal of publication and hosting, exclusive of GST.',
+            'base_amount' => 1500,
+            'gst_inclusive' => true,
+            'description' => 'Annual renewal of publication and hosting — one GST-inclusive price of ₹1,500 (India).',
+        ],
+        /*
+        | Display-only international reference prices. The gateway is INR-only;
+        | these amounts never enter payment calculation or checkout.
+        */
+        'international' => [
+            'profile_usd' => 50,
+            'renewal_usd' => 15,
         ],
         'revision' => [
-            'label' => 'Full profile rewrite',
+            'label' => 'Substantial profile rewriting',
             'base_amount' => 3000,
-            'description' => 'Full profile rewrite, exclusive of GST. A maintenance request does not collect this payment.',
+            'description' => 'Substantial rewriting is assessed individually and quoted before work begins. A maintenance request does not collect this payment. Typographical and factual corrections are free.',
         ],
     ],
 
@@ -307,9 +323,20 @@ return [
         'editorial' => [
             // Two included pre-publication revision rounds are part of initial prep (P11). Not paid.
             'included_prepublication_revision_rounds' => 2,
-            // A full profile rewrite is priced at tier_pricing.revision (₹3,000 + GST). A maintenance request does not collect it.
+            // Substantial rewriting is assessed individually and quoted before work begins. A maintenance request does not collect it.
         ],
-        'image_enhancement' => [
+        /*
+    | Photograph-placement recommendations (Phase 3). Invoked only through
+    | the explicit Filament administrator action. Shares the OpenAI
+    | credentials/model config; a recommendation for unchanged photographs
+    | and editorial content is reused from the recorded run instead of
+    | re-analysing. The AI recommends; administrators decide.
+    */
+    'photo_placement' => [
+        'provider' => env('JANNAYAKS_AI_PLACEMENT_PROVIDER', 'fake'), // fake | openai
+    ],
+
+    'image_enhancement' => [
             // KILL SWITCH — disabled by default. When false: no candidate is
             // created, no job is dispatched, uploads/approval/publication are
             // completely unaffected. Enable only after output-quality review.

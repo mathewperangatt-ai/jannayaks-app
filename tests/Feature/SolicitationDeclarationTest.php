@@ -41,6 +41,7 @@ class SolicitationDeclarationTest extends TestCase
             'source_method' => 'online_interview',
             'full_name' => 'No Declaration',
             'broad_location' => 'Kozhikode',
+            'country_of_residence' => 'IN',
             'contact_email' => 'no.declaration@example.com',
         ];
 
@@ -80,6 +81,7 @@ class SolicitationDeclarationTest extends TestCase
             'full_name' => 'Guest With Declaration',
             'broad_location' => 'Kochi',
             'contact_email' => 'guest.with@example.com',
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
         ])->assertRedirect();
         $this->assertTrue(session()->has('apply.intent'), 'The accepted guest intent is stored for the sign-in continuation.');
@@ -94,6 +96,7 @@ class SolicitationDeclarationTest extends TestCase
             'full_name' => 'Declared Applicant',
             'broad_location' => 'Kozhikode',
             'contact_email' => 'declared@example.com',
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
         ])->assertRedirect();
 
@@ -126,6 +129,7 @@ class SolicitationDeclarationTest extends TestCase
             'full_name' => 'Second Start',
             'broad_location' => 'Kochi',
             'contact_email' => 'second@example.com',
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
         ]);
 
@@ -160,6 +164,7 @@ class SolicitationDeclarationTest extends TestCase
                 'full_name' => 'Direct Route Applicant',
                 'broad_location' => 'Kozhikode',
                 'contact_email' => 'direct@example.com',
+                'country_of_residence' => 'IN',
                 'solicitation_declaration' => '1',
             ])
             ->assertCreated();
@@ -188,6 +193,7 @@ class SolicitationDeclarationTest extends TestCase
             'full_name' => 'Guest Applicant',
             'broad_location' => 'Kochi',
             'contact_email' => 'guest@example.com',
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
         ])->assertRedirect();
         $this->assertTrue(session()->has('apply.intent'));
@@ -221,6 +227,7 @@ class SolicitationDeclarationTest extends TestCase
             'full_name' => 'Expired Applicant',
             'broad_location' => 'Kozhikode',
             'contact_email' => 'expired@example.com',
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
         ])->assertRedirect();
         $expired = Application::query()->where('user_id', $member->id)->sole();
@@ -246,6 +253,7 @@ class SolicitationDeclarationTest extends TestCase
             'full_name' => 'Fresh Start',
             'broad_location' => 'Kozhikode',
             'contact_email' => 'fresh@example.com',
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
         ])->assertRedirect();
 

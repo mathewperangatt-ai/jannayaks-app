@@ -345,6 +345,11 @@ class CustomerEditorialWorkflowService
 
                 $malayalam = $this->malayalamShownInPreview($locked);
 
+                // The approval covers the exact publication-ready presentation:
+                // editorial versions plus the profile presentation inputs.
+                $approvalProfile = $locked->profile_id
+                    ? Profile::query()->whereKey($locked->profile_id)->first()
+                    : null;
                 $approval = EditorialCustomerApproval::query()->create([
                     'application_id' => $locked->id,
                     'profile_id' => $locked->profile_id,
@@ -354,6 +359,9 @@ class CustomerEditorialWorkflowService
                     'consent_scope' => $malayalam instanceof EditorialContent
                         ? EditorialCustomerApproval::SCOPE_ENGLISH_AND_MALAYALAM
                         : EditorialCustomerApproval::SCOPE_ENGLISH,
+                    'presentation_fingerprint' => $approvalProfile instanceof Profile
+                        ? app(PublicProfilePresentationService::class)->presentationFingerprint($approvalProfile, $english, $malayalam)
+                        : null,
                     'approved_at' => now(),
                 ]);
 

@@ -124,32 +124,37 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
 
         Config::set('jannayaks.tier_pricing.billing.state', 'Kerala');
         $quote = PricingAmounts::forApplication($app, 'Kerala');
-        $this->assertSame(480000, $quote['base_paise']);
-        $this->assertSame(43200, $quote['cgst_paise']);
-        $this->assertSame(43200, $quote['sgst_paise']);
-        $this->assertSame(86400, $quote['gst_paise']);
-        $this->assertSame(566400, $quote['amount_incl_paise']);
+        // GST-inclusive: the advertised ₹5,000 IS the checkout total; the
+        // taxable value and GST are split out of it for the documents.
+        $this->assertSame(500000, $quote['amount_incl_paise']);
+        $this->assertSame(423729, $quote['base_paise']);
+        $this->assertSame(76271, $quote['gst_paise']);
+        $this->assertSame(38135, $quote['cgst_paise']);
+        $this->assertSame(38136, $quote['sgst_paise']);
         $this->assertSame('intra_state', $quote['gst_classification']);
+        $this->assertTrue($quote['gst_inclusive']);
         $this->assertSame(
             $quote['amount_incl_paise'],
             $quote['base_paise'] + $quote['cgst_paise'] + $quote['sgst_paise'],
         );
 
-        // Payment page has no collected place of supply yet: exclusive base + unclassified GST total.
+        // Payment page has no collected place of supply yet: taxable value + unclassified GST, inclusive total.
         $html = $this->actingAs($user)
             ->get(route('applications.payment', ['application' => $app, 'lang' => 'en']))
             ->assertOk()
             ->assertSee('Package Price Breakdown', false)
-            ->assertSee('₹4,800.00', false)
-            ->assertSee('GST (added)', false)
-            ->assertSee('₹864.00', false)
+            ->assertSee('GST-inclusive price', false)
+            ->assertSee('₹4,237.29', false)
+            ->assertSee('GST (included)', false)
+            ->assertSee('₹762.71', false)
             ->assertSee('Total (incl. GST)', false)
-            ->assertSee('₹5,664.00', false)
-            ->assertDontSee('CGST (added)', false)
+            ->assertSee('₹5,000.00', false)
+            ->assertDontSee('GST (added)', false)
+            ->assertDontSee('CGST (included)', false)
             ->getContent();
 
-        $this->assertSame(1, substr_count($html, '₹5,664.00'));
-        $this->assertGreaterThanOrEqual(1, substr_count($html, '₹4,800.00'));
+        $this->assertSame(1, substr_count($html, '₹5,000.00'));
+        $this->assertGreaterThanOrEqual(1, substr_count($html, '₹4,237.29'));
     }
 
     public function test_new_standard_profile_payment_initiation_uses_standard_amount(): void
@@ -163,8 +168,9 @@ class StandardProfileEntitlementsAndPaymentPresentationTest extends TestCase
 
         $payment = app(RazorpayPaymentService::class)->createApplicationPaymentLink($app);
 
-        $this->assertSame(566400, $payment->totalPaise());
-        $this->assertSame('4800.00', (string) $payment->base_amount);
+        $this->assertSame(500000, $payment->totalPaise());
+        // Inclusive pricing stores the split-out taxable value; the collected total stays ₹5,000.00.
+        $this->assertSame('4237.29', (string) $payment->base_amount);
         // Place of supply is not collected yet — tax is stored unclassified (total GST only).
         $this->assertNull($payment->cgst_amount);
         $this->assertNull($payment->sgst_amount);

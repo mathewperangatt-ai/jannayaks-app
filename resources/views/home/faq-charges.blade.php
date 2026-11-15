@@ -105,18 +105,20 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <span class="eyebrow">FAQ &amp; Charges / ചോദ്യങ്ങളും നിരക്കുകളും</span>
   <h1>Charges and common questions</h1>
   <p class="lede">
-    One Profile. The prices below are exclusive of GST. GST ({{ number_format($gstPercent, 0) }}%)
-    is added at checkout. There is no discounted comparison price.
+    One Profile. The Indian prices below are GST-inclusive — the amount shown is the amount payable at checkout.
+    International prices are shown in US dollars for reference; online payment remains in Indian rupees.
+    There is no discounted comparison price.
   </p>
 
   <div class="card">
     <div class="tier-name">Jannayaks Profile</div>
-    <div class="price">{{ $profile['base_formatted'] }} <span class="price-sub" style="display:inline">+ GST</span></div>
-    <div class="price-sub">Includes profile preparation, editorial presentation, publication and first-year hosting. Annual hosting renewal from the second year: {{ $renewal['base_formatted'] }} + applicable GST.</div>
+    <div class="price">{{ $profile['amount_incl_formatted'] }} <span class="price-sub" style="display:inline">(India, GST-inclusive)</span></div>
+    <div class="price-sub">US${{ number_format((float) config('jannayaks.tier_pricing.international.profile_usd', 50), 0) }} (international) — includes profile preparation, editorial presentation, publication and first-year hosting. Annual renewal from the second year: {{ $renewal['amount_incl_formatted'] }} (India, GST-inclusive) · US${{ number_format((float) config('jannayaks.tier_pricing.international.renewal_usd', 15), 0) }} (international).</div>
     <ul class="features">
-      <li>Profile preparation and editorial presentation: ₹3,000</li>
-      <li>First-year hosting: ₹1,800</li>
-      <li>The same Online Interview for every applicant, and your approval before publication</li>
+      <li>Profile preparation, editorial presentation, publication and first-year hosting</li>
+      <li>Up to three photographs, and your approval before publication</li>
+      <li>Typographical and factual corrections are free</li>
+      <li>The same Online Interview for every applicant</li>
     </ul>
   </div>
 
@@ -148,7 +150,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   </div>
   <div class="faq">
     <strong>What does the Profile cost?</strong>
-    <p>Jannayaks Profile: ₹4,800 + applicable GST. It includes profile preparation and editorial presentation (₹3,000) and first-year hosting (₹1,800). Annual hosting renewal from the second year is ₹1,800 + applicable GST. A full profile rewrite costs ₹3,000 plus GST.</p>
+    <p>Jannayaks Profile: ₹5,000 in India (GST-inclusive) or US$50 international. It includes profile preparation, editorial presentation, publication and first-year hosting. Annual renewal from the second year is ₹1,500 in India (GST-inclusive) or US$15 international. Typographical and factual corrections are free.</p>
   </div>
   <div class="faq">
     <strong>What if Jannayaks declines my application?</strong>
@@ -180,11 +182,11 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   </div>
   <div class="faq">
     <strong>What is annual hosting renewal?</strong>
-    <p>After the first publication period, annual hosting renewal is ₹1,800 plus applicable GST for every profile. This is a hosting renewal charge and is separate from the initial Profile fee.</p>
+    <p>After the first publication period, annual renewal is ₹1,500 in India (GST-inclusive) or US$15 international for every profile. This renewal keeps the profile and its permanent URL published and is separate from the initial Profile fee.</p>
   </div>
   <div class="faq">
     <strong>What about profile revisions after publication?</strong>
-    <p>A full profile rewrite is priced at {{ $revision['base_formatted'] }} plus GST. Submitting a maintenance request does not collect that payment. Jannayaks arranges a rewrite charge separately. The published profile stays unchanged until you approve a reviewed update.</p>
+    <p>Typographical and factual corrections are free — submit them through your customer panel and the editorial team reviews them. Substantial rewriting is assessed individually: Jannayaks quotes the work before it begins, and the published profile stays unchanged until you approve a reviewed update.</p>
   </div>
   <div class="faq">
     <strong>Where can I see example profiles?</strong>

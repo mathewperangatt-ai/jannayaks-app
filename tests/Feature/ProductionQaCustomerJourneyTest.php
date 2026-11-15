@@ -82,8 +82,8 @@ class ProductionQaCustomerJourneyTest extends TestCase
             $this->assertFalse($questions[$id]['required']);
             $this->assertNotSame('', trim((string) $questions[$id]['label_ml']));
         }
-        $this->assertStringStartsWith('How did you first become involved in public, community', $questions['q7']['label_en']);
-        $this->assertStringStartsWith('What were the main stages, roles or developments', $questions['q8']['label_en']);
+        $this->assertStringStartsWith('How did you begin your professional career, business', $questions['q7']['label_en']);
+        $this->assertStringStartsWith('What have been the significant stages, roles, responsibilities', $questions['q8']['label_en']);
     }
 
     public function test_html_submission_returns_to_dashboard_with_message_and_answers_stay_read_only(): void

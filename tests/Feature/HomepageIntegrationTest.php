@@ -40,11 +40,16 @@ class HomepageIntegrationTest extends TestCase
         // transparently (Pre-Launch Refinement Parts 4 and 6).
         $response->assertSee('Editorial Preparation');
         $response->assertSee('Prepared With Editorial Care', false);
-        // Standard pricing in plain editorial text — no founding-member offer.
-        $response->assertSee('Jannayaks Profile: ₹4,800 + applicable GST', false);
-        $response->assertSee('Annual hosting renewal from the second year: ₹1,800 + applicable GST.', false);
+        // Standard pricing in plain editorial text — no founding-member offer,
+        // no crossed-out comparison price, no premium tiers.
+        $response->assertSee('Jannayaks Profile: ₹5,000 (India, GST-inclusive) · US$50 (international)', false);
+        $response->assertSee('Annual renewal from the second year: ₹1,500 (India, GST-inclusive) · US$15 (international).', false);
+        $response->assertSee('Typographical and factual corrections are free.', false);
         $response->assertDontSee('Founding', false);
         $response->assertDontSee('₹4,000', false);
+        $response->assertDontSee('₹4,800', false);
+        $response->assertDontSee('₹1,800', false);
+        $response->assertDontSee('compare at', false);
         // Emotional message within Why Jannayaks.
         $response->assertSee('Your achievements deserve to be remembered — not just by the world, but by you.', false);
         $response->assertSee('href="'.route('faq-charges').'"', false);
@@ -264,15 +269,20 @@ class HomepageIntegrationTest extends TestCase
         $response->assertOk();
         $response->assertDontSee('noindex, nofollow', false);
         $response->assertDontSee('Under Construction', false);
-        $response->assertSee($profile['base_formatted'], false);
-        $response->assertSee($renewal['base_formatted'], false);
-        $response->assertSee($rewrite['base_formatted'], false);
+        // Advertised amounts are the GST-inclusive totals; no fixed rewrite price.
+        $response->assertSee($profile['amount_incl_formatted'], false);
+        $response->assertSee($renewal['amount_incl_formatted'], false);
+        $response->assertDontSee($rewrite['base_formatted'], false);
+        $response->assertSee('US$50', false);
+        $response->assertSee('US$15', false);
+        $response->assertSee('Typographical and factual corrections are free', false);
+        $response->assertSee('assessed individually', false);
         $response->assertDontSee('In Memoriam', false);
         $response->assertDontSee('3 years hosting', false);
         $response->assertDontSee('പ്രഗൽഭർ', false);
         $response->assertDontSee('₹6,000', false);
         $response->assertDontSee('₹2,400', false);
-        $response->assertSee('+ GST', false);
+        $response->assertDontSee('+ GST', false);
         // In Memoriam links are removed from public navigation.
         $response->assertDontSee('/in-memoriam', false);
         $response->assertSee(route('gallery.index', absolute: false), false);

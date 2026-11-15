@@ -39,6 +39,7 @@
 </style>
 
 <section class="card stack">
+    @include('partials.panel-guidance', ['key' => 'progress'])
     @if(session('maintenance_status'))
         <div style="border:1px solid #86a982;background:#eaf4ec;border-radius:10px;padding:12px 16px;font-size:14px;color:#33553f" role="status">
             {{ session('maintenance_status') }}
@@ -75,7 +76,7 @@
                 @endif
                 @if($isLivingProfile)
                     <span class="dash-pill">Jannayaks Profile</span>
-                    <span class="dash-pill">{{ $standardQuote['base_formatted'] }} + GST</span>
+                    <span class="dash-pill">{{ $standardQuote['amount_incl_formatted'] }} (incl. GST)</span>
                 @endif
                 <span class="dash-pill">Started {{ $application->intake_started_at ? $application->intake_started_at->format('d M Y') : '—' }}</span>
                 @if($application->online_interview_completed_at)

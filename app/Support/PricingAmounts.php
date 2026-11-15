@@ -9,6 +9,15 @@ class PricingAmounts
 {
     public const CURRENCY = 'INR';
 
+    public const CURRENCY_INR = 'INR';
+
+    public const CURRENCY_USD = 'USD';
+
+    /**
+     * Minor units per whole unit: paise for INR, cents for USD. Gateway
+     * amounts and stored decimals both use the currency's minor unit, so
+     * the arithmetic is identical across currencies.
+     */
     public const PAISE_PER_RUPEE = 100;
 
     public const STANDARD_INTERNAL_TIER = 'distinguished';
@@ -27,22 +36,25 @@ class PricingAmounts
     }
 
     /**
-     * The single public Standard Profile price. GST is added at payment.
-     * There is no comparison or launch price.
+     * The single public Standard Profile price. The advertised Indian amount
+     * is GST-INCLUSIVE: it is the exact checkout total. International prices
+     * are display-only reference amounts (US$) — checkout remains INR.
      *
      * @return array<string, mixed>
      */
-    public static function forStandardProfile(?string $placeOfSupply = null): array
+    public static function forStandardProfile(?string $placeOfSupply = null, ?string $countryOfResidence = null): array
     {
         $cfg = (array) config('jannayaks.tier_pricing.standard_profile', []);
 
-        return self::buildPlusGst(
+        return self::buildQuote(
             baseRupees: (int) ($cfg['base_amount'] ?? 0),
             gstRate: (float) config('jannayaks.tier_pricing.gst_percent', 18),
             label: (string) ($cfg['label'] ?? 'Standard Profile'),
-            description: (string) ($cfg['description'] ?? 'Standard Profile fee, exclusive of GST.'),
+            description: (string) ($cfg['description'] ?? 'Standard Profile fee.'),
             itemKey: 'standard_profile',
             placeOfSupply: $placeOfSupply,
+            gstInclusive: (bool) ($cfg['gst_inclusive'] ?? false),
+            countryOfResidence: $countryOfResidence,
         );
     }
 
@@ -55,11 +67,31 @@ class PricingAmounts
      */
     public static function forApplication(Application $application, ?string $placeOfSupply = null): array
     {
+        // The country of residence recorded on the application (admin-
+        // correctable) is the authoritative pricing-category signal. It is
+        // never taken from checkout-time input.
         if ($application->pricing_generation === Application::PRICING_GENERATION_STANDARD) {
-            return self::forStandardProfile($placeOfSupply);
+            return self::forStandardProfile($placeOfSupply, $application->country_of_residence);
         }
 
+        // Historical rows keep their stored package-tier amounts (INR).
         return self::forTier((string) $application->package_tier, $placeOfSupply);
+    }
+
+    /**
+     * The recorded country of residence for a membership: from the profile's
+     * latest application. Null for legacy memberships — renewal pricing
+     * then follows the legacy INR category until an administrator records
+     * a country.
+     */
+    public static function countryForMembership(\App\Models\Membership $membership): ?string
+    {
+        $country = Application::query()
+            ->where('profile_id', $membership->profile_id)
+            ->orderByDesc('id')
+            ->value('country_of_residence');
+
+        return Countries::normalize(is_string($country) ? $country : null);
     }
 
     /**
@@ -91,11 +123,12 @@ class PricingAmounts
     }
 
     /**
-     * One annual renewal price for every living profile. GST is added at payment.
+     * One annual renewal price for every living profile. The advertised
+     * Indian amount is GST-INCLUSIVE (the exact checkout total).
      *
      * @return array<string, mixed>
      */
-    public static function forTierRenewal(string $tierKey, ?string $placeOfSupply = null): array
+    public static function forTierRenewal(string $tierKey, ?string $placeOfSupply = null, ?string $countryOfResidence = null): array
     {
         if (! self::isLivingTier($tierKey)) {
             throw new InvalidArgumentException('Unknown package tier: '.$tierKey);
@@ -103,13 +136,15 @@ class PricingAmounts
 
         $cfg = (array) config('jannayaks.tier_pricing.renewal', []);
 
-        return self::buildPlusGst(
+        return self::buildQuote(
             baseRupees: (int) ($cfg['base_amount'] ?? 0),
             gstRate: (float) config('jannayaks.tier_pricing.gst_percent', 18),
             label: (string) ($cfg['label'] ?? 'Annual renewal'),
-            description: (string) ($cfg['description'] ?? 'Annual renewal of publication and hosting, exclusive of GST.'),
+            description: (string) ($cfg['description'] ?? 'Annual renewal of publication and hosting.'),
             itemKey: 'membership_renewal',
             placeOfSupply: $placeOfSupply,
+            gstInclusive: (bool) ($cfg['gst_inclusive'] ?? false),
+            countryOfResidence: $countryOfResidence,
         );
     }
 
@@ -257,6 +292,142 @@ class PricingAmounts
         };
     }
 
+    /**
+     * Route to the exclusive (base + GST at payment) or inclusive
+     * (advertised amount IS the checkout total) computation. Historical
+     * package tiers and revisions remain GST-exclusive; the Standard
+     * Profile and renewal advertise GST-inclusive Indian amounts.
+     */
+    private static function buildQuote(
+        int $baseRupees,
+        float $gstRate,
+        string $label,
+        string $description,
+        string $itemKey,
+        ?string $placeOfSupply = null,
+        bool $gstInclusive = false,
+        ?string $countryOfResidence = null,
+    ): array {
+        // Residents outside India are assigned the approved USD tariff
+        // ($50 creation / $15 renewal) as a flat international quote. No
+        // exchange rates are involved and the tariff never fluctuates.
+        if (Countries::isInternational($countryOfResidence)) {
+            return self::buildInternationalUsd(
+                usdAmount: $countryOfResidence !== null ? self::internationalUsdAmountFor($itemKey) : 0,
+                label: $label,
+                description: (string) config('jannayaks.tier_pricing.international.description', 'International price (USD). The total shown is the amount payable.'),
+                itemKey: $itemKey,
+            );
+        }
+
+        return $gstInclusive
+            ? self::buildGstInclusive($baseRupees, $gstRate, $label, $description, $itemKey, $placeOfSupply)
+            : self::buildPlusGst($baseRupees, $gstRate, $label, $description, $itemKey, $placeOfSupply);
+    }
+
+    /**
+     * The approved flat USD reference tariff in whole dollars for an item key.
+     */
+    public static function internationalUsdAmountFor(string $itemKey): int
+    {
+        $international = (array) config('jannayaks.tier_pricing.international', []);
+
+        return match ($itemKey) {
+            'standard_profile' => (int) ($international['profile_usd'] ?? 50),
+            'membership_renewal' => (int) ($international['renewal_usd'] ?? 15),
+            default => throw new InvalidArgumentException('No approved USD tariff for '.$itemKey),
+        };
+    }
+
+    /**
+     * The international quote: one flat USD amount, no exchange-rate maths,
+     * no invented tax figures. GST components stay unclassified (null) —
+     * the tax treatment of international sales is a separate accounting
+     * decision and is never assumed here.
+     */
+    private static function buildInternationalUsd(
+        int $usdAmount,
+        string $label,
+        string $description,
+        string $itemKey,
+    ): array {
+        $totalPaise = $usdAmount * self::PAISE_PER_RUPEE;
+        if ($totalPaise <= 0) {
+            throw new InvalidArgumentException('Invalid computed amount for '.$itemKey);
+        }
+
+        return [
+            'currency' => self::CURRENCY_USD,
+            'tier_key' => $itemKey,
+            'label' => $label,
+            'description' => $description,
+            'gst_inclusive' => true,
+            'gst_rate_percent' => 0.0,
+            'amount_incl_paise' => $totalPaise,
+            'amount_incl_rupees' => $usdAmount,
+            'base_paise' => $totalPaise,
+            'gst_paise' => 0,
+            'cgst_paise' => null,
+            'sgst_paise' => null,
+            'igst_paise' => null,
+            'gst_classification' => 'none',
+            'amount_incl_formatted' => self::formatMoney($totalPaise, self::CURRENCY_USD),
+            'base_formatted' => self::formatMoney($totalPaise, self::CURRENCY_USD),
+            'gst_formatted' => self::formatMoney(0, self::CURRENCY_USD),
+            'cgst_formatted' => null,
+            'sgst_formatted' => null,
+            'igst_formatted' => null,
+        ];
+    }
+
+    /**
+     * The advertised rupee amount is GST-inclusive: it IS the checkout
+     * total. The taxable value and GST component are split out of it for
+     * display and document fields — the collected total never changes.
+     */
+    private static function buildGstInclusive(
+        int $advertisedRupees,
+        float $gstRate,
+        string $label,
+        string $description,
+        string $itemKey,
+        ?string $placeOfSupply = null,
+    ): array {
+        $totalPaise = self::rupeesToPaise($advertisedRupees);
+        if ($totalPaise <= 0) {
+            throw new InvalidArgumentException('Invalid computed amount for '.$itemKey);
+        }
+
+        $split = self::splitInclusiveTotal($totalPaise, $gstRate);
+        $basePaise = $split['base_paise'];
+        $gstPaise = $split['gst_paise'];
+
+        $components = self::classifyGstComponents($gstPaise, $placeOfSupply);
+
+        return [
+            'currency' => self::CURRENCY,
+            'tier_key' => $itemKey,
+            'label' => $label,
+            'description' => $description,
+            'gst_inclusive' => true,
+            'gst_rate_percent' => $gstRate,
+            'amount_incl_paise' => $totalPaise,
+            'amount_incl_rupees' => (int) round($totalPaise / self::PAISE_PER_RUPEE),
+            'base_paise' => $basePaise,
+            'gst_paise' => $gstPaise,
+            'cgst_paise' => $components['cgst_paise'],
+            'sgst_paise' => $components['sgst_paise'],
+            'igst_paise' => $components['igst_paise'],
+            'gst_classification' => $components['classification'],
+            'amount_incl_formatted' => self::formatMoneyInr($totalPaise),
+            'base_formatted' => self::formatMoneyInr($basePaise),
+            'gst_formatted' => self::formatMoneyInr($gstPaise),
+            'cgst_formatted' => $components['cgst_paise'] !== null ? self::formatMoneyInr($components['cgst_paise']) : null,
+            'sgst_formatted' => $components['sgst_paise'] !== null ? self::formatMoneyInr($components['sgst_paise']) : null,
+            'igst_formatted' => $components['igst_paise'] !== null ? self::formatMoneyInr($components['igst_paise']) : null,
+        ];
+    }
+
     private static function buildPlusGst(
         int $baseRupees,
         float $gstRate,
@@ -375,5 +546,34 @@ class PricingAmounts
         if (strtoupper($currency) !== self::CURRENCY) {
             throw new InvalidArgumentException('Only INR currency is supported.');
         }
+    }
+
+    /**
+     * The gateway gate for NEW payment obligations: India residents are
+     * charged in INR, residents of other countries in USD. Nothing else is
+     * accepted and no currency conversion is performed.
+     */
+    public static function assertSupportedGatewayCurrency(string $currency): void
+    {
+        $code = strtoupper($currency);
+        if ($code !== self::CURRENCY_INR && $code !== self::CURRENCY_USD) {
+            throw new InvalidArgumentException('Only INR or USD payment obligations are supported.');
+        }
+    }
+
+    /**
+     * Currency-aware money formatting. INR uses the approved ₹ Indian
+     * grouping; USD uses $ with western grouping. The approved tariffs are
+     * never converted between currencies.
+     */
+    public static function formatMoney(int $minorUnits, string $currency = self::CURRENCY_INR): string
+    {
+        if (strtoupper($currency) === self::CURRENCY_USD) {
+            $value = $minorUnits / self::PAISE_PER_RUPEE;
+
+            return '$'.number_format($value, 2);
+        }
+
+        return self::formatMoneyInr($minorUnits);
     }
 }

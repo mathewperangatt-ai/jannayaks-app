@@ -161,6 +161,7 @@ class Phase7AuthJourneyTest extends TestCase
             'broad_location' => 'Kozhikode',
             'full_name' => 'Guest Tier User',
             'contact_email' => 'guest.tier@example.com',
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
         ]);
 
@@ -179,6 +180,7 @@ class Phase7AuthJourneyTest extends TestCase
             'broad_location' => 'Kozhikode',
             'full_name' => 'Paid Path User',
             'contact_email' => 'paid.path@example.com',
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
         ])->assertRedirect();
 
@@ -193,6 +195,7 @@ class Phase7AuthJourneyTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
 
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',

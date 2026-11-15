@@ -12,7 +12,6 @@ use Illuminate\Support\Collection;
 
 class PublicProfilePresentationService
 {
-    public function __construct(private ProfileUrlService $profileUrls) {}
 
     /**
      * @return array{
@@ -61,7 +60,12 @@ class PublicProfilePresentationService
         }
 
         $photos = $this->publicProfilePhotos($profile);
-        $photo = $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary) ?? $photos->first();
+        $placements = $this->placementService->approvedPlacements($profile);
+        // An approved hero placement overrides the primary-first fallback;
+        // without placements the presentation is unchanged.
+        $photo = $this->heroPlacementPhoto($placements)
+            ?? $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary)
+            ?? $photos->first();
 
         return [
             'profile' => $profile,
@@ -75,6 +79,7 @@ class PublicProfilePresentationService
             'malayalam' => $malayalam,
             'photo' => $photo,
             'photos' => $photos,
+            'placements' => $placements,
             'videoLinks' => $this->publicVideoLinks($profile),
             'language' => $language === 'ml' && $malayalam ? 'ml' : 'en',
             'activeEditorial' => $active,
@@ -84,6 +89,21 @@ class PublicProfilePresentationService
         ];
     }
 
+    public function __construct(
+        private ProfileUrlService $profileUrls,
+        private \App\Services\PhotoPlacementService $placementService,
+    ) {}
+
+    /** The approved hero placement's media item, or null. */
+    private function heroPlacementPhoto(\Illuminate\Support\Collection $placements): ?MediaItem
+    {
+        $hero = $placements->first(fn ($placement): bool => $placement->placement_type === \App\Models\EditorialPhotoPlacement::TYPE_HERO);
+
+        return $hero !== null && $hero->mediaItem !== null && $hero->mediaItem->isApprovedForPublicDisplay()
+            ? $hero->mediaItem
+            : null;
+    }
+
     public function displayName(Profile $profile): string
     {
         if (filled($profile->display_name)) {
@@ -91,6 +111,138 @@ class PublicProfilePresentationService
         }
 
         return (string) ($profile->full_name ?: 'Jannayaks profile');
+    }
+
+    /**
+     * The publication-ready presentation assembled for the customer preview:
+     * identical data assembly to present(), but without the public-visibility
+     * gate and with the PREVIEW editorial rows (not yet published pointers).
+     * canonicalUrl is null because the permanent URL is assigned at publication.
+     *
+     * @return array<string, mixed>
+     */
+    public function presentForCustomerPreview(
+        Profile $profile,
+        ?EditorialContent $english,
+        ?EditorialContent $malayalam,
+        string $language = 'en',
+    ): array {
+        $profile->loadMissing([
+            'geography.district.state',
+            'geography.localBody',
+            'geography.ward',
+            'publicOffices',
+            'application',
+            'media',
+            'externalLinks',
+            'user',
+        ]);
+
+        $language = in_array($language, ['en', 'ml'], true) ? $language : 'en';
+        if ($language === 'ml' && ! $malayalam instanceof EditorialContent) {
+            $language = 'en';
+        }
+        $active = $language === 'ml' ? $malayalam : $english;
+
+        $photos = $this->publicProfilePhotos($profile);
+        $placements = $this->placementService->approvedPlacements($profile);
+        $photo = $this->heroPlacementPhoto($placements)
+            ?? $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary)
+            ?? $photos->first();
+
+        return [
+            'profile' => $profile,
+            'canonicalUrl' => null,
+            'displayName' => $this->displayName($profile),
+            'profession' => filled($profile->profession) ? (string) $profile->profession : null,
+            'headline' => filled($profile->bio_headline) ? (string) $profile->bio_headline : null,
+            'locationLabel' => $this->publicLocationLabel($profile),
+            'publicOffices' => $profile->publicOffices,
+            'english' => $english,
+            'malayalam' => $malayalam,
+            'photo' => $photo,
+            'photos' => $photos,
+            'placements' => $placements,
+            'videoLinks' => $this->publicVideoLinks($profile),
+            'language' => $language,
+            'activeEditorial' => $active,
+            'referenceCode' => filled($profile->reference_code) ? (string) $profile->reference_code : null,
+        ];
+    }
+
+    /**
+     * A stable fingerprint of everything the publication-ready presentation
+     * displays apart from the editorial narrative: profile presentation
+     * fields, the location line, public offices, the approved photograph
+     * set (identity, primary flag, order) and active video links. Recorded
+     * with the customer's approval; a changed fingerprint at publication
+     * time means the customer approved a presentation that no longer exists.
+     */
+    public function presentationFingerprint(
+        Profile $profile,
+        ?EditorialContent $english,
+        ?EditorialContent $malayalam,
+    ): string {
+        $profile->loadMissing([
+            'geography.district.state',
+            'geography.localBody',
+            'geography.ward',
+            'publicOffices',
+            'media',
+            'externalLinks',
+        ]);
+
+        $payload = [
+            'profile' => [
+                (string) $profile->full_name,
+                (string) $profile->display_name,
+                (string) $profile->profession,
+                (string) $profile->bio_headline,
+                $this->publicLocationLabel($profile),
+            ],
+            'english' => $english?->id,
+            'malayalam' => $malayalam?->id,
+            'offices' => $profile->publicOffices
+                ->sortBy('sort_order')
+                ->values()
+                ->map(fn ($office): array => [
+                    (string) $office->office_name,
+                    (string) $office->where_location,
+                    (string) $office->term_summary,
+                    (string) $office->started_on,
+                    (bool) $office->is_current,
+                ])
+                ->all(),
+            'photos' => $this->publicProfilePhotos($profile)
+                ->map(fn (MediaItem $item): array => [
+                    (int) $item->id,
+                    (bool) $item->is_primary,
+                    (int) $item->display_order,
+                    (string) $item->storage_path_key,
+                ])
+                ->all(),
+            // Approved editorial photograph placements are part of what the
+            // customer approved: type, anchor, order and per-language captions.
+            'placements' => $this->placementService->approvedPlacements($profile)
+                ->map(fn ($placement): array => [
+                    (int) $placement->media_item_id,
+                    (string) $placement->placement_type,
+                    $placement->section_anchor,
+                    (int) $placement->display_order,
+                    $placement->caption_en,
+                    $placement->caption_ml,
+                ])
+                ->all(),
+            'videos' => $this->publicVideoLinks($profile)
+                ->map(fn ($link): array => [
+                    (int) $link->id,
+                    (string) $link->url,
+                    (string) $link->label,
+                ])
+                ->all(),
+        ];
+
+        return hash('sha256', (string) json_encode($payload));
     }
 
     /**

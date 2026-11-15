@@ -9,6 +9,7 @@ use App\Filament\Resources\Applications\RelationManagers\InterviewAnswersRelatio
 use App\Filament\Resources\Applications\RelationManagers\MalayalamEditorialRelationManager;
 use App\Filament\Resources\Applications\RelationManagers\ProfileExternalLinksRelationManager;
 use App\Filament\Resources\Applications\RelationManagers\ProfileMediaRelationManager;
+use App\Filament\Resources\Applications\RelationManagers\PhotoPlacementsRelationManager;
 use App\Filament\Resources\Applications\RelationManagers\SourceMaterialsRelationManager;
 use App\Filament\Resources\Applications\Schemas\ApplicationForm;
 use App\Filament\Resources\Applications\Schemas\ApplicationInfolist;
@@ -60,6 +61,7 @@ class ApplicationResource extends Resource
             SourceMaterialsRelationManager::class,
             MalayalamEditorialRelationManager::class,
             ProfileMediaRelationManager::class,
+            PhotoPlacementsRelationManager::class,
             ProfileExternalLinksRelationManager::class,
         ];
     }

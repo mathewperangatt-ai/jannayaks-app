@@ -29,11 +29,13 @@
 
     @php($standardQuote = \App\Support\PricingAmounts::forStandardProfile())
     @php($renewalQuote = \App\Support\PricingAmounts::forTierRenewal(\App\Support\PricingAmounts::STANDARD_INTERNAL_TIER))
+    @php($priceSuffix = $ml ? '(ഇന്ത്യ, GST ഉൾപ്പെടെ)' : '(India, GST-inclusive)')
+    @include('partials.panel-guidance', ['key' => 'apply', 'ml' => $ml])
     <div class="warnbox" role="note" aria-label="Pricing note">
-        {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം ഓൺലൈൻ അഭിമുഖം ആദ്യം വരും.' : 'After you sign in, the Online Interview comes before payment.' }}
-        <b>{{ $standardQuote['base_formatted'] }} + GST</b>.
-        {{ $ml ? 'വാർഷിക ഹോസ്റ്റിംഗ് പുതുക്കൽ' : 'Annual hosting renewal is' }}
-        <b>{{ $renewalQuote['base_formatted'] }} + GST</b>.
+        {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം ഓൺലൈൻ അഭിമുഖം ആദ്യം വരും. പ്രൊഫൈൽ നിരക്ക്' : 'After you sign in, the Online Interview comes before payment. The Profile price is' }}
+        <b>{{ $standardQuote['amount_incl_formatted'] }} {{ $priceSuffix }}</b>.
+        {{ $ml ? 'വാർഷിക പുതുക്കൽ' : 'Annual renewal is' }}
+        <b>{{ $renewalQuote['amount_incl_formatted'] }} {{ $priceSuffix }}</b>.
     </div>
 
     <div style="margin-top:10px">
@@ -76,6 +78,16 @@
                 <input id="broad_location" name="broad_location" type="text" minlength="2" maxlength="120" required value="{{ old('broad_location') }}" autocomplete="address-level2" placeholder="{{ $ml ? 'ഉദാ. കോഴിക്കോട്' : 'e.g. Kozhikode' }}">
                 <div class="hint">{{ $ml ? 'ജില്ലയോ പട്ടണമോ മതി. ഇത് അപേക്ഷയിൽ സൂക്ഷിക്കും.' : 'A district or town is enough. This is saved with the application.' }}</div>
                 @error('broad_location')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+            </div>
+            <div class="field">
+                <label for="country_of_residence">{{ $ml ? 'താമസ രാജ്യം' : 'Country of residence' }} <span class="req">*</span></label>
+                <select id="country_of_residence" name="country_of_residence" required autocomplete="country">
+                    @foreach(\App\Support\Countries::all() as $code => $name)
+                        <option value="{{ $code }}" @selected(old('country_of_residence', 'IN') === $code)>{{ $name }}</option>
+                    @endforeach
+                </select>
+                <div class="hint">{{ $ml ? 'നിരക്ക് ഈ രാജ്യം അടിസ്ഥാനമാക്കി നിർണ്ണയിക്കുന്നു. ഇത് പ്രസിദ്ധീകരിക്കില്ല.' : 'The price category is determined by your country of residence. It is never shown on your public profile.' }}</div>
+                @error('country_of_residence')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
             <div class="field">
                 <label for="preferred_slug">{{ $ml ? 'ആഗ്രഹിക്കുന്ന വ്യക്തിഗത URL (ഓപ്ഷണൽ നിർദ്ദേശം)' : 'Preferred personal URL (optional hint)' }}</label>

@@ -14,6 +14,7 @@
     </p>
 
     <div class="warnbox" role="note" aria-label="What this is">
+    @include('partials.panel-guidance', ['key' => 'apply'])
         Jannayaks is not a debate, campaigning or discussion platform. The material you share is used only for editorial preparation before publication.
         You will have the chance to review and approve the finished profile before it appears.
     </div>
