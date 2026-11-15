@@ -34,6 +34,7 @@
 </div>
 
 @include('public.profile-content')
+@include('partials.panel-guidance', ['key' => 'review'])
 
 <div style="max-width:1180px;margin:0 auto;padding:8px clamp(18px,4vw,42px) 64px">
     <div style="background:#fff;border:1.5px solid var(--border);border-radius:10px;padding:22px 24px;font:400 13.5px/1.6 var(--fb, sans-serif);color:var(--charcoal,#1F2937)">

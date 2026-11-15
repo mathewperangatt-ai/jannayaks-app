@@ -30,6 +30,7 @@
     @php($standardQuote = \App\Support\PricingAmounts::forStandardProfile())
     @php($renewalQuote = \App\Support\PricingAmounts::forTierRenewal(\App\Support\PricingAmounts::STANDARD_INTERNAL_TIER))
     @php($priceSuffix = $ml ? '(ഇന്ത്യ, GST ഉൾപ്പെടെ)' : '(India, GST-inclusive)')
+    @include('partials.panel-guidance', ['key' => 'apply', 'ml' => $ml])
     <div class="warnbox" role="note" aria-label="Pricing note">
         {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം ഓൺലൈൻ അഭിമുഖം ആദ്യം വരും. പ്രൊഫൈൽ നിരക്ക്' : 'After you sign in, the Online Interview comes before payment. The Profile price is' }}
         <b>{{ $standardQuote['amount_incl_formatted'] }} {{ $priceSuffix }}</b>.

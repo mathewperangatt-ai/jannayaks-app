@@ -39,6 +39,7 @@
 </style>
 
 <section class="card stack">
+    @include('partials.panel-guidance', ['key' => 'progress'])
     @if(session('maintenance_status'))
         <div style="border:1px solid #86a982;background:#eaf4ec;border-radius:10px;padding:12px 16px;font-size:14px;color:#33553f" role="status">
             {{ session('maintenance_status') }}

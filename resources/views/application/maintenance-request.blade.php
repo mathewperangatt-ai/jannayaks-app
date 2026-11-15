@@ -28,6 +28,7 @@
         additions or removals, and photograph replacement. Photograph replacement is part of this
         maintenance request (submitted photographs always pass the normal editorial approval).
     </p>
+    @include('partials.panel-guidance', ['key' => 'updates'])
 
     @if($openRequest)
         <div class="maint-status">

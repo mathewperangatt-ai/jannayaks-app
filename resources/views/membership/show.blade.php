@@ -2,6 +2,7 @@
 
 @section('content')
 <section class="card stack">
+    @include('partials.panel-guidance', ['key' => 'renewals'])
     <div class="row" style="justify-content:space-between">
         <div>
             <span class="tag">MEMBERSHIP</span>

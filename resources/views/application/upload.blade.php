@@ -13,6 +13,7 @@
         Uploads remain private and are never published as-is.
     </p>
     <div class="warnbox" role="note">
+    @include('partials.panel-guidance', ['key' => 'uploads'])
         Accepted formats: PDF, DOC/DOCX, RTF, TXT, CSV. Max {{ $maxKb }} KB per file.
         Forbidden file types: executable code, scripts, HTML, SVG (cannot be uploaded).
     </div>

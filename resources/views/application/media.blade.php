@@ -38,6 +38,7 @@
         Select up to <b>{{ $remaining }}</b> photograph{{ $remaining === 1 ? '' : 's' }} together in one upload{{ $count > 0 ? ' (you already have '.$count.')' : '' }}.
         Jannayaks may prepare an enhanced version for its own review; any enhanced version stays private unless Jannayaks approves it.
     </p>
+    @include('partials.panel-guidance', ['key' => 'photos'])
 
     @if ($count < $limit)
         <form method="post" action="{{ route('applications.media.store', $application) }}" enctype="multipart/form-data" class="stack">

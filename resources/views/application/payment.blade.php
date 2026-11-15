@@ -30,6 +30,7 @@
         'direct_submission' => ['en' => 'Direct Submission', 'ml' => 'നേരിട്ടുള്ള സമർപ്പണം'],
     ];
 @endphp
+@include('partials.panel-guidance', ['key' => 'payments', 'ml' => $ml])
 
 <div class="card">
     <div class="row" style="margin-bottom:14px">
