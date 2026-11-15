@@ -20,7 +20,7 @@
 <link href="https://fonts.googleapis.com/css2?family=Cormorant+Garamond:ital,wght@0,500;0,600;0,700;1,500&family=DM+Sans:wght@300;400;500;600&family=Noto+Serif+Malayalam:wght@400;500;600;700&display=swap" rel="stylesheet">
 <style>
 :root{
-  --navy:#0F1F3D;--saffron:#C65102;--white:#FFFFFF;--off:#F8F6F2;
+  --navy:#0F1F3D;--saffron:#C65102;--white:#FFFFFF;--off:#FAF6EE;
   --gray:#6B7280;--light:#F3F4F6;--charcoal:#1F2937;--border:#E5E7EB;
   --gold:#B8860B;--goldbg:#FFFBEB;--greenbg:#F0FDF4;--green:#1A6B3C;
   --fd:'Cormorant Garamond',Georgia,serif;--fb:'DM Sans',sans-serif;--fm:'Noto Serif Malayalam',serif;
@@ -69,6 +69,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 .back{margin-top:28px;font-size:13px;}
 .back a{color:var(--navy);font-weight:600;}
 @media(min-width:900px){.nav-links{display:flex;}}
+@media(max-width:599px){.nav-logo img{height:36px;}.nav-login{padding:6px 10px;}.nav-cta{padding:8px 10px;}}
 @media(max-width:899px){
   .nav-inner{height:auto;min-height:56px;padding:8px 14px;flex-wrap:wrap;gap:8px;}
   .nav-links{display:flex;order:3;width:100%;justify-content:center;gap:18px;padding:4px 0 2px;border-top:1px solid var(--border);}
@@ -83,12 +84,14 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 <nav>
   <div class="nav-inner">
     <a class="nav-logo" href="{{ route('home') }}">
-      <img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks">
+      <img src="{{ asset('branding/jannayaks-logo.png') . '?v=2' }}" alt="Jannayaks">
     </a>
     <ul class="nav-links">
+      <li><a href="{{ route('home') }}">Home</a></li>
       <li><a href="{{ route('gallery.index') }}">Gallery</a></li>
       <li><a href="{{ route('home') }}#hiw">How It Works</a></li>
       <li><a href="{{ route('home') }}#pricing">Pricing</a></li>
+      <li><a href="{{ route('faq-charges') }}" aria-current="page">FAQ &amp; Charges</a></li>
     </ul>
     <div class="nav-right">
       @include('partials.translate-control')
