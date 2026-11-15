@@ -16,8 +16,9 @@
             "deployOutputs": [
                 {
                     "include": [
-                        "/usr/lib/postgresql/18/**",
-                        "/usr/lib/x86_64-linux-gnu/libpq.so.5*"
+                        "/usr/lib/postgresql/18",
+                        "/usr/lib/x86_64-linux-gnu/libpq.so.5",
+                        "/usr/lib/x86_64-linux-gnu/libpq.so.5.18"
                     ]
                 }
             ]
@@ -33,8 +34,9 @@
             {
                 "step": "pgdump18",
                 "include": [
-                    "/usr/lib/postgresql/18/**",
-                    "/usr/lib/x86_64-linux-gnu/libpq.so.5*"
+                    "/usr/lib/postgresql/18",
+                    "/usr/lib/x86_64-linux-gnu/libpq.so.5",
+                    "/usr/lib/x86_64-linux-gnu/libpq.so.5.18"
                 ]
             }
         ],
