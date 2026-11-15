@@ -169,6 +169,7 @@ class IntakeExpiryCommandTest extends TestCase
                 'full_name' => 'Fresh Start',
                 'broad_location' => 'Kozhikode',
                 'contact_email' => 'fresh.start@example.com',
+                'country_of_residence' => 'IN',
                 'solicitation_declaration' => '1',
             ])
             ->assertRedirect();

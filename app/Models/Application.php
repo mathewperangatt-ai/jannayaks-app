@@ -194,6 +194,7 @@ class Application extends Model
         'preferred_display_name',
         'preferred_slug',
         'broad_location',
+    'country_of_residence',
         'distinguished_interview_addon',
         'preferred_contact_email',
         'preferred_contact_mobile',

@@ -29,6 +29,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             'broad_location' => 'Kozhikode',
             'contact_email' => 'arun.kumar@example.test',
             'contact_mobile' => '9876543210',
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
         ], $overrides);
     }

@@ -79,6 +79,16 @@
                 @error('broad_location')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
             <div class="field">
+                <label for="country_of_residence">{{ $ml ? 'താമസ രാജ്യം' : 'Country of residence' }} <span class="req">*</span></label>
+                <select id="country_of_residence" name="country_of_residence" required autocomplete="country">
+                    @foreach(\App\Support\Countries::all() as $code => $name)
+                        <option value="{{ $code }}" @selected(old('country_of_residence', 'IN') === $code)>{{ $name }}</option>
+                    @endforeach
+                </select>
+                <div class="hint">{{ $ml ? 'നിരക്ക് ഈ രാജ്യം അടിസ്ഥാനമാക്കി നിർണ്ണയിക്കുന്നു. ഇത് പ്രസിദ്ധീകരിക്കില്ല.' : 'The price category is determined by your country of residence. It is never shown on your public profile.' }}</div>
+                @error('country_of_residence')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+            </div>
+            <div class="field">
                 <label for="preferred_slug">{{ $ml ? 'ആഗ്രഹിക്കുന്ന വ്യക്തിഗത URL (ഓപ്ഷണൽ നിർദ്ദേശം)' : 'Preferred personal URL (optional hint)' }}</label>
                 <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
                 <div class="hint">{{ $ml ? 'ഇത് ഓപ്ഷണലാണ്. നിങ്ങൾ നൽകുന്ന ഇഷ്ടപ്പെട്ട പേര്, ലഭ്യതയ്ക്കും URL ഫോർമാറ്റിനും വിധേയമായി, നിങ്ങളുടെ വ്യക്തിഗത Jannayaks പ്രൊഫൈൽ ലിങ്ക് സൃഷ്ടിക്കാൻ ഉപയോഗിക്കുന്നു. നിങ്ങൾ സ്വയം ഒരു username സൃഷ്ടിക്കേണ്ടതില്ല. പ്രൊഫൈൽ പ്രസിദ്ധീകരിച്ചുകഴിഞ്ഞാൽ അതിന്റെ URL മാറ്റാൻ കഴിയില്ല.' : 'Optional. Your preferred name is used to create your personalised Jannayaks profile URL, subject to availability and URL formatting requirements. You do not invent a username. Once your profile is published, its URL cannot be changed.' }}</div>

@@ -24,6 +24,7 @@ class Phase4ApplicationIntakeTest extends TestCase
         ]);
 
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
             'package_tier'   => 'accomplished',
             'source_method'  => 'online_interview',
@@ -54,6 +55,7 @@ class Phase4ApplicationIntakeTest extends TestCase
         foreach (['emerging', 'accomplished', 'distinguished'] as $tier) {
             $user = User::factory()->create(['email_verified_at' => now()]);
             $this->actingAs($user)->postJson(route('applications.store'), [
+                'country_of_residence' => 'IN',
                 'solicitation_declaration' => '1',
                 'package_tier'   => $tier,
                 'source_method'  => 'online_interview',
@@ -71,6 +73,7 @@ class Phase4ApplicationIntakeTest extends TestCase
         $user = User::factory()->create(['email_verified_at' => now()]);
         // Distinguished with no verification / no achievements provided:
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
             'package_tier'  => 'distinguished',
             'source_method' => 'online_interview',

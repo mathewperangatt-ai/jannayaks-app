@@ -99,6 +99,7 @@ class ProfileWorkflowGoldenPathTest extends TestCase
 
         $created = $this->actingAs($customer)
             ->postJson(route('applications.store'), [
+                'country_of_residence' => 'IN',
                 'solicitation_declaration' => '1',
                 'package_tier' => 'emerging',
                 'source_method' => 'online_interview',

@@ -125,8 +125,21 @@ class ApplicationInfolist
                     TextEntry::make('preferred_whatsapp_mobile')
                         ->label('WhatsApp number')
                         ->visible(fn (?Application $record): bool => self::canSeePrivateContact($record)),
-                ])
-                ->columns(2)
+                    TextEntry::make('country_of_residence')
+                        ->label('Country of residence')
+                        ->state(fn (?Application $record): ?string => $record === null
+                            ? null
+                            : ($record->country_of_residence !== null
+                                ? \App\Support\Countries::name($record->country_of_residence).' ('.$record->country_of_residence.')'
+                                : 'Not recorded — pricing follows the legacy INR category')),
+                    TextEntry::make('country_pricing_category')
+                        ->label('Pricing category')
+                        ->badge()
+                        ->color(fn (?Application $record): string => \App\Support\Countries::isInternational($record?->country_of_residence) ? 'info' : 'gray')
+                        ->state(fn (?Application $record): ?string => $record === null
+                            ? null
+                            : (\App\Support\Countries::isInternational($record->country_of_residence) ? 'International (USD)' : 'India (INR)')),
+                ])->columns(2)
                 ->collapsed(),
             Section::make('Customer approval')
                 ->description('The customer\'s approval of the exact editorial versions shown in the preview. Normal publication uses this approval.')

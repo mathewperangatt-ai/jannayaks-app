@@ -472,6 +472,50 @@ class ViewApplication extends ViewRecord
                         );
                     }, 'Living profile unpublished. No memorial profile was created.');
                 }),
+            Action::make('correctCountryOfResidence')
+                ->label('Correct country of residence')
+                ->color('gray')
+                ->visible(fn (): bool => (auth()->user()?->isAdmin() ?? false) && $this->getRecord() instanceof Application)
+                ->form([
+                    \Filament\Forms\Components\Select::make('country_of_residence')
+                        ->label('Country of residence (ISO 3166-1 alpha-2)')
+                        ->options(\App\Support\Countries::all())
+                        ->searchable()
+                        ->required()
+                        ->helperText('Determines the pricing category (India INR / other countries USD). Recorded with your name and the change time. Never shown on the public profile.'),
+                ])
+                ->action(function (array $data): void {
+                    $actor = auth()->user();
+                    if (! $actor instanceof User) {
+                        abort(403);
+                    }
+
+                    /** @var Application $application */
+                    $application = $this->getRecord();
+                    $country = \App\Support\Countries::normalize((string) $data['country_of_residence']);
+                    if ($country === null) {
+                        Notification::make()->title('Invalid country')->body('Choose a country from the list.')->danger()->persistent()->send();
+                        return;
+                    }
+
+                    $before = $application->country_of_residence;
+                    $application->forceFill(['country_of_residence' => $country])->save();
+
+                    app(\App\Services\StaffAuditLogger::class)->log(
+                        action: 'application.country_of_residence_corrected',
+                        subject: $application,
+                        before: ['country_of_residence' => $before],
+                        after: ['country_of_residence' => $country],
+                        actor: $actor,
+                    );
+
+                    Notification::make()
+                        ->title('Country of residence updated')
+                        ->body('Pricing will follow the recorded country for new payment obligations. Existing issued amounts are never repriced.')
+                        ->success()
+                        ->persistent()
+                        ->send();
+                }),
             Action::make('applyPaymentWaiver')
                 ->label('Apply payment waiver')
                 ->color('warning')

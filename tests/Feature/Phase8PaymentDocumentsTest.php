@@ -376,6 +376,7 @@ class Phase8PaymentDocumentsTest extends TestCase
         Config::set('services.razorpay.enabled', false);
 
         $res = $this->actingAs($user)->postJson(route('applications.store'), [
+            'country_of_residence' => 'IN',
             'solicitation_declaration' => '1',
             'package_tier' => 'emerging',
             'source_method' => 'online_interview',
