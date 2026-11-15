@@ -152,7 +152,7 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertDontSee('ദയവായി ഒരു അംഗത്വ ശ്രേണി തിരഞ്ഞെടുക്കുക.')
             ->assertSee('Arun Kumar', false)
             ->assertSee('>Profile<', false)
-            ->assertSee('₹5,664.00', false);
+            ->assertSee('₹5,000.00', false);
 
         $this->assertSame(
             'distinguished',
@@ -235,8 +235,8 @@ class ApplicationIntakeLanguageTest extends TestCase
             ->assertOk()
             ->assertSee('പേയ്‌മെൻ്റ് & ബില്ലിംഗ് — അപ്ലിക്കേഷൻ')
             ->assertSee('ചെലവ് വിഭജനം')
-            ->assertSee('അടിസ്ഥാന നിരക്ക് + ജിഎസ്ടി (പണമടയ്ക്കുമ്പോൾ ചേർക്കും)')
-            ->assertSee('% ജിഎസ്ടി പണമടയ്ക്കുമ്പോൾ ചേർക്കും')
+            ->assertSee('ജിഎസ്ടി ഉൾപ്പെടുന്ന നിരക്ക്')
+            ->assertSee('% ജിഎസ്ടി ഉൾപ്പെടുന്നു')
             ->assertSee('പേയ്‌മെൻ്റ് സ്റ്റാറ്റസ്')
             ->assertSee('ഇപ്പോൾ പേയ്‌മെൻ്റ് ചെയ്യുക')
             ->assertSee('ഉള്ളടക്കം സമർപ്പിക്കുന്ന രീതി')

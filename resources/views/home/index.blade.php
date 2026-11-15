@@ -662,14 +662,14 @@ document.addEventListener('click',function(e){
     </h2>
   </div>
   <div class="price-text">
-    <p class="price-line"><strong>Jannayaks Profile: ₹4,800 + applicable GST</strong>
-      <span class="price-line-ml" lang="ml">Jannayaks Profile: ₹4,800 + ബാധകമായ GST</span>
+    <p class="price-line"><strong>Jannayaks Profile: ₹5,000 (India, GST-inclusive) · US$50 (international)</strong>
+      <span class="price-line-ml" lang="ml">Jannayaks Profile: ₹5,000 (ഇന്ത്യ, GST ഉൾപ്പെടെ) · US$50 (അന്തർദേശീയം)</span>
     </p>
-    <p class="price-detail">Includes profile preparation, editorial presentation, publication and first-year hosting.
-      <span class="price-detail-ml" lang="ml">പ്രൊഫൈൽ തയ്യാറാക്കൽ, Editorial Presentation, പ്രസിദ്ധീകരണം, ആദ്യ വർഷത്തെ ഹോസ്റ്റിംഗ് എന്നിവ ഉൾപ്പെടുന്നു.</span>
+    <p class="price-detail">Includes profile preparation, editorial presentation, publication and first-year hosting. Typographical and factual corrections are free.
+      <span class="price-detail-ml" lang="ml">പ്രൊഫൈൽ തയ്യാറാക്കൽ, Editorial Presentation, പ്രസിദ്ധീകരണം, ആദ്യ വർഷത്തെ ഹോസ്റ്റിംഗ് എന്നിവ ഉൾപ്പെടുന്നു. അച്ചടിപ്പിശകും വസ്തുതാപരമായ തിരുത്തലുകളും സൗജന്യമാണ്.</span>
     </p>
-    <p class="price-detail">Annual hosting renewal from the second year: ₹1,800 + applicable GST.
-      <span class="price-detail-ml" lang="ml">രണ്ടാം വർഷം മുതൽ വാർഷിക ഹോസ്റ്റിംഗ് പുതുക്കൽ: ₹1,800 + ബാധകമായ GST.</span>
+    <p class="price-detail">Annual renewal from the second year: ₹1,500 (India, GST-inclusive) · US$15 (international).
+      <span class="price-detail-ml" lang="ml">രണ്ടാം വർഷം മുതൽ വാർഷിക പുതുക്കൽ: ₹1,500 (ഇന്ത്യ, GST ഉൾപ്പെടെ) · US$15 (അന്തർദേശീയം).</span>
     </p>
     <a class="price-faq" href="{{ route('faq-charges') }}">See FAQ &amp; Charges →</a>
   </div>

@@ -164,7 +164,7 @@ class NavigationQaJourneyTest extends TestCase
         $tiersPage = $this->actingAs($user)->get(route('apply'))->assertOk();
 
         $tiersPage->assertSee('Jannayaks Profile', false);
-        $tiersPage->assertSee('₹4,800.00', false);
+        $tiersPage->assertSee('₹5,000.00', false);
         foreach (['ജനകീയർ', 'ജനസമ്മതർ', 'പ്രഗൽഭർ', 'അംഗീകരിക്കപ്പെട്ടവർ', 'പ്രശസ്തർ', 'വിശിഷ്ടർ', 'പ്രമുഖർ'] as $removed) {
             $tiersPage->assertDontSee($removed, false);
         }

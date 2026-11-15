@@ -27,8 +27,9 @@ class PricingAmounts
     }
 
     /**
-     * The single public Standard Profile price. GST is added at payment.
-     * There is no comparison or launch price.
+     * The single public Standard Profile price. The advertised Indian amount
+     * is GST-INCLUSIVE: it is the exact checkout total. International prices
+     * are display-only reference amounts (US$) — checkout remains INR.
      *
      * @return array<string, mixed>
      */
@@ -36,13 +37,14 @@ class PricingAmounts
     {
         $cfg = (array) config('jannayaks.tier_pricing.standard_profile', []);
 
-        return self::buildPlusGst(
+        return self::buildQuote(
             baseRupees: (int) ($cfg['base_amount'] ?? 0),
             gstRate: (float) config('jannayaks.tier_pricing.gst_percent', 18),
             label: (string) ($cfg['label'] ?? 'Standard Profile'),
-            description: (string) ($cfg['description'] ?? 'Standard Profile fee, exclusive of GST.'),
+            description: (string) ($cfg['description'] ?? 'Standard Profile fee.'),
             itemKey: 'standard_profile',
             placeOfSupply: $placeOfSupply,
+            gstInclusive: (bool) ($cfg['gst_inclusive'] ?? false),
         );
     }
 
@@ -91,7 +93,8 @@ class PricingAmounts
     }
 
     /**
-     * One annual renewal price for every living profile. GST is added at payment.
+     * One annual renewal price for every living profile. The advertised
+     * Indian amount is GST-INCLUSIVE (the exact checkout total).
      *
      * @return array<string, mixed>
      */
@@ -103,13 +106,14 @@ class PricingAmounts
 
         $cfg = (array) config('jannayaks.tier_pricing.renewal', []);
 
-        return self::buildPlusGst(
+        return self::buildQuote(
             baseRupees: (int) ($cfg['base_amount'] ?? 0),
             gstRate: (float) config('jannayaks.tier_pricing.gst_percent', 18),
             label: (string) ($cfg['label'] ?? 'Annual renewal'),
-            description: (string) ($cfg['description'] ?? 'Annual renewal of publication and hosting, exclusive of GST.'),
+            description: (string) ($cfg['description'] ?? 'Annual renewal of publication and hosting.'),
             itemKey: 'membership_renewal',
             placeOfSupply: $placeOfSupply,
+            gstInclusive: (bool) ($cfg['gst_inclusive'] ?? false),
         );
     }
 
@@ -255,6 +259,74 @@ class PricingAmounts
             'keralam' => 'kerala',
             default => $clean,
         };
+    }
+
+    /**
+     * Route to the exclusive (base + GST at payment) or inclusive
+     * (advertised amount IS the checkout total) computation. Historical
+     * package tiers and revisions remain GST-exclusive; the Standard
+     * Profile and renewal advertise GST-inclusive Indian amounts.
+     */
+    private static function buildQuote(
+        int $baseRupees,
+        float $gstRate,
+        string $label,
+        string $description,
+        string $itemKey,
+        ?string $placeOfSupply = null,
+        bool $gstInclusive = false,
+    ): array {
+        return $gstInclusive
+            ? self::buildGstInclusive($baseRupees, $gstRate, $label, $description, $itemKey, $placeOfSupply)
+            : self::buildPlusGst($baseRupees, $gstRate, $label, $description, $itemKey, $placeOfSupply);
+    }
+
+    /**
+     * The advertised rupee amount is GST-inclusive: it IS the checkout
+     * total. The taxable value and GST component are split out of it for
+     * display and document fields — the collected total never changes.
+     */
+    private static function buildGstInclusive(
+        int $advertisedRupees,
+        float $gstRate,
+        string $label,
+        string $description,
+        string $itemKey,
+        ?string $placeOfSupply = null,
+    ): array {
+        $totalPaise = self::rupeesToPaise($advertisedRupees);
+        if ($totalPaise <= 0) {
+            throw new InvalidArgumentException('Invalid computed amount for '.$itemKey);
+        }
+
+        $split = self::splitInclusiveTotal($totalPaise, $gstRate);
+        $basePaise = $split['base_paise'];
+        $gstPaise = $split['gst_paise'];
+
+        $components = self::classifyGstComponents($gstPaise, $placeOfSupply);
+
+        return [
+            'currency' => self::CURRENCY,
+            'tier_key' => $itemKey,
+            'label' => $label,
+            'description' => $description,
+            'gst_inclusive' => true,
+            'gst_rate_percent' => $gstRate,
+            'amount_incl_paise' => $totalPaise,
+            'amount_incl_rupees' => (int) round($totalPaise / self::PAISE_PER_RUPEE),
+            'base_paise' => $basePaise,
+            'gst_paise' => $gstPaise,
+            'cgst_paise' => $components['cgst_paise'],
+            'sgst_paise' => $components['sgst_paise'],
+            'igst_paise' => $components['igst_paise'],
+            'gst_classification' => $components['classification'],
+            'amount_incl_formatted' => self::formatMoneyInr($totalPaise),
+            'base_formatted' => self::formatMoneyInr($basePaise),
+            'gst_formatted' => self::formatMoneyInr($gstPaise),
+            'cgst_formatted' => $components['cgst_paise'] !== null ? self::formatMoneyInr($components['cgst_paise']) : null,
+            'sgst_formatted' => $components['sgst_paise'] !== null ? self::formatMoneyInr($components['sgst_paise']) : null,
+            'igst_formatted' => $components['igst_paise'] !== null ? self::formatMoneyInr($components['igst_paise']) : null,
+        ];
     }
 
     private static function buildPlusGst(

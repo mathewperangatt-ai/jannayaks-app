@@ -30,10 +30,10 @@
     @php($standardQuote = \App\Support\PricingAmounts::forStandardProfile())
     @php($renewalQuote = \App\Support\PricingAmounts::forTierRenewal(\App\Support\PricingAmounts::STANDARD_INTERNAL_TIER))
     <div class="warnbox" role="note" aria-label="Pricing note">
-        {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം ഓൺലൈൻ അഭിമുഖം ആദ്യം വരും.' : 'After you sign in, the Online Interview comes before payment.' }}
-        <b>{{ $standardQuote['base_formatted'] }} + GST</b>.
-        {{ $ml ? 'വാർഷിക ഹോസ്റ്റിംഗ് പുതുക്കൽ' : 'Annual hosting renewal is' }}
-        <b>{{ $renewalQuote['base_formatted'] }} + GST</b>.
+        {{ $ml ? 'സൈൻ ഇൻ ചെയ്ത ശേഷം ഓൺലൈൻ അഭിമുഖം ആദ്യം വരും. പ്രൊഫൈൽ നിരക്ക്' : 'After you sign in, the Online Interview comes before payment. The Profile price is' }}
+        <b>{{ $standardQuote['amount_incl_formatted'] }} (India, GST-inclusive)</b>.
+        {{ $ml ? 'വാർഷിക പുതുക്കൽ' : 'Annual renewal is' }}
+        <b>{{ $renewalQuote['amount_incl_formatted'] }} (India, GST-inclusive)</b>.
     </div>
 
     <div style="margin-top:10px">

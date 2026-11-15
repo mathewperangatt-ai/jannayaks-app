@@ -75,7 +75,7 @@
                 @endif
                 @if($isLivingProfile)
                     <span class="dash-pill">Jannayaks Profile</span>
-                    <span class="dash-pill">{{ $standardQuote['base_formatted'] }} + GST</span>
+                    <span class="dash-pill">{{ $standardQuote['amount_incl_formatted'] }} (incl. GST)</span>
                 @endif
                 <span class="dash-pill">Started {{ $application->intake_started_at ? $application->intake_started_at->format('d M Y') : '—' }}</span>
                 @if($application->online_interview_completed_at)

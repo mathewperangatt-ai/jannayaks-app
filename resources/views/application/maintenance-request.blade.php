@@ -47,11 +47,11 @@
             complimentary update. The next complimentary window opens
             {{ $eligibility['next_eligible_on']->format('d M Y') }}.
         @else
-            <b>Paid rewrite is arranged separately.</b> This profile's complimentary update for the current
+            <b>Substantial rewriting is quoted before work begins.</b> This profile's complimentary update for the current
             3-month cycle has already been used. You may still submit this request. This form does not
-            collect payment. If a full profile rewrite is agreed, the price is
-            <b>{{ \App\Support\PricingAmounts::forRevisionUpdate()['base_formatted'] }} + GST</b>,
-            and the Jannayaks team will contact you before any work begins. The next complimentary window opens
+            collect payment. Typographical and factual corrections are always free. If substantial
+            rewriting is needed, the Jannayaks team will assess it individually, quote the work, and
+            contact you for approval before any work begins. The next complimentary window opens
             {{ $eligibility['next_eligible_on']->format('d M Y') }}.
         @endif
     </div>
