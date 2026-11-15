@@ -71,7 +71,7 @@
 
 <table class="items">
     <thead>
-        <tr><th>Service description</th><th style="text-align:right">Amount (INR)</th></tr>
+        <tr><th>Service description</th><th style="text-align:right">Amount ({{ strtoupper($document['currency'] ?? 'INR') }})</th></tr>
     </thead>
     <tbody>
         <tr>

@@ -2,7 +2,7 @@
 
 @section('content')
 @php
-    $fmt = fn (?int $paise) => $paise !== null ? \App\Support\PricingAmounts::formatMoneyInr($paise) : '—';
+    $fmt = fn (?int $paise) => $paise !== null ? \App\Support\PricingAmounts::formatMoney($paise, (string) ($document['currency'] ?? 'INR')) : '—';
 @endphp
 <section class="card stack">
     <div class="row" style="justify-content:space-between;align-items:flex-start">

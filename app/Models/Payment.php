@@ -576,4 +576,14 @@ class Payment extends Model
     {
         return strtoupper((string) $this->currency) === PricingAmounts::CURRENCY;
     }
+
+    /**
+     * Exact currency comparison for this stored obligation. Settlement,
+     * reconciliation and recovery compare the gateway currency against
+     * THIS value — a USD obligation can only be settled by a USD capture.
+     */
+    public function currencyIs(string $code): bool
+    {
+        return strtoupper((string) $this->currency) === strtoupper($code);
+    }
 }

@@ -360,7 +360,7 @@ class RazorpayWebhookController extends Controller
                     }
                 }
                 if (is_string($currency) && $currency !== '') {
-                    if (! $payment->currencyIsInr() || strtoupper($currency) !== PricingAmounts::CURRENCY) {
+                    if (! $payment->currencyIs((string) $currency)) {
                         return false;
                     }
                 }
@@ -397,10 +397,10 @@ class RazorpayWebhookController extends Controller
     private function checkAmountAndCurrency(Payment $payment, ?int $amountPaise, ?string $currency): bool
     {
         if ($currency !== null && $currency !== '') {
-            if (! $payment->currencyIsInr()) {
-                return false;
-            }
-            if (strtoupper($currency) !== PricingAmounts::CURRENCY) {
+            // The gateway currency must match the stored obligation exactly:
+            // a USD obligation settles only on a USD capture, an INR one only
+            // on INR. No silent conversion in either direction.
+            if (! $payment->currencyIs((string) $currency)) {
                 return false;
             }
         }

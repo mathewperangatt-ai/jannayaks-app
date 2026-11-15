@@ -125,9 +125,13 @@
         <div class="row" style="justify-content:space-between">
             <div>
             <div style="font-weight:700">{{ $ml ? 'ആകെ (ജിഎസ്ടി ഉൾപ്പെടെ)' : 'Total (incl. GST)' }}</div>
-            <div class="note-safe">{{ !empty($package['gst_inclusive'])
+            @if((float) ($package['gst_rate_percent'] ?? 18) === 0.0 && strtoupper((string) ($package['currency'] ?? 'INR')) === 'USD')
+        <div class="note-safe">{{ $ml ? 'അന്തർദേശീയ നിരക്ക് (US$). കാണിക്കുന്ന തുകയാണ് നൽകേണ്ടത്.' : 'International price (USD). The total shown is the amount payable.' }}</div>
+        @else
+        <div class="note-safe">{{ !empty($package['gst_inclusive'])
                 ? ($ml ? $package['gst_rate_percent'].'% ജിഎസ്ടി ഉൾപ്പെടുന്നു' : 'Includes '.$package['gst_rate_percent'].'% GST')
                 : ($ml ? $package['gst_rate_percent'].'% ജിഎസ്ടി പണമടയ്ക്കുമ്പോൾ ചേർക്കും' : $package['gst_rate_percent'].'% GST added at payment') }}</div>
+        @endif
         </div>
             <div style="font-size:22px;font-weight:800;color:var(--brand);font-variant-numeric:tabular-nums">{{ $package['amount_incl_formatted'] ?? '' }}</div>
         </div>

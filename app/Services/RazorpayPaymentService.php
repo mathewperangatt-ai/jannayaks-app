@@ -72,7 +72,9 @@ class RazorpayPaymentService
         }
 
         $amounts = PricingAmounts::forApplication($application);
-        PricingAmounts::assertInr($amounts['currency']);
+        // The country recorded on the application decides INR vs USD; no
+        // conversion and no checkout-time override.
+        PricingAmounts::assertSupportedGatewayCurrency((string) $amounts['currency']);
 
         $totalPaise = (int) $amounts['amount_incl_paise'];
         if ($totalPaise <= 0) {
@@ -91,7 +93,7 @@ class RazorpayPaymentService
             $capturedAttempt = null;
             $blockedByUncertainLink = false;
             foreach ($actives as $active) {
-                if ($active->totalPaise() === $totalPaise && $reusable === null) {
+                if ($active->totalPaise() === $totalPaise && $active->currencyIs((string) $amounts['currency']) && $reusable === null) {
                     $reusable = $active;
 
                     continue;
@@ -126,7 +128,7 @@ class RazorpayPaymentService
                 $payment = $reusable;
                 $payment->forceFill([
                     'amount' => PricingAmounts::paiseToDecimalString($totalPaise),
-                    'currency' => PricingAmounts::CURRENCY,
+                    'currency' => $amounts['currency'],
                     'base_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
                     'taxable_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
                     'gst_rate_percent' => $amounts['gst_rate_percent'],
@@ -143,7 +145,7 @@ class RazorpayPaymentService
                     'gateway' => Payment::GATEWAY_RAZORPAY,
                     'item_type' => Payment::ITEM_APPLICATION_PAYMENT,
                     'amount' => PricingAmounts::paiseToDecimalString($totalPaise),
-                    'currency' => PricingAmounts::CURRENCY,
+                    'currency' => $amounts['currency'],
                     'status' => Payment::STATUS_PENDING,
                     'event_type' => 'application_package',
                     'base_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
@@ -221,8 +223,14 @@ class RazorpayPaymentService
             throw new InvalidArgumentException('This membership is outside the retention window and cannot be renewed here.');
         }
 
-        $amounts = PricingAmounts::forTierRenewal(PricingAmounts::tierKeyForMembership($membership));
-        PricingAmounts::assertInr($amounts['currency']);
+        $amounts = PricingAmounts::forTierRenewal(
+            PricingAmounts::tierKeyForMembership($membership),
+            null,
+            PricingAmounts::countryForMembership($membership),
+        );
+        // The country recorded on the application decides INR vs USD; no
+        // conversion and no checkout-time override.
+        PricingAmounts::assertSupportedGatewayCurrency((string) $amounts['currency']);
         $totalPaise = (int) $amounts['amount_incl_paise'];
         if ($totalPaise <= 0) {
             throw new RuntimeException('Renewal payment amount must be positive.');
@@ -244,7 +252,7 @@ class RazorpayPaymentService
             $capturedAttempt = null;
             $blockedByUncertainLink = false;
             foreach ($actives as $active) {
-                if ($active->totalPaise() === $totalPaise && $reusable === null) {
+                if ($active->totalPaise() === $totalPaise && $active->currencyIs((string) $amounts['currency']) && $reusable === null) {
                     $reusable = $active;
 
                     continue;
@@ -279,7 +287,7 @@ class RazorpayPaymentService
                 $payment = $reusable;
                 $payment->forceFill([
                     'amount' => PricingAmounts::paiseToDecimalString($totalPaise),
-                    'currency' => PricingAmounts::CURRENCY,
+                    'currency' => $amounts['currency'],
                     'base_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
                     'taxable_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
                     'gst_rate_percent' => $amounts['gst_rate_percent'],
@@ -298,7 +306,7 @@ class RazorpayPaymentService
                     'gateway' => Payment::GATEWAY_RAZORPAY,
                     'item_type' => Payment::ITEM_MEMBERSHIP,
                     'amount' => PricingAmounts::paiseToDecimalString($totalPaise),
-                    'currency' => PricingAmounts::CURRENCY,
+                    'currency' => $amounts['currency'],
                     'status' => Payment::STATUS_PENDING,
                     'event_type' => 'renewal',
                     'base_amount' => PricingAmounts::paiseToDecimalString((int) $amounts['base_paise']),
@@ -546,7 +554,7 @@ class RazorpayPaymentService
         if ($amountPaise === null || abs($amountPaise - $payment->totalPaise()) > 1) {
             return false;
         }
-        if ($currency === null || strtoupper($currency) !== PricingAmounts::CURRENCY || ! $payment->currencyIsInr()) {
+        if ($currency === null || ! $payment->currencyIs((string) $currency)) {
             return false;
         }
 
@@ -636,7 +644,7 @@ class RazorpayPaymentService
         if ($linkAmount === null || abs($linkAmount - $payment->totalPaise()) > 1) {
             return false;
         }
-        if ($linkCurrency === null || strtoupper($linkCurrency) !== PricingAmounts::CURRENCY) {
+        if ($linkCurrency === null || ! $payment->currencyIs((string) $linkCurrency)) {
             return false;
         }
 
@@ -658,7 +666,7 @@ class RazorpayPaymentService
         if ($detailAmount === null || abs($detailAmount - $payment->totalPaise()) > 1) {
             return false;
         }
-        if ($detailCurrency === null || strtoupper($detailCurrency) !== PricingAmounts::CURRENCY) {
+        if ($detailCurrency === null || ! $payment->currencyIs((string) $detailCurrency)) {
             return false;
         }
         if ($detailStatus !== 'captured') {
@@ -783,8 +791,8 @@ class RazorpayPaymentService
 
         return $amount !== null
             && abs($amount - $payment->totalPaise()) <= 1
-            && $currency === PricingAmounts::CURRENCY
-            && $payment->currencyIsInr()
+            && $currency !== null
+            && $payment->currencyIs((string) $currency)
             && $status === 'captured';
     }
 
@@ -968,7 +976,7 @@ class RazorpayPaymentService
 
         $payload = [
             'amount' => $totalPaise,
-            'currency' => PricingAmounts::CURRENCY,
+            'currency' => $amounts['currency'],
             'accept_partial' => false,
             'reference_id' => (string) $payment->transaction_reference,
             'description' => mb_substr('Jannayaks '.$amounts['label'].' — '.$name, 0, 255),
@@ -1025,7 +1033,7 @@ class RazorpayPaymentService
 
         $payload = [
             'amount' => $totalPaise,
-            'currency' => PricingAmounts::CURRENCY,
+            'currency' => $amounts['currency'],
             'accept_partial' => false,
             'reference_id' => (string) $payment->transaction_reference,
             'description' => mb_substr('Jannayaks '.$amounts['label'].' — '.$name, 0, 255),
@@ -1260,7 +1268,7 @@ class RazorpayPaymentService
             return ['kind' => 'mismatch', 'reason' => 'link_amount'];
         }
         $linkCurrency = isset($link['currency']) ? strtoupper((string) $link['currency']) : null;
-        if ($linkCurrency !== null && $linkCurrency !== PricingAmounts::CURRENCY) {
+        if ($linkCurrency !== null && strtoupper((string) $claim['currency']) !== $linkCurrency) {
             return ['kind' => 'mismatch', 'reason' => 'link_currency'];
         }
 
@@ -1387,8 +1395,7 @@ class RazorpayPaymentService
     {
         return trim((string) $row->razorpay_link_id) === $claim['link_id']
             && $row->totalPaise() === $claim['amount_paise']
-            && strtoupper((string) $row->currency) === $claim['currency']
-            && $row->currencyIsInr();
+            && strtoupper((string) $row->currency) === strtoupper((string) $claim['currency']);
     }
 
     /**

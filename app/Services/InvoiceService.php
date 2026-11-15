@@ -169,7 +169,7 @@ class InvoiceService
             'original_receipt_number' => $payment->invoice_number,
             'original_tax_invoice_number' => $payment->tax_invoice_number,
             'refund_amount_paise' => $refundPaise,
-            'refund_amount_formatted' => PricingAmounts::formatMoneyInr($refundPaise),
+            'refund_amount_formatted' => PricingAmounts::formatMoney($refundPaise, (string) $payment->currency),
             'refund_note' => $payment->refund_note,
             'refunded_at' => $payment->refunded_at,
             'refund_percent_basis' => (int) config('jannayaks.refund.before_publication_percent', 60),
@@ -219,7 +219,7 @@ class InvoiceService
             'billing_mobile' => $billingMobile,
             'currency' => (string) $payment->currency,
             'total_amount_paise' => $payment->totalPaise(),
-            'total_amount_formatted' => PricingAmounts::formatMoneyInr($payment->totalPaise()),
+            'total_amount_formatted' => PricingAmounts::formatMoney($payment->totalPaise(), (string) $payment->currency),
             'base_amount_paise' => $payment->base_amount !== null
                 ? (int) round((float) (string) $payment->base_amount * PricingAmounts::PAISE_PER_RUPEE)
                 : null,
