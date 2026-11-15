@@ -28,6 +28,7 @@
             "age"
         ],
         "inputs": [
+            "...",
             {
                 "step": "pgdump18",
                 "include": [
