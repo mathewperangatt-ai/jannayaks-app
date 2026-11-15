@@ -78,27 +78,92 @@ class ProfileMediaController extends Controller
         }
 
         $maxKb = (int) config('jannayaks.media.max_upload_kb', 5120);
-        $request->validate([
-            'photo' => ['required', 'file', 'max:'.$maxKb],
-            'alt_text' => ['nullable', 'string', 'max:255'],
-            'make_primary' => ['sometimes', 'boolean'],
-        ]);
+        $remaining = max(0, $this->media->photoSlotLimitForApplication($application) - $this->media->profilePhotoCount($profile));
 
-        try {
-            $this->media->uploadProfilePhoto(
-                profile: $profile,
-                file: $request->file('photo'),
-                actor: $user,
-                altText: $request->input('alt_text'),
-                makePrimary: $request->boolean('make_primary'),
-            );
-        } catch (ValidationException $e) {
-            throw $e;
+        // photo[] (multi-select) and photo (legacy single file) both work.
+        $files = $request->file('photo');
+        $isBatch = is_array($files);
+        $files = array_values(array_filter($isBatch ? $files : [$files]));
+
+        if ($isBatch) {
+            $request->validate([
+                'photo' => ['required', 'array'],
+                'photo.*' => ['file', 'max:'.$maxKb],
+                'alt_text' => ['nullable', 'string', 'max:255'],
+                'make_primary' => ['sometimes', 'boolean'],
+            ]);
+
+            // Pre-batch checks run before ANY photograph is stored: an
+            // oversized selection or a forbidden file type stores nothing.
+            if (count($files) > $remaining) {
+                throw ValidationException::withMessages([
+                    'photo' => $remaining === 0
+                        ? $this->media->photoLimitMessage($this->media->photoSlotLimitForApplication($application))
+                        : 'You may upload '.$remaining.' more photograph'.($remaining === 1 ? '' : 's').' in this batch.',
+                ]);
+            }
+
+            $allowed = (array) config('jannayaks.media.allowed_extensions', ['jpg', 'jpeg', 'png', 'webp']);
+            foreach ($files as $file) {
+                $extension = strtolower((string) $file->getClientOriginalExtension());
+                if (! in_array($extension, $allowed, true)) {
+                    throw ValidationException::withMessages([
+                        'photo' => ($file->getClientOriginalName() ?: 'A selected file')
+                            .' is not a JPEG, PNG, or WebP photograph. Nothing from this batch was uploaded.',
+                    ]);
+                }
+            }
+        } else {
+            $request->validate([
+                'photo' => ['required', 'file', 'max:'.$maxKb],
+                'alt_text' => ['nullable', 'string', 'max:255'],
+                'make_primary' => ['sometimes', 'boolean'],
+            ]);
+        }
+
+        $makePrimary = $request->boolean('make_primary');
+        $uploadedNames = [];
+
+        // Each photograph uploads through the individually transactional
+        // service path (validation, optimisation, SHA-256, storage, audit).
+        // The whole batch is pre-validated, so a mid-batch failure means a
+        // real storage or service-level rejection: earlier successes stay
+        // stored and the customer is told exactly which file failed and why.
+        foreach ($files as $index => $file) {
+            $name = $file->getClientOriginalName() ?: 'photograph #'.($index + 1);
+
+            try {
+                $this->media->uploadProfilePhoto(
+                    profile: $profile,
+                    file: $file,
+                    actor: $user,
+                    altText: $request->input('alt_text'),
+                    makePrimary: $index === 0 && $makePrimary,
+                );
+            } catch (ValidationException $e) {
+                if ($uploadedNames === []) {
+                    throw $e;
+                }
+
+                $reason = $e->errors()['photo'][0] ?? ($e->errors()['alt_text'][0] ?? 'The photograph was rejected.');
+                return redirect()
+                    ->route('applications.media', $application)
+                    ->with('status', count($uploadedNames).' photograph'.(count($uploadedNames) === 1 ? '' : 's').' uploaded: '.implode(', ', $uploadedNames).'.')
+                    ->with('error', $name.' was not uploaded: '.$reason.' You can upload the remaining photographs now.');
+            }
+
+            $uploadedNames[] = $name;
+        }
+
+        if (count($uploadedNames) === 1) {
+            return redirect()
+                ->route('applications.media', $application)
+                ->with('status', 'Photograph uploaded: '.$uploadedNames[0].'.');
         }
 
         return redirect()
             ->route('applications.media', $application)
-            ->with('status', 'Photograph uploaded.');
+            ->with('status', count($uploadedNames).' photographs uploaded: '.implode(', ', $uploadedNames).'.');
     }
 
     public function setPrimary(Application $application, MediaItem $media): RedirectResponse
