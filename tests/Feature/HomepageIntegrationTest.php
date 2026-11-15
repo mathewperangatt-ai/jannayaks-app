@@ -50,7 +50,7 @@ class HomepageIntegrationTest extends TestCase
         $response->assertSee('href="'.route('faq-charges').'"', false);
         $response->assertSee('nav-menu-btn', false);
         $response->assertSee('Open menu', false);
-        $response->assertSee('branding/jannayaks-logo.jpg', false);
+        $response->assertSee('branding/jannayaks-logo.png', false);
         $html = $response->getContent();
         // Anchor to hero markup, not the headline text — the approved wording
         // also appears in <head> meta and structured data.
@@ -109,10 +109,6 @@ class HomepageIntegrationTest extends TestCase
             'നേട്ടങ്ങൾ വെറും നാഴികക്കല്ലുകളല്ല. വർഷങ്ങളുടെ അധ്വാനവും, തൊഴിൽരംഗത്തെ മികവും, ജീവിതയാത്രകളും, സമൂഹത്തിനുള്ള സംഭാവനകളുമാണ് അവ.',
             'Jannayaks™ gives these achievements a lasting digital presence.',
             'ആ നേട്ടങ്ങൾക്ക് Jannayaks™ ദീർഘകാലം നിലനിൽക്കുന്ന ഒരു ഡിജിറ്റൽ ഇടം നൽകുന്നു.',
-            'Recognition',
-            'അംഗീകാരം',
-            'Give your achievements the acknowledgement they deserve.',
-            'നിങ്ങളുടെ അധ്വാനത്തിന് അർഹമായ ശ്രദ്ധ ലഭിക്കട്ടെ.',
             'Identity',
             'നിങ്ങളുടെ കഥ',
             'Document your professional journey, experiences and accomplishments in one place, at jannayaks.in/your.name*',
@@ -131,6 +127,10 @@ class HomepageIntegrationTest extends TestCase
             'നിലനിൽക്കുന്ന രേഖ',
             'Unlike a social media post, your profile stays online for as long as your annual hosting continues.',
             'സോഷ്യൽ മീഡിയ പോസ്റ്റ് പോലെ മാഞ്ഞുപോകാതെ, നിങ്ങളുടെ സ്വന്തം ഇടത്ത്; വാർഷിക ഹോസ്റ്റിംഗ് തുടരുന്നിടത്തോളം.',
+            'Recognition',
+            'അംഗീകാരം',
+            'Give your achievements the acknowledgement they deserve.',
+            'നിങ്ങളുടെ അധ്വാനത്തിന് അർഹമായ ശ്രദ്ധ ലഭിക്കട്ടെ.',
             'Make your family proud, yourself too.',
             'നിങ്ങളുടെ കുടുംബം അഭിമാനിക്കട്ടെ, നിങ്ങളും.',
             'ചോദ്യങ്ങളുണ്ടോ? Questions?',

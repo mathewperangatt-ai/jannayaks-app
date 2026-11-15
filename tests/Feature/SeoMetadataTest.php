@@ -40,10 +40,10 @@ class SeoMetadataTest extends TestCase
         $this->assertMatchesRegularExpression('#<meta property="og:description" content="[^"]+">#i', $content);
         $this->assertMatchesRegularExpression('#<meta property="og:url" content="[^"]+">#i', $content);
         $this->assertStringContainsString('property="og:type" content="website"', $content);
-        $this->assertMatchesRegularExpression('#<meta property="og:image" content="[^"]+/branding/jannayaks-logo-approved\.jpg">#i', $content);
+        $this->assertMatchesRegularExpression('#<meta property="og:image" content="[^"]+/branding/jannayaks-logo\.png">#i', $content);
         $this->assertStringContainsString('name="twitter:card" content="summary"', $content);
         $this->assertMatchesRegularExpression('#<meta name="twitter:title" content="[^"]+">#i', $content);
-        $this->assertMatchesRegularExpression('#<meta name="twitter:image" content="[^"]+/branding/jannayaks-logo-approved\.jpg">#i', $content);
+        $this->assertMatchesRegularExpression('#<meta name="twitter:image" content="[^"]+/branding/jannayaks-logo\.png">#i', $content);
     }
 
     /**

@@ -28,7 +28,7 @@
     <link href="https://fonts.googleapis.com/css2?family=Fraunces:ital,opsz,wght@0,9..144,400;0,9..144,500;0,9..144,600;1,9..144,400&family=DM+Sans:wght@300;400;500;600&family=Noto+Serif+Malayalam:wght@400;500;600;700&display=swap" rel="stylesheet">
     <style>
         :root{
-            --navy:#214d68;--saffron:#C0762E;--white:#FFFFFF;--off:#f3f8f0;
+            --navy:#214d68;--saffron:#C0762E;--white:#FFFFFF;--off:#FAF6EE;
             --gray:#6f8075;--light:#eaf2e7;--charcoal:#1f2924;--border:#d3ddd1;
             --gold:#B8860B;--green:#1A6B3C;
             --brand:var(--saffron);--brand-dark:#9d5e22;
@@ -99,7 +99,11 @@
         @media (max-width:640px){
             .site{padding:18px 14px 48px}
             .nav-inner{height:64px}
-            .nav-logo img{height:48px}
+            .nav-logo img{height:40px}
+        }
+        @media (max-width:479px){
+            .nav-logo img{height:34px}
+            .nav-login{display:none}
         }
     </style>
     @include('partials.ga4')
@@ -109,13 +113,15 @@
     <header class="site-nav">
         <div class="nav-inner">
             <a class="nav-logo" href="{{ route('home') }}">
-                <img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks.in">
+                <img src="{{ asset('branding/jannayaks-logo.png') . '?v=2' }}" alt="Jannayaks.in">
             </a>
             <button type="button" class="nav-menu-btn" id="publicNavBtn" aria-expanded="false" aria-controls="publicNavLinks" aria-label="Open menu">☰</button>
             <ul class="nav-links" id="publicNavLinks">
+                <li><a href="{{ route('home') }}" data-nav-close>Home</a></li>
                 <li><a href="{{ route('gallery.index') }}" @if(($nav ?? '') === 'gallery') aria-current="page" @endif data-nav-close>Gallery</a></li>
                 <li><a href="{{ route('home') }}#hiw" data-nav-close>How It Works</a></li>
                 <li><a href="{{ route('home') }}#pricing" data-nav-close>Pricing</a></li>
+                <li><a href="{{ route('faq-charges') }}" @if(($nav ?? '') === 'faq') aria-current="page" @endif data-nav-close>FAQ &amp; Charges</a></li>
                 <li class="nav-signin-mobile"><a href="{{ route('login') }}" data-nav-close>Sign In</a></li>
             </ul>
             <div class="nav-right">

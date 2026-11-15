@@ -11,7 +11,7 @@
      seoCanonical section; static pages pass their route() base URL, so query
      strings never enter the canonical. --}}
 <link rel="canonical" href="{{ $seoUrl }}">
-@php($seoImage = trim((string) ($image ?? '')) !== '' ? $image : asset((string) config('jannayaks.seo.share_image', 'branding/jannayaks-logo-approved.jpg')))
+@php($seoImage = trim((string) ($image ?? '')) !== '' ? $image : asset((string) config('jannayaks.seo.share_image', 'branding/jannayaks-logo.png')))
 @php($seoType = trim((string) ($type ?? '')) !== '' ? $type : 'website')
 @php($seoLocale = trim((string) ($locale ?? '')) !== '' ? $locale : 'en_IN')
 @if($seoDescription !== '')<meta name="description" content="{{ $seoDescription }}">

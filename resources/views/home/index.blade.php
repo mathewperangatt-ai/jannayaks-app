@@ -27,7 +27,7 @@
   /* Approved Jannayaks homepage palette: soft sage ground, near-white warm
      surfaces, greenish-charcoal text, muted Ashoka-Chakra blue primary,
      restrained saffron secondary, subtle hairline borders. */
-  --navy:#214d68;--saffron:#C0762E;--white:#FDFDFB;--off:#F3F8F0;
+  --navy:#214d68;--saffron:#C0762E;--white:#FDFDFB;--off:#FAF6EE;
   --gray:#6f8075;--light:#eaf2e7;--charcoal:#1f2924;--border:#d3ddd1;
   --gold:#A98A4E;--goldbg:#F7F3E8;--greenbg:#EDF3EA;--green:#2F6B4F;
   --fd:'Fraunces','Cormorant Garamond',Georgia,serif;--fb:'DM Sans',sans-serif;--fm:'Noto Serif Malayalam',serif;
@@ -92,7 +92,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .intro-close-ml{font-family:var(--fm);font-size:clamp(15px,2.4vw,19px);color:var(--navy);text-align:center;line-height:1.8;margin:2px 0 0;}
 .intro-section .home-actions{margin-top:32px;}
 @media(max-width:899px){.intro-tiles li{flex:1 1 calc(50% - 6px);}}
-@media(max-width:599px){.intro-tiles li{flex:1 1 100%;}}
+@media(max-width:599px){.intro-tiles li{flex:1 1 100%;}.nav-logo img{height:36px;}.nav-login{display:none;}.nav-cta{padding:8px 12px;}}
 /* DEMO SECTION HEADING — two steps below .section-title */
 .demo-section .section-title{font-size:clamp(21px,3.2vw,30px);}
 .demo-section .section-title-ml{font-size:clamp(14px,2.4vw,20px);}
@@ -397,14 +397,16 @@ document.addEventListener('click',function(e){
 <nav id="site-nav">
   <div class="nav-inner">
     <a class="nav-logo" href="{{ route('home') }}">
-      <img src="{{ asset('branding/jannayaks-logo.jpg') }}" alt="Jannayaks">
+      <img src="{{ asset('branding/jannayaks-logo.png') . '?v=2' }}" alt="Jannayaks">
     </a>
     <button type="button" class="nav-menu-btn" id="nav-menu-btn" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu" onclick="toggleNavMenu()">☰</button>
     <ul class="nav-links" id="nav-links">
+      <li><a href="{{ route('home') }}" onclick="closeNavMenu()">Home</a></li>
       <li><a href="{{ route('gallery.index') }}" onclick="closeNavMenu()">Gallery</a></li>
       <li><a href="#hiw" onclick="closeNavMenu()">How It Works</a></li>
       <li><a href="#pricing" onclick="closeNavMenu()">Pricing</a></li>
-      <li><a class="nav-login-mobile" href="{{ route('login') }}">Sign In</a></li>
+      <li><a href="{{ route('faq-charges') }}" onclick="closeNavMenu()">FAQ &amp; Charges</a></li>
+      <li><a class="nav-login-mobile" href="{{ route('login') }}" onclick="closeNavMenu()">Sign In</a></li>
     </ul>
     <div class="nav-right">
       <a class="nav-login" href="{{ route('login') }}">Sign In</a>
@@ -451,12 +453,6 @@ document.addEventListener('click',function(e){
 
     <ul class="intro-tiles">
       <li>
-        <h3 class="intro-tile-hd-en">Recognition</h3>
-        <p class="intro-tile-hd-ml" lang="ml">അംഗീകാരം</p>
-        <p class="intro-tile-en">Give your achievements the acknowledgement they deserve.</p>
-        <p class="intro-tile-ml" lang="ml">നിങ്ങളുടെ അധ്വാനത്തിന് അർഹമായ ശ്രദ്ധ ലഭിക്കട്ടെ.</p>
-      </li>
-      <li>
         <h3 class="intro-tile-hd-en">Identity</h3>
         <p class="intro-tile-hd-ml" lang="ml">നിങ്ങളുടെ കഥ</p>
         <p class="intro-tile-en">Document your professional journey, experiences and accomplishments in one place, at jannayaks.in/your.name*</p>
@@ -481,6 +477,12 @@ document.addEventListener('click',function(e){
         <p class="intro-tile-hd-ml" lang="ml">നിലനിൽക്കുന്ന രേഖ</p>
         <p class="intro-tile-en">Unlike a social media post, your profile stays online for as long as your annual hosting continues.</p>
         <p class="intro-tile-ml" lang="ml">സോഷ്യൽ മീഡിയ പോസ്റ്റ് പോലെ മാഞ്ഞുപോകാതെ, നിങ്ങളുടെ സ്വന്തം ഇടത്ത്; വാർഷിക ഹോസ്റ്റിംഗ് തുടരുന്നിടത്തോളം.</p>
+      </li>
+      <li>
+        <h3 class="intro-tile-hd-en">Recognition</h3>
+        <p class="intro-tile-hd-ml" lang="ml">അംഗീകാരം</p>
+        <p class="intro-tile-en">Give your achievements the acknowledgement they deserve.</p>
+        <p class="intro-tile-ml" lang="ml">നിങ്ങളുടെ അധ്വാനത്തിന് അർഹമായ ശ്രദ്ധ ലഭിക്കട്ടെ.</p>
       </li>
     </ul>
 

@@ -176,9 +176,13 @@ return [
     | the approved square logo; swap 'share_image' for the branded 1200x630
     | artwork later without touching the metadata architecture.
     */
+    /*
+    | SEO-1: shared social/share metadata defaults. The share image is the
+    | approved full logo (JN orbital emblem + wordmark + tagline).
+    */
     'seo' => [
         'site_name' => 'Jannayaks',
-        'share_image' => 'branding/jannayaks-logo-approved.jpg',
+        'share_image' => 'branding/jannayaks-logo.png',
         'twitter_card' => 'summary',
     ],
 
