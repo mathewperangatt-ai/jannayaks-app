@@ -1,0 +1,261 @@
+{
+  "purpose": "Fictional Jannayaks demo profiles and realistic customer-behaviour QA",
+  "source_questionnaire": "config/online_interview.php (q1-q22); do not modify questions",
+  "rules": [
+    "Submit answers verbatim through existing application/interview workflow; do not improve, complete, or correct customer answers before submission.",
+    "Only first applicant answers all 22 questions. Omitted keys represent skipped optional questions.",
+    "Do not treat fictional claims as verified facts or link fictional applicants to real institutions.",
+    "All generated photos must be visibly labelled AI-Generated Image; every published profile must be clearly labelled DEMO — Fictional Profile.",
+    "Capture raw English and Malayalam AI outputs before human editorial revision.",
+    "Adv. Meera Krishnan Q22 intentionally tests the anti-commercial-solicitation guardrail. Record result and prevent promotional output from publication."
+  ],
+  "profiles": [
+    {
+      "id": "anjali_menon",
+      "name": "Dr. Anjali Menon",
+      "profession": "Community-health physician",
+      "location": "Thiruvananthapuram",
+      "answers": {
+        "q1": "I am Dr. Anjali Menon, a physician based in Thiruvananthapuram. I have worked in community health since 2007, with a particular interest in preventive care and making medical advice understandable to families.",
+        "q2": "I grew up in Attingal. My mother was a schoolteacher and my father ran a small stationery shop. I remember people stopping at the shop to talk about everything from school admissions to illnesses. That was my first experience of how closely people's everyday lives are connected.",
+        "q3": "I live in Thiruvananthapuram city. Most of my work is in and around the district, although I sometimes travel to nearby towns for health-awareness sessions.",
+        "q4": "I completed my MBBS in 2004 and postgraduate training in community medicine in 2007. My first job involved outreach clinics rather than a large hospital ward. It was difficult initially because I had to learn how to explain medical information without technical language.",
+        "q5": "A senior doctor during my postgraduate training insisted that we ask patients what they understood before giving instructions. I still follow that advice. My mother also influenced my patience with people who are hesitant to ask questions.",
+        "q6": "I like reading Malayalam short stories, gardening in containers on our balcony and taking evening walks. I sometimes help a neighbourhood reading group organise talks, though I am not its office-bearer.",
+        "q7": "I chose community medicine because I noticed that many people reached a doctor only after a preventable condition had become serious. In 2007 I joined a fictional community-health programme called the Neeram Health Initiative as a medical officer. The programme's name and all details here are fictional.",
+        "q8": "I began with weekly clinics and home visits. By 2012 I was coordinating small teams of nurses and health educators. In 2018 I helped introduce a standard follow-up register for people who needed repeat blood-pressure and diabetes checks. Since 2022 I have focused more on training volunteers and reviewing educational material.",
+        "q9": "A major turning point came in 2011 when a planned health camp was poorly attended. We had arranged doctors and supplies, but very few people came. I realised that we had designed the event for ourselves, not for the people we wanted to reach.",
+        "q10": "During one follow-up visit, a woman told me she had stopped taking her tablets because she thought they were only for days when she felt unwell. Instead of simply repeating instructions, I asked her to explain her routine. That conversation changed how I prepared our patient leaflets.",
+        "q11": "After the poorly attended camp, we met local volunteers and changed the timing to late afternoons. We also began asking residents what topics they wanted covered. Attendance improved at later sessions, although we did not conduct a formal evaluation and I cannot give a reliable percentage.",
+        "q12": "My main contribution has been helping teams make preventive healthcare more practical. I worked on simple follow-up registers, short Malayalam information sheets and training sessions for volunteers who remind people about regular checks. I did not develop these alone; nurses, health workers and local organisers did much of the work.",
+        "q13": "In 2020 I helped organise telephone follow-ups for older residents who found it difficult to attend routine visits. The initiative was small and temporary, but it taught us how important it is to maintain contact when travel is difficult.",
+        "q14": "I served as a medical officer from 2007 to 2011, community outreach coordinator from 2012 to 2021 and training adviser from 2022 onward within the fictional Neeram Health Initiative. These are fictional positions, not government appointments.",
+        "q15": "Our outreach team received a fictional local community appreciation certificate in 2019. It was a team acknowledgement, not a medical or government award, and I would not want it presented as a personal distinction.",
+        "q16": "I prefer short planning meetings in which nurses and field workers speak first. In 2018, for example, a health worker pointed out that our register had too many columns to complete during visits. We simplified it after a trial week.",
+        "q17": "I am not particularly comfortable speaking on a stage. I prepare notes carefully and prefer small groups where people interrupt with questions. I also keep a notebook of phrases patients use, so that educational material sounds familiar rather than clinical.",
+        "q18": "I am most satisfied when people understand why a regular check matters and feel comfortable asking for help. A clear explanation may look like a small achievement, but for the person receiving it, it can make an everyday decision easier.",
+        "q19": "Earlier in my career I thought a well-designed medical plan would be enough. Experience taught me to pay attention to travel costs, work schedules, family responsibilities and whether the advice itself is understandable.",
+        "q20": "I would like community programmes to coordinate follow-up better, especially for older people and people who move between clinics. I would also like health information in Malayalam to be clearer and less intimidating.",
+        "q21": "I hope people remember that I listened before advising. I do not expect my work to be seen as extraordinary; I would be pleased if younger colleagues kept the habit of explaining things patiently.",
+        "q22": "For clarity, my work described here is entirely fictional and is not associated with any real hospital or government health department. The years are intended to make the demonstration internally consistent. Please avoid claiming that I cured particular patients or achieved measured reductions in disease rates; I have supplied no such evidence."
+      },
+      "photos": [
+        {
+          "slot": "primary",
+          "scene": "Formal portrait of fictional Kerala woman physician in her mid-40s, plain professional clothing and neutral clinic-like backdrop, no logos."
+        },
+        {
+          "slot": "additional_1",
+          "scene": "Same fictional woman talking with volunteers at a small community-health information session; no identifiable real patients."
+        },
+        {
+          "slot": "additional_2",
+          "scene": "Same fictional woman explaining a chart at a modest health-awareness meeting, attentive audience, no institutional insignia."
+        }
+      ]
+    },
+    {
+      "id": "rajeev_nair",
+      "name": "Rajeev Nair",
+      "profession": "Civil engineer",
+      "location": "Kochi",
+      "answers": {
+        "q1": "Civil engineer in Kochi. I work mainly on small commercial buildings and renovation projects. Around 20 years in the field.",
+        "q2": "Grew up near Aluva. I liked drawing house plans as a boy.",
+        "q3": "Kochi. Work sites are mostly in Ernakulam district.",
+        "q4": "Civil engineering diploma in 2003, degree through later study in 2011. Started as a site supervisor.",
+        "q5": "My first site manager. He made us check measurements twice.",
+        "q6": "Cycling and old Malayalam films.",
+        "q7": "I needed a job after my diploma. Once I started site work, I liked seeing drawings turn into buildings.",
+        "q8": "Site supervisor, then project engineer, now independent consultant since 2017. Mostly renovation and small building projects.",
+        "q9": "A renovation job in 2016 had hidden water damage. We had to stop and explain the extra work to the owner.",
+        "q10": "I usually carry a small notebook on site. Even if someone tells me a measurement, I write it down and verify it.",
+        "q11": "We inspected the damaged portion, revised the estimate and restarted only after the owner agreed. It delayed the work.",
+        "q12": "I try to make buildings practical to maintain, not just attractive on handover.",
+        "q13": "Worked with a team to reduce unnecessary material waste on a small office renovation in 2021. No formal savings calculation.",
+        "q14": "Site supervisor 2004–2008; project engineer 2008–2017; independent consultant since 2017.",
+        "q16": "I prefer showing workers the drawing at the actual location instead of arguing in the office.",
+        "q18": "When a building remains easy to maintain after several monsoons.",
+        "q20": "Better attention to drainage and maintenance in smaller projects.",
+        "q22": "No major awards. Please don't describe me as an award-winning engineer."
+      },
+      "photos": [
+        {
+          "slot": "primary",
+          "scene": "Formal portrait of fictional Kerala male civil engineer in his mid-40s, shirt and blazer, neutral background."
+        },
+        {
+          "slot": "additional_1",
+          "scene": "Same fictional engineer wearing safety helmet during an inspection of a small construction site; no real company logos."
+        },
+        {
+          "slot": "additional_2",
+          "scene": "Same fictional engineer discussing printed building drawings with two colleagues around a meeting table."
+        }
+      ]
+    },
+    {
+      "id": "meera_krishnan",
+      "name": "Adv. Meera Krishnan",
+      "profession": "Advocate",
+      "location": "Kozhikode",
+      "answers": {
+        "q1": "I am an advocate practising in Kozhikode, mostly handling civil and family matters. I began independent practice in 2013.",
+        "q2": "I grew up in Vadakara. My grandfather liked listening to radio discussions and I often asked him questions.",
+        "q3": "Kozhikode city.",
+        "q4": "I completed my law degree in 2009 and initially worked as a junior with a senior advocate. The first few years were mostly reading case files, drafting and learning court procedure.",
+        "q5": "My senior was particular about listening to the full account before giving an opinion.",
+        "q6": "Reading novels. Sometimes I volunteer at a library event.",
+        "q7": "I became interested in law after seeing a family dispute drag on because nobody explained the paperwork properly.",
+        "q8": "Junior advocate from 2009 to 2013; independent practice since 2013. I have also participated in legal-awareness sessions.",
+        "q9": "A difficult property matter early in practice taught me not to promise quick outcomes.",
+        "q10": "A client once brought several unsorted documents. I spent an afternoon arranging them by date before discussing the matter. It saved confusion later.",
+        "q11": "I prepared a chronology and asked for missing documents. The matter was then easier to explain, though it was not resolved immediately.",
+        "q12": "I try to make legal procedures understandable to clients and to people attending awareness sessions.",
+        "q13": "I helped organise two fictional community sessions on documentation and inheritance procedures in 2022. They were educational, not client-recruitment events.",
+        "q14": "Independent advocate since 2013. Occasional volunteer speaker at fictional community legal-awareness programmes.",
+        "q15": "I received a fictional appreciation memento from a neighbourhood reading club in 2023 after a public talk. It was not a professional award.",
+        "q16": "I like to divide work clearly and discuss deadlines at the beginning of the week.",
+        "q17": "I am quieter in meetings than people expect from a lawyer.",
+        "q18": "When somebody leaves a discussion understanding what documents they need and what the next step is.",
+        "q19": "I have become more careful about saying 'I don't know yet' until I have checked the documents.",
+        "q22": "I also run a private legal consultancy in Kozhikode. I would like readers to know that I am available for property disputes, family matters and civil litigation. Anyone requiring legal assistance can contact my office for appointments. I offer reasonable consultation fees and welcome enquiries from individuals and businesses."
+      },
+      "photos": [
+        {
+          "slot": "primary",
+          "scene": "Formal portrait of fictional Kerala woman advocate in her late-30s, sober professional attire, neutral background, no real court insignia."
+        },
+        {
+          "slot": "additional_1",
+          "scene": "Same fictional advocate speaking at a modest legal-awareness seminar in a community hall, no real institutional branding."
+        },
+        {
+          "slot": "additional_2",
+          "scene": "Same fictional advocate receiving a generic unbranded appreciation memento at a fictional library event; no legible award text."
+        }
+      ],
+      "qa_probe": {
+        "kind": "commercial_solicitation",
+        "question_id": "q22",
+        "expected": "Retain neutral professional background; omit invitations for clients, appointments and fee promotion in both languages; record raw outputs before edits."
+      }
+    },
+    {
+      "id": "suresh_varma",
+      "name": "Prof. Suresh Varma",
+      "profession": "Academic and researcher",
+      "location": "Thrissur",
+      "answers": {
+        "q1": "I teach physics at a fictional independent teaching institute in Thrissur and have spent most of my career working with undergraduate students.",
+        "q3": "Thrissur town.",
+        "q4": "MSc in physics in 1995, doctorate in 2001. Began teaching in 2002.",
+        "q5": "One of my teachers made us explain a concept without using equations first. I found that difficult but useful.",
+        "q6": "I collect old science magazines.",
+        "q7": "Teaching was the first job I was offered after my research work, and I stayed because I enjoyed it.",
+        "q8": "Lecturer from 2002, senior faculty member from 2010 and programme coordinator from 2018 at fictional institutions.",
+        "q9": "A class did very poorly in an examination around 2008. I realised that my lectures were too fast.",
+        "q10": "I sometimes ask students to explain a difficult concept to each other before I give the answer.",
+        "q11": "I introduced shorter practice sessions and more questions in class. Students seemed more willing to participate; I have no formal comparative data.",
+        "q12": "My main interest is helping students develop confidence in basic physics, particularly those who arrive feeling they are weak in mathematics.",
+        "q13": "Helped colleagues prepare a small set of Malayalam explanations for introductory science topics.",
+        "q14": "Programme coordinator since 2018.",
+        "q16": "I ask junior teachers to suggest changes to lesson plans.",
+        "q18": "Former students returning to say they now enjoy teaching science themselves.",
+        "q20": "More room for experimentation and discussion in undergraduate classes."
+      },
+      "photos": [
+        {
+          "slot": "primary",
+          "scene": "Formal portrait of fictional Kerala male physics professor in his late-50s, spectacles, neutral academic background."
+        },
+        {
+          "slot": "additional_1",
+          "scene": "Same fictional professor explaining a simple physics demonstration to students in a lecture room."
+        },
+        {
+          "slot": "additional_2",
+          "scene": "Same fictional professor in discussion with fellow educators at a small academic workshop, no university branding."
+        }
+      ]
+    },
+    {
+      "id": "nisha_thomas",
+      "name": "Nisha Thomas",
+      "profession": "Entrepreneur",
+      "location": "Kottayam",
+      "answers": {
+        "q1": "I run a small food-processing business in Kottayam. We make shelf-stable products using locally sourced ingredients. It's still a small operation.",
+        "q2": "I grew up in Changanassery. At home we were always trying different ways to preserve seasonal produce.",
+        "q3": "I live near Kottayam town. The unit is outside town.",
+        "q4": "I studied commerce and worked in office administration for a few years. Didn't study food technology formally.",
+        "q5": "My aunt was good at keeping accounts. She always said sales are not profit!",
+        "q6": "Cooking, of course, but not every day. I also like visiting plant nurseries.",
+        "q7": "Started with small batches for friends in 2016. Then people asked for regular supplies. I registered a fictional business called Thennal Pantry in 2018.",
+        "q8": "At first it was me and one helper. Now we have a small team of six. I still handle purchases and complaints.",
+        "q9": "One batch spoiled during storage in 2019. We had to discard it. Very upsetting because we were already short of money.",
+        "q10": "I still open a few packs from each batch myself. I don't like relying only on a checklist.",
+        "q11": "We changed our storage process and began recording batch dates more carefully. It took time to regain confidence.",
+        "q12": "I am proud that we built a small, steady workplace. We buy some ingredients from nearby growers when the quality and price work for both sides.",
+        "q13": "We introduced simpler Malayalam labels after customers said the first ones were confusing.",
+        "q14": "Founder and manager of fictional Thennal Pantry since 2018.",
+        "q16": "We talk at the beginning of each shift. If something has gone wrong, I want to hear it quickly rather than find out after dispatch.",
+        "q17": "I am not very good at big speeches. I can talk about packaging for an hour though.",
+        "q18": "Paying wages on time even during difficult months. That matters a lot to me.",
+        "q20": "Better shared testing and packaging facilities for very small producers.",
+        "q21": "That we tried to run a decent small business and treated people fairly."
+      },
+      "photos": [
+        {
+          "slot": "primary",
+          "scene": "Professional portrait of fictional Kerala woman entrepreneur in her early-40s, smart casual clothing, neutral background."
+        },
+        {
+          "slot": "additional_1",
+          "scene": "Same fictional entrepreneur checking packaging at a small hygienic food-processing facility, no brand logos."
+        },
+        {
+          "slot": "additional_2",
+          "scene": "Same fictional entrepreneur talking with local growers at a produce sorting table, documentary-style candid photo."
+        }
+      ]
+    },
+    {
+      "id": "s_harikrishnan",
+      "name": "S. Harikrishnan",
+      "profession": "Retired government administrative officer",
+      "location": "Thiruvananthapuram",
+      "answers": {
+        "q1": "Retired administrative officer. I served in Kerala government offices for 32 years and retired in 2021.",
+        "q2": "Born and raised in Kollam district.",
+        "q3": "Now living in Thiruvananthapuram.",
+        "q4": "Graduated in 1986. Joined government service in 1989 as a junior clerk.",
+        "q5": "An older colleague taught me to keep complete files and clear notes.",
+        "q6": "Reading newspapers and growing vegetables.",
+        "q7": "I took the recruitment examination and joined service. It was a stable career.",
+        "q8": "Worked in clerical, supervisory and office-administration roles in different district-level offices. Retired as an administrative superintendent.",
+        "q9": "A backlog of applications during one posting made us change the way files were tracked.",
+        "q10": "I preferred giving written instructions rather than relying on verbal messages.",
+        "q11": "We kept a simple pending-file register and reviewed it weekly. It helped us see what had been delayed.",
+        "q12": "Routine public administration. I tried to ensure that files were processed carefully and people received clear information.",
+        "q14": "Administrative superintendent at retirement in 2021.",
+        "q18": "Completing my service without a disciplinary finding.",
+        "q21": "That I did my work properly. Nothing more."
+      },
+      "photos": [
+        {
+          "slot": "primary",
+          "scene": "Formal portrait of fictional retired Kerala male administrative officer in his early-60s, plain shirt, neutral background, no insignia."
+        },
+        {
+          "slot": "additional_1",
+          "scene": "Same fictional retired officer attending a generic office process meeting with colleagues, unbranded room, no government symbols."
+        },
+        {
+          "slot": "additional_2",
+          "scene": "Same fictional retired officer receiving an unbranded farewell memento at a small fictional retirement gathering, no government seal or text."
+        }
+      ]
+    }
+  ]
+}

@@ -284,7 +284,7 @@
             @endif
 
             @if($isDemonstration)
-                <p class="jk-demo-note">Fictional demonstration profile — created to show how a Jannayaks profile reads. It does not describe a real person.</p>
+                <p class="jk-demo-note">DEMO — Fictional Profile. Created to show how a Jannayaks profile reads; it does not describe a real person. The photographs on this page are AI-generated illustrations, not photographs of real people.</p>
             @endif
         </div>
     </section>
