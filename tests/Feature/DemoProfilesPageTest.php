@@ -116,6 +116,8 @@ class DemoProfilesPageTest extends TestCase
         $this->assertStringNotContainsString('"name":"Gallery","item":"'.route('gallery.index').'"', $demoPage);
         $this->assertStringContainsString(
             'Fictional demonstration profile — created to show how a Jannayaks profile reads.',
+        $this->assertStringContainsString('DEMO — Fictional Profile', $demoPage);
+        $this->assertStringContainsString('The photographs on this page are AI-generated illustrations', $demoPage);
             $demoPage
         );
 
