@@ -57,6 +57,13 @@ h1{font-family:var(--fd);font-size:clamp(28px,5vw,44px);color:var(--navy);line-h
 .tier-name-ml{font-family:var(--fm);font-size:15px;color:var(--gray);display:block;margin-bottom:10px;}
 .price{font-family:var(--fd);font-size:30px;font-weight:700;color:var(--saffron);line-height:1;}
 .price-sub{font-size:12px;color:var(--gray);margin:4px 0 12px;}
+.price-grid{display:grid;grid-template-columns:1fr 1fr;gap:14px;margin:10px 0 4px;}
+.price-cell{border:1px solid var(--border);border-radius:8px;background:#fff;padding:14px 16px;}
+.price-region{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gray);margin:0 0 6px;}
+.price-cell .price{font-size:30px;}
+.price-note{font-size:12px;color:var(--gray);margin:6px 0 0;}
+.renewal-hd{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--navy);margin:16px 0 8px;}
+@media(max-width:640px){.price-grid{grid-template-columns:1fr;}}
 .who{font-size:13px;color:var(--gray);line-height:1.65;margin-bottom:14px;}
 .who-ml{font-family:var(--fm);font-size:12px;color:var(--gray);display:block;margin-top:4px;line-height:1.65;}
 .features{display:flex;flex-direction:column;gap:7px;margin:0;padding:0;list-style:none;}
@@ -112,8 +119,31 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 
   <div class="card">
     <div class="tier-name">Jannayaks Profile</div>
-    <div class="price">{{ $profile['amount_incl_formatted'] }} <span class="price-sub" style="display:inline">(India, GST-inclusive)</span></div>
-    <div class="price-sub">US${{ number_format((float) config('jannayaks.tier_pricing.international.profile_usd', 50), 0) }} (international) — includes profile preparation, editorial presentation, publication and first-year hosting. Annual renewal from the second year: {{ $renewal['amount_incl_formatted'] }} (India, GST-inclusive) · US${{ number_format((float) config('jannayaks.tier_pricing.international.renewal_usd', 15), 0) }} (international).</div>
+    <div class="price-grid">
+        <div class="price-cell">
+            <div class="price-region">India</div>
+            <div class="price">{{ $profile['amount_incl_formatted'] }}</div>
+            <div class="price-note">GST-inclusive</div>
+        </div>
+        <div class="price-cell">
+            <div class="price-region">International</div>
+            <div class="price">US${{ number_format((float) config('jannayaks.tier_pricing.international.profile_usd', 50), 0) }}</div>
+            <div class="price-note">For applicants outside India</div>
+        </div>
+    </div>
+    <div class="renewal-hd">Annual renewal — from the second year</div>
+    <div class="price-grid">
+        <div class="price-cell">
+            <div class="price-region">India</div>
+            <div class="price">{{ $renewal['amount_incl_formatted'] }}</div>
+            <div class="price-note">GST-inclusive</div>
+        </div>
+        <div class="price-cell">
+            <div class="price-region">International</div>
+            <div class="price">US${{ number_format((float) config('jannayaks.tier_pricing.international.renewal_usd', 15), 0) }}</div>
+            <div class="price-note">Per year</div>
+        </div>
+    </div>
     <ul class="features">
       <li>Profile preparation, editorial presentation, publication and first-year hosting</li>
       <li>Up to three photographs, and your approval before publication</li>
