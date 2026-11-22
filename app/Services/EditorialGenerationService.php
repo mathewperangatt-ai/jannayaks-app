@@ -44,7 +44,10 @@ class EditorialGenerationService
             throw new InvalidArgumentException('A published profile cannot receive a new AI draft from this action. Use the maintenance workflow.');
         }
 
-        $lockSeconds = max(30, (int) config('jannayaks.ai.openai.timeout_seconds', 60) * 2);
+        $providerTimeout = (string) config('jannayaks.ai.provider', 'gpt') === 'claude'
+            ? (int) config('jannayaks.ai.anthropic.timeout_seconds', 240)
+            : (int) config('jannayaks.ai.openai.timeout_seconds', 60);
+        $lockSeconds = max(30, ($providerTimeout * 2) + 30);
         $lock = Cache::lock($this->lockKey($application), $lockSeconds);
 
         if (! $lock->get()) {
@@ -260,7 +263,9 @@ class EditorialGenerationService
                 ];
 
                 $malayalamResult = $this->ai->generateEditorial([
-                    'system' => EditorialSystemPrompts::malayalamAdaptation(),
+                    'system' => $this->ai->providerName() === 'claude'
+                        ? EditorialSystemPrompts::claudeMalayalamAdaptation()
+                        : EditorialSystemPrompts::malayalamAdaptation(),
                     'user' => $this->payloadBuilder->toDelimitedUserMessage($mlPayload),
                     'purpose' => 'malayalam',
                 ]);

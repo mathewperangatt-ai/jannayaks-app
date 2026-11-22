@@ -312,11 +312,21 @@ return [
     ],
 
     'ai' => [
-        'provider' => env('JANNAYAKS_AI_PROVIDER', 'gpt'), // gpt | fake
+        // Select exactly one editorial provider for the complete English + Malayalam run.
+        // Claude is the production primary; set to "gpt" in Railway for manual fallback.
+        // No automatic mid-run provider switching or mixed-provider drafts.
+        'provider' => env('JANNAYAKS_AI_PROVIDER', 'claude'), // claude | gpt | fake
         'malayalam_pipeline_enabled' => (bool) env('JANNAYAKS_AI_MALAYALAM_ENABLED', true),
+        'anthropic' => [
+            'api_key' => env('ANTHROPIC_API_KEY', ''),
+            'model' => env('JANNAYAKS_ANTHROPIC_MODEL', 'claude-sonnet-5-5'),
+            'endpoint' => env('JANNAYAKS_ANTHROPIC_ENDPOINT', 'https://api.anthropic.com/v1/messages'),
+            'timeout_seconds' => (int) env('JANNAYAKS_ANTHROPIC_TIMEOUT', 240),
+            'max_tokens' => (int) env('JANNAYAKS_ANTHROPIC_MAX_TOKENS', 8000),
+        ],
         'openai' => [
             'api_key' => env('OPENAI_API_KEY', ''),
-            'model' => env('JANNAYAKS_OPENAI_MODEL', 'gpt-4.1-mini'),
+            'model' => env('JANNAYAKS_OPENAI_MODEL', 'gpt-6-luna'),
             'endpoint' => env('JANNAYAKS_OPENAI_ENDPOINT', 'https://api.openai.com/v1/chat/completions'),
             'timeout_seconds' => (int) env('JANNAYAKS_OPENAI_TIMEOUT', 60),
         ],
