@@ -8,6 +8,7 @@ use App\Contracts\PhotoPlacementAiClient;
 use App\Services\Ai\FakePhotoPlacementClient;
 use App\Services\Ai\OpenAiPhotoPlacementClient;
 use App\Models\Application;
+use App\Services\Ai\AnthropicEditorialClient;
 use App\Services\Ai\FakeEditorialAiClient;
 use App\Services\Ai\FakePhotoEnhancementClient;
 use App\Services\Ai\OpenAiEditorialClient;
@@ -28,7 +29,11 @@ class AppServiceProvider extends ServiceProvider
                 return $app->make(FakeEditorialAiClient::class);
             }
 
-            return $app->make(OpenAiEditorialClient::class);
+            return match ($provider) {
+                'claude' => $app->make(AnthropicEditorialClient::class),
+                'gpt' => $app->make(OpenAiEditorialClient::class),
+                default => throw new \InvalidArgumentException('Unsupported Jannayaks editorial AI provider: '.$provider),
+            };
         });
 
         // Independent image-enhancement provider selection — deliberately
