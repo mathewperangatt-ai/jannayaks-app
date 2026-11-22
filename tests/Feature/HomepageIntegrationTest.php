@@ -94,22 +94,20 @@ class HomepageIntegrationTest extends TestCase
         // In Memoriam section removed from the public homepage.
         $this->assertFalse(strpos($html, 'id="memoriam') !== false);
         $urlSection = strpos($html, '<section class="url-section">');
-        $this->assertTrue($banner < $intro && $intro < $demoSection && $demoSection < $why && $why < $search && $search < $howItWorks && $howItWorks < $pricing && $pricing < $care && $care < $recommend && $recommend < $finalCta, 'hero → What is Jannayaks → Demo Profiles → Why → … in order');
+        $this->assertTrue($banner < $intro && $intro < $demoSection && $demoSection < $why && $why < $search && $search < $howItWorks && $howItWorks < $pricing && $pricing < $care && $care < $recommend && $recommend < $finalCta, 'hero → intro statement → Demo Profiles → Why → … in order');
         $this->assertTrue($search < $urlSection && $urlSection < $howItWorks, 'search and the URL explanation are separate sections, in order');
         // The intro is fully bilingual: English first, Malayalam immediately
         // below, with no language toggle.
         $this->assertSame(0, substr_count($html, 'intro-tabs'));
         $this->assertSame(0, substr_count($html, 'switchIntroLang'));
-        $leadEn = strpos($html, 'class="intro-lead-en"');
-        $leadMl = strpos($html, 'class="intro-lead-ml"');
-        $this->assertNotFalse($leadEn);
-        $this->assertNotFalse($leadMl);
-        $this->assertTrue($intro < $leadEn && $leadEn < $leadMl && $leadMl < $recommend);
+        $hdEn = strpos($html, 'A Digital Gallery of Notable Malayalees Across the World.');
+        $hdMl = strpos($html, 'ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ');
+        $this->assertNotFalse($hdEn);
+        $this->assertNotFalse($hdMl);
+        $this->assertTrue($intro < $hdEn && $hdEn < $hdMl && $hdMl < $recommend);
         $response->assertSeeInOrder([
-            'What is Jannayaks?',
-            'എന്താണ് Jannayaks?',
-            "Every life's work deserves to be remembered, recognised and documented.",
-            'ഓരോരുത്തരുടെയും ജീവിതപ്രയത്നം ഓർമ്മിക്കപ്പെടണം, അംഗീകരിക്കപ്പെടണം, രേഖപ്പെടുത്തപ്പെടണം.',
+            'A Digital Gallery of Notable Malayalees Across the World.',
+            'ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ നൽകിയ മലയാളി വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.',
             'Achievements are more than milestones. They represent years of dedication, professional accomplishments, personal journeys and contributions to society.',
             'നേട്ടങ്ങൾ വെറും നാഴികക്കല്ലുകളല്ല. വർഷങ്ങളുടെ അധ്വാനവും, തൊഴിൽരംഗത്തെ മികവും, ജീവിതയാത്രകളും, സമൂഹത്തിനുള്ള സംഭാവനകളുമാണ് അവ.',
             'Jannayaks™ gives these achievements a lasting digital presence.',

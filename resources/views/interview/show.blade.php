@@ -146,6 +146,16 @@
             </span>
         </label>
         @error('accuracy_confirmed')<p class="hint" style="color:#7a1414">{{ $message }}</p>@enderror
+        @php($turnstile = app(\App\Services\TurnstileService::class))
+        @if($turnstile->enabled() && ! $isSubmitted)
+            <div style="margin:14px 0 4px">
+                <div class="cf-turnstile" data-sitekey="{{ $turnstile->sitekey() }}" data-theme="auto" data-language="auto"></div>
+                @error('turnstile')<p class="hint" style="color:#7a1414;margin:8px 0 0">{{ $message }}</p>@enderror
+                <p class="hint" style="margin:8px 0 0">Security verification protects this submission. Your answers are saved even if verification needs a retry.</p>
+            </div>
+            <script src="https://challenges.cloudflare.com/turnstile/v0/api.js" async defer></script>
+        @endif
+
         <div class="actions">
             @if($isSubmitted)
                 <a class="btn primary" href="{{ route('applications.show', $application) }}">← Back to dashboard</a>

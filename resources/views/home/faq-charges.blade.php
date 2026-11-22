@@ -84,7 +84,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
 <nav>
   <div class="nav-inner">
     <a class="nav-logo" href="{{ route('home') }}">
-      <img src="{{ asset('branding/jannayaks-logo.png') . '?v=2' }}" alt="Jannayaks">
+      <img src="{{ asset('branding/jannayaks-logo.png') . '?v=3' }}" alt="Jannayaks">
     </a>
     <ul class="nav-links">
       <li><a href="{{ route('home') }}">Home</a></li>

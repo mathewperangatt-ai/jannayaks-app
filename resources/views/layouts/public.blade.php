@@ -113,7 +113,7 @@
     <header class="site-nav">
         <div class="nav-inner">
             <a class="nav-logo" href="{{ route('home') }}">
-                <img src="{{ asset('branding/jannayaks-logo.png') . '?v=2' }}" alt="Jannayaks.in">
+                <img src="{{ asset('branding/jannayaks-logo.png') . '?v=3' }}" alt="Jannayaks.in">
             </a>
             <button type="button" class="nav-menu-btn" id="publicNavBtn" aria-expanded="false" aria-controls="publicNavLinks" aria-label="Open menu">☰</button>
             <ul class="nav-links" id="publicNavLinks">
