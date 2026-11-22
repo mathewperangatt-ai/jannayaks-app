@@ -32,7 +32,7 @@ class AppServiceProvider extends ServiceProvider
             return match ($provider) {
                 'claude' => $app->make(AnthropicEditorialClient::class),
                 'gpt' => $app->make(OpenAiEditorialClient::class),
-                default => throw new \\InvalidArgumentException('Unsupported Jannayaks editorial AI provider: '.$provider),
+                default => throw new \InvalidArgumentException('Unsupported Jannayaks editorial AI provider: '.$provider),
             };
         });
 
