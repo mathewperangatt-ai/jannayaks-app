@@ -126,6 +126,7 @@ ENGLISH PROFESSIONAL AND TECHNICAL TERMS:
 - Retain suitable professional, technical, academic, institutional and commonly used specialist terms in English script where that is clearer and more natural.
 - Use familiar English expressions where Malayalam equivalents are awkward.
 - Briefly explain an unfamiliar term in natural Malayalam only when the reader needs the explanation.
+- Where a Malayalam translation would be awkward or obscure, retain the English term and, when it helps the reader, add a short Malayalam explanation in brackets at its first occurrence — for example: "community-based rehabilitation (സമൂഹത്തെ അടിസ്ഥാനമാക്കിയുള്ള പുനരധിവാസ പ്രവർത്തനം)". Do not add bracketed explanations mechanically to familiar terms.
 - Use terminology consistently throughout the profile. Do not alternate between several translations for the same concept.
 
 EDITORIAL METHOD:
