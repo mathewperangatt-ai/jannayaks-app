@@ -73,7 +73,10 @@ class EditorialGenerationService
         User $actor,
         array $englishMaster,
     ): AiEditorialRun {
-        $lock = Cache::lock($this->lockKey($application), 300);
+        $providerTimeout = (string) config('jannayaks.ai.provider', 'gpt') === 'claude'
+            ? (int) config('jannayaks.ai.anthropic.timeout_seconds', 240)
+            : (int) config('jannayaks.ai.openai.timeout_seconds', 60);
+        $lock = Cache::lock($this->lockKey($application), max(30, ($providerTimeout * 2) + 30));
         if (! $lock->get()) {
             throw new InvalidArgumentException('An AI editorial generation is already in progress for this application.');
         }
@@ -117,7 +120,9 @@ class EditorialGenerationService
             ];
 
             $malayalamResult = $this->ai->generateEditorial([
-                'system' => EditorialSystemPrompts::malayalamAdaptation(),
+                'system' => $this->ai->providerName() === 'claude'
+                    ? EditorialSystemPrompts::claudeMalayalamAdaptation()
+                    : EditorialSystemPrompts::malayalamAdaptation(),
                 'user' => $this->payloadBuilder->toDelimitedUserMessage($mlPayload),
                 'purpose' => 'malayalam',
             ]);
