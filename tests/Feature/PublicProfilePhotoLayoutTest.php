@@ -4,10 +4,10 @@ namespace Tests\Feature;
 
 use App\Models\Application;
 use App\Models\EditorialContent;
-use App\Models\MediaItem;
 use App\Models\Profile;
 use App\Models\User;
 use App\Services\ApplicationWorkflowService;
+use App\Services\CustomerEditorialWorkflowService;
 use App\Services\ProfileMediaService;
 use App\Services\PublicProfilePresentationService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
@@ -16,8 +16,10 @@ use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
- * Public profile photograph layout: single-photo reuse must not cover-crop;
- * multi-photo gallery placement remains available for additional images.
+ * Public profile photograph presentation (inline-only): photographs appear
+ * INSIDE the biography article flow at natural paragraph breaks — never in
+ * the header, a detached gallery, a grid or a sidebar. Every photograph
+ * opens an enlarged view. Primary photograph leads; duplicates never render.
  */
 class PublicProfilePhotoLayoutTest extends TestCase
 {
@@ -29,7 +31,7 @@ class PublicProfilePhotoLayoutTest extends TestCase
         Storage::fake('public');
     }
 
-    public function test_single_photograph_side_feature_uses_whole_image_contain(): void
+    public function test_single_photograph_renders_inline_without_header_or_gallery(): void
     {
         [$profile] = $this->publishWithPhotos([
             ['name' => 'portrait.jpg', 'width' => 400, 'height' => 600, 'primary' => true],
@@ -37,131 +39,104 @@ class PublicProfilePhotoLayoutTest extends TestCase
 
         $html = $this->get(route('profiles.public', $profile->slug))->assertOk()->getContent();
 
+        // The single photograph appears inline inside the biography flow.
         $this->assertMatchesRegularExpression(
-            '#class="jk-side-feature jk-portrait--whole"#',
+            '#<figure class="jk-inline-photo">.*?photo/'.$this->photoIds($profile)[0].'#s',
             $html,
-            'Single-photo biography side feature must use contain (jk-portrait--whole).'
         );
-        $this->assertDoesNotMatchRegularExpression(
-            '#class="jk-side-feature"(?! jk-portrait--whole)#',
-            $html
-        );
+        // No header portrait, no mono fallback, no gallery, no sidebar photo.
+        $this->assertStringNotContainsString('jk-portrait', $html);
         $this->assertStringNotContainsString('id="gallery"', $html);
-        $this->assertMatchesRegularExpression('#class="jk-portrait"(?! jk-portrait--whole)#', $html);
+        $this->assertStringNotContainsString('jk-side-feature', $html);
     }
 
-    public function test_two_photographs_keep_cover_side_feature_and_show_gallery(): void
+    public function test_multiple_photographs_flow_inline_in_order_with_click_to_enlarge(): void
     {
-        [$profile] = $this->publishWithPhotos([
+        [$profile, $photos] = $this->publishWithPhotos([
             ['name' => 'portrait.jpg', 'width' => 400, 'height' => 600, 'primary' => true],
             ['name' => 'landscape.jpg', 'width' => 800, 'height' => 500, 'primary' => false],
         ]);
 
-        $html = $this->get(route('profiles.public', $profile->slug))->assertOk()->getContent();
         $ordered = app(PublicProfilePresentationService::class)->publicProfilePhotos($profile->fresh());
         $this->assertCount(2, $ordered);
 
-        $this->assertMatchesRegularExpression('#class="jk-side-feature"(?! jk-portrait--whole)#', $html);
-        $this->assertStringContainsString('id="gallery"', $html);
-        $this->assertStringContainsString(
-            'href="'.route('profiles.public.photo', [$profile, $ordered->skip(1)->first()]).'"',
-            $html
-        );
+        $html = $this->get(route('profiles.public', $profile->slug))->assertOk()->getContent();
+
+        // Every photograph renders exactly once, in placement order
+        // (primary first), each wrapped in an enlarged-view link.
+        $positions = [];
+        foreach ($ordered as $photo) {
+            $src = route('profiles.public.photo', [$profile, $photo]);
+            $this->assertSame(1, substr_count($html, 'src="'.$src.'"'), 'photo '.$photo->id.' must render exactly once.');
+            $positions[] = strpos($html, $src);
+            $this->assertStringContainsString(
+                '<a href="'.$src.'" target="_blank" rel="noopener"',
+                $html,
+                'Inline photographs open an enlarged view.',
+            );
+        }
+        $this->assertTrue($positions[0] < $positions[1], 'Primary photograph renders before the second.');
     }
 
-    public function test_primary_photograph_leads_regardless_of_display_order_and_id(): void
+    public function test_photographs_sit_at_natural_paragraph_breaks_inside_the_article(): void
     {
         [$profile, $photos] = $this->publishWithPhotos([
-            ['name' => 'secondary-created-first.jpg', 'width' => 400, 'height' => 600, 'primary' => false],
-            ['name' => 'primary-high-order.jpg', 'width' => 400, 'height' => 600, 'primary' => true],
-            ['name' => 'secondary-tie.jpg', 'width' => 400, 'height' => 600, 'primary' => false],
+            ['name' => 'portrait.jpg', 'width' => 400, 'height' => 600, 'primary' => true],
+            ['name' => 'activity.jpg', 'width' => 800, 'height' => 500, 'primary' => false],
         ]);
-
-        // The primary photograph carries the HIGHEST display order; the two
-        // non-primary photographs tie on display order with ascending ids.
-        $photos[0]->forceFill(['display_order' => 5])->save();
-        $photos[1]->forceFill(['display_order' => 9])->save();
-        $photos[2]->forceFill(['display_order' => 5])->save();
-
-        $ordered = app(PublicProfilePresentationService::class)->publicProfilePhotos($profile->fresh());
-        $this->assertSame(
-            [$photos[1]->id, $photos[0]->id, $photos[2]->id],
-            $ordered->pluck('id')->all(),
-            'Primary photograph leads; remaining photographs order display_order asc then id asc.',
-        );
 
         $html = $this->get(route('profiles.public', $profile->slug))->assertOk()->getContent();
 
-        // The hero (side feature) must show the primary photograph even though
-        // a non-primary photograph has a lower display order and a lower id.
-        $this->assertStringContainsString(
-            'class="jk-side-feature" src="'.route('profiles.public.photo', [$profile, $photos[1]]).'"',
-            $html,
-        );
-        $this->assertStringNotContainsString(
-            'class="jk-side-feature" src="'.route('profiles.public.photo', [$profile, $photos[0]]).'"',
-            $html,
-        );
+        // Paragraph 1, then a photograph, then paragraph 2 — photographs live
+        // between paragraphs, never inside a sentence or detached panel.
+        $paragraph1Pos = strpos($html, 'First paragraph of the public biography.');
+        $paragraph2Pos = strpos($html, 'Second paragraph continues the record.');
+        $figure1Pos = strpos($html, '<figure class="jk-inline-photo">');
 
-        // The gallery starts after the first ordered photograph, and the
-        // display-order tie resolves deterministically by id ascending.
-        $this->assertStringContainsString(
-            'href="'.route('profiles.public.photo', [$profile, $photos[2]]).'"',
-            $html,
-        );
+        $this->assertTrue($paragraph1Pos !== false && $paragraph2Pos !== false && $figure1Pos !== false);
+        $this->assertTrue($paragraph1Pos < $figure1Pos && $figure1Pos < $paragraph2Pos);
     }
 
-    public function test_three_photographs_adapt_gallery_without_changing_side_feature_rule(): void
+    public function test_no_photo_appears_in_the_header(): void
     {
-        foreach ([3] as $count) {
-            $specs = [];
-            for ($i = 0; $i < $count; $i++) {
-                $portrait = $i % 2 === 0;
-                $specs[] = [
-                    'name' => ($portrait ? 'p' : 'l').$i.'.jpg',
-                    'width' => $portrait ? 420 : 900,
-                    'height' => $portrait ? 640 : 520,
-                    'primary' => $i === 0,
-                ];
-            }
+        [$profile, $photos] = $this->publishWithPhotos([
+            ['name' => 'portrait.jpg', 'width' => 400, 'height' => 600, 'primary' => true],
+        ]);
 
-            [$profile] = $this->publishWithPhotos($specs);
-            $html = $this->get(route('profiles.public', $profile->slug))->assertOk()->getContent();
-            $ordered = app(PublicProfilePresentationService::class)->publicProfilePhotos($profile->fresh());
-            $this->assertCount($count, $ordered);
+        $html = $this->get(route('profiles.public', $profile->slug))->assertOk()->getContent();
 
-            $this->assertMatchesRegularExpression(
-                '#class="jk-side-feature"(?! jk-portrait--whole)#',
-                $html,
-                "Expected cover side feature when {$count} photos are present."
-            );
-            $this->assertStringContainsString('id="gallery"', $html);
+        // Slice from the rendered <body>: the <head> carries the og:image
+        // meta tag legitimately, which is metadata — not a displayed photo.
+        $bodyStart = strpos($html, '<body>');
+        $headerEnd = strpos((string) $html, 'id="biography"');
+        $headerHtml = substr((string) $html, (int) $bodyStart, (int) $headerEnd - (int) $bodyStart);
 
-            foreach ($ordered->skip(1) as $extra) {
-                $this->assertStringContainsString(
-                    'href="'.route('profiles.public.photo', [$profile, $extra]).'"',
-                    $html
-                );
-            }
-        }
+        $this->assertStringNotContainsString('jk-portrait', $headerHtml);
+        $this->assertStringNotContainsString('photo/', $headerHtml);
     }
 
-    public function test_demonstration_profiles_still_force_whole_portraits(): void
+    public function test_demonstration_label_and_disclosure_still_render(): void
     {
-        [$profile] = $this->publishWithPhotos([
-            ['name' => 'demo.jpg', 'width' => 500, 'height' => 500, 'primary' => true],
-        ], demoOwner: true);
+        [$profile] = $this->publishWithPhotos([], demoOwner: true);
 
         $html = $this->get(route('profiles.public', $profile->slug).'?lang=en')->assertOk()->getContent();
 
-        $this->assertStringContainsString('jk-portrait jk-portrait--whole', $html);
-        $this->assertStringContainsString('jk-side-feature jk-portrait--whole', $html);
+        $this->assertStringContainsString('DEMO — Fictional Profile', $html);
+        $this->assertStringContainsString('The photographs on this page are AI-generated illustrations', $html);
     }
 
     /**
-     * @param  list<array{name: string, width: int, height: int, primary: bool}>  $specs
-     * @return array{0: Profile, 1: list<MediaItem>}
+     * Publish a profile with the given photographs through the real
+     * workflow. Returns [profile, photos(with the application attached)].
      */
+    private function photoIds($profile): array
+    {
+        return app(PublicProfilePresentationService::class)
+            ->publicProfilePhotos($profile->fresh())
+            ->pluck('id')
+            ->all();
+    }
+
     private function publishWithPhotos(array $specs, bool $demoOwner = false): array
     {
         $member = User::factory()->create([
@@ -198,50 +173,39 @@ class PublicProfilePhotoLayoutTest extends TestCase
         $english = EditorialContent::query()->create([
             'profile_id' => $profile->id,
             'language' => EditorialContent::LANGUAGE_EN,
-            'status' => EditorialContent::STATUS_APPROVED,
+            'status' => EditorialContent::STATUS_DRAFT,
             'version_number' => 1,
             'title' => $profile->display_name,
             'body' => "First paragraph of the public biography.\n\nSecond paragraph continues the record.",
             'summary' => 'A short public summary.',
-            'source_material' => '',
-            'ai_generated' => false,
         ]);
 
+        $workflow = app(ApplicationWorkflowService::class);
+        $workflow->approveEnglishMaster($application->fresh(), $admin);
+        app(CustomerEditorialWorkflowService::class)->releaseForCustomerPreview($application->fresh(), $admin);
+
+        // Photographs upload BEFORE the customer approval: after approval the
+        // member is locked out of photo changes by design.
         $media = app(ProfileMediaService::class);
-        $photos = [];
-        foreach ($specs as $index => $spec) {
-            $uploaded = UploadedFile::fake()->image($spec['name'], $spec['width'], $spec['height']);
-            $item = $media->uploadProfilePhoto($profile->fresh(), $uploaded, $editor);
-            $media->approve($item, $reviewer);
-            $photos[] = $item->fresh();
+        $photos = collect();
+        foreach ($specs as $i => $spec) {
+            $photo = $media->uploadProfilePhoto(
+                profile: $profile->fresh(),
+                file: UploadedFile::fake()->image($spec['name'], $spec['width'], $spec['height']),
+                actor: $member,
+                altText: 'Photo '.($i + 1).' of '.$profile->display_name,
+                makePrimary: (bool) $spec['primary'],
+            );
+            $media->approve($photo->fresh(), $editor);
+            $photos->push($photo->fresh());
         }
 
-        // Explicit primary + display order after all uploads (upload may reassign primary).
-        foreach ($photos as $index => $item) {
-            $item->forceFill([
-                'is_primary' => (bool) $specs[$index]['primary'],
-                'display_order' => $index + 1,
-            ])->save();
-        }
-        // Ensure a single primary when specs mark one.
-        $primary = collect($photos)->first(fn (MediaItem $item, int $i): bool => (bool) $specs[$i]['primary'])
-            ?? $photos[0];
-        MediaItem::query()
-            ->where('mediable_type', $profile->getMorphClass())
-            ->where('mediable_id', $profile->id)
-            ->whereKeyNot($primary->id)
-            ->update(['is_primary' => false]);
-        $primary->forceFill(['is_primary' => true])->save();
+        $this->actingAs($member)->post(route('applications.preview.approve', $application->fresh()), [
+            'english_editorial_content_id' => $application->fresh()->preview_english_editorial_content_id,
+            'confirm_approval' => '1',
+        ])->assertRedirect()->assertSessionHasNoErrors();
+        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin);
 
-        $application->forceFill([
-            'customer_approved_at' => now(),
-            'customer_approved_english_editorial_content_id' => $english->id,
-            'customer_approved_by_user_id' => $member->id,
-            'status' => Application::STATUS_AWAITING_PUBLICATION,
-        ])->save();
-
-        app(ApplicationWorkflowService::class)->publish($application->fresh(), $admin, true);
-
-        return [$profile->fresh(), $photos];
+        return [$profile->fresh(), $english->fresh(), $photos, $application->fresh()];
     }
 }

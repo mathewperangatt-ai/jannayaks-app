@@ -39,10 +39,12 @@
     // supplied by the presentation service. Stable SECTION anchors hold
     // across English and Malayalam; paragraph structure never matters.
     $placements = $placements ?? collect();
+    // All approved profile photographs flow inline inside the biography
+    // article (hero/gallery/sidebar presentation removed). Approved
+    // placements set the order; unplaced photographs follow in profile order.
+    $inlinePhotos = $placements->sortBy('display_order')->map(fn ($pl) => $pl->mediaItem)
+        ->merge($photos->diff($placements->map(fn ($pl) => $pl->mediaItem)));
     $inlinePlacements = $placements->filter(fn ($pl) => $pl->placement_type === 'inline');
-    $biographyInline = $inlinePlacements->filter(fn ($pl) => ($pl->section_anchor ?? 'biography') === 'biography')->sortBy('display_order')->values();
-    $careerInline = $inlinePlacements->filter(fn ($pl) => $pl->section_anchor === 'career')->sortBy('display_order')->values();
-    $galleryPlacementPhotos = $placements->filter(fn ($pl) => $pl->placement_type === 'gallery')->sortBy('display_order')->values();
     // No photograph renders twice: hero + inline placements are excluded from the gallery.
     $placedPhotoIds = $placements->pluck('media_item_id')->map(fn ($id) => (int) $id)->all();
 @endphp
@@ -63,15 +65,10 @@
     .jk-crumbs span[aria-current]{color:var(--jk-blue)}
 
     /* hero */
-    .jk-hero{display:grid;grid-template-columns:minmax(0,42fr) minmax(0,58fr);gap:clamp(28px,4.5vw,58px);align-items:center;padding:8px 0 64px;border-bottom:1px solid var(--jk-line)}
-    .jk-portrait-wrap{position:relative;padding:10px;border:1px solid #bdcfba;max-width:430px;background:var(--jk-surface)}
-    .jk-portrait{width:100%;aspect-ratio:3/4;object-fit:cover;display:block;border:1px solid #aab9a6;background:var(--jk-surface2)}
+    .jk-hero{display:block;padding:8px 0 64px;border-bottom:1px solid var(--jk-line);max-width:820px}
     /* --whole: keep the full photograph (no cover crop). Used for demonstration
        portraits (watermark must stay visible) and when the biography side feature
        reuses the only available photograph. */
-    .jk-portrait.jk-portrait--whole,.jk-side-feature.jk-portrait--whole{aspect-ratio:auto;height:auto;object-fit:contain}
-    .jk-portrait-mono{width:100%;aspect-ratio:3/4;display:flex;align-items:center;justify-content:center;border:1px solid #aab9a6;background:linear-gradient(160deg,#e7efe4,#dbe7d7);font:500 clamp(64px,7vw,110px) var(--jk-serif);color:#9db3a4}
-    .jk-caption{display:flex;justify-content:space-between;gap:12px;font:500 9.5px var(--jk-ui);letter-spacing:.18em;text-transform:uppercase;color:#82907f;padding-top:13px}
     .jk-eyebrow{font:600 11px var(--jk-ui);letter-spacing:.22em;text-transform:uppercase;color:var(--jk-saffron);margin:0}
     .jk-name{font:500 clamp(32px,3.9vw,54px)/1.04 var(--jk-serif);color:var(--jk-blue);margin:20px 0 8px;letter-spacing:-.01em}
     .jk-name span{color:var(--jk-saffron)}
@@ -119,19 +116,16 @@
     /* sections */
     .jk-section{padding-top:64px}
     .jk-sectionhead{display:grid;grid-template-columns:auto auto 1fr auto;gap:16px;align-items:center;border-bottom:1px solid var(--jk-line);padding-bottom:12px;margin-bottom:36px}
-    .jk-num{font:500 25px var(--jk-serif);color:var(--jk-saffron);line-height:1}
-    .jk-dash{height:1px;width:28px;background:var(--jk-saffron)}
     .jk-sectionhead h2{font:500 clamp(26px,3.4vw,42px)/1.05 var(--jk-serif);color:var(--jk-blue);margin:0}
     .jk-tail{font:600 9px var(--jk-ui);letter-spacing:.2em;text-transform:uppercase;color:#6e9180;justify-self:end;text-align:right}
-    .jk-bio-grid{display:grid;grid-template-columns:minmax(0,1.05fr) minmax(0,.95fr);gap:clamp(28px,4vw,55px);align-items:start}
     .jk-bodytext{max-width:600px;font-size:16.5px;line-height:1.78}
     .jk-bodytext p{margin:0 0 24px}
     .jk-bodytext p:first-child::first-letter{font:500 3.4em/0.82 var(--jk-serif);float:left;padding:8px 10px 0 0;color:var(--jk-saffron)}
-    .jk-summary-quote{background:var(--jk-surface2);padding:26px 28px 20px;color:var(--jk-blue);font:italic 20px/1.45 var(--jk-serif);position:relative;margin:0 0 26px}
-    .jk-summary-quote::before{content:"\201C";font-size:64px;line-height:1;position:absolute;left:18px;top:2px;color:#c8d8c4}
-    .jk-summary-quote p{position:relative;z-index:1;margin:0;padding-top:22px}
-    .jk-side-feature{width:100%;aspect-ratio:16/10;object-fit:cover;display:block;border:1px solid var(--jk-line);background:var(--jk-surface2)}
     .jk-figcap{font:500 9px var(--jk-ui);letter-spacing:.2em;text-transform:uppercase;color:#81907e;margin-top:8px}
+    .jk-inline-photo{margin:10px auto 28px;max-width:640px}
+    .jk-inline-photo a{display:block}
+    .jk-inline-photo img{width:100%;height:auto;display:block;border:1px solid #bdcfba;background:var(--jk-surface2)}
+    .jk-inline-photo figcaption{font:500 9px var(--jk-ui);letter-spacing:.2em;text-transform:uppercase;color:#81907e;margin-top:8px}
 
     /* ledger + lists */
     .jk-ledgerrow{display:grid;grid-template-columns:minmax(0,1fr) minmax(0,2fr);gap:26px;padding:20px 0;border-bottom:1px solid var(--jk-line)}
@@ -144,10 +138,6 @@
     .jk-code{font:600 10px var(--jk-ui);letter-spacing:.16em;color:var(--jk-saffron);padding-top:5px}
 
     /* gallery */
-    .jk-gallery{display:grid;grid-template-columns:repeat(auto-fill,minmax(220px,1fr));gap:16px}
-    .jk-gallery a{display:block;border:1px solid #bdcfba;background:var(--jk-surface);text-decoration:none}
-    .jk-gallery img{width:100%;aspect-ratio:4/5;object-fit:cover;display:block}
-    .jk-note{padding:22px 26px;background:var(--jk-surface2);color:var(--jk-blue);font-size:16.5px;line-height:1.6}
 
     .jk-videos{margin:0;padding:0;list-style:none}
     .jk-videos li{padding:14px 0;border-bottom:1px solid var(--jk-line)}
@@ -158,7 +148,6 @@
     .jk-page.lang-ml .jk-bodytext p:first-child::first-letter{font-size:2.5em;line-height:1.1;padding-top:6px}
     .jk-page.lang-ml .jk-name{font-family:'Noto Serif Malayalam',var(--jk-serif);line-height:1.25}
     .jk-page.lang-ml .jk-sectionhead h2{font-family:'Noto Serif Malayalam',var(--jk-serif)}
-    .jk-page.lang-ml .jk-summary-quote{font-style:normal;line-height:1.8}
     .jk-page.lang-ml .jk-ledgerrow span.d,.jk-page.lang-ml .jk-keyfacts dd{font-family:'Noto Serif Malayalam',var(--jk-serif);line-height:1.9}
 
     /* key facts */
@@ -182,10 +171,8 @@
     @media(max-width:720px){
         .jk-page{margin:-18px -14px -48px}
         .jk-hero,.jk-hero.with-rail{grid-template-columns:1fr;gap:30px}
-        .jk-portrait-wrap{max-width:340px;margin:0 auto}
-        .jk-rail{grid-template-columns:1fr}
+            .jk-rail{grid-template-columns:1fr}
         .jk-engage-grid{grid-template-columns:1fr}
-        .jk-bio-grid{grid-template-columns:1fr}
         .jk-urlrow{flex-direction:column;align-items:stretch}
         .jk-urlpill,.jk-copy{justify-content:center;width:100%}
         .jk-section{padding-top:48px}
@@ -206,19 +193,6 @@
     </nav>
 
     <section class="jk-hero">
-        <figure style="margin:0">
-            <div class="jk-portrait-wrap">
-                @if($photo)
-                    <img class="jk-portrait{{ $isDemonstration ? ' jk-portrait--whole' : '' }}" src="{{ ($__photoUrl)($photo) }}" alt="{{ $photo->alt_text ?: ('Portrait of '.$displayName) }}">
-                @else
-                    <div class="jk-portrait-mono" aria-hidden="true">{{ mb_strtoupper(mb_substr(trim($nameLast !== '' ? $nameLast : $displayName), 0, 1)) }}</div>
-                @endif
-            </div>
-            <figcaption class="jk-caption">
-                <span>{{ $locationLabel ? 'KERALAM · INDIA' : 'PUBLIC LIFE' }}</span>
-                <span>JANNAYAKS</span>
-            </figcaption>
-        </figure>
 
         <div>
             @if($headline || $profession)
@@ -292,40 +266,20 @@
     @if($activeEditorial && filled($activeEditorial->body))
         <section class="jk-section" id="biography">
             <div class="jk-sectionhead">
-                <span class="jk-num">I</span><span class="jk-dash"></span>
                 <h2 class="jk-sr">{{ $language === 'ml' ? 'ജീവചരിത്രം' : 'Biography' }}</h2>
                 <span class="jk-tail">{{ $profession ?: ($headline ?: 'Public Life') }}</span>
             </div>
-            <div class="jk-bio-grid">
-                <div class="jk-bodytext">
-                    @foreach(preg_split('/\n\s*\n/u', trim((string) $activeEditorial->body)) as $para)
-                        @if(trim($para) !== '')<p>{{ trim($para) }}</p>@endif
+            <div class="jk-bodytext">
+                @foreach($biographyParagraphs as $pi => $para)
+                    <p>{{ $para }}</p>
+                    @foreach($insertAfter[$pi] ?? [] as $inlineItem)
+                        <figure class="jk-inline-photo">
+                            <a href="{{ ($__photoUrl)($inlineItem) }}" target="_blank" rel="noopener" aria-label="View larger">
+                                <img src="{{ ($__photoUrl)($inlineItem) }}" alt="{{ $inlineItem->alt_text ?: ($displayName.' — documentary photograph') }}" loading="lazy">
+                            </a>
+                        </figure>
                     @endforeach
-                </div>
-                <aside>
-                    @if($biographyInline->isNotEmpty())
-                        {{-- Editorial placements: each approved biography photograph, with its
-                             approved caption in the active language (none shown when the
-                             active language has no reviewed caption). --}}
-                        @foreach($biographyInline as $inlinePlacement)
-                            @if($inlinePlacement->mediaItem !== null)
-                                <img class="jk-side-feature{{ ($isDemonstration || $photos->count() <= 1) ? ' jk-portrait--whole' : '' }}" src="{{ ($__photoUrl)($inlinePlacement->mediaItem) }}" alt="{{ $inlinePlacement->mediaItem->alt_text ?: ($displayName.' — documentary photograph') }}" style="margin-bottom:16px">
-                                @if($inlinePlacement->captionFor($language) !== null)
-                                    <p class="jk-figcap">{{ $inlinePlacement->captionFor($language) }}</p>
-                                @else
-                                    <p class="jk-figcap">{{ strtoupper($displayName) }} · DOCUMENTARY RECORD</p>
-                                @endif
-                            @endif
-                        @endforeach
-                    @elseif($photo)
-                        {{-- Single-photo profiles reuse the primary image here; contain it fully
-                             instead of forcing the 16/10 cover crop that clips heads/faces. --}}
-                        <img class="jk-side-feature{{ ($isDemonstration || $photos->count() <= 1) ? ' jk-portrait--whole' : '' }}" src="{{ ($__photoUrl)($photo) }}" alt="{{ $photo->alt_text ?: ($displayName.' — documentary photograph') }}">
-                        <p class="jk-figcap">{{ strtoupper($displayName) }} · DOCUMENTARY RECORD</p>
-                    @else
-                        <div class="jk-summary-quote"><p>{{ $activeEditorial->summary ?: ($headline ?: 'A carefully prepared record of a life of public contribution.') }}</p></div>
-                    @endif
-                </aside>
+                @endforeach
             </div>
         </section>
     @endif
@@ -333,7 +287,6 @@
     @if($publicOffices->isNotEmpty())
         <section class="jk-section" id="career">
             <div class="jk-sectionhead">
-                <span class="jk-num">II</span><span class="jk-dash"></span>
                 <h2>{{ $language === 'ml' ? 'കരിയറും ഉത്തരവാദിത്തങ്ങളും' : 'Career &amp; Responsibilities' }}</h2>
                 <span class="jk-tail">PUBLIC LIFE</span>
             </div>
@@ -366,62 +319,13 @@
                     </div>
                 @endforeach
             </div>
-            @if($careerInline->isNotEmpty())
-                <div class="jk-gallery" style="margin-top:26px">
-                    @foreach($careerInline as $careerPlacement)
-                        @if($careerPlacement->mediaItem !== null)
-                            <span style="display:block">
-                                <img src="{{ ($__photoUrl)($careerPlacement->mediaItem) }}" alt="{{ $careerPlacement->mediaItem->alt_text ?: ($displayName.' photograph') }}" loading="lazy">
-                            </span>
-                        @endif
-                    @endforeach
-                </div>
-            @endif
         </section>
     @endif
 
-    @if($photos->count() > 1)
-        <section class="jk-section" id="gallery">
-            <div class="jk-sectionhead">
-                <span class="jk-num">{{ $publicOffices->isNotEmpty() ? 'III' : 'II' }}</span><span class="jk-dash"></span>
-                <h2>{{ $language === 'ml' ? 'ഗാലറി' : 'Gallery' }}</h2>
-                <span class="jk-tail">DOCUMENTARY PHOTOGRAPHS</span>
-            </div>
-            <div class="jk-gallery">
-                @foreach($photos->skip(1) as $galleryPhoto)
-                    @continue(in_array((int) $galleryPhoto->id, $placedPhotoIds, true))
-                    @php($__galleryHref = $galleryLinksClickable ? ($__photoUrl)($galleryPhoto) : null)
-                    @if($__galleryHref)
-                        <a href="{{ $__galleryHref }}">
-                            <img src="{{ ($__photoUrl)($galleryPhoto) }}" alt="{{ $galleryPhoto->alt_text ?: ($displayName.' photograph') }}" loading="lazy">
-                        </a>
-                    @else
-                        <span style="display:block">
-                            <img src="{{ ($__photoUrl)($galleryPhoto) }}" alt="{{ $galleryPhoto->alt_text ?: ($displayName.' photograph') }}" loading="lazy">
-                        </span>
-                    @endif
-                @endforeach
-            </div>
-            @if($galleryPlacementPhotos->isNotEmpty())
-                @foreach($galleryPlacementPhotos as $galleryPlacement)
-                    @if($galleryPlacement->mediaItem !== null)
-                        <span style="display:block;margin-top:12px">
-                            <img src="{{ ($__photoUrl)($galleryPlacement->mediaItem) }}" alt="{{ $galleryPlacement->mediaItem->alt_text ?: ($displayName.' photograph') }}" loading="lazy" style="max-width:220px;width:100%;aspect-ratio:4/5;object-fit:cover;display:block;border:1px solid #bdcfba;background:var(--jk-surface)">
-                            @if($galleryPlacement->captionFor($language) !== null)
-                                <span style="display:block;margin-top:6px;font:500 9px var(--jk-ui);letter-spacing:.2em;text-transform:uppercase;color:#81907e">{{ $galleryPlacement->captionFor($language) }}</span>
-                            @endif
-                        </span>
-                    @endif
-                @endforeach
-            @endif
-            <p class="jk-note" style="margin-top:16px">Photographs are held as documentary records — captioned and preserved alongside the written record.</p>
-        </section>
-    @endif
 
     @if($videoLinks->isNotEmpty())
         <section class="jk-section" id="video">
             <div class="jk-sectionhead">
-                <span class="jk-num">{{ $photos->count() > 1 ? 'IV' : ($publicOffices->isNotEmpty() ? 'III' : 'II') }}</span><span class="jk-dash"></span>
                 <h2>Video</h2>
                 <span class="jk-tail">EXTERNAL LINKS</span>
             </div>
