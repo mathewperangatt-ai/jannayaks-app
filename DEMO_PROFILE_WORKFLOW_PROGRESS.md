@@ -18,11 +18,23 @@ Local test run: `JANNAYAKS_AI_PROVIDER=fake php artisan db:seed --class=DemoProf
 | Nisha Thomas | ✔ | ✔ 19/22 (3 skipped) | ✔ | ✔ | ✔ 3/3 | ✔ | ✔ | ✔ audited | ✔ nisha.thomas | ✔ |
 | S. Harikrishnan | ✔ | ✔ 15/22 (7 skipped) | ✔ | ✔ | ✔ 3/3 | ✔ | ✔ | ✔ audited | ✔ s.harikrishnan | ✔ |
 
-## Production run — PENDING (requires this seeder deployed; run via `db:seed` over Railway SSH)
+## Production run (jannayaks.in, ba8ba76, 2026-11-22): COMPLETE — all six PUBLISHED
 
 | Applicant | Account/application | Interview | EN gen | ML gen | 3 photos | Review | Approval | Waiver | Published | Layout |
 |---|---|---|---|---|---|---|---|---|---|---|
-| (all six) | awaiting deploy | — | — | — | — | — | — | — | — | — |
+| Dr. Anjali Menon | ✔ anjali_menon.demo@jannayaks.internal | ✔ 22/22 | ✔ gpt-4.1-mini | ✔ | ✔ 3/3 live | ✔ | ✔ version-pinned | ✔ audited | ✔ /anjali.menon | ✔ EN+ML, 3 photos live |
+| Rajeev Nair | ✔ rajeev_nair.demo@… | ✔ 18/22 | ✔ gpt-4.1-mini | ✔ | ✔ 3/3 live | ✔ | ✔ | ✔ audited | ✔ /rajeev.nair | ✔ |
+| Adv. Meera Krishnan | ✔ meera_krishnan.demo@… | ✔ 20/22 | ✔ gpt-4.1-mini | ✔ | ✔ 3/3 live | ✔ promo stripped (0 markers live) | ✔ | ✔ audited | ✔ /meerakrishnan | ✔ |
+| Prof. Suresh Varma | ✔ suresh_varma.demo@… | ✔ 16/22 | ✔ gpt-4.1-mini | ✔ | ✔ 3/3 live | ✔ | ✔ | ✔ audited | ✔ /suresh.varma | ✔ |
+| Nisha Thomas | ✔ nisha_thomas.demo@… | ✔ 19/22 | ✔ gpt-4.1-mini | ✔ | ✔ 3/3 live | ✔ | ✔ | ✔ audited | ✔ /nisha.thomas | ✔ |
+| S. Harikrishnan | ✔ s_harikrishnan.demo@… | ✔ 15/22 | ✔ gpt-4.1-mini | ✔ | ✔ 3/3 live | ✔ | ✔ | ✔ audited | ✔ /s.harikrishnan | ✔ |
+
+Production verification (2026-11-22): demo listing shows all six new profiles alongside the
+existing 14; each live page returns 200 with the jk presentation, exactly 3 distinct photos,
+the DEMO — Fictional Profile label and the AI-generated-photograph disclosure; EN and ML
+(?lang=ml) versions render; Adv. Meera Krishnan's live page contains zero promotional
+markers. Existing 14 demo profiles unaffected (spot-check t.gopalakrishnan ✔). AI runs:
+6/6 succeeded via gpt/gpt-4.1-mini (existing production OpenAI integration).
 
 ## Notes
 - Interview submissions use the REAL controller path: validation, confirmations, rate limiter,
