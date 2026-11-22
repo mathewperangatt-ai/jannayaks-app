@@ -41,7 +41,7 @@ body{background:var(--off);color:var(--charcoal);font-family:var(--fb);-webkit-f
 nav{background:var(--white);border-bottom:2px solid var(--saffron);position:sticky;top:0;z-index:100;box-shadow:0 1px 12px rgba(0,0,0,.06);}
 .nav-inner{display:flex;align-items:center;justify-content:space-between;height:66px;padding:0 24px;max-width:1400px;margin:0 auto;gap:20px;}
 .nav-logo{display:flex;align-items:center;gap:10px;flex-shrink:0;}
-.nav-logo img{height:56px;width:auto;display:block;}
+.nav-logo img{height:48px;width:auto;display:block;}
 .nav-menu-btn{display:none;align-items:center;justify-content:center;width:44px;height:44px;border:1.5px solid var(--border);border-radius:6px;background:white;color:var(--navy);font-size:20px;line-height:1;cursor:pointer;font-family:var(--fb);flex-shrink:0;}
 .nav-menu-btn:hover{border-color:var(--navy);}
 .home-actions{display:flex;flex-wrap:wrap;gap:18px;justify-content:center;margin-top:22px;}
@@ -397,7 +397,7 @@ document.addEventListener('click',function(e){
 <nav id="site-nav">
   <div class="nav-inner">
     <a class="nav-logo" href="{{ route('home') }}">
-      <img src="{{ asset('branding/jannayaks-logo.png') . '?v=3' }}" alt="Jannayaks">
+      <img src="{{ asset('branding/jannayaks-logo.png') . '?v=2' }}" alt="Jannayaks">
     </a>
     <button type="button" class="nav-menu-btn" id="nav-menu-btn" aria-expanded="false" aria-controls="nav-links" aria-label="Open menu" onclick="toggleNavMenu()">☰</button>
     <ul class="nav-links" id="nav-links">
