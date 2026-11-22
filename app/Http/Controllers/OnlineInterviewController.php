@@ -194,6 +194,33 @@ class OnlineInterviewController extends Controller
             }
         }
 
+        // Cloudflare Turnstile (Managed mode): mandatory server-side
+        // verification before the submission is accepted. Runs AFTER the
+        // answers above were persisted, so a failed verification never
+        // erases applicant-entered content — the applicant retries with
+        // every answer intact. Tokens are single-use and short-lived on
+        // Cloudflare's side; missing, invalid, expired and reused tokens
+        // all fail closed.
+        $turnstile = app(\App\Services\TurnstileService::class);
+        if ($turnstile->enabled() && ! $turnstile->verify(
+            (string) $request->input('cf-turnstile-response'),
+            (string) $request->ip(),
+        )) {
+            if ($request->expectsJson()) {
+                return response()->json([
+                    'ok' => false,
+                    'error' => 'Security verification failed or expired. Please complete the verification and submit again — your answers are saved.',
+                    'turnstile_failed' => true,
+                ], 422);
+            }
+
+            return back()
+                ->withInput()
+                ->withErrors([
+                    'turnstile' => 'Security verification failed or expired. Please complete the verification below and submit again — your answers are saved.',
+                ]);
+        }
+
         // Validation BEFORE rate limiting: a failed validation must not
         // consume the submit budget, so a corrected resubmission is possible.
         $answers = $this->interview->loadAnswersMap($application);

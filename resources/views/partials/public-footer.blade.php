@@ -11,8 +11,6 @@
 .jf-brand .jf-word{font:600 17px 'Fraunces','Cormorant Garamond',Georgia,serif;letter-spacing:.14em;color:#fff;margin:0 0 4px}
 .jf-brand .jf-word small{display:block;font:500 8.5px 'DM Sans',sans-serif;letter-spacing:.22em;color:rgba(255,255,255,.5);margin-top:4px}
 .jf-contact{list-style:none;margin:18px 0 0;padding:0}
-.jf-publicity{font-size:12.5px;color:rgba(255,255,255,.72);line-height:1.7;margin:16px 0 0;padding-top:14px;border-top:1px solid rgba(255,255,255,.14)}
-.jf-publicity strong{display:block;font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:rgba(255,255,255,.55);margin:0 0 5px}
 .jf-contact li{margin:0 0 7px;font-size:13px;color:rgba(255,255,255,.72)}
 .jf-contact a{color:rgba(255,255,255,.85);text-decoration:none;border-bottom:1px dotted rgba(255,255,255,.35)}
 .jf-contact a:hover{color:#e8c48a;border-color:#e8c48a}
@@ -29,12 +27,9 @@
     <div class="jf-grid">
         <div class="jf-brand">
             <p class="jf-word">JANNAYAKS<small>PEOPLE · PUBLIC LIFE · INDIA</small></p>
-            <p class="jf-publicity"><strong>Local Publicity Support</strong><br>
-                We also help local service providers promote their services through targeted digital publicity. Available at additional cost.</p>
             <ul class="jf-contact">
                 <li><a href="mailto:{{ config('jannayaks.contact.public_email') }}">{{ config('jannayaks.contact.public_email') }}</a></li>
                 <li>Founder: <a href="mailto:founder@jannayaks.in">founder@jannayaks.in</a></li>
-                <li>jannayaks.in</li>
             </ul>
         </div>
         <div class="jf-col" role="navigation" aria-label="Platform">

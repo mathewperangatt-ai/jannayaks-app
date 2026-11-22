@@ -23,6 +23,15 @@ return [
         ],
     ],
 
+    'turnstile' => [
+        // Cloudflare Turnstile (Managed mode) on the Online Interview submit.
+        // When both values are set, submission requires a valid, single-use
+        // token verified server-side via the Siteverify endpoint. Leave the
+        // secret unset to keep the integration disabled (no widget, no check).
+        'sitekey' => env('TURNSTILE_SITEKEY'),
+        'secret'  => env('TURNSTILE_SECRET'),
+    ],
+
     'razorpay' => [
         'enabled'             => env('RAZORPAY_ENABLED', false),
         'mode'                => env('RAZORPAY_MODE', 'test'),

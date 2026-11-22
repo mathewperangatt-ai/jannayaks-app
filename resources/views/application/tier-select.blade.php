@@ -109,6 +109,7 @@
                 <label for="contact_whatsapp">{{ $ml ? 'വാട്ട്സ്ആപ്പ് നമ്പർ (ഓപ്ഷണൽ)' : 'WhatsApp number (optional)' }}</label>
                 <input id="contact_whatsapp" name="contact_whatsapp" type="tel" maxlength="32" value="{{ old('contact_whatsapp') }}" autocomplete="tel">
                 @error('contact_whatsapp')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
+                <div class="hint">{{ $ml ? 'നിങ്ങളുമായി അപേക്ഷയെയും പ്രൊഫൈലിനെയും സംബന്ധിച്ച് ആശയവിനിമയം നടത്തുന്നതിനായി മാത്രമാണ് ഫോൺ നമ്പറും WhatsApp നമ്പറും ശേഖരിക്കുന്നത്. ഈ നമ്പറുകൾ നിങ്ങളുടെ Jannayaks പൊതുപ്രൊഫൈലിൽ പ്രദർശിപ്പിക്കുന്നതല്ല.' : 'Your phone and WhatsApp numbers are collected solely for communication with you regarding your application and profile. They will not be displayed on your public Jannayaks profile.' }}</div>
             </div>
         </div>
 

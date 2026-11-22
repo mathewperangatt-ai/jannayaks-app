@@ -75,7 +75,7 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .intro-section{padding:40px 22px 36px;background:transparent;}
 .intro-blocks{max-width:740px;margin:0 auto;}
 .intro-hd{font-family:var(--fd);font-size:clamp(22px,3vw,26px);font-weight:700;color:var(--navy);line-height:1.3;margin:0;}
-.intro-hd-ml{font-family:var(--fm);font-size:clamp(16px,2.6vw,21px);font-weight:600;color:var(--navy);opacity:.85;line-height:1.6;margin:2px 0 20px;}
+.intro-hd-ml{font-family:var(--fm);font-size:clamp(16px,2.6vw,21px);font-weight:600;color:var(--navy);line-height:1.6;margin:2px 0 20px;}
 .intro-lead-en{font-family:var(--fd);font-size:clamp(20px,3vw,26px);font-weight:600;color:var(--navy);line-height:1.45;margin:0;}
 .intro-lead-ml{font-family:var(--fm);font-size:clamp(16px,2.6vw,20px);font-weight:600;color:var(--navy);line-height:1.75;margin:2px 0 16px;}
 .intro-text-en{font-size:14px;color:var(--charcoal);line-height:1.7;margin:0 0 4px;overflow-wrap:anywhere;}
@@ -438,11 +438,8 @@ document.addEventListener('click',function(e){
 <!-- INTRO -->
 <section class="intro-section">
   <div class="intro-blocks">
-    <h2 class="intro-hd">What is Jannayaks?</h2>
-    <p class="intro-hd-ml" lang="ml">എന്താണ് Jannayaks?</p>
-
-    <p class="intro-lead-en">Every life's work deserves to be remembered, recognised and documented.</p>
-    <p class="intro-lead-ml" lang="ml">ഓരോരുത്തരുടെയും ജീവിതപ്രയത്നം ഓർമ്മിക്കപ്പെടണം, അംഗീകരിക്കപ്പെടണം, രേഖപ്പെടുത്തപ്പെടണം.</p>
+    <h2 class="intro-hd">A Digital Gallery of Notable Malayalees Across the World.</h2>
+    <p class="intro-hd-ml" lang="ml">ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ നൽകിയ മലയാളി വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.</p>
 
     <div class="intro-explain">
       <p class="intro-text-en">Achievements are more than milestones. They represent years of dedication, professional accomplishments, personal journeys and contributions to society.</p>
@@ -666,7 +663,7 @@ document.addEventListener('click',function(e){
       <span class="price-line-ml" lang="ml">Jannayaks Profile: ₹5,000 (ഇന്ത്യ, GST ഉൾപ്പെടെ) · US$50 (അന്തർദേശീയം)</span>
     </p>
     <p class="price-detail">Includes profile preparation, editorial presentation, publication and first-year hosting. Typographical and factual corrections are free.
-      <span class="price-detail-ml" lang="ml">പ്രൊഫൈൽ തയ്യാറാക്കൽ, Editorial Presentation, പ്രസിദ്ധീകരണം, ആദ്യ വർഷത്തെ ഹോസ്റ്റിംഗ് എന്നിവ ഉൾപ്പെടുന്നു. അച്ചടിപ്പിശകും വസ്തുതാപരമായ തിരുത്തലുകളും സൗജന്യമാണ്.</span>
+      <span class="price-detail-ml" lang="ml">പ്രൊഫൈൽ തയ്യാറാക്കൽ, Editorial Presentation, പ്രസിദ്ധീകരണം, ആദ്യ വർഷത്തെ ഹോസ്റ്റിംഗ് എന്നിവ ഉൾപ്പെടുന്നു. അക്ഷരത്തെറ്റും വസ്തുതാപരമായ തിരുത്തലുകളും സൗജന്യമാണ്.</span>
     </p>
     <p class="price-detail">Annual renewal from the second year: ₹1,500 (India, GST-inclusive) · US$15 (international).
       <span class="price-detail-ml" lang="ml">രണ്ടാം വർഷം മുതൽ വാർഷിക പുതുക്കൽ: ₹1,500 (ഇന്ത്യ, GST ഉൾപ്പെടെ) · US$15 (അന്തർദേശീയം).</span>
