@@ -1,12 +1,12 @@
 <?php
 
-namespace Tests\\Unit;
+namespace Tests\Unit;
 
-use App\\Services\\Ai\\AnthropicEditorialClient;
-use Illuminate\\Support\\Facades\\Config;
-use Illuminate\\Support\\Facades\\Http;
+use App\Services\Ai\AnthropicEditorialClient;
+use Illuminate\Support\Facades\Config;
+use Illuminate\Support\Facades\Http;
 use RuntimeException;
-use Tests\\TestCase;
+use Tests\TestCase;
 
 class AnthropicEditorialClientRequestTest extends TestCase
 {
