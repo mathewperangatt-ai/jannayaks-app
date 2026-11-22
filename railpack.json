@@ -18,7 +18,7 @@
                     "include": [
                         "/usr/lib/postgresql/18",
                         "/usr/lib/x86_64-linux-gnu/libpq.so.5",
-                        "/usr/lib/x86_64-linux-gnu/libpq.so.5.18"
+                        "/usr/lib/x86_64-linux-gnu/libpq.so.5.19"
                     ]
                 }
             ]
@@ -36,7 +36,7 @@
                 "include": [
                     "/usr/lib/postgresql/18",
                     "/usr/lib/x86_64-linux-gnu/libpq.so.5",
-                    "/usr/lib/x86_64-linux-gnu/libpq.so.5.18"
+                    "/usr/lib/x86_64-linux-gnu/libpq.so.5.19"
                 ]
             }
         ],
