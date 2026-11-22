@@ -93,7 +93,17 @@ class DemoProfessionalBatch2Seeder extends Seeder
                 continue;
             }
 
-            $this->seedProfessional($slug, $mdPath, $mediaDir);
+            // Each profile receives exactly its own three photographs: the
+            // fixture files are prefixed with the slug's underscore form.
+            $photoPrefix = str_replace('.', '_', $slug);
+            $photoFiles = collect(glob($mediaDir.DIRECTORY_SEPARATOR.$photoPrefix.'_*.jpg'))->sort()->values()->all();
+            if (count($photoFiles) !== 3) {
+                $this->command?->warn("Expected 3 photographs for $slug, found ".count($photoFiles)." — skipped.");
+
+                continue;
+            }
+
+            $this->seedProfessional($slug, $mdPath, $photoFiles);
             $done++;
         }
 
@@ -164,7 +174,7 @@ class DemoProfessionalBatch2Seeder extends Seeder
         ];
     }
 
-    private function seedProfessional(string $slug, string $mdPath, string $mediaDir): void
+    private function seedProfessional(string $slug, string $mdPath, array $photoFiles): void
     {
         $workflow = app(CustomerEditorialWorkflowService::class);
         $fixture = $this->parseFixture((string) file_get_contents($mdPath));
@@ -331,7 +341,7 @@ class DemoProfessionalBatch2Seeder extends Seeder
         }
 
         // 8. Photographs — three per profile via the existing media workflow.
-        $this->uploadAndApprovePhotos($profile, $mediaDir, $fixture['title'], $owner);
+        $this->uploadAndApprovePhotos($profile, $photoFiles, $fixture['title'], $owner);
 
         // 9. Release → version-pinned customer approval → publication.
         $application = $application->fresh();
@@ -379,11 +389,9 @@ class DemoProfessionalBatch2Seeder extends Seeder
         ));
     }
 
-    private function uploadAndApprovePhotos(Profile $profile, string $mediaDir, string $displayName, User $owner): void
+    private function uploadAndApprovePhotos(Profile $profile, array $files, string $displayName, User $owner): void
     {
         $media = app(ProfileMediaService::class);
-        $files = glob($mediaDir.DIRECTORY_SEPARATOR.'*.jpg');
-        sort($files);
         $uploaded = 0;
         $index = 0;
 
