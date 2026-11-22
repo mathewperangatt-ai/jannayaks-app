@@ -99,12 +99,12 @@ Return ONLY valid JSON with keys:
 Do not wrap the JSON in markdown fences.
 PROMPT;
     }
+
     /**
      * Claude-specific Malayalam editorial adaptation standard.
      *
-     * Kept separate from the active OpenAI prompt so this approved direction
-     * can be tested with Claude without changing current production behaviour.
-     * The Anthropic client should call this method for Malayalam adaptation.
+     * The generation service selects this prompt when Claude is the configured
+     * provider, without changing the existing GPT-specific Malayalam prompt.
      */
     public static function claudeMalayalamAdaptation(): string
     {
