@@ -67,6 +67,8 @@ class PublicProfilePresentationService
             ?? $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary)
             ?? $photos->first();
 
+        $inline = $this->buildInlinePresentation($active, $photos, $placements);
+
         return [
             'profile' => $profile,
             'canonicalUrl' => $canonicalUrl,
@@ -80,6 +82,9 @@ class PublicProfilePresentationService
             'photo' => $photo,
             'photos' => $photos,
             'placements' => $placements,
+            'biographyParagraphs' => $inline['paragraphs'],
+            'inlinePhotos' => $inline['inlinePhotos'],
+            'insertAfter' => $inline['insertAfter'],
             'videoLinks' => $this->publicVideoLinks($profile),
             'language' => $language === 'ml' && $malayalam ? 'ml' : 'en',
             'activeEditorial' => $active,
@@ -102,6 +107,48 @@ class PublicProfilePresentationService
         return $hero !== null && $hero->mediaItem !== null && $hero->mediaItem->isApprovedForPublicDisplay()
             ? $hero->mediaItem
             : null;
+    }
+
+
+    /**
+     * Split the active editorial body into paragraphs and plan where the
+     * approved inline photographs appear: distributed at natural paragraph
+     * breaks (max 3), so photographs live inside the article flow.
+     *
+     * @return array{paragraphs: list<string>, inlinePhotos: list<MediaItem>, insertAfter: array<int, list<MediaItem>>}
+     */
+    public function buildInlinePresentation(?EditorialContent $activeEditorial, $photos, $placements): array
+    {
+        $paragraphs = [];
+        if ($activeEditorial !== null && filled($activeEditorial->body)) {
+            $paragraphs = array_values(array_filter(
+                array_map('trim', preg_split('/
+\s*
+/u', trim((string) $activeEditorial->body)) ?: []),
+                fn (string $p): bool => $p !== '',
+            ));
+        }
+
+        // Approved placements set the order; unplaced photographs follow in
+        // the profile's standard display order. Hard cap: three inline photos.
+        $ordered = $placements
+            ->sortBy('display_order')
+            ->map(fn ($placement) => $placement->mediaItem)
+            ->filter(fn ($item) => $item !== null)
+            ->merge($photos->diff($placements->map(fn ($placement) => $placement->mediaItem)))
+            ->take(3)
+            ->values();
+
+        $total = max(1, count($paragraphs));
+        $insertAfter = [];
+        foreach ($ordered as $k => $item) {
+            // Insert AFTER a paragraph that exists: 1-based position minus one
+            // gives a 0-based paragraph index always within range.
+            $idx = min(count($paragraphs) - 1, max(0, (int) floor((($k + 1) * $total) / max(1, $ordered->count())) - 1));
+            $insertAfter[$idx] = array_merge($insertAfter[$idx] ?? [], [$item]);
+        }
+
+        return ['paragraphs' => $paragraphs, 'inlinePhotos' => $ordered, 'insertAfter' => $insertAfter];
     }
 
     public function displayName(Profile $profile): string
@@ -150,6 +197,8 @@ class PublicProfilePresentationService
             ?? $photos->first(fn (MediaItem $item): bool => (bool) $item->is_primary)
             ?? $photos->first();
 
+        $inline = $this->buildInlinePresentation($active, $photos, $placements);
+
         return [
             'profile' => $profile,
             'canonicalUrl' => null,
@@ -163,6 +212,9 @@ class PublicProfilePresentationService
             'photo' => $photo,
             'photos' => $photos,
             'placements' => $placements,
+            'biographyParagraphs' => $inline['paragraphs'],
+            'inlinePhotos' => $inline['inlinePhotos'],
+            'insertAfter' => $inline['insertAfter'],
             'videoLinks' => $this->publicVideoLinks($profile),
             'language' => $language,
             'activeEditorial' => $active,
