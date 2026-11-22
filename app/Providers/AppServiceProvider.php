@@ -8,6 +8,7 @@ use App\Contracts\PhotoPlacementAiClient;
 use App\Services\Ai\FakePhotoPlacementClient;
 use App\Services\Ai\OpenAiPhotoPlacementClient;
 use App\Models\Application;
+use App\Services\Ai\AnthropicEditorialClient;
 use App\Services\Ai\FakeEditorialAiClient;
 use App\Services\Ai\FakePhotoEnhancementClient;
 use App\Services\Ai\OpenAiEditorialClient;
