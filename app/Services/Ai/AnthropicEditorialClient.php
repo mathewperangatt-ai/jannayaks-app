@@ -1,12 +1,12 @@
 <?php
 
-namespace App\\Services\\Ai;
+namespace App\Services\Ai;
 
-use App\\Contracts\\EditorialAiClient;
-use App\\Support\\EditorialPlainTextSanitizer;
-use Illuminate\\Http\\Client\\ConnectionException;
-use Illuminate\\Support\\Facades\\Http;
-use Illuminate\\Support\\Facades\\Log;
+use App\Contracts\EditorialAiClient;
+use App\Support\EditorialPlainTextSanitizer;
+use Illuminate\Http\Client\ConnectionException;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Log;
 use RuntimeException;
 
 class AnthropicEditorialClient implements EditorialAiClient
