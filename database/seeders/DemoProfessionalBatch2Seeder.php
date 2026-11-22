@@ -16,7 +16,6 @@ use App\Services\ProfileIntegrityService;
 use App\Services\ProfileMediaService;
 use App\Services\ProfileUrlService;
 use Illuminate\Database\Seeder;
-use Illuminate\Support\Facades\Auth;
 use Illuminate\Support\Facades\Hash;
 use Illuminate\Support\Str;
 use Illuminate\Http\UploadedFile;
@@ -313,79 +312,23 @@ class DemoProfessionalBatch2Seeder extends Seeder
             $this->command?->info('  Malayalam adaptation generated.');
         }
 
-        // 7. Human editorial review + approval of both languages (existing
-        //    editor-update and English-master mechanisms).
-        $english = EditorialContent::query()->find($english->id);
-        if ($english->status !== EditorialContent::STATUS_APPROVED) {
-            app(EditorialContentVersioningService::class)->applyEditorUpdate($english, [
-                'title' => $english->title,
-                'summary' => $english->summary,
-                'body' => $english->body,
-                'status' => EditorialContent::STATUS_APPROVED,
-                'review_comment' => 'Human review against the supplied fictional fixture.',
-            ], $this->demoAdmin);
-            $this->command?->info('  English editorial approved.');
-        }
-
-        $malayalam = EditorialContent::query()->find($malayalam->id);
-        if ($malayalam->status !== EditorialContent::STATUS_APPROVED) {
-            app(EditorialContentVersioningService::class)->applyEditorUpdate($malayalam, [
-                'title' => $malayalam->title,
-                'summary' => $malayalam->summary,
-                'body' => $malayalam->body,
-                'status' => EditorialContent::STATUS_APPROVED,
-                'source_material' => $malayalam->source_material,
-                'review_comment' => 'Human review of the Malayalam adaptation against the supplied English source.',
-            ], $this->demoAdmin);
-            $this->command?->info('  Malayalam approved.');
-        }
-
-        // 8. Photographs — three per profile via the existing media workflow.
+        // 7. Photographs — three per profile via the existing media workflow.
         $this->uploadAndApprovePhotos($profile, $photoFiles, $fixture['title'], $owner);
 
-        // 9. Release → version-pinned customer approval → publication.
-        $application = $application->fresh();
-        if ($application->customer_preview_released_at === null
-            && $application->status !== Application::STATUS_PUBLISHED) {
-            $workflow->releaseForCustomerPreview($application, $this->demoAdmin);
-            $application->refresh();
-            $this->command?->info('  customer preview released.');
-        }
-
-        if ($application->customer_approved_at === null
-            && $application->status === Application::STATUS_EDITORIAL_APPROVED) {
-            Auth::login($owner);
-            $workflow->approvePreview(
-                $application->fresh(),
-                $owner,
-                (int) $application->preview_english_editorial_content_id,
-                '127.0.0.1',
-                'demo-seeder-batch2',
-            );
-            $application->refresh();
-            $this->command?->info('  customer approval recorded (version-pinned).');
-        }
-
-        if ($application->status === Application::STATUS_AWAITING_PUBLICATION) {
-            app(ApplicationWorkflowService::class)->publish($application->fresh(), $this->demoAdmin);
-            $application->refresh();
-            $this->command?->info('  PUBLISHED (admin publication control).');
-        }
-
-        $publishedMl = EditorialContent::query()->find((int) $application->published_malayalam_editorial_content_id);
-        if ($malayalam->status === EditorialContent::STATUS_APPROVED
-            && ($publishedMl === null || (int) $publishedMl->id !== (int) $malayalam->id)) {
-            app(ApplicationWorkflowService::class)->publishMalayalam($application->fresh(), $this->demoAdmin, $malayalam);
-            $this->command?->info('  Malayalam version published.');
-        }
-
-        $profile->refresh();
+        // 8. STOP HERE — pending the normal editorial review and approval
+        //    process. Real editors review the EN master and ML adaptation in
+        //    Filament, approve both, release the customer preview and record
+        //    the customer's approval; publication stays under admin control.
+        //    This seeder never approves, releases previews or publishes.
+        $application->refresh();
         $this->command?->info(sprintf(
-            '  DONE: %s — slug: %s, application #%d, status: %s.',
+            '  PENDING EDITORIAL REVIEW: %s — slug: %s, application #%d, status: %s, EN v%d (draft), ML %s.',
             $fixture['title'],
             $profile->slug,
             $application->id,
             $application->status,
+            $english->version_number,
+            $malayalam?->version_number !== null ? 'v'.$malayalam->version_number.' (draft)' : '—',
         ));
     }
 
