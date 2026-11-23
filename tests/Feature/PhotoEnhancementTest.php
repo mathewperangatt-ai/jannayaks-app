@@ -91,6 +91,7 @@ class PhotoEnhancementTest extends TestCase
     {
         $this->assertFalse(config('jannayaks.ai.image_enhancement.enabled'));
         $this->assertSame('fake', config('jannayaks.ai.image_enhancement.provider'));
+        $this->assertSame('gpt-image-2.6-sunburst', config('jannayaks.ai.image_enhancement.openai.model'));
     }
 
     public function test_disabled_means_no_job_no_candidate_and_normal_upload(): void
