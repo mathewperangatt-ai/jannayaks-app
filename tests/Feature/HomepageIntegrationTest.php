@@ -67,8 +67,8 @@ class HomepageIntegrationTest extends TestCase
         $search = strpos($html, 'id="search"');
         $this->assertNotFalse($englishHeading);
         $this->assertNotFalse($malayalamSubtitle);
-        $response->assertSee('<h1 class="hero-en-primary">A Digital Gallery of Notable People Across All Fields.</h1>', false);
-        $response->assertSee('കർമ്മപഥങ്ങളിൽ ശ്രദ്ധേയരായ വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.', false);
+        $response->assertSee('<h1 class="hero-en-primary">A Digital Gallery of Remarkable Personalities Across All Fields and Around the World.</h1>', false);
+        $response->assertSee('ലോകമെമ്പാടുമുള്ള വിവിധ മേഖലകളിലെ ശ്രദ്ധേയ വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.', false);
         // The hero artwork is unchanged.
         $response->assertSee('images/jannayaks-hero-2-source.jpeg', false);
         $this->assertNotFalse($primaryCta);
@@ -100,14 +100,11 @@ class HomepageIntegrationTest extends TestCase
         // below, with no language toggle.
         $this->assertSame(0, substr_count($html, 'intro-tabs'));
         $this->assertSame(0, substr_count($html, 'switchIntroLang'));
-        $hdEn = strpos($html, 'A Digital Gallery of Remarkable Personalities Across the World.');
-        $hdMl = strpos($html, 'ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ');
-        $this->assertNotFalse($hdEn);
-        $this->assertNotFalse($hdMl);
-        $this->assertTrue($intro < $hdEn && $hdEn < $hdMl && $hdMl < $recommend);
+        // The previous intro subheading below the hero image has been
+        // removed entirely and nothing replaces it.
+        $response->assertDontSee('A Digital Gallery of Remarkable Personalities Across the World.', false);
+        $response->assertDontSee('ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ', false);
         $response->assertSeeInOrder([
-            'A Digital Gallery of Remarkable Personalities Across the World.',
-            'ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ നൽകിയ മലയാളി വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.',
             'Achievements are more than milestones. They represent years of dedication, professional accomplishments, personal journeys and contributions to society.',
             'നേട്ടങ്ങൾ വെറും നാഴികക്കല്ലുകളല്ല. വർഷങ്ങളുടെ അധ്വാനവും, തൊഴിൽരംഗത്തെ മികവും, ജീവിതയാത്രകളും, സമൂഹത്തിനുള്ള സംഭാവനകളുമാണ് അവ.',
             'Jannayaks™ gives these achievements a lasting digital presence.',

@@ -417,8 +417,8 @@ document.addEventListener('click',function(e){
 <!-- HERO -->
 <section class="hero">
   <div class="hero-main-heading">
-    <h1 class="hero-en-primary">A Digital Gallery of Notable People Across All Fields.</h1>
-    <p class="hero-ml-secondary" lang="ml">കർമ്മപഥങ്ങളിൽ ശ്രദ്ധേയരായ വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.</p>
+    <h1 class="hero-en-primary">A Digital Gallery of Remarkable Personalities Across All Fields and Around the World.</h1>
+    <p class="hero-ml-secondary" lang="ml">ലോകമെമ്പാടുമുള്ള വിവിധ മേഖലകളിലെ ശ്രദ്ധേയ വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.</p>
   </div>
   <div class="hero-ctas">
     <a class="hero-cta hero-cta-primary" href="{{ route('apply') }}">Create Your Profile
@@ -438,9 +438,6 @@ document.addEventListener('click',function(e){
 <!-- INTRO -->
 <section class="intro-section">
   <div class="intro-blocks">
-    <h2 class="intro-hd">A Digital Gallery of Remarkable Personalities Across the World.</h2>
-    <p class="intro-hd-ml" lang="ml">ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ നൽകിയ മലയാളി വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.</p>
-
     <div class="intro-explain">
       <p class="intro-text-en">Achievements are more than milestones. They represent years of dedication, professional accomplishments, personal journeys and contributions to society.</p>
       <p class="intro-text-ml" lang="ml">നേട്ടങ്ങൾ വെറും നാഴികക്കല്ലുകളല്ല. വർഷങ്ങളുടെ അധ്വാനവും, തൊഴിൽരംഗത്തെ മികവും, ജീവിതയാത്രകളും, സമൂഹത്തിനുള്ള സംഭാവനകളുമാണ് അവ.</p>
