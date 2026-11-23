@@ -361,7 +361,7 @@ return [
             'openai' => [
                 // Shares the existing OpenAI secret convention but nothing else.
                 'api_key' => env('OPENAI_API_KEY', ''),
-                'model' => env('JANNAYAKS_AI_IMAGE_MODEL', 'gpt-image-1'),
+                'model' => env('JANNAYAKS_AI_IMAGE_MODEL', 'gpt-image-2.6-sunburst'),
                 'endpoint' => env('JANNAYAKS_AI_IMAGE_ENDPOINT', 'https://api.openai.com/v1/images/edits'),
                 'timeout_seconds' => (int) env('JANNAYAKS_AI_IMAGE_TIMEOUT', 180),
                 'size' => env('JANNAYAKS_AI_IMAGE_SIZE', '1024x1024'),
