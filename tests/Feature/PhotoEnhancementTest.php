@@ -608,7 +608,10 @@ class PhotoEnhancementTest extends TestCase
             $jobFiles,
         );
 
-        $this->assertSame([EnhanceProfilePhoto::class], $jobClasses);
+        // Wave 3: other jobs (e.g. VerifyPublishedProfileIntegrity) may
+        // legitimately exist in app/Jobs — this test pins the enhancement
+        // job's retry configuration, not directory exclusivity.
+        $this->assertContains(EnhanceProfilePhoto::class, $jobClasses);
 
         $job = new EnhanceProfilePhoto(1);
         $retryAfter = (int) config('queue.connections.database.retry_after');
