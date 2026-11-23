@@ -64,6 +64,23 @@ class UserResource extends Resource
         return $user instanceof User && $user->can('viewAny', User::class);
     }
 
+    /**
+     * Wave 3: the security_admin account is excluded from the staff listing
+     * and from create/edit forms for everyone — its lifecycle is handled
+     * exclusively through the emergency console command.
+     */
+    public static function getEloquentQuery(): \Illuminate\Database\Eloquent\Builder
+    {
+        $query = parent::getEloquentQuery();
+
+        $user = auth()->user();
+        if ($user instanceof User && $user->isSecurityAdmin()) {
+            return $query;
+        }
+
+        return $query->where('role', '!=', User::ROLE_SECURITY_ADMIN);
+    }
+
     public static function canCreate(): bool
     {
         $user = auth()->user();

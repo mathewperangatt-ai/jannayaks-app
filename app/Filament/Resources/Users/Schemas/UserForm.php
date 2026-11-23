@@ -22,6 +22,8 @@ class UserForm
                 ->dehydrated(fn (?string $state): bool => filled($state))
                 ->required(fn (string $operation): bool => $operation === 'create'),
             Select::make('role')
+                // Wave 3: security_admin is never assignable from the UI —
+                // provisioning happens only through the emergency command.
                 ->options([
                     User::ROLE_MEMBER => 'Member',
                     User::ROLE_ADMIN => 'Admin',

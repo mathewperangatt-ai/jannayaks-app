@@ -41,12 +41,25 @@ class User extends Authenticatable implements FilamentUser
 
     public const ROLE_SUPPORT = 'support';
 
+    /**
+     * Jannayaks Security Administrator — the ONLY role authorised to modify
+     * published profile content, approve user-submitted corrections and
+     * photograph replacements, resolve integrity incidents and restore
+     * suspended profiles (subject to the integrity safeguards). Deliberately
+     * NOT an unrestricted super-admin: no finance, staff-management,
+     * infrastructure or security-configuration authority.
+     */
+    public const ROLE_SECURITY_ADMIN = 'security_admin';
+
     protected function casts(): array
     {
         return [
             'email_verified_at' => 'datetime',
             'password' => 'hashed',
             'mobile_verified_at' => 'datetime',
+            'totp_secret' => 'encrypted',
+            'totp_recovery_codes' => 'encrypted:array',
+            'totp_enabled_at' => 'datetime',
         ];
     }
 
@@ -70,9 +83,38 @@ class User extends Authenticatable implements FilamentUser
         return $this->role === self::ROLE_SUPPORT;
     }
 
+    public function isSecurityAdmin(): bool
+    {
+        return $this->role === self::ROLE_SECURITY_ADMIN;
+    }
+
     public function isStaff(): bool
     {
-        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_EDITOR, self::ROLE_SUPPORT], true);
+        return in_array($this->role, [self::ROLE_ADMIN, self::ROLE_EDITOR, self::ROLE_SUPPORT, self::ROLE_SECURITY_ADMIN], true);
+    }
+
+    /**
+     * Exclusive authority over already-published profile administration:
+     * published EN/ML content, photograph replacement, correction approvals,
+     * integrity incident handling and visibility restoration.
+     *
+     * Transitional window: while JANNAYAKS_ALLOW_LEGACY_ADMIN_PROFILE_EDITS
+     * is true, the original admin role retains these rights until the
+     * Security Administrator account is provisioned and verified. Flip the
+     * flag to false to enforce strict separation.
+     */
+    public function canManagePublishedProfiles(): bool
+    {
+        if (! $this->isActiveAccount()) {
+            return false;
+        }
+
+        if ($this->isSecurityAdmin()) {
+            return true;
+        }
+
+        return $this->isAdmin()
+            && (bool) config('jannayaks.security.integrity.published_profile_admin.allow_legacy_admin', true);
     }
 
     public function isActiveAccount(): bool
