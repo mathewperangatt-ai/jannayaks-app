@@ -22,6 +22,13 @@ class IntegrityIncident extends Model
     /** Published profile has no known-good snapshot; current state was not adopted. */
     public const TYPE_MISSING_SNAPSHOT = 'missing_snapshot';
 
+    /**
+     * The trusted snapshot's HMAC signature is present but invalid — evidence
+     * of a database-level attempt to rewrite the trusted baseline without the
+     * environment-held signing secret. Never raised for legacy unsigned rows.
+     */
+    public const TYPE_SNAPSHOT_SIGNATURE = 'snapshot_signature';
+
     public const STATUS_OPEN = 'open';
 
     protected $fillable = [
@@ -33,6 +40,8 @@ class IntegrityIncident extends Model
         'expected_state',
         'observed_state',
         'detection_fingerprint',
+        'signature',
+        'enforced_at',
         'correlated_event_ids',
         'detected_at',
     ];

@@ -84,6 +84,29 @@ Schedule::command(VerifyProfileIntegrityCommand::class)
     ->name('verify-profile-integrity');
 
 /*
+| Wave 3 fast-cycle integrity verification. The event-driven observers cover
+| application-level changes; these cycles close the gap for changes that
+| bypass the application:
+|   content — every 5 minutes: canonical public-state diff (direct DB edits).
+|   photos  — every 15 minutes: full streamed SHA-256 of primary photo objects
+|             (direct R2 writes).
+| Enforcement (suspend + notify) fires only on CONFIRMED mismatch while
+| integrity mode is 'enforce'; infrastructure failures never suspend. The
+| 4-hour watchdog above remains as the independent backup verification.
+*/
+Schedule::command('jannayaks:integrity-cycle --scope=content')
+    ->everyFiveMinutes()
+    ->timezone($integrityTz !== '' ? $integrityTz : 'Asia/Kolkata')
+    ->withoutOverlapping(4)
+    ->name('integrity-cycle-content');
+
+Schedule::command('jannayaks:integrity-cycle --scope=photos')
+    ->everyFifteenMinutes()
+    ->timezone($integrityTz !== '' ? $integrityTz : 'Asia/Kolkata')
+    ->withoutOverlapping(4)
+    ->name('integrity-cycle-photos');
+
+/*
 | TEMPORARY weekly contact-numbers export (approved while phone storage is
 | being minimised): exports paid applications' contact/WhatsApp numbers to
 | the owner by CSV email, then removes them from the live database. See

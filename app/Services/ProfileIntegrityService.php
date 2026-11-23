@@ -11,7 +11,9 @@ use App\Models\ProfileIntegritySnapshot;
 use App\Models\StaffActionLog;
 use App\Models\User;
 use App\Services\ProfileUrlService;
+use Illuminate\Support\Facades\DB;
 use Illuminate\Support\Facades\Log;
+use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
 use Throwable;
@@ -359,6 +361,30 @@ class ProfileIntegrityService
                 'snapshot_refreshed' => false,
                 'bootstrapped' => false,
                 'reasons' => ['missing_snapshot'],
+                'event_ids' => [],
+            ];
+        }
+
+        // Evidence-chain check: a signed snapshot whose signature no longer
+        // matches means the trusted baseline was rewritten without the
+        // environment secret. Report it and refuse to trust the row.
+        $signatureValid = $this->snapshotSignatureIsValid($snapshot);
+        if ($signatureValid === false) {
+            $incident = $this->recordIncident(
+                $profile,
+                $runId,
+                IntegrityIncident::TYPE_SNAPSHOT_SIGNATURE,
+                'The trusted integrity snapshot fails its HMAC signature check — the baseline was altered without the signing secret.',
+                ['snapshot_hash' => $snapshot->snapshot_hash],
+                ['snapshot_row' => ['signature' => $snapshot->signature, 'signature_chain' => $snapshot->signature_chain]],
+            );
+
+            return [
+                'classification' => self::CLASSIFICATION_MISMATCH,
+                'incidents' => [$incident],
+                'snapshot_refreshed' => false,
+                'bootstrapped' => false,
+                'reasons' => ['snapshot_signature_invalid'],
                 'event_ids' => [],
             ];
         }
@@ -1183,6 +1209,17 @@ class ProfileIntegrityService
         array $canonical,
         string $sourceEvent,
     ): ProfileIntegritySnapshot {
+        $previous = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->first();
+        $snapshotHash = $this->payloadHash($canonical);
+
+        $signature = null;
+        $signatureChain = null;
+        $secret = $this->evidenceHmacSecret();
+        if ($secret !== '') {
+            $signatureChain = $previous?->signature !== null ? hash('sha256', $previous->signature.$previous->snapshot_hash) : null;
+            $signature = hash_hmac('sha256', $snapshotHash.'|'.$signatureChain, $secret);
+        }
+
         return ProfileIntegritySnapshot::query()->updateOrCreate(
             ['profile_id' => $profile->id],
             [
@@ -1203,10 +1240,44 @@ class ProfileIntegrityService
                 'photos' => $canonical['photos'] ?? [],
                 'public_offices' => $canonical['public_offices'] ?? [],
                 'video_links' => $canonical['video_links'] ?? [],
-                'snapshot_hash' => $this->payloadHash($canonical),
+                'snapshot_hash' => $snapshotHash,
+                'signature' => $signature,
+                'signature_chain' => $signatureChain,
                 'source_event' => $sourceEvent,
             ],
         );
+    }
+
+    /**
+     * Dedicated integrity-evidence signing secret. Deliberately independent
+     * of APP_KEY: an application-key compromise must not also defeat the
+     * integrity evidence chain.
+     */
+    public function evidenceHmacSecret(): string
+    {
+        return (string) config('jannayaks.security.integrity.hmac_secret', '');
+    }
+
+    /**
+     * Verifies the snapshot's HMAC signature when the row carries one and a
+     * signing secret is configured. Legacy unsigned rows pass (they cannot be
+     * checked); a PRESENT but INVALID signature is evidence that the trusted
+     * baseline was rewritten without the environment secret.
+     */
+    public function snapshotSignatureIsValid(ProfileIntegritySnapshot $snapshot): ?bool
+    {
+        $secret = $this->evidenceHmacSecret();
+        if ($secret === '' || $snapshot->signature === null) {
+            return null; // Feature not armed, or legacy unsigned snapshot.
+        }
+
+        $expected = hash_hmac(
+            'sha256',
+            ((string) $snapshot->snapshot_hash).'|'.((string) $snapshot->signature_chain),
+            $secret,
+        );
+
+        return hash_equals($expected, (string) $snapshot->signature);
     }
 
     /**
@@ -1215,5 +1286,101 @@ class ProfileIntegrityService
     private function payloadHash(array $canonical): string
     {
         return hash('sha256', $this->stable($canonical));
+    }
+
+    /**
+     * Enforcement hook (Wave 3). Given a verifyProfile() result:
+     *  - classification integrity_mismatch in ENFORCE mode: immediately
+     *    suspend the profile's public visibility, stamp enforced_at on the
+     *    confirmed incidents, audit the suspension, and mail the security
+     *    administrator. Scan errors, missing snapshots and report mode never
+     *    suspend anything; infrastructure failure never classifies as
+     *    tampering (handled upstream as scan_error).
+     *  - any other classification: no action.
+     *
+     * Idempotent: a profile that is already hidden is left alone, and the
+     * incident dedup means re-runs cannot re-notify for the same evidence.
+     *
+     * @param  array<string, mixed>  $result  verifyProfile() result
+     * @return array{enforced: bool, suspended: bool, notified: bool, incident_ids: list<int>}
+     */
+    public function enforceConfirmedTampering(Profile $profile, array $result, string $runId): array
+    {
+        $summary = ['enforced' => false, 'suspended' => false, 'notified' => false, 'incident_ids' => []];
+
+        if (($result['classification'] ?? '') !== self::CLASSIFICATION_MISMATCH) {
+            return $summary;
+        }
+
+        $incidents = collect($result['incidents'] ?? [])
+            ->filter(fn ($incident) => $incident instanceof IntegrityIncident)
+            ->values();
+        if ($incidents->isEmpty()) {
+            return $summary;
+        }
+
+        $profile = $profile->fresh() ?? $profile;
+        if (! $this->profileUrls->isPubliclyVisible($profile)) {
+            return $summary;
+        }
+
+        if ((string) config('jannayaks.security.integrity.mode', 'report') !== 'enforce') {
+            return $summary;
+        }
+
+        // Suspension: audit-logged system action. The profile stays in the
+        // database untouched — only public visibility is removed, and the
+        // incident chain remains the evidence.
+        $before = [
+            'profile_id' => $profile->id,
+            'status' => $profile->status,
+            'slug' => $profile->slug,
+            'published_at' => $profile->published_at?->toIso8601String(),
+            'unpublished_at' => $profile->unpublished_at?->toIso8601String(),
+            'suspended_at' => $profile->suspended_at?->toIso8601String(),
+        ];
+
+        DB::transaction(function () use ($profile, $incidents, $runId, $before): void {
+            $locked = Profile::query()->whereKey($profile->id)->lockForUpdate()->first() ?? $profile;
+            if (! $this->profileUrls->isPubliclyVisible($locked)) {
+                return;
+            }
+
+            $locked->forceFill(['suspended_at' => now()])->save();
+
+            app(StaffAuditLogger::class)->log(
+                action: 'integrity.profile_suspended',
+                subject: $locked,
+                before: $before,
+                after: [
+                    'profile_id' => $locked->id,
+                    'suspended_at' => $locked->suspended_at?->toIso8601String(),
+                    'run_id' => $runId,
+                    'incident_ids' => $incidents->pluck('id')->all(),
+                ],
+                actor: null,
+            );
+
+            $incidents->each(function (IntegrityIncident $incident): void {
+                if ($incident->enforced_at === null) {
+                    $incident->forceFill(['enforced_at' => now()])->save();
+                }
+            });
+        });
+
+        $summary['enforced'] = true;
+        $summary['suspended'] = ($profile->fresh()?->suspended_at ?? null) !== null;
+        $summary['incident_ids'] = $incidents->pluck('id')->map(fn ($id) => (int) $id)->all();
+
+        // Immediate security-administrator notification.
+        $recipient = trim((string) config('jannayaks.security.integrity.alert_recipient', ''));
+        if ($recipient !== '') {
+            Mail::to($recipient)->send(
+                new \App\Mail\ProfileIntegrityEnforcementMail($profile->fresh() ?? $profile, $incidents->all(), $runId),
+            );
+            $summary['notified'] = true;
+        }
+
+        return $summary;
     }
 }

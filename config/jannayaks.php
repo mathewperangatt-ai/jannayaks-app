@@ -407,12 +407,41 @@ PROMPT,
         | alone do not email. Delivery failure is logged; the scan still succeeds.
         */
         'integrity' => [
+            // 'report' records incidents only (Wave 2C behaviour, 4-hour
+            // watchdog). 'enforce' additionally suspends public visibility and
+            // mails the security administrator on CONFIRMED tampering
+            // (Wave 3: event-driven checks + 5-minute content cycle + 15-minute
+            // photo cycle). Scan errors never suspend in either mode.
             'mode' => env('JANNAYAKS_INTEGRITY_MODE', 'report'),
             'deep_verify_percent' => (int) env('JANNAYAKS_INTEGRITY_DEEP_PERCENT', 100),
             'alert_recipient' => env(
                 'JANNAYAKS_INTEGRITY_ALERT_RECIPIENT',
                 'mathew.perangatt@gmail.com',
             ),
+
+            /*
+            | Dedicated HMAC secret for integrity evidence (snapshots and
+            | incidents). Deliberately independent of APP_KEY. When empty,
+            | evidence signing is inactive and legacy unsigned rows remain
+            | valid; once set, new/refreshed snapshots are signed and a
+            | present-but-invalid signature is itself a tampering incident.
+            */
+            'hmac_secret' => env('JANNAYAKS_INTEGRITY_HMAC_SECRET', ''),
+
+            /*
+            | Published-profile administration boundary. The
+            | security_admin role holds exclusive authority over published
+            | profile content, photo replacements, correction approvals,
+            | integrity incidents and visibility restoration.
+            | allow_legacy_admin: transitional switch — while true, the
+            | original admin role retains published-profile editing rights
+            | until the Security Administrator account is provisioned and
+            | verified. Flip to false to enforce strict separation.
+            */
+            'published_profile_admin' => [
+                'email' => env('JANNAYAKS_PUBLISHED_PROFILE_ADMIN_EMAIL', ''),
+                'allow_legacy_admin' => env('JANNAYAKS_ALLOW_LEGACY_ADMIN_PROFILE_EDITS', true),
+            ],
         ],
 
         /*
