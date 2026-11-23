@@ -26,7 +26,7 @@ class OpenAiPhotoEnhancementClient implements PhotoEnhancementClient
 
     public function modelName(): string
     {
-        return (string) config('jannayaks.ai.image_enhancement.openai.model', 'gpt-image-1');
+        return (string) config('jannayaks.ai.image_enhancement.openai.model', 'gpt-image-2.6-sunburst');
     }
 
     public function enhance(string $sourceJpegBytes, string $prompt): string
