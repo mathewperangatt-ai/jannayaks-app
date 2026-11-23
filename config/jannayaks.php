@@ -446,6 +446,31 @@ PROMPT,
                 // must be 32+ characters and is never used by the web app.
                 'recovery_key' => env('JANNAYAKS_SECURITY_RECOVERY_KEY', ''),
             ],
+
+            /*
+            | Genuine image-CONTENT moderation for member-submitted photograph
+            | replacements (nudity / explicit / manipulated sexual imagery) via
+            | the OpenAI moderation endpoint (omni-moderation-latest — free of
+            | charge; reuses the already-configured OPENAI_API_KEY). Fail-safe:
+            | unavailable moderation yields 'uncertain', which always requires
+            | manual examination by the Security Administrator before approval.
+            | Every replacement still needs explicit manual approval regardless.
+            */
+            'photo_moderation' => [
+                'enabled' => env('JANNAYAKS_PHOTO_MODERATION_ENABLED', true),
+                'endpoint' => env('JANNAYAKS_PHOTO_MODERATION_ENDPOINT', 'https://api.openai.com/v1/moderations'),
+                'model' => env('JANNAYAKS_PHOTO_MODERATION_MODEL', 'omni-moderation-latest'),
+                'timeout_seconds' => (int) env('JANNAYAKS_PHOTO_MODERATION_TIMEOUT', 30),
+
+                /*
+                | Independent integrity-evidence anchor (owner-approved): a
+                | daily email with the signed-evidence digest — profile IDs,
+                | snapshot hashes and signatures ONLY. No profile content,
+                | names, emails or secrets. Sent out-of-band so an attacker
+                | with database access cannot rewrite the owner's record.
+                */
+                'evidence_anchor_recipient' => env('JANNAYAKS_INTEGRITY_EVIDENCE_ANCHOR_EMAIL', ''),
+            ],
         ],
 
         /*

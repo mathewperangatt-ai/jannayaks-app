@@ -57,6 +57,12 @@ class PhotoReplacementRequestResource extends Resource
                 TextColumn::make('screening_result')->badge()
                     ->formatStateUsing(fn (string $state): string => $state === 'clear' ? 'clear' : 'flagged')
                     ->color(fn (string $state): string => $state === 'clear' ? 'success' : 'warning'),
+                TextColumn::make('moderation_result')->label('Content moderation')->badge()
+                    ->color(fn (string $state): string => match ($state) {
+                        'clear' => 'success',
+                        'flagged' => 'danger',
+                        default => 'warning',
+                    }),
                 TextColumn::make('status')->badge()
                     ->color(fn (string $state): string => match ($state) {
                         'approved' => 'success',
@@ -79,9 +85,11 @@ class PhotoReplacementRequestResource extends Resource
                     ->form([
                         Textarea::make('review_note')->label('Review note (optional)')->maxLength(1000),
                         Toggle::make('confirm_manual_examination')
-                            ->label('I have manually examined this image (required for flagged submissions)')
-                            ->visible(fn (PendingPhotoReplacement $record): bool => $record->screening_result === 'flagged')
-                            ->required(fn (PendingPhotoReplacement $record): bool => $record->screening_result === 'flagged'),
+                            ->label('I have manually examined this image (required for flagged screening or flagged/uncertain content moderation)')
+                            ->visible(fn (PendingPhotoReplacement $record): bool => $record->screening_result === 'flagged'
+                                || in_array($record->moderation_result, ['flagged', 'uncertain'], true))
+                            ->required(fn (PendingPhotoReplacement $record): bool => $record->screening_result === 'flagged'
+                                || in_array($record->moderation_result, ['flagged', 'uncertain'], true)),
                     ])
                     ->action(function (PendingPhotoReplacement $record, array $data): void {
                         app(\App\Services\PhotoReplacementRequestService::class)->approve(

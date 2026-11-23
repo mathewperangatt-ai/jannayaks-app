@@ -107,6 +107,20 @@ Schedule::command('jannayaks:integrity-cycle --scope=photos')
     ->name('integrity-cycle-photos');
 
 /*
+| Independent integrity-evidence anchor: a daily out-of-band email with the
+| signed-evidence digest (profile IDs, hashes, signature prefixes, incident
+| counts — no content, no personal data, no secrets). Keeping successive
+| digests lets the owner detect any attempt to rewrite the trusted baseline.
+| Recipient: JANNAYAKS_INTEGRITY_EVIDENCE_ANCHOR_EMAIL (owner's separate
+| contact address). Skips silently when unset.
+*/
+Schedule::command('jannayaks:integrity-evidence-digest')
+    ->dailyAt('07:30')
+    ->timezone($integrityTz !== '' ? $integrityTz : 'Asia/Kolkata')
+    ->withoutOverlapping(15)
+    ->name('integrity-evidence-digest');
+
+/*
 | TEMPORARY weekly contact-numbers export (approved while phone storage is
 | being minimised): exports paid applications' contact/WhatsApp numbers to
 | the owner by CSV email, then removes them from the live database. See

@@ -36,6 +36,10 @@ class PendingPhotoReplacement extends Model
         'member_note',
         'screening_result',
         'screening_reasons',
+        'moderation_result',
+        'moderation_categories',
+        'moderation_error',
+        'moderated_at',
         'manual_examination_confirmed',
         'examined_by_user_id',
         'status',
@@ -49,6 +53,8 @@ class PendingPhotoReplacement extends Model
     {
         return [
             'screening_reasons' => 'array',
+            'moderation_categories' => 'array',
+            'moderated_at' => 'datetime',
             'reviewed_at' => 'datetime',
             'published_at' => 'datetime',
         ];

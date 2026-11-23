@@ -16,6 +16,7 @@ use App\Services\ProfileIntegrityService;
 use App\Services\ProfileMediaService;
 use Illuminate\Foundation\Testing\RefreshDatabase;
 use Illuminate\Http\UploadedFile;
+use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
@@ -35,6 +36,36 @@ class PhotoReplacementWorkflowTest extends TestCase
         Storage::fake('public');
         Storage::fake('private_uploads');
         Mail::fake();
+        config([
+            'jannayaks.security.photo_moderation.enabled' => true,
+            'jannayaks.ai.openai.api_key' => 'test-key-'.str_repeat('a', 20),
+        ]);
+    }
+
+    /** Per-test moderation stubs: Http::fake stubs are first-match-wins. */
+    private function fakeModerationClear(): void
+    {
+        Http::fake([
+            'api.openai.com/v1/moderations' => Http::response([
+                'results' => [['categories' => ['sexual' => false], 'category_scores' => ['sexual' => 0.01]]],
+            ], 200),
+        ]);
+    }
+
+    private function fakeModerationFlagged(): void
+    {
+        Http::fake([
+            'api.openai.com/v1/moderations' => Http::response([
+                'results' => [['categories' => ['sexual' => true], 'category_scores' => ['sexual' => 0.98]]],
+            ], 200),
+        ]);
+    }
+
+    private function fakeModerationOutage(): void
+    {
+        Http::fake([
+            'api.openai.com/v1/moderations' => Http::response([], 500),
+        ]);
     }
 
     private function seedPublishedWithPhoto(): array
@@ -122,6 +153,7 @@ class PhotoReplacementWorkflowTest extends TestCase
     public function test_member_submission_enters_pending_review_without_touching_published_photos(): void
     {
         ['member' => $member, 'profile' => $profile, 'photo' => $photo] = $this->seedPublishedWithPhoto();
+        $this->fakeModerationClear();
 
         $service = app(PhotoReplacementRequestService::class);
         $submission = $service->submit($profile, $member, $this->jpegUpload(), 'My new portrait.');
@@ -170,6 +202,7 @@ class PhotoReplacementWorkflowTest extends TestCase
 
         $beforeSnapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->first()->snapshot_hash;
         $oldPrimaryId = $photo->id;
+        $this->fakeModerationClear();
 
         $submission = app(PhotoReplacementRequestService::class)->submit($profile, $member, $this->jpegUpload());
         $approved = app(PhotoReplacementRequestService::class)->approve($submission, $securityAdmin, 'Approved.');
@@ -209,6 +242,7 @@ class PhotoReplacementWorkflowTest extends TestCase
         ['member' => $member, 'profile' => $profile] = $this->seedPublishedWithPhoto();
         $securityAdmin = User::factory()->create(['role' => User::ROLE_SECURITY_ADMIN]);
 
+        $this->fakeModerationClear();
         $submission = app(PhotoReplacementRequestService::class)->submit(
             $profile, $member, $this->jpegUpload(120, 90, 'tiny.jpg'),
         );
@@ -226,6 +260,7 @@ class PhotoReplacementWorkflowTest extends TestCase
         $securityAdmin = User::factory()->create(['role' => User::ROLE_SECURITY_ADMIN]);
 
         $beforeSnapshot = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->first()->snapshot_hash;
+        $this->fakeModerationClear();
         $submission = app(PhotoReplacementRequestService::class)->submit($profile, $member, $this->jpegUpload());
         $rejected = app(PhotoReplacementRequestService::class)->reject($submission, $securityAdmin, 'Image too dark.');
 
@@ -244,10 +279,45 @@ class PhotoReplacementWorkflowTest extends TestCase
         });
     }
 
+    public function test_content_moderation_flags_explicit_imagery(): void
+    {
+        ['member' => $member, 'profile' => $profile] = $this->seedPublishedWithPhoto();
+
+        $this->fakeModerationFlagged();
+
+        $submission = app(PhotoReplacementRequestService::class)->submit($profile, $member, $this->jpegUpload());
+
+        $this->assertSame(\App\Security\PhotoModerationService::VERDICT_FLAGGED, $submission->moderation_result,
+            'moderation_error='.var_export($submission->moderation_error, true).' categories='.var_export($submission->moderation_categories, true));
+
+        // Approval without manual examination refuses even though the
+        // deterministic file screening was clear.
+        $securityAdmin = User::factory()->create(['role' => User::ROLE_SECURITY_ADMIN]);
+        $this->expectException(\InvalidArgumentException::class);
+        app(PhotoReplacementRequestService::class)->approve($submission, $securityAdmin, '', confirmManualExamination: false);
+    }
+
+    public function test_moderation_outage_yields_uncertain_and_requires_manual_examination(): void
+    {
+        ['member' => $member, 'profile' => $profile] = $this->seedPublishedWithPhoto();
+        $securityAdmin = User::factory()->create(['role' => User::ROLE_SECURITY_ADMIN]);
+
+        // Provider unreachable: fail-safe 'uncertain', never auto-cleared.
+        $this->fakeModerationOutage();
+
+        $submission = app(PhotoReplacementRequestService::class)->submit($profile, $member, $this->jpegUpload());
+        $this->assertSame(\App\Security\PhotoModerationService::VERDICT_UNCERTAIN, $submission->moderation_result);
+        $this->assertNotNull($submission->moderation_error);
+
+        $this->expectException(\InvalidArgumentException::class);
+        app(PhotoReplacementRequestService::class)->approve($submission, $securityAdmin, '', confirmManualExamination: false);
+    }
+
     public function test_strict_mode_blocks_the_existing_admin_from_review(): void
     {
         config(['jannayaks.security.integrity.published_profile_admin.allow_legacy_admin' => false]);
         ['member' => $member, 'profile' => $profile, 'admin' => $admin, 'photo' => $photo] = $this->seedPublishedWithPhoto();
+        $this->fakeModerationClear();
 
         $submission = app(PhotoReplacementRequestService::class)->submit($profile, $member, $this->jpegUpload());
 

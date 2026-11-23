@@ -40,6 +40,7 @@ class PhotoReplacementRequestService
     public function __construct(
         private PublishedProfileAuthorizer $publishedProfiles,
         private PhotoSafetyScreeningService $screening,
+        private \App\Security\PhotoModerationService $moderation,
         private ProfileMediaService $media,
         private StaffAuditLogger $audit,
     ) {}
@@ -78,6 +79,12 @@ class PhotoReplacementRequestService
 
             $screening = $this->screening->screen($absolute, (string) $file->getMimeType(), (int) $file->getSize());
 
+            // Genuine image-CONTENT moderation (nudity / explicit / manipulated
+            // sexual imagery) via the OpenAI moderation endpoint. Fail-safe:
+            // unavailable moderation yields 'uncertain', which always requires
+            // manual examination before approval.
+            $moderation = $this->moderation->moderate($absolute, (string) $file->getMimeType());
+
             $request->forceFill([
                 'storage_path' => $path,
                 'sha256' => hash_file('sha256', $absolute),
@@ -85,6 +92,10 @@ class PhotoReplacementRequestService
                 'height' => $screening['height'],
                 'screening_result' => $screening['verdict'],
                 'screening_reasons' => $screening['reasons'],
+                'moderation_result' => $moderation['verdict'],
+                'moderation_categories' => $moderation['categories'],
+                'moderation_error' => $moderation['provider_error'],
+                'moderated_at' => now(),
             ])->save();
 
             $this->audit->log(
@@ -117,16 +128,22 @@ class PhotoReplacementRequestService
         if (! Storage::disk('private_uploads')->exists($request->storage_path)) {
             throw new InvalidArgumentException('The submitted file is no longer available — ask the member to resubmit.');
         }
-        if ($request->screening_result === PendingPhotoReplacement::SCREENING_FLAGGED && ! $confirmManualExamination) {
+        $needsManualExamination = $request->screening_result === PendingPhotoReplacement::SCREENING_FLAGGED
+            || in_array($request->moderation_result, [
+                PendingPhotoReplacement::SCREENING_FLAGGED,
+                \App\Security\PhotoModerationService::VERDICT_UNCERTAIN,
+            ], true);
+
+        if ($needsManualExamination && ! $confirmManualExamination) {
             throw new InvalidArgumentException(
-                'This submission is flagged by image-safety screening. Examine it manually and confirm the examination before approving.',
+                'This submission is flagged by image-safety screening or content moderation (or moderation was unavailable). Examine it manually and confirm the examination before approving.',
             );
         }
 
         $profile = $request->profile;
         $member = $request->member;
 
-        return DB::transaction(function () use ($request, $profile, $member, $actor, $reviewNote, $confirmManualExamination): PendingPhotoReplacement {
+        return DB::transaction(function () use ($request, $profile, $member, $actor, $reviewNote, $confirmManualExamination, $needsManualExamination): PendingPhotoReplacement {
             $lockedRequest = PendingPhotoReplacement::query()->whereKey($request->id)->lockForUpdate()->first() ?? $request;
             if ($lockedRequest->status !== PendingPhotoReplacement::STATUS_SUBMITTED) {
                 throw new InvalidArgumentException('This request has already been reviewed.');
@@ -174,7 +191,7 @@ class PhotoReplacementRequestService
                 'status' => PendingPhotoReplacement::STATUS_APPROVED,
                 'review_note' => mb_substr(trim($reviewNote), 0, 1000),
                 'reviewer_user_id' => $actor->id,
-                'manual_examination_confirmed' => $confirmManualExamination || $lockedRequest->screening_result === PendingPhotoReplacement::SCREENING_CLEAR,
+                'manual_examination_confirmed' => $confirmManualExamination || (! $needsManualExamination),
                 'examined_by_user_id' => $actor->id,
                 'reviewed_at' => now(),
                 'published_at' => now(),
