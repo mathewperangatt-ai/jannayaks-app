@@ -62,6 +62,10 @@ h1{font-family:var(--fd);font-size:clamp(28px,5vw,44px);color:var(--navy);line-h
 .price-region{font-size:10px;font-weight:600;letter-spacing:.18em;text-transform:uppercase;color:var(--gray);margin:0 0 6px;}
 .price-cell .price{font-size:30px;}
 .price-note{font-size:12px;color:var(--gray);margin:6px 0 0;}
+.price-breakup{list-style:none;margin:10px 0 0;padding:9px 2px 0;border-top:1px dashed var(--border);text-align:left;}
+.price-breakup li{display:flex;justify-content:space-between;gap:10px;font-size:12px;color:var(--gray);padding:3px 0;font-variant-numeric:tabular-nums;}
+.price-breakup li.breakup-total{border-top:1px solid var(--border);margin-top:4px;padding-top:6px;color:var(--navy);font-weight:600;}
+.price-breakup-note{font-size:11.5px;color:var(--gray);margin:6px 0 0;text-align:left;}
 .renewal-hd{font-size:11px;font-weight:600;letter-spacing:.14em;text-transform:uppercase;color:var(--navy);margin:16px 0 8px;}
 @media(max-width:640px){.price-grid{grid-template-columns:1fr;}}
 .who{font-size:13px;color:var(--gray);line-height:1.65;margin-bottom:14px;}
@@ -124,6 +128,12 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
             <div class="price-region">India</div>
             <div class="price">{{ $profile['amount_incl_formatted'] }}</div>
             <div class="price-note">GST-inclusive</div>
+            <ul class="price-breakup">
+                <li><span>Profile preparation, editorial work &amp; creation (before GST)</span><span>₹2,966.10</span></li>
+                <li><span>First-year hosting &amp; publication (before GST)</span><span>₹1,271.19</span></li>
+                <li><span>GST @ 18%</span><span>₹762.71</span></li>
+                <li class="breakup-total"><span>Total payable</span><span>₹5,000.00</span></li>
+            </ul>
         </div>
         <div class="price-cell">
             <div class="price-region">International</div>
@@ -137,6 +147,12 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
             <div class="price-region">India</div>
             <div class="price">{{ $renewal['amount_incl_formatted'] }}</div>
             <div class="price-note">GST-inclusive</div>
+            <ul class="price-breakup">
+                <li><span>Annual hosting &amp; publication (before GST)</span><span>₹1,271.19</span></li>
+                <li><span>GST @ 18%</span><span>₹228.81</span></li>
+                <li class="breakup-total"><span>Total annual renewal</span><span>₹1,500.00</span></li>
+            </ul>
+            <div class="price-breakup-note">Equivalent to approximately ₹106 per month before GST.</div>
         </div>
         <div class="price-cell">
             <div class="price-region">International</div>

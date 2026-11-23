@@ -286,6 +286,8 @@ nav{background:var(--white);border-bottom:2px solid var(--saffron);position:stic
 .price-line-ml{display:block;font-family:var(--fm);font-size:16.5px;color:var(--navy);opacity:.75;margin-top:2px;}
 .price-detail{font-size:14.5px;color:var(--charcoal);line-height:1.7;margin:0 0 8px;}
 .price-detail-ml{display:block;font-family:var(--fm);font-size:15px;color:var(--gray);line-height:1.85;}
+.price-breakup-compact{font-size:12.5px;color:var(--gray);line-height:1.7;margin:2px auto 10px;max-width:560px;font-variant-numeric:tabular-nums;}
+.price-breakup-compact .bk-sep{margin:0 7px;opacity:.55;}
 /* HIW horizontal on desktop */
 @media(min-width:900px){
   .steps{display:grid;grid-template-columns:repeat(4,1fr);gap:20px;}
@@ -659,6 +661,7 @@ document.addEventListener('click',function(e){
     <p class="price-line"><strong>Jannayaks Profile: ₹5,000 (India, GST-inclusive) · US$50 (international)</strong>
       <span class="price-line-ml" lang="ml">Jannayaks Profile: ₹5,000 (ഇന്ത്യ, GST ഉൾപ്പെടെ) · US$50 (അന്തർദേശീയം)</span>
     </p>
+    <p class="price-breakup-compact">India breakup — profile preparation &amp; editorial creation ₹2,966.10<span class="bk-sep">·</span>first-year hosting &amp; publication ₹1,271.19<span class="bk-sep">·</span>GST @ 18% ₹762.71<span class="bk-sep">·</span><strong>total ₹5,000</strong></p>
     <p class="price-detail">Includes profile preparation, editorial presentation, publication and first-year hosting. Typographical and factual corrections are free.
       <span class="price-detail-ml" lang="ml">പ്രൊഫൈൽ തയ്യാറാക്കൽ, Editorial Presentation, പ്രസിദ്ധീകരണം, ആദ്യ വർഷത്തെ ഹോസ്റ്റിംഗ് എന്നിവ ഉൾപ്പെടുന്നു. അക്ഷരത്തെറ്റും വസ്തുതാപരമായ തിരുത്തലുകളും സൗജന്യമാണ്.</span>
     </p>
