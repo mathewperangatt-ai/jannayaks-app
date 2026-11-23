@@ -55,8 +55,8 @@ class PhotoSafetyScreeningService
             $reasons[] = 'image_decode_error';
         }
 
-        // Size sanity: at least 30 KB (avoids near-empty files), at most 10 MB.
-        if ($sizeBytes < 30 * 1024) {
+        // Size sanity: at least 10 KB (avoids near-empty files), at most 10 MB.
+        if ($sizeBytes < 10 * 1024) {
             $reasons[] = 'file_suspiciously_small';
         }
         if ($sizeBytes > 10 * 1024 * 1024) {

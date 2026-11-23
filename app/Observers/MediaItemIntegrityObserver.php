@@ -34,6 +34,6 @@ class MediaItemIntegrityObserver
             return;
         }
 
-        VerifyPublishedProfileIntegrity::dispatch($profileId, 'evt-'.Str::uuid()->toString());
+        VerifyPublishedProfileIntegrity::dispatch($profileId, VerifyPublishedProfileIntegrity::makeRunId());
     }
 }

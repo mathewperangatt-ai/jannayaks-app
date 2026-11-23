@@ -34,10 +34,10 @@ class PublishedProfileIntegrityObserver
 
     public function saved(Profile $profile): void
     {
-        // Cheap guard: skip saves that touched none of the public-state or
-        // visibility fields (e.g. membership bookkeeping).
+        // Cheap guard: skip saves that wrote nothing or touched none of the
+        // public-state / visibility fields (e.g. membership bookkeeping).
         $changed = $profile->getChanges();
-        if ($changed !== [] && empty(array_intersect_key(array_flip($this->publicFields()), $changed))) {
+        if ($changed === [] || empty(array_intersect_key(array_flip($this->publicFields()), $changed))) {
             return;
         }
 
@@ -54,7 +54,7 @@ class PublishedProfileIntegrityObserver
 
     private function dispatch(int $profileId): void
     {
-        VerifyPublishedProfileIntegrity::dispatch($profileId, 'evt-'.Str::uuid()->toString());
+        VerifyPublishedProfileIntegrity::dispatch($profileId, VerifyPublishedProfileIntegrity::makeRunId());
     }
 
     /** @return list<string> */

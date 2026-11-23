@@ -25,6 +25,11 @@ return new class extends Migration
         DB::table('users')
             ->where('role', 'published_profile_admin')
             ->update(['role' => 'security_admin']);
+
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
+            DB::statement("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('member', 'admin', 'editor', 'support', 'security_admin'))");
+        }
     }
 
     public function down(): void
@@ -32,6 +37,11 @@ return new class extends Migration
         DB::table('users')
             ->where('role', 'security_admin')
             ->update(['role' => 'admin']);
+
+        if (DB::getDriverName() === 'pgsql') {
+            DB::statement('ALTER TABLE users DROP CONSTRAINT IF EXISTS users_role_check');
+            DB::statement("ALTER TABLE users ADD CONSTRAINT users_role_check CHECK (role IN ('member', 'admin', 'editor', 'support'))");
+        }
 
         Schema::table('users', function (Blueprint $table): void {
             $table->dropColumn([

@@ -33,6 +33,7 @@ class PostPublicationUpdateService
     public function __construct(
         private StaffAuditLogger $auditLogger,
         private EditorialPlainTextSanitizer $sanitizer,
+        private \App\Security\PublishedProfileAuthorizer $publishedProfiles,
     ) {}
 
     /**
@@ -182,9 +183,7 @@ class PostPublicationUpdateService
      */
     public function prepareViaAiDraft(Application $application, User $actor): EditorialRevisionRequest
     {
-        if (! $actor->canManageEditorial()) {
-            throw new InvalidArgumentException('Only editorial staff may prepare maintenance drafts.');
-        }
+        $this->publishedProfiles->authorize($actor, 'maintenance.ai_draft');
 
         $request = $this->openRequestFor($application);
         if ($request === null || ! in_array($request->status, [EditorialRevisionRequest::STATUS_SUBMITTED, EditorialRevisionRequest::STATUS_IN_PROGRESS], true)) {
@@ -226,9 +225,7 @@ class PostPublicationUpdateService
      */
     public function prepareVersions(Application $application, User $actor, ?array $enData, ?array $mlData): EditorialRevisionRequest
     {
-        if (! $actor->canManageEditorial()) {
-            throw new InvalidArgumentException('Only editorial staff may prepare maintenance versions.');
-        }
+        $this->publishedProfiles->authorize($actor, 'maintenance.prepare_versions');
 
         $request = $this->openRequestFor($application);
         if ($request === null || ! $request->isAwaitingPreparation()) {
@@ -302,9 +299,7 @@ class PostPublicationUpdateService
      */
     public function releaseMaintenancePreview(Application $application, User $actor): EditorialRevisionRequest
     {
-        if (! $actor->canManageEditorial()) {
-            throw new InvalidArgumentException('Only editorial staff may release a maintenance preview.');
-        }
+        $this->publishedProfiles->authorize($actor, 'maintenance.release_preview');
 
         $request = $this->openRequestFor($application);
         if ($request === null || ! in_array($request->status, [EditorialRevisionRequest::STATUS_SUBMITTED, EditorialRevisionRequest::STATUS_IN_PROGRESS], true)) {
@@ -504,8 +499,12 @@ class PostPublicationUpdateService
      */
     public function completePublication(Application $application, User $actor): EditorialRevisionRequest
     {
-        if (! $actor->isAdmin() || ! $actor->isActiveAccount()) {
-            throw new InvalidArgumentException('Only an authorised Admin may publish a maintenance update.');
+        // Publishing an approved maintenance update modifies published
+        // content: Security Administrator authority (transitional legacy-admin
+        // override applies until strict separation is enabled).
+        $this->publishedProfiles->authorize($actor, 'maintenance.complete_publication');
+        if (! $actor->isActiveAccount()) {
+            throw new InvalidArgumentException('Inactive accounts may not publish maintenance updates.');
         }
 
         $request = $this->openRequestFor($application);

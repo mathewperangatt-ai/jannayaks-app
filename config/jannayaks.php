@@ -441,6 +441,10 @@ PROMPT,
             'published_profile_admin' => [
                 'email' => env('JANNAYAKS_PUBLISHED_PROFILE_ADMIN_EMAIL', ''),
                 'allow_legacy_admin' => env('JANNAYAKS_ALLOW_LEGACY_ADMIN_PROFILE_EDITS', true),
+                // Emergency recovery of the security_admin account (console
+                // command) requires this key in addition to shell access. It
+                // must be 32+ characters and is never used by the web app.
+                'recovery_key' => env('JANNAYAKS_SECURITY_RECOVERY_KEY', ''),
             ],
         ],
 

@@ -50,7 +50,8 @@ class IntegrityCycleCommand extends Command
         }
 
         $deep = $scope === 'photos';
-        $runId = 'cycle-'.$scope.'-'.now()->format('YmdHis').'-'.substr((string) Str::uuid(), 0, 8);
+        // run_id is varchar(32) in integrity_incidents — keep within bounds.
+        $runId = ($scope === 'photos' ? 'cyc-photos-' : 'cyc-content-').now()->format('ymdHis').'-'.substr(bin2hex(random_bytes(4)), 0, 5);
         $startedAt = now();
 
         $counts = ['scanned' => 0, 'healthy' => 0, 'authorized_change' => 0, 'integrity_mismatch' => 0, 'missing_snapshot' => 0, 'scan_error' => 0];
@@ -83,11 +84,18 @@ class IntegrityCycleCommand extends Command
                         $result = $integrity->verifyProfile($profile, $runId, $deep);
                     } catch (Throwable $e) {
                         $counts['scan_error']++;
+                        $chain = '';
+                        $current = $e;
+                        while ($current !== null) {
+                            $chain .= get_class($current).': '.mb_substr($current->getMessage(), 0, 400).' @ '.
+                                ($current->getFile() ?: '?').':'.($current->getLine() ?: 0)."\n";
+                            $current = $current->getPrevious();
+                        }
                         Log::warning('profile-integrity: cycle scan error', [
                             'run_id' => $runId,
                             'scope' => $this->option('scope'),
                             'profile_id' => $profile->id,
-                            'error' => mb_substr($e->getMessage(), 0, 300),
+                            'error' => $chain,
                         ]);
 
                         continue;

@@ -41,6 +41,12 @@ class VerifyPublishedProfileIntegrity implements ShouldQueue
         $this->afterCommit = true;
     }
 
+    /** run_id column limit is varchar(32); observers pass a bounded id. */
+    public static function makeRunId(): string
+    {
+        return 'evt-'.substr(bin2hex(random_bytes(6)), 0, 10).'-'.now()->format('ymdHi');
+    }
+
     public function handle(ProfileIntegrityService $integrity): void
     {
         $profile = Profile::query()->find($this->profileId);

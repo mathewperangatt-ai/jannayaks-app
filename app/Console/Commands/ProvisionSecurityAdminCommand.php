@@ -47,7 +47,7 @@ class ProvisionSecurityAdminCommand extends Command
             return self::FAILURE;
         }
 
-        $recoveryKey = (string) env('JANNAYAKS_SECURITY_RECOVERY_KEY', '');
+        $recoveryKey = (string) config('jannayaks.security.integrity.recovery_key', env('JANNAYAKS_SECURITY_RECOVERY_KEY', ''));
         if ($recoveryKey === '' || mb_strlen($recoveryKey) < 32) {
             $this->error('JANNAYAKS_SECURITY_RECOVERY_KEY must be set (32+ chars) before this command can run.');
 
@@ -147,7 +147,8 @@ class ProvisionSecurityAdminCommand extends Command
     private function resetTotp(string $email, StaffAuditLogger $audit): User
     {
         $account = $this->requireAccount($email);
-        $secret = \RobThree\Auth\TwoFactorAuth::generateRandomSecret();
+        $tfa = new \RobThree\Auth\TwoFactorAuth('Jannayaks');
+        $secret = $tfa->createSecret();
         $codes = collect(range(1, 8))->map(fn () => Str::upper(Str::random(10)))->all();
 
         $account->forceFill([
@@ -162,11 +163,10 @@ class ProvisionSecurityAdminCommand extends Command
             actor: null,
         );
 
-        $tfa = new \RobThree\Auth\TwoFactorAuth('Jannayaks');
         $this->info('TOTP secret rotated. Enrollment is required before panel access.');
         $this->line('TOTP secret (enter in your authenticator NOW — printed only here):');
         $this->line('  '.$secret);
-        $this->line('Provisioning URI: '.$tfa->getProvisioningUri($secret, $email, 'Jannayaks Security Admin'));
+        $this->line('Setup key (issuer: Jannayaks / account: '.$email.'). Enrollment page will accept a fresh code.');
         $this->line('Recovery codes (store NOW — printed only here):');
         foreach ($codes as $code) {
             $this->line('  '.$code);

@@ -140,22 +140,11 @@ class PhotoReplacementRequestService
                 ->where('is_primary', true)
                 ->first();
 
-            // Retire the old primary first so the 3-photo slot limit has
-            // room for the replacement. Storage deletion is audited and the
-            // trusted baseline refreshes with each mutation; the whole
-            // sequence completes within this single request.
-            $oldPrimary = MediaItem::query()
-                ->where('mediable_type', $profile->getMorphClass())
-                ->where('mediable_id', $profile->id)
-                ->where('media_type', MediaItem::TYPE_PROFILE_PHOTO)
-                ->where('is_primary', true)
-                ->first();
-            if ($oldPrimary instanceof MediaItem) {
-                $this->media->deletePhoto($profile->fresh() ?? $profile, $oldPrimary->fresh() ?? $oldPrimary, $actor);
-            }
-
-            // Publish through the EXISTING authorised media workflow: upload
-            // (audited, integrity baseline refreshed) → approve → primary.
+            // Publish through the EXISTING authorised media workflow. The
+            // Security Administrator is the operator-approver of this audited
+            // maintenance replacement (the member remains the submitter of
+            // record via the request row and audit trail). The integrity
+            // baseline refreshes through the normal workflow path.
             $uploaded = $this->media->uploadProfilePhoto(
                 profile: $profile->fresh() ?? $profile,
                 file: new \Illuminate\Http\UploadedFile(
@@ -172,6 +161,13 @@ class PhotoReplacementRequestService
             $this->media->approve($uploaded->fresh() ?? $uploaded, $actor, 'Approved member photograph replacement (request #'.$lockedRequest->id.').');
             if (! ($uploaded->fresh()?->is_primary ?? false)) {
                 $this->media->setPrimary($profile->fresh() ?? $profile, $uploaded->fresh() ?? $uploaded, $actor);
+            }
+
+            // Retire the replaced primary once its replacement is live. The
+            // media service permits this now: the retired portrait is no
+            // longer the sole live photograph.
+            if ($oldPrimary instanceof MediaItem && (int) $oldPrimary->id !== (int) $uploaded->id) {
+                $this->media->deletePhoto($profile->fresh() ?? $profile, $oldPrimary->fresh() ?? $oldPrimary, $actor);
             }
 
             $lockedRequest->forceFill([

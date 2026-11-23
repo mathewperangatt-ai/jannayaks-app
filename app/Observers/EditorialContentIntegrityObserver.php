@@ -22,6 +22,6 @@ class EditorialContentIntegrityObserver
             return;
         }
 
-        VerifyPublishedProfileIntegrity::dispatch($profileId, 'evt-'.Str::uuid()->toString());
+        VerifyPublishedProfileIntegrity::dispatch($profileId, VerifyPublishedProfileIntegrity::makeRunId());
     }
 }

@@ -37,7 +37,10 @@ class SecurityTotpService
 
         return [
             'secret' => $secret,
-            'uri' => (new TwoFactorAuth(self::ISSUER, 6, 30))->getProvisioningUri($secret, $user->email, self::ISSUER.' Security Admin'),
+            // otpauth URI (v1.8 exposes getQRText(label, secret) rather than
+            // getProvisioningUri); authenticator apps accept the setup key
+            // directly, which is what the enrollment page presents.
+            'uri' => (new TwoFactorAuth(self::ISSUER, 6, 30))->getQRText(self::ISSUER.' Security Admin: '.$user->email, $secret),
             'recovery_codes' => $codes, // Shown exactly once.
         ];
     }

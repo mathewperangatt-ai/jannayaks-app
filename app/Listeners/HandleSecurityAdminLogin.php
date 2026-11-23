@@ -41,15 +41,10 @@ class HandleSecurityAdminLogin implements ShouldQueue
 
         $recipient = trim((string) $user->email);
         if ($recipient !== '') {
-            Mail::raw(
-                'A new sign-in to the Jannayaks Security Administrator account occurred at '
-                .now()->timezone('Asia/Kolkata')->format('Y-m-d H:i:s').' IST. '
-                .'If this was not you, run the emergency recovery procedure immediately (jannayaks:security-admin).',
-                function ($message) use ($recipient): void {
-                    $message->to($recipient)
-                        ->subject('[JANNAYAKS SECURITY] New sign-in to the Security Administrator account');
-                },
-            );
+            Mail::to($recipient)->send(new \App\Mail\SecurityAdminLoginMail(
+                $recipient,
+                now()->timezone('Asia/Kolkata')->format('Y-m-d H:i:s'),
+            ));
         }
     }
 }

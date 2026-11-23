@@ -85,6 +85,9 @@ class SecurityTotpController extends Controller
 
     private function throttleKey(Request $request): string
     {
-        return 'security-totp:'.$request->session()->getId();
+        // Bound to the ACCOUNT, not the session: brute-force attempts against
+        // the Security Administrator credential throttle regardless of how
+        // many sessions or IPs the attacker rotates through.
+        return 'security-totp:'.($request->user()?->id ?? $request->ip());
     }
 }

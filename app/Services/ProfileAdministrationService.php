@@ -16,6 +16,7 @@ class ProfileAdministrationService
         private StaffAuditLogger $audit,
         private ProfileUrlService $profileUrls,
         private ProfileIntegrityService $integrity,
+        private \App\Security\PublishedProfileAuthorizer $publishedProfiles,
     ) {}
 
     /**
@@ -191,6 +192,9 @@ class ProfileAdministrationService
     public function unpublishLivingProfile(Application $application, User $actor, string $reason): Profile
     {
         $this->assertAdmin($actor, $reason);
+        // Wave 3: visibility operations on published profiles are Security
+        // Administrator authority (transitional legacy-admin override applies).
+        $this->publishedProfiles->authorize($actor, 'published.unpublish');
 
         return DB::transaction(function () use ($application, $actor, $reason): Profile {
             $profile = $this->lockLivingProfile($application);
@@ -213,6 +217,7 @@ class ProfileAdministrationService
     public function temporarilyHideLivingProfile(Application $application, User $actor, string $reason): Profile
     {
         $this->assertAdmin($actor, $reason);
+        $this->publishedProfiles->authorize($actor, 'published.hide');
 
         return DB::transaction(function () use ($application, $actor, $reason): Profile {
             $profile = $this->lockLivingProfile($application);
@@ -246,6 +251,9 @@ class ProfileAdministrationService
         ?string $integrityWaiverReason = null,
     ): Profile {
         $this->assertAdmin($actor, $reason);
+        // Restoration of suspended/hidden profiles is Security Administrator
+        // authority, subject to the integrity-waiver review below.
+        $this->publishedProfiles->authorize($actor, 'published.restore_visibility');
 
         return DB::transaction(function () use ($application, $actor, $reason, $integrityWaiverReason): Profile {
             $profile = $this->lockLivingProfile($application);
