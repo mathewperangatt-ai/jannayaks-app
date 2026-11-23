@@ -175,6 +175,9 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::post('/applications/{application}/maintenance/correction', [ProfileMaintenanceController::class, 'correction'])
         ->middleware('throttle:10,1')
         ->name('applications.maintenance.correction');
+    Route::post('/applications/{application}/maintenance/photo-replacement', [ProfileMaintenanceController::class, 'submitPhotoReplacement'])
+        ->middleware('throttle:6,1')
+        ->name('applications.maintenance.photo_replacement');
 
     Route::get('/applications/{application}/profile-url', [ProfileUrlController::class, 'show'])
         ->name('applications.profile-url');
