@@ -438,7 +438,7 @@ document.addEventListener('click',function(e){
 <!-- INTRO -->
 <section class="intro-section">
   <div class="intro-blocks">
-    <h2 class="intro-hd">A Digital Gallery of Notable Malayalees Across the World.</h2>
+    <h2 class="intro-hd">A Digital Gallery of Remarkable Personalities Across the World.</h2>
     <p class="intro-hd-ml" lang="ml">ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ നൽകിയ മലയാളി വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.</p>
 
     <div class="intro-explain">

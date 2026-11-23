@@ -61,6 +61,136 @@ class EditorialGenerationService
         }
     }
 
+    /**
+     * Malayalam adaptation of an ALREADY-SUPPLIED English master (human-authored
+     * source text; no questionnaire/interview generation). Uses the existing AI
+     * integration, prompts, run records, audit trail and draft storage — the same
+     * live workflow as the malayalam pass of generateForApplication, minus the
+     * English generation. Returns the run; failures are recorded, not thrown.
+     */
+    public function generateMalayalamAdaptation(
+        Application $application,
+        User $actor,
+        array $englishMaster,
+    ): AiEditorialRun {
+        $providerTimeout = (string) config('jannayaks.ai.provider', 'gpt') === 'claude'
+            ? (int) config('jannayaks.ai.anthropic.timeout_seconds', 240)
+            : (int) config('jannayaks.ai.openai.timeout_seconds', 60);
+        $lock = Cache::lock($this->lockKey($application), max(30, ($providerTimeout * 2) + 30));
+        if (! $lock->get()) {
+            throw new InvalidArgumentException('An AI editorial generation is already in progress for this application.');
+        }
+
+        $fingerprint = hash('sha256', (string) json_encode([
+            'profile' => $application->profile_id,
+            'english' => $englishMaster,
+        ]));
+
+        try {
+            $run = AiEditorialRun::query()->create([
+                'application_id' => $application->id,
+                'requested_by_user_id' => $actor->id,
+                'provider' => $this->ai->providerName(),
+                'model' => $this->ai->modelName(),
+                'status' => AiEditorialRun::STATUS_RUNNING,
+                'stage' => AiEditorialRun::STAGE_MALAYALAM,
+                'package_tier' => $application->package_tier,
+                'input_fingerprint' => $fingerprint,
+                'started_at' => now(),
+            ]);
+        } catch (QueryException $e) {
+            if ($this->isUniqueRunningViolation($e)) {
+                throw new InvalidArgumentException('An AI editorial generation is already in progress for this application.');
+            }
+
+            throw $e;
+        }
+
+        try {
+            $profile = $this->ensureDraftProfile($application);
+            $run->forceFill(['profile_id' => $profile->id])->save();
+
+            $mlPayload = [
+                'english_master' => [
+                    'title' => (string) ($englishMaster['title'] ?? ''),
+                    'summary' => (string) ($englishMaster['summary'] ?? ''),
+                    'body' => (string) ($englishMaster['body'] ?? ''),
+                ],
+                'data_boundary' => 'SOURCE_DATA_ONLY',
+            ];
+
+            $malayalamResult = $this->ai->generateEditorial([
+                'system' => $this->ai->providerName() === 'claude'
+                    ? EditorialSystemPrompts::claudeMalayalamAdaptation()
+                    : EditorialSystemPrompts::malayalamAdaptation(),
+                'user' => $this->payloadBuilder->toDelimitedUserMessage($mlPayload),
+                'purpose' => 'malayalam',
+            ]);
+
+            $malayalam = $this->storeNewDraftVersion(
+                profile: $profile,
+                language: EditorialContent::LANGUAGE_ML,
+                result: $malayalamResult,
+                actor: $actor,
+                run: $run,
+                sourceEditorialId: isset($englishMaster['id']) ? (int) $englishMaster['id'] : null,
+            );
+
+            $this->storeClaimTraces($malayalam, $malayalamResult['claims'] ?? [], $application);
+
+            $run->forceFill([
+                'status' => AiEditorialRun::STATUS_SUCCEEDED,
+                'stage' => AiEditorialRun::STAGE_COMPLETE,
+                'finished_at' => now(),
+                'error_code' => null,
+                'error_message' => null,
+                'malayalam_editorial_content_id' => $malayalam->id,
+            ])->save();
+
+            $this->auditLogger->log(
+                action: 'editorial.ai_generate_succeeded',
+                subject: $run,
+                after: [
+                    'application_id' => $application->id,
+                    'malayalam_editorial_content_id' => $malayalam->id,
+                    'source' => 'supplied_english_master',
+                ],
+                actor: $actor,
+            );
+
+            return $run->fresh() ?? $run;
+        } catch (Throwable $e) {
+            Log::warning('editorial.ai.malayalam_adaptation_failed', [
+                'application_id' => $application->id,
+                'run_id' => $run->id,
+                'error' => $e->getMessage(),
+            ]);
+
+            $this->archiveIncompleteDraftsForFailedRun($run);
+
+            $run->forceFill([
+                'status' => AiEditorialRun::STATUS_FAILED,
+                'error_code' => class_basename($e),
+                'error_message' => mb_substr($e->getMessage(), 0, 1000),
+                'finished_at' => now(),
+            ])->save();
+
+            $this->auditLogger->log(
+                action: 'editorial.ai_generate_failed',
+                subject: $run,
+                after: [
+                    'application_id' => $application->id,
+                    'error_code' => $run->error_code,
+                ],
+                actor: $actor,
+            );
+
+            return $run->fresh() ?? $run;
+        } finally {
+            $lock->release();
+        }
+    }
+
     private function runGeneration(Application $application, User $actor): AiEditorialRun
     {
         if (AiEditorialRun::query()

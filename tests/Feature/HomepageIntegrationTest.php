@@ -100,13 +100,13 @@ class HomepageIntegrationTest extends TestCase
         // below, with no language toggle.
         $this->assertSame(0, substr_count($html, 'intro-tabs'));
         $this->assertSame(0, substr_count($html, 'switchIntroLang'));
-        $hdEn = strpos($html, 'A Digital Gallery of Notable Malayalees Across the World.');
+        $hdEn = strpos($html, 'A Digital Gallery of Remarkable Personalities Across the World.');
         $hdMl = strpos($html, 'ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ');
         $this->assertNotFalse($hdEn);
         $this->assertNotFalse($hdMl);
         $this->assertTrue($intro < $hdEn && $hdEn < $hdMl && $hdMl < $recommend);
         $response->assertSeeInOrder([
-            'A Digital Gallery of Notable Malayalees Across the World.',
+            'A Digital Gallery of Remarkable Personalities Across the World.',
             'ലോകത്തിന്റെ വിവിധ ഭാഗങ്ങളിൽ ശ്രദ്ധേയമായ സംഭാവനകൾ നൽകിയ മലയാളി വ്യക്തിത്വങ്ങളുടെ ഡിജിറ്റൽ ഗാലറി.',
             'Achievements are more than milestones. They represent years of dedication, professional accomplishments, personal journeys and contributions to society.',
             'നേട്ടങ്ങൾ വെറും നാഴികക്കല്ലുകളല്ല. വർഷങ്ങളുടെ അധ്വാനവും, തൊഴിൽരംഗത്തെ മികവും, ജീവിതയാത്രകളും, സമൂഹത്തിനുള്ള സംഭാവനകളുമാണ് അവ.',
