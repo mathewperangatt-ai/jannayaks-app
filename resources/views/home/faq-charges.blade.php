@@ -164,7 +164,7 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   </div>
   <div class="faq">
     <strong>What does the Profile include?</strong>
-    <p>The Profile includes profile preparation and the first year of publication, with up to three photographs. Videos and video links are not included.</p>
+    <p>The Profile includes profile preparation and the first year of publication, with up to three photographs.</p>
   </div>
   <div class="faq">
     <strong>How does the Online Interview work?</strong>
@@ -205,10 +205,6 @@ h2{font-family:var(--fd);font-size:22px;color:var(--navy);margin:36px 0 14px;}
   <div class="faq">
     <strong>Is a direct personal interview available?</strong>
     <p>Jannayaks primarily creates profiles from information submitted through its Online Interview and other approved source material. If a direct personal interview is specifically required, we may be able to arrange this through an external professional service provider at an additional cost.</p>
-  </div>
-  <div class="faq">
-    <strong>Are photography or reel production services available?</strong>
-    <p>Jannayaks does not itself provide photography or reel production. If required, we can try to arrange suitable external agencies for professional photography and/or reel production at an additional cost, subject to availability.</p>
   </div>
   <div class="faq">
     <strong>What is annual hosting renewal?</strong>
