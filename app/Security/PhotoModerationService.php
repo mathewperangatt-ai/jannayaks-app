@@ -6,20 +6,25 @@ use Illuminate\Support\Facades\Http;
 use Illuminate\Support\Facades\Log;
 
 /**
- * Genuine image-content moderation for member-submitted photograph
+ * Image-content moderation SCREENING for member-submitted photograph
  * replacements (Wave 3, owner-approved addition).
  *
  * Uses the OpenAI moderation endpoint (omni-moderation-latest — multimodal,
- * free of charge, detects sexual/explicit content including attempts to
- * disguise it). Credentials are the ALREADY-CONFIGURED OpenAI API key; no
+ * free of charge). Credentials are the ALREADY-CONFIGURED OpenAI API key; no
  * new provider, account or cost.
  *
+ * IMPORTANT — this is a screening mechanism, NOT a guarantee. Automated
+ * moderation can miss manipulated or AI-generated content. A 'clear'
+ * verdict carries no approval weight: EVERY replacement photograph requires
+ * explicit Security Administrator approval, and flagged/uncertain
+ * submissions additionally require confirmed manual examination.
+ *
  * Fail-safe policy: moderation is a SCREENING stage, never a permission.
- *  - explicit sexual content → flagged (manual examination mandatory)
+ *  - sexual content (including any minor-related signal) → flagged
+ *    (manual examination mandatory; the administrator follows ordinary
+ *    legal escalation for suspected illegal material)
  *  - API failure, timeout, missing key, disabled → uncertain (manual
  *    examination mandatory)
- * A 'clear' verdict never publishes anything by itself: every replacement
- * still requires explicit Security Administrator approval.
  */
 class PhotoModerationService
 {
@@ -29,7 +34,7 @@ class PhotoModerationService
 
     public const VERDICT_UNCERTAIN = 'uncertain';
 
-    /** Category keys treated as hard flags. */
+    /** Category keys treated as hard flags (manual examination mandatory). */
     private const HARD_CATEGORIES = ['sexual', 'sexual/minors'];
 
     /** Score above this (0-1) without a boolean flag is treated as flagged. */
@@ -38,7 +43,7 @@ class PhotoModerationService
     /** @return array{verdict: string, categories: array<string, mixed>, provider_error: ?string} */
     public function moderate(string $absolutePath, string $mimeType): array
     {
-        if (! (bool) config('jannayaks.security.photo_moderation.enabled', true)) {
+        if (! (bool) config('jannayaks.security.integrity.photo_moderation.enabled', true)) {
             return ['verdict' => self::VERDICT_UNCERTAIN, 'categories' => [], 'provider_error' => 'moderation_disabled'];
         }
 
@@ -52,9 +57,9 @@ class PhotoModerationService
             return ['verdict' => self::VERDICT_UNCERTAIN, 'categories' => [], 'provider_error' => 'unreadable_file'];
         }
 
-        $endpoint = (string) config('jannayaks.security.photo_moderation.endpoint', 'https://api.openai.com/v1/moderations');
-        $model = (string) config('jannayaks.security.photo_moderation.model', 'omni-moderation-latest');
-        $timeout = (int) config('jannayaks.security.photo_moderation.timeout_seconds', 30);
+        $endpoint = (string) config('jannayaks.security.integrity.photo_moderation.endpoint', 'https://api.openai.com/v1/moderations');
+        $model = (string) config('jannayaks.security.integrity.photo_moderation.model', 'omni-moderation-latest');
+        $timeout = (int) config('jannayaks.security.integrity.photo_moderation.timeout_seconds', 30);
 
         try {
             $response = Http::withHeaders([

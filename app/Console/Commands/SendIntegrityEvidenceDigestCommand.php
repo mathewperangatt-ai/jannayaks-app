@@ -4,6 +4,7 @@ namespace App\Console\Commands;
 
 use App\Models\IntegrityIncident;
 use App\Models\ProfileIntegritySnapshot;
+use App\Models\StaffActionLog;
 use App\Services\ProfileIntegrityService;
 use Illuminate\Console\Command;
 use Illuminate\Support\Facades\Mail;
@@ -54,16 +55,23 @@ class SendIntegrityEvidenceDigestCommand extends Command
         $newToday = (int) IntegrityIncident::query()->where('created_at', '>=', now()->subDay())->count();
         $unsignedCount = $snapshots->filter(fn ($row) => $row->signature === null)->count();
 
-        // Rolling aggregate: chains today's rows onto yesterday's anchor so a
-        // silently rewritten corpus cannot reproduce the same digest.
-        $yesterday = trim((string) cache()->get('integrity.digest.aggregate', ''));
+        // Rolling aggregate: chains today's rows onto the previous digest's
+        // aggregate, read from the PERSISTENT audit log — survives restarts,
+        // cache clearing and deployments. The emailed digests remain the
+        // external reference; the database chain is only the continuation.
+        $previousAggregate = (string) data_get(
+            StaffActionLog::query()
+                ->where('action', 'integrity.evidence_digest_sent')
+                ->orderByDesc('id')
+                ->first()?->after,
+            'aggregate',
+            '',
+        );
 
         $aggregate = hash('sha256', implode('|', array_merge(
-            $yesterday === '' ? [] : [$yesterday],
+            $previousAggregate === '' ? [] : [$previousAggregate],
             $snapshots->map(fn ($row): string => $row->profile_id.':'.$row->snapshot_hash.':'.$row->signature)->all(),
         )));
-
-        cache()->put('integrity.digest.aggregate', $aggregate, now()->addDays(2));
 
         $digest = [
             'generated_at_ist' => now()->timezone('Asia/Kolkata')->format('Y-m-d H:i:s'),

@@ -448,13 +448,15 @@ PROMPT,
             ],
 
             /*
-            | Genuine image-CONTENT moderation for member-submitted photograph
-            | replacements (nudity / explicit / manipulated sexual imagery) via
-            | the OpenAI moderation endpoint (omni-moderation-latest — free of
-            | charge; reuses the already-configured OPENAI_API_KEY). Fail-safe:
-            | unavailable moderation yields 'uncertain', which always requires
-            | manual examination by the Security Administrator before approval.
-            | Every replacement still needs explicit manual approval regardless.
+            | Image-content moderation SCREENING for member-submitted photograph
+            | replacements via the OpenAI moderation endpoint (omni-moderation-latest
+            | — free of charge; reuses the already-configured OPENAI_API_KEY).
+            | IMPORTANT: this is a screening aid, NOT a guarantee — automated
+            | moderation can miss manipulated or AI-generated content. Every
+            | replacement photograph requires explicit Security Administrator
+            | approval regardless of the verdict; flagged or uncertain verdicts
+            | additionally require confirmed manual examination. Suspected
+            | illegal material follows ordinary legal escalation procedures.
             */
             'photo_moderation' => [
                 'enabled' => env('JANNAYAKS_PHOTO_MODERATION_ENABLED', true),

@@ -313,6 +313,28 @@ class PhotoReplacementWorkflowTest extends TestCase
         app(PhotoReplacementRequestService::class)->approve($submission, $securityAdmin, '', confirmManualExamination: false);
     }
 
+    public function test_moderation_config_override_and_disable_switch(): void
+    {
+        ['member' => $member, 'profile' => $profile] = $this->seedPublishedWithPhoto();
+
+        // The service reads the NESTED integrity config path: an override
+        // there must reach it.
+        config(['jannayaks.security.integrity.photo_moderation.endpoint' => 'https://moderation.example.test/v1/moderations']);
+        Http::fake(['moderation.example.test/v1/moderations' => Http::response([
+            'results' => [['categories' => ['sexual' => true], 'category_scores' => ['sexual' => 0.9]]],
+        ], 200)]);
+
+        $submission = app(PhotoReplacementRequestService::class)->submit($profile, $member, $this->jpegUpload());
+        $this->assertSame(\App\Security\PhotoModerationService::VERDICT_FLAGGED, $submission->moderation_result);
+        Http::assertSent(fn ($request): bool => str_contains((string) $request->url(), 'moderation.example.test'));
+
+        // The disable switch yields uncertain (manual examination mandatory).
+        config(['jannayaks.security.integrity.photo_moderation.enabled' => false]);
+        $disabled = app(PhotoReplacementRequestService::class)->submit($profile, $member, $this->jpegUpload(300, 400, 'second.jpg'));
+        $this->assertSame(\App\Security\PhotoModerationService::VERDICT_UNCERTAIN, $disabled->moderation_result);
+        $this->assertSame('moderation_disabled', $disabled->moderation_error);
+    }
+
     public function test_strict_mode_blocks_the_existing_admin_from_review(): void
     {
         config(['jannayaks.security.integrity.published_profile_admin.allow_legacy_admin' => false]);

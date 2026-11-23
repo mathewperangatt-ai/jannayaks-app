@@ -96,11 +96,48 @@ class IntegrityEvidenceDigestTest extends TestCase
             ->expectsOutputToContain('Integrity evidence digest emailed')
             ->assertSuccessful();
 
-        \Illuminate\Support\Facades\Log::info('DIGEST-TEST-DEBUG');
         Mail::assertSent(\App\Mail\IntegrityEvidenceDigestMail::class, 1);
 
         // The digest is recorded in the audit trail.
         $this->assertTrue(StaffActionLog::query()->where('action', 'integrity.evidence_digest_sent')->exists());
+    }
+
+    public function test_rolling_aggregate_persists_across_cache_clears(): void
+    {
+        $this->seedPublishedProfile();
+
+        $this->artisan('jannayaks:integrity-evidence-digest')->assertSuccessful();
+        $first = StaffActionLog::query()->where('action', 'integrity.evidence_digest_sent')->first();
+        $this->assertNotNull($first->after['aggregate'] ?? null);
+
+        // Simulate a deployment/cache clear + restart: the cache is emptied,
+        // but the chain continues from the PERSISTENT audit log, not a cache
+        // value — the emailed digests remain the external reference.
+        cache()->forget('integrity.digest.aggregate');
+
+        $this->artisan('jannayaks:integrity-evidence-digest')->assertSuccessful();
+        $rows = StaffActionLog::query()->where('action', 'integrity.evidence_digest_sent')->orderBy('id')->get();
+        $this->assertCount(2, $rows);
+        $this->assertNotSame($first->after['aggregate'], $rows->last()->after['aggregate']);
+
+        // Recompute the second aggregate exactly as the command does, using
+        // the PERSISTED first aggregate + the current snapshot rows — proving
+        // the chain continued from the audit log after the cache clear.
+        $snapshotRows = ProfileIntegritySnapshot::query()
+            ->join('profiles', 'profiles.id', '=', 'profile_integrity_snapshots.profile_id')
+            ->where('profiles.status', 'published')
+            ->whereNull('profiles.unpublished_at')
+            ->orderBy('profile_integrity_snapshots.profile_id')
+            ->get([
+                'profile_integrity_snapshots.profile_id',
+                'profile_integrity_snapshots.snapshot_hash',
+                'profile_integrity_snapshots.signature',
+            ]);
+        $expected = hash('sha256', implode('|', array_merge(
+            [$first->after['aggregate']],
+            $snapshotRows->map(fn ($row): string => $row->profile_id.':'.$row->snapshot_hash.':'.$row->signature)->all(),
+        )));
+        $this->assertSame($expected, $rows->last()->after['aggregate']);
     }
 
     public function test_digest_skips_when_no_anchor_recipient_is_configured(): void

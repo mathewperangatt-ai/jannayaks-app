@@ -11,7 +11,6 @@ use App\Security\PhotoSafetyScreeningService;
 use App\Security\PublishedProfileAuthorizer;
 use Illuminate\Http\UploadedFile;
 use Illuminate\Support\Facades\DB;
-use Illuminate\Support\Facades\Log;
 use Illuminate\Support\Facades\Mail;
 use Illuminate\Support\Facades\Storage;
 use InvalidArgumentException;
