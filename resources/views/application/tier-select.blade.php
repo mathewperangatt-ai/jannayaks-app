@@ -98,6 +98,7 @@
             <div class="field">
                 <label for="contact_email">{{ $ml ? 'ബന്ധപ്പെടാനുള്ള ഇമെയിൽ' : 'Contact email' }}</label>
                 <input id="contact_email" name="contact_email" type="email" maxlength="255" value="{{ old('contact_email') }}" autocomplete="email">
+                <div id="email-status" class="hint" style="display:none"></div>
                 @error('contact_email')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
             <div class="field">
@@ -154,6 +155,40 @@
     if (email) email.addEventListener('input', syncContact);
     if (mobile) mobile.addEventListener('input', syncContact);
     syncContact();
+
+    // Wave 3 follow-up: EARLY duplicate-email detection. Advisory only —
+    // the server re-checks authoritatively on submit. No redirect, no
+    // session change, no account creation.
+    var status = document.getElementById('email-status');
+    var controller = null;
+    function checkEmail(){
+        if (!email || !status) return;
+        var value = email.value.trim();
+        if (value === '' || email.validity && email.validity.typeMismatch) { status.style.display = 'none'; return; }
+        if (controller) controller.abort();
+        controller = new AbortController();
+        fetch('{{ route('apply.email-status') }}?email=' + encodeURIComponent(value), {
+            signal: controller.signal,
+            headers: { 'Accept': 'application/json' }
+        }).then(function(r){ return r.ok ? r.json() : null; }).then(function(data){
+            if (!data) return;
+            if (data.account_exists) {
+                status.textContent = @json($ml ? 'ഈ ഇമെയിൽ ഒരു അക്കൗണ്ടുമായി വരുത്തിയാൽ വേണം — തുടരാൻ അതേ അക്കൗണ്ടിൽ സൈൻ ഇൻ ചെയ്യുക.' : 'This email address is already registered. Please sign in to continue with that account.');
+                status.style.display = 'block';
+                status.style.color = '#7a1414';
+            } else if (data.application_associated) {
+                status.textContent = @json($ml ? 'ഈ ഇമെയിൽ നിലവിലുള്ള ഒരു അപേക്ഷയുമായി ബന്ധപ്പെട്ടിരിക്കുന്നു — തുടരാൻ സൈൻ ഇൻ ചെയ്യുക.' : 'This email address is already associated with an application. Please sign in to continue.');
+                status.style.display = 'block';
+                status.style.color = '#7a1414';
+            } else {
+                status.style.display = 'none';
+                status.textContent = '';
+            }
+        }).catch(function(){ /* advisory only; server re-checks on submit */ });
+    }
+    if (email) email.addEventListener('blur', checkEmail);
+    var form = email ? email.closest('form') : null;
+    if (form) form.addEventListener('submit', function(){ if (email && email.value.trim() !== '') checkEmail(); });
 })();
 </script>
 @endpush

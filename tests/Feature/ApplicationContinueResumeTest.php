@@ -3,8 +3,12 @@
 namespace Tests\Feature;
 
 use App\Models\Application;
+use App\Models\Profile;
 use App\Models\User;
 use Illuminate\Foundation\Testing\RefreshDatabase;
+use Illuminate\Support\Facades\Http;
+use Illuminate\Support\Facades\Mail;
+use Illuminate\Support\Facades\Storage;
 use Tests\TestCase;
 
 /**
@@ -162,6 +166,193 @@ class ApplicationContinueResumeTest extends TestCase
             'email' => 'This email address is already associated with an existing application.',
         ]);
         $this->assertNull(User::query()->where('email', 'app-email@example.com')->first());
+    }
+
+    /**
+     * Published profile fixture with one approved photograph (mirrors the
+     * real dashboard's expectations for a published application).
+     */
+    private function seedPublishedWithPhoto(): array
+    {
+        $member = User::factory()->create(['role' => User::ROLE_MEMBER]);
+        $editor = User::factory()->editor()->create();
+        $reviewer = User::factory()->editor()->create();
+        $admin = User::factory()->admin()->create();
+
+        $application = \App\Models\Application::factory()->historical('accomplished')->paid()->create([
+            'user_id' => $member->id,
+            'source_method' => 'admin_test_demo',
+            'full_name' => 'Dashboard Fixture',
+            'preferred_display_name' => 'Dashboard Fixture',
+        ]);
+
+        $profile = Profile::query()->create([
+            'user_id' => $member->id,
+            'status' => 'member_approved',
+            'full_name' => 'Dashboard Fixture',
+            'display_name' => 'Dashboard Fixture',
+            'slug' => 'dash-fixture-'.\Illuminate\Support\Str::random(8),
+        ]);
+        $application->forceFill(['profile_id' => $profile->id])->save();
+
+        $photo = app(\App\Services\ProfileMediaService::class)->uploadProfilePhoto(
+            $profile,
+            \Illuminate\Http\UploadedFile::fake()->image('portrait.jpg', 400, 500),
+            $editor,
+        );
+        app(\App\Services\ProfileMediaService::class)->approve($photo, $reviewer);
+
+        $english = \App\Models\EditorialContent::query()->create([
+            'profile_id' => $profile->id,
+            'language' => \App\Models\EditorialContent::LANGUAGE_EN,
+            'status' => \App\Models\EditorialContent::STATUS_APPROVED,
+            'version_number' => 1,
+            'title' => 'Dashboard Fixture',
+            'body' => 'Body.',
+            'summary' => 'Summary.',
+            'source_material' => '',
+            'ai_generated' => false,
+        ]);
+
+        $application->fresh()->forceFill([
+            'customer_approved_at' => now(),
+            'customer_approved_english_editorial_content_id' => $english->id,
+            'customer_approved_by_user_id' => $member->id,
+            'status' => \App\Models\Application::STATUS_AWAITING_PUBLICATION,
+        ])->save();
+
+        app(\App\Services\ApplicationWorkflowService::class)->publish($application->fresh(), $admin, true);
+
+        return ['member' => $member, 'profile' => $profile->fresh(), 'application' => $application->fresh()];
+    }
+
+    /** The email-status endpoint reports account/application associations, booleans only. */
+    public function test_email_status_endpoint_reports_associations(): void
+    {
+        $owner = User::factory()->create(['email' => 'status.person@example.com', 'role' => User::ROLE_MEMBER]);
+        Application::factory()->create([
+            'user_id' => $owner->id,
+            'applicant_email_normalized' => 'status.person@example.com',
+            'preferred_contact_email' => 'status.person@example.com',
+            'status' => Application::STATUS_INTERVIEW_IN_PROGRESS,
+        ]);
+
+        // Unauthenticated applicants fill the intake form — the endpoint is public.
+        $this->getJson(route('apply.email-status', ['email' => 'status.person@example.com']))
+            ->assertOk()
+            ->assertJson(['account_exists' => true, 'application_associated' => true]);
+
+        $this->getJson(route('apply.email-status', ['email' => 'status.person@example.com']))
+            ->assertJson(['account_exists' => true]);
+
+        $this->getJson(route('apply.email-status', ['email' => 'brand.new@example.com']))
+            ->assertOk()
+            ->assertJson(['account_exists' => false, 'application_associated' => false]);
+    }
+
+    /** Cross-account duplicates surface a field-specific error on the email field. */
+    public function test_store_duplicate_error_is_field_specific(): void
+    {
+        $owner = User::factory()->create(['email' => 'taken.person@example.com', 'role' => User::ROLE_MEMBER]);
+        Application::factory()->create([
+            'user_id' => $owner->id,
+            'applicant_email_normalized' => 'taken.person@example.com',
+            'status' => Application::STATUS_PUBLISHED,
+        ]);
+
+        $stranger = User::factory()->create(['email' => 'stranger.2@example.com', 'role' => User::ROLE_MEMBER]);
+
+        $this->actingAs($stranger)->post(route('applications.store'), $this->storePayload('taken.person@example.com', 'Stranger Two'))
+            ->assertRedirect(route('apply'))
+            ->assertSessionHasErrors(['email' => Application::DUPLICATE_EMAIL_NOTICE]);
+        $this->assertSame(1, Application::query()->where('user_id', $owner->id)->count());
+    }
+
+    /** An authenticated user visiting /login lands on their OWN dashboard only. */
+    public function test_login_page_redirects_authenticated_user_to_own_dashboard(): void
+    {
+        $member = User::factory()->create(['email' => 'dash.person@example.com', 'role' => User::ROLE_MEMBER]);
+        Application::factory()->create([
+            'user_id' => $member->id,
+            'applicant_email_normalized' => 'dash.person@example.com',
+            'status' => Application::STATUS_INTERVIEW_IN_PROGRESS,
+            'full_name' => 'Dash Person',
+        ]);
+
+        $response = $this->actingAs($member)->get('/login');
+
+        $response->assertRedirect(route('applications.show', ['application' => $member->applications->first()->id]));
+    }
+
+    /** A different user's application dashboard is refused. */
+    public function test_show_own_refuses_foreign_application(): void
+    {
+        ['profile' => $profile, 'application' => $ownerApplication] = $this->seedPublishedWithPhoto();
+        $intruder = User::factory()->create(['role' => User::ROLE_MEMBER]);
+
+        $this->actingAs($intruder)->get(route('applications.show', ['application' => $ownerApplication->id]))
+            ->assertRedirect(route('home'))
+            ->assertSessionHasErrors();
+        $this->actingAs($intruder)->get(route('applications.payment', ['application' => $ownerApplication->id]))
+            ->assertRedirect(route('home'))
+            ->assertSessionHasErrors();
+    }
+
+    /** Published profile dashboards show the published state, never payment prompts. */
+    public function test_published_application_dashboard_shows_published_not_payment(): void
+    {
+        ['member' => $member, 'profile' => $profile, 'application' => $application] = $this->seedPublishedWithPhoto();
+
+        $response = $this->actingAs($member)->get(route('applications.show', ['application' => $application->id]));
+
+        $response->assertOk();
+        $html = $response->getContent();
+        $this->assertStringContainsString('PUBLISHED', $html);
+        $this->assertStringContainsString('View published profile', $html);
+        $this->assertStringNotContainsString('Pay to unlock interview', $html);
+    }
+
+    /** Genuine unpaid, not-yet-published applications keep the payment prompt. */
+    public function test_unpaid_incomplete_application_keeps_payment_prompt(): void
+    {
+        $member = User::factory()->create(['email' => 'unpaid.person@example.com', 'role' => User::ROLE_MEMBER]);
+        $profile = Profile::query()->create([
+            'user_id' => $member->id,
+            'status' => 'member_approved',
+            'full_name' => 'Unpaid Person',
+            'display_name' => 'Unpaid Person',
+            'slug' => 'unpaid-fixture-'.\Illuminate\Support\Str::random(8),
+        ]);
+        $application = Application::factory()->create([
+            'user_id' => $member->id,
+            'applicant_email_normalized' => 'unpaid.person@example.com',
+            'profile_id' => $profile->id,
+            'source_method' => 'online_interview',
+            'status' => Application::STATUS_PAYMENT_PENDING,
+            'full_name' => 'Unpaid Person',
+        ]);
+
+        $response = $this->actingAs($member)->get(route('applications.show', ['application' => $application->id]));
+
+        $response->assertOk();
+        $this->assertStringContainsString('Pay to unlock interview', $response->getContent());
+    }
+
+    /** Registration rejection for an existing email creates no user and no session. */
+    public function test_registration_rejection_creates_no_user(): void
+    {
+        User::factory()->create(['email' => 'registered@example.com', 'username' => 'registered.user', 'role' => User::ROLE_MEMBER]);
+
+        $this->post('/register', [
+            'name' => 'Late Applicant',
+            'username' => 'late.applicant',
+            'email' => 'registered@example.com',
+            'password' => 'Br1ght-P4ssw0rd!',
+            'password_confirmation' => 'Br1ght-P4ssw0rd!',
+        ])->assertSessionHasErrors(['email']);
+
+        $this->assertNull(User::query()->where('email', 'registered@example.com')->where('username', 'late.applicant')->first());
+        $this->assertSame(1, User::query()->where('email', 'registered@example.com')->count());
     }
 
     /** The JSON API contract is unchanged: own-application reposts still 409. */

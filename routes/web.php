@@ -126,6 +126,7 @@ Route::middleware(['auth', 'verified.or.mobile'])->prefix('staff')->name('staff.
 
 Route::get('/apply', [ApplicationController::class, 'create'])->name('apply');
 Route::post('/apply/intent', [ApplicationController::class, 'storeIntent'])->middleware('throttle:20,1')->name('apply.intent');
+Route::get('/apply/email-status', [ApplicationController::class, 'emailStatus'])->middleware('throttle:30,1')->name('apply.email-status');
 
 Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::get('/apply/continue', [ApplicationController::class, 'continueFromIntent'])->name('apply.continue');
