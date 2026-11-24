@@ -92,6 +92,8 @@
             <div class="field">
                 <label for="preferred_slug">{{ $ml ? 'ആഗ്രഹിക്കുന്ന വ്യക്തിഗത URL (ഓപ്ഷണൽ നിർദ്ദേശം)' : 'Preferred personal URL (optional hint)' }}</label>
                 <input id="preferred_slug" name="preferred_slug" type="text" pattern="^[a-z0-9]+(?:[.\-][a-z0-9]+)*$" maxlength="128" value="{{ old('preferred_slug') }}" placeholder="e.g. arun.kumar">
+                <div class="hint" id="slug-preview" style="display:none">{{ $ml ? 'നിങ്ങളുടെ പ്രൊഫൈൽ URL:' : 'Your profile URL:' }} <b class="mono">jannayaks.in/<span id="slug-preview-value"></span></b></div>
+                <div id="slug-suggestions" class="hint" style="display:none"></div>
                 <div class="hint">{{ $ml ? 'ഇത് ഓപ്ഷണലാണ്. നിങ്ങൾ നൽകുന്ന ഇഷ്ടപ്പെട്ട പേര്, ലഭ്യതയ്ക്കും URL ഫോർമാറ്റിനും വിധേയമായി, നിങ്ങളുടെ വ്യക്തിഗത Jannayaks പ്രൊഫൈൽ ലിങ്ക് സൃഷ്ടിക്കാൻ ഉപയോഗിക്കുന്നു. നിങ്ങൾ സ്വയം ഒരു username സൃഷ്ടിക്കേണ്ടതില്ല. പ്രൊഫൈൽ പ്രസിദ്ധീകരിച്ചുകഴിഞ്ഞാൽ അതിന്റെ URL മാറ്റാൻ കഴിയില്ല.' : 'Optional. Your preferred name is used to create your personalised Jannayaks profile URL, subject to availability and URL formatting requirements. You do not invent a username. Once your profile is published, its URL cannot be changed.' }}</div>
                 @error('preferred_slug')<div class="hint" style="color:#7a1414">{{ $message }}</div>@enderror
             </div>
@@ -153,6 +155,9 @@
             : @json($ml ? 'വിശ്വസനീയമായ ഒരു ബന്ധപ്പെടൽ മാർഗമെങ്കിലും (ഇമെയിൽ അല്ലെങ്കിൽ മൊബൈൽ നമ്പർ) നൽകുക. എഡിറ്റോറിയൽ പരിശോധനയ്ക്കും തയ്യാറാക്കിയ പ്രൊഫൈൽ സ്ഥിരീകരിക്കുന്നതിനുമായി Jannayaks നിങ്ങളുമായി ബന്ധപ്പെടും.' : 'Provide at least one reliable contact method (email or mobile). Jannayaks will contact you for editorial review and to confirm the finished profile.');
     }
     if (email) email.addEventListener('input', syncContact);
+    document.querySelectorAll('button.slug-suggestion').forEach(function(btn){
+        btn.style.cssText = 'display:inline-block;margin:3px 6px 3px 0;padding:6px 12px;border-radius:6px;font-size:13px;cursor:pointer;border:1.5px solid #cbd5e1;background:#fff;color:#1f2937';
+    });
     if (mobile) mobile.addEventListener('input', syncContact);
     syncContact();
 
@@ -189,6 +194,62 @@
     if (email) email.addEventListener('blur', checkEmail);
     var form = email ? email.closest('form') : null;
     if (form) form.addEventListener('submit', function(){ if (email && email.value.trim() !== '') checkEmail(); });
+
+    // Wave 3 follow-up: name-derived personal URL suggestions on the initial
+    // form (reuses ProfileUrlService::suggestPersonalSlugs server-side).
+    var fullNameInput = document.getElementById('full_name');
+    var slugInput = document.getElementById('preferred_slug');
+    var slugList = document.getElementById('slug-suggestions');
+    var slugPreview = document.getElementById('slug-preview');
+    var slugPreviewValue = document.getElementById('slug-preview-value');
+    var suggestionsTimer = null;
+
+    function updateSlugPreview(){
+        if (!slugPreview || !slugPreviewValue) return;
+        var value = (slugInput && slugInput.value || '').trim().toLowerCase();
+        if (value === '') { slugPreview.style.display = 'none'; return; }
+        slugPreviewValue.textContent = value;
+        slugPreview.style.display = 'block';
+    }
+
+    function renderSuggestions(data){
+        if (!slugList) return;
+        var items = (data && data.suggestions) || [];
+        if (items.length === 0) { slugList.style.display = 'none'; slugList.innerHTML = ''; return; }
+        var html = '<div style="margin:4px 0">' + @json($ml ? 'നിങ്ങളുടെ പേരിൽ നിന്നുള്ള നിർദ്ദേശങ്ങൾ (ലഭ്യമായവ ക്ലിക്ക് ചെയ്യുക):' : 'Suggestions from your name — click an available one to select it:') + '</div>';
+        items.forEach(function(item){
+            var cls = item.available ? 'available' : 'unavailable';
+            html += '<button type="button" class="slug-suggestion slug-' + cls + '" data-slug="' + item.slug + '">' +
+                'jannayaks.in/' + item.slug + (item.available ? '' : ' (@json($ml ? 'ലഭ്യമല്ല' : 'taken'))') + '</button>';
+        });
+        slugList.innerHTML = html;
+        slugList.style.display = 'block';
+        slugList.querySelectorAll('button.slug-suggestion.available').forEach(function(btn){
+            btn.addEventListener('click', function(){
+                if (slugInput) {
+                    slugInput.value = btn.getAttribute('data-slug');
+                    slugInput.dispatchEvent(new Event('input'));
+                }
+            });
+        });
+    }
+
+    function fetchSuggestions(){
+        if (!fullNameInput || !slugList) return;
+        var name = fullNameInput.value.trim();
+        if (name.length < 2) { slugList.style.display = 'none'; slugList.innerHTML = ''; return; }
+        fetch('{{ route('apply.url-suggestions') }}?name=' + encodeURIComponent(name), {
+            headers: { 'Accept': 'application/json' }
+        }).then(function(r){ return r.ok ? r.json() : { suggestions: [] }; }).then(renderSuggestions)
+          .catch(function(){ /* advisory only */ });
+    }
+
+    if (fullNameInput) fullNameInput.addEventListener('input', function(){
+        if (suggestionsTimer) clearTimeout(suggestionsTimer);
+        suggestionsTimer = setTimeout(fetchSuggestions, 350);
+    });
+    if (slugInput) slugInput.addEventListener('input', updateSlugPreview);
+    updateSlugPreview();
 })();
 </script>
 @endpush
