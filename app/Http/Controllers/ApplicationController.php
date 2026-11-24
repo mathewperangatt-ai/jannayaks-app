@@ -827,6 +827,27 @@ class ApplicationController extends Controller
 
     private function duplicateEmailResponse(Request $request, ?Application $existing, int $currentUserId): JsonResponse|RedirectResponse
     {
+        // The applicant's OWN application is not a duplicate: resume it
+        // instead of bouncing them back to the beginning of the intake flow.
+        // In-flight applications resume at their next workflow step; completed,
+        // published or closed applications go to the application dashboard so
+        // the applicant never re-enters an incomplete workflow. Cross-account
+        // email collisions keep the duplicate notice below.
+        if ($existing instanceof Application
+            && (int) $existing->user_id === $currentUserId
+            && ! $request->expectsJson()) {
+            $resumeTo = in_array($existing->status, [
+                Application::STATUS_INTAKE_IN_PROGRESS,
+                Application::STATUS_INTERVIEW_IN_PROGRESS,
+                Application::STATUS_PAYMENT_PENDING,
+                Application::STATUS_PAYMENT_COMPLETE_AWAITING_INTERVIEW,
+            ], true)
+                ? $this->redirectUrlFor($existing)
+                : route('applications.show', $existing);
+
+            return redirect()->to($resumeTo);
+        }
+
         $payload = [
             'ok' => false,
             'error' => Application::DUPLICATE_EMAIL_NOTICE,
@@ -836,6 +857,12 @@ class ApplicationController extends Controller
         }
 
         if ($request->expectsJson()) {
+            if ($existing instanceof Application && (int) $existing->user_id === $currentUserId) {
+                // JSON callers receive the resume destination alongside the
+                // established 409 contract.
+                $payload['redirect_to'] = $this->redirectUrlFor($existing);
+            }
+
             return response()->json($payload, 409);
         }
 

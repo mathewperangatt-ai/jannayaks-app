@@ -32,11 +32,22 @@ class RegisteredUserController extends Controller
 
     public function store(Request $request): RedirectResponse
     {
+        // Wave 3 follow-up: duplicate identification is explicit and
+        // field-specific — the applicant is told whether the USERNAME or the
+        // EMAIL is already registered (or both). Personal names are never a
+        // uniqueness criterion: two applicants may share the same name.
         $validated = $request->validate([
             'name' => ['required', 'string', 'min:2', 'max:255'],
             'username' => ['required', 'string', 'min:3', 'max:32', 'regex:/^[A-Za-z0-9](?:[A-Za-z0-9._-]*[A-Za-z0-9])?$/', 'unique:users,username'],
-            'email' => ['required', 'string', 'email:strict', 'max:255', 'unique:users,email'],
+            'email' => ['required', 'string', 'email:strict', 'max:255', 'unique:users,email', function (string $attribute, mixed $value, \Closure $fail): void {
+                if (Application::emailIsAssociated((string) $value)) {
+                    $fail('This email address is already associated with an existing application.');
+                }
+            }],
             'password' => ['required', 'string', 'confirmed', \Illuminate\Validation\Rules\Password::defaults()],
+        ], [
+            'username.unique' => 'This username is already registered. Please choose a different username.',
+            'email.unique' => 'This email address is already registered. Please sign in instead.',
         ]);
 
         $user = User::query()->create([
