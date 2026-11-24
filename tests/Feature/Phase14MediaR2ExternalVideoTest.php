@@ -188,7 +188,9 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
             ->assertOk()
             ->assertDontSee(route('profiles.public.photo', [$profile, $photo], false), false);
 
-        $approved = $service->approve($photo, $editor);
+        // Wave 3: approval on a PUBLISHED profile requires the published-
+        // profile authority (the transitional admin retains it).
+        $approved = $service->approve($photo, $admin);
         $this->assertSame(MediaItem::REVIEW_APPROVED, $approved->review_status);
         $this->assertSame(MediaItem::PRIVACY_PUBLIC, $approved->privacy);
 
@@ -254,8 +256,10 @@ class Phase14MediaR2ExternalVideoTest extends TestCase
         $this->assertStringContainsString('/p/'.$profile->id.'/photo/'.$photoA->id, $html);
         $this->assertStringNotContainsString('/p/'.$profile->id.'/photo/'.$photoB->id, $html);
 
-        // Photo B was uploaded by $editor, so a different reviewer approves it.
-        $service->approve($photoB->fresh(), $editor2);
+        // Wave 3: approval on a PUBLISHED profile requires the published-
+        // profile authority; $editor2 stays the uploader's separation guard.
+        $securityApprover = User::factory()->create(['role' => User::ROLE_SECURITY_ADMIN]);
+        $service->approve($photoB->fresh(), $securityApprover);
         $html = $this->get(route('profiles.public', $profile->slug))->assertOk()->getContent();
         $this->assertStringContainsString('/p/'.$profile->id.'/photo/'.$photoB->id, $html);
         $this->assertTrue(StaffActionLog::query()->where('action', 'media.profile_photo_approved')->exists());

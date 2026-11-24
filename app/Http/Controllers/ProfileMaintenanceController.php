@@ -123,6 +123,39 @@ class ProfileMaintenanceController extends Controller
             ->with('status', 'Your correction request has been passed to the editorial team. The corrected profile will return here for your approval.');
     }
 
+    /**
+     * Wave 3: member-submitted replacement photograph. Enters the private
+     * pending-review workflow — the published photographs are never touched
+     * until a Security Administrator approves the request.
+     */
+    public function submitPhotoReplacement(Request $request, Application $application): RedirectResponse
+    {
+        $member = $this->authenticatedOwner($application);
+        $profile = $this->publishableProfile($application);
+
+        $validated = $request->validate([
+            'photo' => ['required', 'file', 'max:10240', 'mimes:jpg,jpeg,png,webp'],
+            'member_note' => ['nullable', 'string', 'max:1000'],
+        ]);
+
+        try {
+            app(\App\Services\PhotoReplacementRequestService::class)->submit(
+                $profile,
+                $member,
+                $request->file('photo'),
+                (string) ($validated['member_note'] ?? ''),
+            );
+        } catch (InvalidArgumentException $e) {
+            return redirect()
+                ->route('applications.preview', $application)
+                ->withErrors(['photo' => $e->getMessage()]);
+        }
+
+        return redirect()
+            ->route('applications.preview', $application)
+            ->with('status', 'Your replacement photograph has been submitted for security review. Your published profile stays unchanged until it is approved.');
+    }
+
     private function authenticatedOwner(Application $application): User
     {
         $user = Auth::user();

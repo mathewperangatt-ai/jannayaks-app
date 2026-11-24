@@ -67,6 +67,14 @@ class AppServiceProvider extends ServiceProvider
      */
     public function boot(): void
     {
+        // Wave 3 — event-driven integrity triggers. Whenever a published
+        // profile's public-state inputs change through the application, a
+        // queued verification runs against the trusted snapshot. Legitimate
+        // workflows refresh the baseline in-flow, so no false alarms.
+        \App\Models\Profile::observe(\App\Observers\PublishedProfileIntegrityObserver::class);
+        \App\Models\EditorialContent::observe(\App\Observers\EditorialContentIntegrityObserver::class);
+        \App\Models\MediaItem::observe(\App\Observers\MediaItemIntegrityObserver::class);
+
         // A1 — authed users hitting guest-only pages (e.g. /login) go to
         // their existing application dashboard, never a bare home page.
         \Illuminate\Auth\Middleware\RedirectIfAuthenticated::redirectUsing(function ($request) {

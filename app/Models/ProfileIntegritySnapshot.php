@@ -27,6 +27,8 @@ class ProfileIntegritySnapshot extends Model
         'public_offices',
         'video_links',
         'snapshot_hash',
+        'signature',
+        'signature_chain',
         'source_event',
         'verified_at',
     ];

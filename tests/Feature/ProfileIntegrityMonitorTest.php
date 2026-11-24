@@ -231,8 +231,10 @@ class ProfileIntegrityMonitorTest extends TestCase
     {
         $pack = $this->seedPublishedProfile(withPhoto: true);
         $profile = $pack['profile']->fresh();
+        // Wave 3: photo approvals on a PUBLISHED profile are published-profile
+        // authority — the Security Administrator.
         $staffUploader = User::factory()->editor()->create();
-        $reviewer = User::factory()->editor()->create();
+        $reviewer = User::factory()->create(['role' => User::ROLE_SECURITY_ADMIN]);
         $media = app(ProfileMediaService::class);
 
         $before = ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->firstOrFail();

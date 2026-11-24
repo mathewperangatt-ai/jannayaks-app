@@ -84,6 +84,9 @@ class AdminPanelProvider extends PanelProvider
             ])
             ->authMiddleware([
                 Authenticate::class,
+                // Wave 3 — mandatory TOTP for the Security Administrator:
+                // enrollment gate + per-login challenge on every panel request.
+                \App\Http\Middleware\RequireSecurityTotp::class,
             ]);
     }
 }

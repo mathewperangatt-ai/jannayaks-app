@@ -20,6 +20,7 @@ class ProfileMediaService
     public function __construct(
         private StaffAuditLogger $audit,
         private ProfilePhotoOptimizer $optimizer,
+        private \App\Security\PublishedProfileAuthorizer $publishedProfiles,
     ) {}
 
     public function publicDisk(): string
@@ -214,6 +215,7 @@ class ProfileMediaService
      */
     public function setPrimary(Profile $profile, MediaItem $media, User $actor): MediaItem
     {
+        $this->assertPublishedPhotoAuthority($profile, $actor, 'photos.published.set_primary');
         $this->assertOwnedByMemberOrStaff($profile, $actor);
         $this->assertMemberMayMutateProfileContent($profile, $actor);
         $this->assertMediaBelongsToProfile($profile, $media);
@@ -275,7 +277,11 @@ class ProfileMediaService
      */
     public function approve(MediaItem $media, User $reviewer, ?string $note = null): MediaItem
     {
-        if (! $reviewer->canManageEditorial()) {
+        $approveProfile = $media->mediable_type === Profile::class ? Profile::query()->find($media->mediable_id) : null;
+        if ($approveProfile !== null) {
+            $this->assertPublishedPhotoAuthority($approveProfile, $reviewer, 'photos.published.approve');
+        }
+        if (! $reviewer->canManageEditorial() && ! $reviewer->canManagePublishedProfiles()) {
             throw ValidationException::withMessages([
                 'media' => 'You are not allowed to approve photographs.',
             ]);
@@ -290,7 +296,13 @@ class ProfileMediaService
             ]);
         }
 
-        if ((int) $media->uploaded_by_id === (int) $reviewer->id) {
+        // Wave 3 carve-out: an approved member photograph replacement is a
+        // single audited operation by the Security Administrator (operator-
+        // approver). The submitter of record remains the member (request row
+        // + audit). Separation of duties continues to apply everywhere else.
+        $selfApprovalExempt = $reviewer->isSecurityAdmin();
+
+        if (! $selfApprovalExempt && (int) $media->uploaded_by_id === (int) $reviewer->id) {
             $this->audit->log(
                 action: 'media.profile_photo_approval_denied',
                 subject: $media,
@@ -397,7 +409,11 @@ class ProfileMediaService
      */
     public function reject(MediaItem $media, User $reviewer, ?string $note = null): MediaItem
     {
-        if (! $reviewer->canManageEditorial()) {
+        $rejectProfile = $media->mediable_type === Profile::class ? Profile::query()->find($media->mediable_id) : null;
+        if ($rejectProfile !== null) {
+            $this->assertPublishedPhotoAuthority($rejectProfile, $reviewer, 'photos.published.reject');
+        }
+        if (! $reviewer->canManageEditorial() && ! $reviewer->canManagePublishedProfiles()) {
             throw ValidationException::withMessages([
                 'media' => 'You are not allowed to reject photographs.',
             ]);
@@ -488,6 +504,8 @@ class ProfileMediaService
                 'media' => 'Only profile photographs can be removed here.',
             ]);
         }
+
+        $this->assertPublishedPhotoAuthority($profile, $actor, 'photos.published.delete');
 
         // Members may not delete a currently public approved photo that is the sole live portrait
         // without staff — they may remove pending/rejected freely. Staff may delete any.
@@ -640,6 +658,19 @@ class ProfileMediaService
         return $clean === '' ? null : Str::limit($clean, 2000, '');
     }
 
+    /**
+     * Wave 3 boundary: photograph mutations on PUBLISHED profiles are
+     * exclusively Security Administrator operations (transitional legacy-admin
+     * override applies until strict separation is enabled). Pre-publication
+     * review keeps the existing editorial permissions.
+     */
+    private function assertPublishedPhotoAuthority(Profile $profile, User $actor, string $operation): void
+    {
+        if ((string) $profile->status === 'published' && $profile->published_at !== null) {
+            $this->publishedProfiles->authorize($actor, $operation);
+        }
+    }
+
     private function assertMediaBelongsToProfile(Profile $profile, MediaItem $media): void
     {
         if ((string) $media->mediable_type !== $profile->getMorphClass()
@@ -652,7 +683,10 @@ class ProfileMediaService
 
     private function assertOwnedByMemberOrStaff(Profile $profile, User $actor): void
     {
-        if ($actor->canManageEditorial()) {
+        // Wave 3: the Security Administrator is staff for published-photo
+        // operations (deeper mutation authority is gated separately by the
+        // published-profile boundary above).
+        if ($actor->canManageEditorial() || $actor->canManagePublishedProfiles()) {
             return;
         }
 
@@ -671,7 +705,7 @@ class ProfileMediaService
      */
     private function assertMemberMayMutateProfileContent(Profile $profile, User $actor): void
     {
-        if ($actor->canManageEditorial()) {
+        if ($actor->canManageEditorial() || $actor->canManagePublishedProfiles()) {
             return;
         }
 

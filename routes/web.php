@@ -98,6 +98,18 @@ Route::middleware('guest')->group(function () {
 
 Route::post('/logout', [LoginController::class, 'logout'])->middleware('auth')->name('logout');
 
+/*
+| Wave 3 — Security Administrator TOTP enrollment + per-login challenge.
+| Authenticated, standalone (outside Filament so the panel middleware can
+| redirect here), and strictly limited to the security_admin account.
+*/
+Route::middleware(['auth'])->prefix('security')->name('security.totp.')->group(function () {
+    Route::get('/totp/enroll', [\App\Http\Controllers\Security\SecurityTotpController::class, 'enroll'])->name('enroll');
+    Route::post('/totp/enroll', [\App\Http\Controllers\Security\SecurityTotpController::class, 'confirm'])->name('confirm');
+    Route::get('/totp/challenge', [\App\Http\Controllers\Security\SecurityTotpController::class, 'challenge'])->name('challenge');
+    Route::post('/totp/challenge', [\App\Http\Controllers\Security\SecurityTotpController::class, 'verify'])->name('verify');
+});
+
 // Staff downloads/previews are non-Filament routes: re-check account status
 // (suspension) and verification on every request — a live session must not
 // outlive a suspension, mirroring the Filament panel's per-request gate.
@@ -163,6 +175,9 @@ Route::middleware(['auth', 'verified.or.mobile'])->group(function () {
     Route::post('/applications/{application}/maintenance/correction', [ProfileMaintenanceController::class, 'correction'])
         ->middleware('throttle:10,1')
         ->name('applications.maintenance.correction');
+    Route::post('/applications/{application}/maintenance/photo-replacement', [ProfileMaintenanceController::class, 'submitPhotoReplacement'])
+        ->middleware('throttle:6,1')
+        ->name('applications.maintenance.photo_replacement');
 
     Route::get('/applications/{application}/profile-url', [ProfileUrlController::class, 'show'])
         ->name('applications.profile-url');

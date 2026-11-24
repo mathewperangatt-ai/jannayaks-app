@@ -10,6 +10,20 @@ use Illuminate\Validation\Rules\Password;
 
 class UserForm
 {
+    /**
+     * Wave 3: security_admin is never assignable from the UI — provisioning
+     * happens only through the emergency console command.
+     */
+    public static function roleOptions(): array
+    {
+        return [
+            User::ROLE_MEMBER => 'Member',
+            User::ROLE_ADMIN => 'Admin',
+            User::ROLE_EDITOR => 'Editor',
+            User::ROLE_SUPPORT => 'Support',
+        ];
+    }
+
     public static function configure(Schema $schema): Schema
     {
         return $schema->components([
@@ -22,12 +36,7 @@ class UserForm
                 ->dehydrated(fn (?string $state): bool => filled($state))
                 ->required(fn (string $operation): bool => $operation === 'create'),
             Select::make('role')
-                ->options([
-                    User::ROLE_MEMBER => 'Member',
-                    User::ROLE_ADMIN => 'Admin',
-                    User::ROLE_EDITOR => 'Editor',
-                    User::ROLE_SUPPORT => 'Support',
-                ])
+                ->options(self::roleOptions())
                 ->required()
                 ->native(false),
             Select::make('account_status')
