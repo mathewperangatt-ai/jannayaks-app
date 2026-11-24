@@ -149,9 +149,9 @@ class ApplicationController extends Controller
      */
     /**
      * Wave 3 follow-up: EARLY duplicate-email detection for the intake form.
-     * Field-specific, side-effect-free, JSON only: booleans about whether the
-     * given email already belongs to an ACCOUNT or is associated with an
-     * APPLICATION. No creation, no session, no personal-data disclosure —
+     * Side-effect-free, JSON only, GENERIC by design: a single boolean that
+     * does not reveal whether the email belongs to an account or to an
+     * application. No creation, no session, no personal-data disclosure —
      * server-side validation remains authoritative at submission.
      */
     public function emailStatus(Request $request): JsonResponse
@@ -162,10 +162,11 @@ class ApplicationController extends Controller
 
         $email = Application::normalizeApplicantEmail($validated['email']);
 
-        return response()->json([
-            'account_exists' => $email !== null && User::query()->where('email', $email)->exists(),
-            'application_associated' => $email !== null && Application::emailIsAssociated($email),
-        ]);
+        $inUse = $email !== null
+            && (User::query()->where('email', $email)->exists()
+                || Application::emailIsAssociated($email));
+
+        return response()->json(['email_in_use' => $inUse]);
     }
 
     public function storeIntent(Request $request): JsonResponse|RedirectResponse

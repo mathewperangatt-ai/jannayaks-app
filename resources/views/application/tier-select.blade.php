@@ -177,12 +177,8 @@
             headers: { 'Accept': 'application/json' }
         }).then(function(r){ return r.ok ? r.json() : null; }).then(function(data){
             if (!data) return;
-            if (data.account_exists) {
-                status.textContent = @json($ml ? 'ഈ ഇമെയിൽ ഒരു അക്കൗണ്ടുമായി വരുത്തിയാൽ വേണം — തുടരാൻ അതേ അക്കൗണ്ടിൽ സൈൻ ഇൻ ചെയ്യുക.' : 'This email address is already registered. Please sign in to continue with that account.');
-                status.style.display = 'block';
-                status.style.color = '#7a1414';
-            } else if (data.application_associated) {
-                status.textContent = @json($ml ? 'ഈ ഇമെയിൽ നിലവിലുള്ള ഒരു അപേക്ഷയുമായി ബന്ധപ്പെട്ടിരിക്കുന്നു — തുടരാൻ സൈൻ ഇൻ ചെയ്യുക.' : 'This email address is already associated with an application. Please sign in to continue.');
+            if (data.email_in_use === true) {
+                status.textContent = @json($ml ? 'ഈ ഇമെയിൽ വിലാസം ഇതിനകം ഉപയോഗത്തിലാണ്. തുടരാൻ ദയവായി സൈൻ ഇൻ ചെയ്യുക.' : 'This email address is already in use. Please sign in to continue.');
                 status.style.display = 'block';
                 status.style.color = '#7a1414';
             } else {

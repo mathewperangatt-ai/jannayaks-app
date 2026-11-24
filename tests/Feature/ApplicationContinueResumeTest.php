@@ -226,7 +226,10 @@ class ApplicationContinueResumeTest extends TestCase
         return ['member' => $member, 'profile' => $profile->fresh(), 'application' => $application->fresh()];
     }
 
-    /** The email-status endpoint reports account/application associations, booleans only. */
+    /**
+     * The email-status endpoint returns a single GENERIC boolean — it must
+     * not reveal whether an email belongs to an account or an application.
+     */
     public function test_email_status_endpoint_reports_associations(): void
     {
         $owner = User::factory()->create(['email' => 'status.person@example.com', 'role' => User::ROLE_MEMBER]);
@@ -240,14 +243,45 @@ class ApplicationContinueResumeTest extends TestCase
         // Unauthenticated applicants fill the intake form — the endpoint is public.
         $this->getJson(route('apply.email-status', ['email' => 'status.person@example.com']))
             ->assertOk()
-            ->assertJson(['account_exists' => true, 'application_associated' => true]);
+            ->assertJson(['email_in_use' => true])
+            ->assertJsonMissing(['account_exists' => true])
+            ->assertJsonMissing(['application_associated' => true]);
 
-        $this->getJson(route('apply.email-status', ['email' => 'status.person@example.com']))
-            ->assertJson(['account_exists' => true]);
+        // An email associated ONLY with an application must be indistinguishable
+        // from one tied to an account: seed an application whose owner has a
+        // different account email.
+        Application::factory()->create([
+            'user_id' => $owner->id,
+            'applicant_email_normalized' => 'only.application@example.com',
+            'preferred_contact_email' => 'only.application@example.com',
+            'status' => Application::STATUS_INTERVIEW_IN_PROGRESS,
+        ]);
+
+        $this->getJson(route('apply.email-status', ['email' => 'only.application@example.com']))
+            ->assertOk()
+            ->assertJson(['email_in_use' => true]);
 
         $this->getJson(route('apply.email-status', ['email' => 'brand.new@example.com']))
             ->assertOk()
-            ->assertJson(['account_exists' => false, 'application_associated' => false]);
+            ->assertJson(['email_in_use' => false])
+            ->assertJsonMissing(['account_exists'])
+            ->assertJsonMissing(['application_associated']);
+    }
+
+    /** Registration still distinguishes account-level email duplicates. */
+    public function test_registration_rejects_account_email_without_status_leak(): void
+    {
+        User::factory()->create(['email' => 'status.person@example.com', 'role' => User::ROLE_MEMBER]);
+
+        $this->post('/register', [
+            'name' => 'Late Applicant',
+            'username' => 'late.applicant',
+            'email' => 'status.person@example.com',
+            'password' => 'Br1ght-P4ssw0rd!',
+            'password_confirmation' => 'Br1ght-P4ssw0rd!',
+        ])->assertSessionHasErrors(['email']);
+
+        $this->assertSame(1, User::query()->where('email', 'status.person@example.com')->count());
     }
 
     /** Cross-account duplicates surface a field-specific error on the email field. */
