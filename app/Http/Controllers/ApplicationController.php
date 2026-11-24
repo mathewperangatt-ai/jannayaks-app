@@ -4,6 +4,7 @@ namespace App\Http\Controllers;
 
 use App\Exceptions\PaymentLinkStateUncertainException;
 use App\Models\Application;
+use App\Models\User;
 use App\Support\Countries;
 use App\Models\Payment;
 use App\Models\SourceMaterial;
@@ -146,6 +147,28 @@ class ApplicationController extends Controller
      * Guest (or authenticated) stores Standard Profile intake intent, then
      * registers/logs in before payment. No customer tier choice is collected.
      */
+    /**
+     * Wave 3 follow-up: EARLY duplicate-email detection for the intake form.
+     * Side-effect-free, JSON only, GENERIC by design: a single boolean that
+     * does not reveal whether the email belongs to an account or to an
+     * application. No creation, no session, no personal-data disclosure —
+     * server-side validation remains authoritative at submission.
+     */
+    public function emailStatus(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'email' => ['required', 'email:strict', 'max:255'],
+        ]);
+
+        $email = Application::normalizeApplicantEmail($validated['email']);
+
+        $inUse = $email !== null
+            && (User::query()->where('email', $email)->exists()
+                || Application::emailIsAssociated($email));
+
+        return response()->json(['email_in_use' => $inUse]);
+    }
+
     public function storeIntent(Request $request): JsonResponse|RedirectResponse
     {
         // Accept mixed-case country codes from the browser; validation and
@@ -868,7 +891,10 @@ class ApplicationController extends Controller
 
         return redirect()
             ->route('apply')
-            ->withErrors(['apply' => Application::DUPLICATE_EMAIL_NOTICE]);
+            ->withErrors([
+                'email' => Application::DUPLICATE_EMAIL_NOTICE,
+                'apply' => Application::DUPLICATE_EMAIL_NOTICE,
+            ]);
     }
 
     private function forbiddenResponse(Request $request, string $message): JsonResponse|RedirectResponse

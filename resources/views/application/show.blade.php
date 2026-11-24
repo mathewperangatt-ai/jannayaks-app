@@ -54,6 +54,9 @@
         @if($identityPhoto && $application->profile)
             <img class="dash-photo" src="{{ route('profiles.public.photo', [$application->profile, $identityPhoto]) }}" alt="Approved profile photograph of {{ $application->full_name }}" width="76" height="95">
         @endif
+        @php
+            $publishedFlag = $application->status === 'published' || ($application->profile !== null && $application->profile->status === 'published');
+        @endphp
         <div class="dash-identity-main">
             <p class="dash-eyebrow">Profile dashboard
                 @if ($application->source_method === 'online_interview')
@@ -63,7 +66,7 @@
                 @else
                     <span class="dash-pill">Admin test/demo</span>
                 @endif
-                <span class="tag {{ $application->isInterviewSubmitted() || $application->isDirectSubmitted() ? 'ok' : 'warn' }}" style="margin-left:auto">{{ $application->isInterviewSubmitted() || $application->isDirectSubmitted() ? 'SUBMITTED' : 'IN PROGRESS' }}</span>
+                <span class="tag {{ $publishedFlag ? 'ok' : ($application->isInterviewSubmitted() || $application->isDirectSubmitted() ? 'ok' : 'warn') }}" style="margin-left:auto">{{ $publishedFlag ? 'PUBLISHED' : ($application->isInterviewSubmitted() || $application->isDirectSubmitted() ? 'SUBMITTED' : 'IN PROGRESS') }}</span>
             </p>
             <h1 class="dash-name">{{ $application->full_name }}</h1>
             <div class="dash-meta">
@@ -193,17 +196,23 @@
         @endphp
 
         <div class="dash-actions">
-            <a class="btn primary" href="{{ route('applications.payment', $application) }}">
-                @if ($paymentWaived)
-                    Payment waived
-                @elseif ($application->isPaymentSettled())
-                    View payment / receipt
-                @elseif (!empty($paymentsTestingMode))
-                    Payments unavailable (testing)
-                @else
-                    Pay to unlock interview →
-                @endif
-            </a>
+            @if ($publishedFlag)
+                <a class="btn primary" href="{{ $application->profile !== null ? route('profiles.public', $application->profile->slug) : route('applications.show', $application) }}">
+                    View published profile →
+                </a>
+            @else
+                <a class="btn primary" href="{{ route('applications.payment', $application) }}">
+                    @if ($paymentWaived)
+                        Payment waived
+                    @elseif ($application->isPaymentSettled())
+                        View payment / receipt
+                    @elseif (!empty($paymentsTestingMode))
+                        Payments unavailable (testing)
+                    @else
+                        Pay to unlock interview →
+                    @endif
+                </a>
+            @endif
             @if($unlocked && $application->source_method === 'online_interview')
                 <a class="btn" href="{{ route('online-interview.show', $application) }}">{{ $application->isInterviewSubmitted() ? 'View submitted answers' : 'Continue Online Interview →' }}</a>
             @endif

@@ -22,6 +22,28 @@ class ProfileUrlController extends Controller
         private ProfileQrCodeService $qrCodes,
     ) {}
 
+    /**
+     * Wave 3 follow-up: name-derived personal URL suggestions for the INITIAL
+     * application form (before an application — and its ownership — exists).
+     *
+     * Public but strictly limited: suggestions derive ONLY from the supplied
+     * name; availability is a boolean per slug; no applicant personal data is
+     * returned. Reuses ProfileUrlService::suggestPersonalSlugs (validation,
+     * reserved-name checks and uniqueness included) — no duplicated logic.
+     */
+    public function suggest(Request $request): JsonResponse
+    {
+        $validated = $request->validate([
+            'name' => ['required', 'string', 'min:2', 'max:255'],
+        ]);
+
+        $suggestions = $this->profileUrls->suggestPersonalSlugs(trim((string) $validated['name']));
+
+        return response()->json([
+            'suggestions' => $suggestions,
+        ]);
+    }
+
     public function show(Request $request, Application $application): View|RedirectResponse
     {
         $member = $this->authenticatedOwner($application);
