@@ -35,7 +35,8 @@ class VerifyProfileIntegrityCommand extends Command
     protected $signature = 'jannayaks:verify-profile-integrity
                             {--profile= : Verify a single profile ID (testing/troubleshooting)}
                             {--deep-percent= : Override deep photo verification percentage (0-100)}
-                            {--establish-baseline : Create a known-good snapshot for --profile= when none exists. Does not overwrite. Not used by the scheduler.}';
+                            {--establish-baseline : Create a known-good snapshot for --profile= when none exists. Does not overwrite. Not used by the scheduler.}
+                            {--force : With --establish-baseline: refresh an EXISTING snapshot for --profile= after an authorised out-of-band change (operator action, audit-logged).}';
 
     protected $description = 'Verify published profiles against their known-good integrity snapshots (report-only).';
 
@@ -242,7 +243,36 @@ class VerifyProfileIntegrityCommand extends Command
         }
 
         if (ProfileIntegritySnapshot::query()->where('profile_id', $profile->id)->exists()) {
-            $this->warn("Profile {$profile->id} already has an integrity snapshot. Existing baselines are never overwritten.");
+            // Authorised out-of-band changes (e.g. owner-approved maintenance
+            // performed by direct SQL) legitimately differ from the baseline.
+            // The operator may refresh it explicitly with --force; the default
+            // remains refusal — existing baselines are never silently
+            // overwritten.
+            if (! (bool) $this->option('force')) {
+                $this->warn("Profile {$profile->id} already has an integrity snapshot. Existing baselines are never overwritten. Pass --force to refresh after an AUTHORISED out-of-band change.");
+
+                return self::SUCCESS;
+            }
+
+            $snapshot = $integrity->refreshSnapshot($profile, 'operator_establish_baseline');
+            if ($snapshot === null) {
+                $this->error("Could not refresh the baseline for profile {$profile->id}.");
+
+                return self::FAILURE;
+            }
+
+            app(\App\Services\StaffAuditLogger::class)->log(
+                action: 'integrity.baseline_force_refreshed',
+                subject: $profile,
+                after: [
+                    'profile_id' => $profile->id,
+                    'snapshot_id' => $snapshot->id,
+                    'snapshot_hash' => $snapshot->snapshot_hash,
+                ],
+                actor: null,
+            );
+
+            $this->info("Baseline REFRESHED for published profile {$profile->id} (snapshot #{$snapshot->id}, source_event=operator_establish_baseline). Open incidents were left untouched for review.");
 
             return self::SUCCESS;
         }
